@@ -1,0 +1,34 @@
+#ifndef SCALER_SCALEREXCEPTION_H
+#define SCALER_SCALEREXCEPTION_H
+
+#include <exception>
+#include <type/Object.hpp>
+#include <string>
+#include <iostream>
+
+//Please comment fprintf clause when not debugging
+#define throwScalerException(msg) \
+    fprintf(stderr, "Scalar Exception thrown @ %s:%d: %s\n", __FILE__, __LINE__,msg); \
+    throw ScalerException(msg, __FILE__, __LINE__);
+
+class ScalerException : std::runtime_error, Object {
+public:
+    std::string info;
+
+    ScalerException(const std::string &info, const std::string &fileName, int lineNo) : runtime_error(info) {
+        this->info = info;
+        this->fileName = fileName;
+        this->lineNo = lineNo;
+
+    }
+
+    const char *what() const _GLIBCXX_TXN_SAFE_DYN _GLIBCXX_NOTHROW override {
+        return this->info.c_str();
+    }
+
+private:
+    std::string fileName;
+    int lineNo;
+};
+
+#endif
