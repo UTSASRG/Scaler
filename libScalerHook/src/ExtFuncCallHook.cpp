@@ -39,6 +39,8 @@ namespace scaler {
             try {
                 elfParser.parse();
 
+                filePltNameMap[iter->first] = elfParser.relaFuncName;
+
                 auto &curFile = fileSecMap[iter->first];
 
                 auto &curPLT = curFile[".plt"];
@@ -79,7 +81,7 @@ namespace scaler {
 
     }
 
-    void *ExtFuncCallHook::searchSecLoadingAddr(const std::string &secName, ELFParser &elfParser,
+    void *ExtFuncCallHook::searchSecLoadingAddr(std::string secName, ELFParser &elfParser,
                                                 const std::vector<PMEntry> &segments) {
 
         //Read the section specified by secName from ELF file.
@@ -108,14 +110,16 @@ namespace scaler {
         //Step1: Locating call PLT
         locSectionInMem();
         //Step2: Replace PLT
-        loadPltNames();
 
 
     }
 
-    void ExtFuncCallHook::loadPltNames() {
+    void ExtFuncCallHook::adjustSectionPermission(std::string fileName, std::string secName, int prem) {
+        size_t pageSize = sysconf(_SC_PAGESIZE);
 
+//        fileSecMap[fileName][secName];
 
+        //mprotect(ALIGN_ADDR(ptrPlt, page_size), pageSize, perm);
     }
 
 

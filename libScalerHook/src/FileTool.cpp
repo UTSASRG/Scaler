@@ -10,9 +10,9 @@ std::vector<size_t> scaler::findStrSplit(std::string &srcStr, char splitChar) {
     for (int i = 1; i < augStr.size(); ++i) {
         if (augStr[i - 1] != augStr[i]) {
             if (augStr[i - 1] == splitChar) {
-                splitPoints.push_back(i-1); //String Segment Begin
+                splitPoints.emplace_back(i-1); //String Segment Begin
             } else if (augStr[i] == splitChar) {
-                splitPoints.push_back(i-1); //String Segment End
+                splitPoints.emplace_back(i-1); //String Segment End
             }
 
         }

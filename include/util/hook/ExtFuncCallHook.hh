@@ -35,10 +35,10 @@ namespace scaler {
         /**
          * Search the starting address of a single loaded section in memory
          */
-        void *searchSecLoadingAddr(const std::string &secName, ELFParser &elfParser,
+        void *searchSecLoadingAddr(std::string secName, ELFParser &elfParser,
                                    const std::vector<PMEntry> &segments);
 
-        void loadPltNames();
+        void adjustSectionPermission(std::string fileName,std::string secName,int prem);
 
     };
 }

@@ -13,7 +13,8 @@ add_executable(TestLibHook
         TestPMParser.cpp
         TestExtFuncCallHook.cpp
         TestFileTool.cpp
-        TestException.cpp)
+        TestException.cpp
+        )
 target_include_directories(TestLibHook PUBLIC ../libScalerHook/headers)
 target_link_libraries(TestLibHook scalerhook gtest gtest_main dl)
 target_link_options(TestLibHook PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/mylinker.ld")

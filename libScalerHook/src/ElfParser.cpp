@@ -61,6 +61,8 @@ namespace scaler {
         ElfW(Shdr) *strTblSecHdr = secHdr + elfHdr->e_shstrndx;
         secStrtbl = reinterpret_cast<const char *>(elfFile + strTblSecHdr->sh_offset);
 
+
+
         //Read section header
         shnum = elfHdr->e_shnum;
 
@@ -69,12 +71,8 @@ namespace scaler {
 
     void *ELFParser::getSecPtr(std::string targetSecName) {
         //Iterate through sections
-        for (int i = 0; i < shnum; ++i) {
-            ElfW(Shdr) curShDr = secHdr[i];
-            if (strncmp(targetSecName.c_str(), secStrtbl + curShDr.sh_name, targetSecName.size()) == 0) {
-                return elfFile + curShDr.sh_offset;
-            }
-        }
+        ElfW(Shdr) *curShDr = getSecHdrByName(targetSecName);
+        return elfFile + curShDr->sh_offset;
         return nullptr;
     }
 
@@ -112,36 +110,52 @@ namespace scaler {
     }
 
     void ELFParser::parseRelocationTable() {
-        std::vector<std::string> secName = getSecNames();
-        size_t relaPlt = getSecNameStrIdByName(".rela.plt");
-        if (relaPlt == -1) {
+        //Find the starting point to .rela.plt.
+        ElfW(Shdr) *relaPltSecHdr = getSecHdrByName(".rela.plt");
+        ElfW(Rela) *relaPlt = reinterpret_cast<ElfW(Rela) *>(elfFile + relaPltSecHdr->sh_offset);
+        if (!relaPlt) {
             throwScalerException("Cannot find .rela.plt")
         }
-        //Loop through relocation table that match this id.
-        ElfW(Rela) *relaPltloc = getSecPtr(".rela.plt");
 
-    }
 
-    ElfW(Dyn) *ELFParser::findDynByTag(ElfW(Dyn) *dyn, ElfW(Sxword) tag) {
-        while (dyn->d_tag != DT_NULL) {
-            if (dyn->d_tag == tag) {
-                return dyn;
-            }
-            dyn++;
+        //Find symbol table
+        ElfW(Sym) *dynSymTbl = static_cast<ElfW(Sym) *>(getSecPtr(".dynsym"));
+
+
+        ElfW(Rela) *curRel = relaPlt;
+        size_t idx = 0;
+
+        const char *name;
+        void **addr;
+
+        char *dynStrTbl = static_cast<char *>(getSecPtr(".dynstr"));
+
+        size_t relaSecSize = relaPltSecHdr->sh_size / relaPltSecHdr->sh_entsize;
+        for (int i = 0; i < relaSecSize; ++i) {
+            addr = reinterpret_cast<void **>(elfFile + relaPlt->r_offset);
+            //todo: Platform dependent
+            name = dynStrTbl + (dynSymTbl + ELF64_R_SYM(relaPlt->r_info))->st_name;
+            //The number of entries in a given table can be found by dividing the size of the table (given by sh_size
+            //in the section header) by the size of each entry (given by sh_entsize).
+            printf("%s\n", name);
+            relaFuncName.emplace_back(name);
+            idx = ELF64_R_SYM(relaPlt->r_info);
+            relaPlt++;
         }
-        return NULL;
+
+
     }
 
-    size_t ELFParser::getSecNameStrIdByName(std::string name) {
-        size_t posi = -1;
+    ElfW(Shdr) *ELFParser::getSecHdrByName(std::string targetSecName) {
+        ElfW(Shdr) *curShDr = nullptr;
         for (int i = 0; i < shnum; ++i) {
-            ElfW(Shdr) curShDr = secHdr[i];
-            if (std::string(secStrtbl + curShDr.sh_name).compare(name) == 0) {
-                posi = i;
+            curShDr = &secHdr[i];
+            if (strncmp(targetSecName.c_str(), secStrtbl + curShDr->sh_name, targetSecName.size()) == 0) {
                 break;
             }
         }
-        return posi;
+        return curShDr;
     }
+
 
 }

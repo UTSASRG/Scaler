@@ -12,8 +12,9 @@ namespace scaler {
     class ELFParser : Object {
     public:
         std::string elfPath;
+        std::vector<std::string> relaFuncName;
 
-        ELFParser(std::string elfPath);
+        explicit ELFParser(std::string elfPath);
 
         ELFParser(ELFParser &) = delete;
 
@@ -23,11 +24,11 @@ namespace scaler {
          */
         void *getSecPtr(std::string targetSecName);
 
+        ElfW(Shdr) *getSecHdrByName(std::string targetSecName);
+
         long long int getSecLength(std::string targetSecName);
 
         std::vector<std::string> getSecNames();
-
-        size_t getSecNameStrIdByName(std::string);
 
 
         ~ELFParser() override;
@@ -55,7 +56,6 @@ namespace scaler {
 
         void parseRelocationTable();
 
-        ElfW(Dyn) *findDynByTag(ElfW(Dyn) *dyn, ElfW(Sxword) tag);
     };
 }
 
