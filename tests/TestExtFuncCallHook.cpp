@@ -28,23 +28,9 @@ TEST(ExtFuncCallHook, locSectionInMem) {
     EXPECT_EQ(calcPltSecPtr.endAddr, &__endpltsec);
 }
 
-//int main() {
-//    PMParser parser;
-//    parser.parsePMMap();
-//
-//    ExtFuncCallHook hook;
-//    hook.locSectionInMem();
-//
-//    auto &calcPltPtr = hook.fileSecMap[parser.curExecFileName][".plt"];
-//    auto &calcGotPtr = hook.fileSecMap[parser.curExecFileName][".plt.got"];
-//    auto &calcPltSecPtr = hook.fileSecMap[parser.curExecFileName][".plt.sec"];
-//
-//    EXPECT_EQ(calcPltPtr.startAddr, &__startplt);
-//    EXPECT_EQ(calcPltPtr.endAddr, &__endplt);
-//    EXPECT_EQ(calcGotPtr.startAddr, &__startpltgot);
-//    EXPECT_EQ(calcGotPtr.endAddr, &__endpltgot);
-//    EXPECT_EQ(calcPltSecPtr.startAddr, &__startpltsec);
-//    EXPECT_EQ(calcPltSecPtr.endAddr, &__endpltsec);
-//    return 0;
-//}
+TEST(ExtFuncCallHook, install) {
+    ExtFuncCallHook hook;
+    hook.install();
+
+}
 

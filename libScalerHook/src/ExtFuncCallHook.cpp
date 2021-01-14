@@ -4,6 +4,7 @@
 #include <util/tool/ElfParser.h>
 #include <util/tool/FileTool.h>
 #include <exceptions/ScalerException.h>
+#include <sys/mman.h>
 
 namespace scaler {
 #define PUSHXMM(ArgumentName) \
@@ -23,7 +24,7 @@ namespace scaler {
 "movdqu  (%rsp),%"#ArgumentName"\n\t"\
 "addq $16,%rsp\n\t"
 
-#define ALIGN_ADDR(addr, page_size) (void *) ((size_t) (addr) / page_size * page_size)
+#define ALIGN_ADDR(addr, page_size) (ElfW(Addr) *) ((size_t) (addr) / page_size * page_size)
 
     void ExtFuncCallHook::locSectionInMem() {
 
@@ -83,7 +84,6 @@ namespace scaler {
 
     void *ExtFuncCallHook::searchSecLoadingAddr(std::string secName, ELFParser &elfParser,
                                                 const std::vector<PMEntry> &segments) {
-
         //Read the section specified by secName from ELF file.
         void *secPtr = elfParser.getSecPtr(secName);
         if (!secPtr) {
@@ -107,19 +107,30 @@ namespace scaler {
     }
 
     void ExtFuncCallHook::install() {
-        //Step1: Locating call PLT
+        //Step1: Locating table in memory
         locSectionInMem();
-        //Step2: Replace PLT
+        //Step2: Change every plt location to writeable
+        for (auto iterFile = fileSecMap.begin(); iterFile != fileSecMap.end(); ++iterFile) {
+            for (auto iterTable = iterFile->second.begin(); iterTable != iterFile->second.end(); ++iterTable) {
+                auto &curSecInfo = iterTable->second;
+                adjustMemPermission(curSecInfo.startAddr, curSecInfo.endAddr, PROT_READ | PROT_WRITE | PROT_EXEC);
+            }
+        }
+        //Step3: Replace PLT
 
 
     }
 
-    void ExtFuncCallHook::adjustSectionPermission(std::string fileName, std::string secName, int prem) {
+    void ExtFuncCallHook::adjustMemPermission(void *startPtr, void *endPtr, int prem) {
         size_t pageSize = sysconf(_SC_PAGESIZE);
+        void *alignedStartPtr = ALIGN_ADDR(startPtr, pageSize);
+        void *alignedEndPtr = ALIGN_ADDR(endPtr, pageSize);
 
-//        fileSecMap[fileName][secName];
-
-        //mprotect(ALIGN_ADDR(ptrPlt, page_size), pageSize, perm);
+        if (mprotect(alignedStartPtr, (ElfW(Addr) *) alignedEndPtr - (ElfW(Addr) *) alignedStartPtr, prem) != 0) {
+            std::stringstream ss;
+            ss << "Could not change the process memory permission at " << alignedStartPtr << " - " << alignedEndPtr;
+            throwScalerException(ss.str().c_str());
+        }
     }
 
 

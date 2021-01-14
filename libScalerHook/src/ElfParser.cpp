@@ -133,11 +133,10 @@ namespace scaler {
         size_t relaSecSize = relaPltSecHdr->sh_size / relaPltSecHdr->sh_entsize;
         for (int i = 0; i < relaSecSize; ++i) {
             addr = reinterpret_cast<void **>(elfFile + relaPlt->r_offset);
-            //todo: Platform dependent
+            //todo: ELF64_R_SYM is platform dependent
             name = dynStrTbl + (dynSymTbl + ELF64_R_SYM(relaPlt->r_info))->st_name;
             //The number of entries in a given table can be found by dividing the size of the table (given by sh_size
             //in the section header) by the size of each entry (given by sh_entsize).
-            printf("%s\n", name);
             relaFuncName.emplace_back(name);
             idx = ELF64_R_SYM(relaPlt->r_info);
             relaPlt++;

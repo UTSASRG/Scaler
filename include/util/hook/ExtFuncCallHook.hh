@@ -19,10 +19,7 @@ namespace scaler {
     public:
         void install() override;
 
-        /**
-         * Locate the start position of sections in memory and store then in fileSecMap
-         */
-        void locSectionInMem();
+
     private:
         void *startPlt = nullptr;
         void *startGot = nullptr;
@@ -31,15 +28,17 @@ namespace scaler {
         //Get the pointer to the first section: sectionAddrMap[executable path][section name]
         std::map<std::string, std::map<std::string, SecInfo>> fileSecMap;
         std::map<std::string, std::vector<std::string>> filePltNameMap;
-
+        /**
+         * Locate the start position of sections in memory and store then in fileSecMap
+         */
+        void locSectionInMem();
         /**
          * Search the starting address of a single loaded section in memory
          */
         void *searchSecLoadingAddr(std::string secName, ELFParser &elfParser,
                                    const std::vector<PMEntry> &segments);
 
-        void adjustSectionPermission(std::string fileName,std::string secName,int prem);
-
+        void adjustMemPermission(void *startPtr, void *endPtr, int prem);
     };
 }
 
