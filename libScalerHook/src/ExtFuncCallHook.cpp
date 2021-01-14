@@ -32,17 +32,21 @@ namespace scaler {
         PMParser pmParser;
         pmParser.parsePMMap();
 
+        size_t counter = 0;
         //Iterate through libraries
         for (auto iter = pmParser.procMap.begin(); iter != pmParser.procMap.end(); ++iter) {
+            //Save file name to id table
+            symbolNames[iter->first] = counter;
+
             //Open corresponding ELF file
             ELFParser elfParser(iter->first);
 
             try {
                 elfParser.parse();
 
-                filePltNameMap[iter->first] = elfParser.relaFuncName;
+                filePltNameMap[counter] = elfParser.relaFuncName;
 
-                auto &curFile = fileSecMap[iter->first];
+                auto &curFile = fileSecMap[counter];
 
                 auto &curPLT = curFile[".plt"];
                 curPLT.startAddr = searchSecLoadingAddr(".plt", elfParser, iter->second);
@@ -76,6 +80,7 @@ namespace scaler {
                 ss << "Hook Failed for \"" << elfParser.elfPath << "\" because " << e.info;
                 fprintf(stderr, "%s\n", ss.str().c_str());
             }
+            counter++;
 
         }
 
@@ -132,6 +137,17 @@ namespace scaler {
             throwScalerException(ss.str().c_str());
         }
     }
+
+    size_t ExtFuncCallHook::findExecNameByAddr(void *addr) {
+        return 0;
+    }
+
+    void ExtFuncCallHook::recordFileSecMap(PMParser& pmParser) {
+
+    }
+
+//    GEN_C_HOOK_HANDLER()
+//    GEN_C_HOOK_HANDLER(Sec)
 
 
 }

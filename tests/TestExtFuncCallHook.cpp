@@ -16,9 +16,9 @@ TEST(ExtFuncCallHook, locSectionInMem) {
     ExtFuncCallHook hook;
     hook.locSectionInMem();
 
-    auto &calcPltPtr = hook.fileSecMap[parser.curExecFileName][".plt"];
-    auto &calcGotPtr = hook.fileSecMap[parser.curExecFileName][".plt.got"];
-    auto &calcPltSecPtr = hook.fileSecMap[parser.curExecFileName][".plt.sec"];
+    auto &calcPltPtr = hook.fileSecMap[hook.symbolNames[parser.curExecFileName]][".plt"];
+    auto &calcGotPtr = hook.fileSecMap[hook.symbolNames[parser.curExecFileName]][".plt.got"];
+    auto &calcPltSecPtr = hook.fileSecMap[hook.symbolNames[parser.curExecFileName]][".plt.sec"];
 
     EXPECT_EQ(calcPltPtr.startAddr, &__startplt);
     EXPECT_EQ(calcPltPtr.endAddr, &__endplt);

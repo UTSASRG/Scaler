@@ -21,13 +21,17 @@ namespace scaler {
 
 
     private:
-        void *startPlt = nullptr;
-        void *startGot = nullptr;
-        void *startPltSec = nullptr;
+        // The pointer to .plt in a.so: sectionAddrMap[id for a.so][".plt"]
+        std::map<size_t, std::map<std::string, SecInfo>> fileSecMap;
+        // The i'th external symbol's name in a.so: sectionAddrMap[id for a.so][i]
+        std::map<size_t, std::vector<std::string>> filePltNameMap;
+        // The id of a.so : symbolNames[full path for a.so]
+        std::map<std::string, size_t> symbolNames;
+        std::vector<void *> addrFileMap;
 
-        //Get the pointer to the first section: sectionAddrMap[executable path][section name]
-        std::map<std::string, std::map<std::string, SecInfo>> fileSecMap;
-        std::map<std::string, std::vector<std::string>> filePltNameMap;
+        // An array to the copy of orignal PLT table
+        uint8_t *oriPltBin;
+
         /**
          * Locate the start position of sections in memory and store then in fileSecMap
          */
