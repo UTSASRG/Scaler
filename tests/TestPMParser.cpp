@@ -20,15 +20,12 @@ TEST(PMParser, parsePMMap) {
 
     //Index entries by addr
 
-    std::map<std::string, PMEntry> entryByAddrMap;
+    std::map<void *, PMEntry> entryByAddrMap;
     auto begIter = pmp.procMap.begin();
     while (begIter != pmp.procMap.end()) {
         auto &segVec = (*begIter).second;
         for (int i = 0; i < segVec.size(); ++i) {
-            auto addr = reinterpret_cast<long long int>(segVec[i].addrStart);
-            std::stringstream ss;
-            ss << std::noshowbase << std::hex << addr;
-            entryByAddrMap[ss.str()] = segVec[i];
+            entryByAddrMap[segVec[i].addrStart] = segVec[i];
         }
         begIter++;
     }
@@ -38,56 +35,61 @@ TEST(PMParser, parsePMMap) {
     if (f.is_open())
         ss << f.rdbuf();
 
-    std::string name;
-    while (std::getline(ss, name)) {
-        printf("%s\n", name.c_str());
+    std::string line;
+    while (std::getline(ss, line)) {
+        printf("Line: %s\n", line.c_str());
         //Extract starting address
-        int begAddrEnd = name.find('-');
+        int begAddrEnd = line.find(' ');
         //Find corresponding entry
-        auto &curSegEntry = entryByAddrMap[name.substr(0, begAddrEnd)];
-        //Split output by space
-        vector<size_t> splitIndexes = findStrSplit(name, ' ');
+        void *curStartAddr = nullptr;
+        void *curEndAddr = nullptr;
+        std::string startAddr = line.substr(0, begAddrEnd);
+        sscanf(startAddr.c_str(), "%p-%p", &curStartAddr, &curEndAddr);
 
+        auto &curSegEntry = entryByAddrMap[curStartAddr];
+
+        //Split output by space
+        vector<size_t> splitIndexes = findStrSplit(line, ' ');
         //May miss path but other fields should be consistent
         ASSERT_TRUE(splitIndexes.size() >= 5 * 2);
 
         //Check if address is the same
-        std::stringstream ss;
-        ss << std::hex << std::noshowbase << (long long int) (curSegEntry.addrStart) << "-"
-           << (long long int) (curSegEntry.addrEnd);
-        EXPECT_EQ(ss.str(), name.substr(splitIndexes[0], splitIndexes[1] - splitIndexes[0]));
+        EXPECT_EQ(curStartAddr, curSegEntry.addrStart);
+        EXPECT_EQ(curEndAddr, curSegEntry.addrEnd);
 
 
         //Check if Permission is the same
-        ss.str("");
-        ss << (curSegEntry.isR ? 'r' : '-');
-        ss << (curSegEntry.isW ? 'w' : '-');
-        ss << (curSegEntry.isE ? 'x' : '-');
-        ss << (curSegEntry.isP ? 'p' : '-');
-        EXPECT_EQ(ss.str(), name.substr(splitIndexes[2], splitIndexes[3] - splitIndexes[2]));
+        std::stringstream ss1;
+        ss1.str("");
+        ss1 << (curSegEntry.isR ? 'r' : '-');
+        ss1 << (curSegEntry.isW ? 'w' : '-');
+        ss1 << (curSegEntry.isE ? 'x' : '-');
+        ss1 << (curSegEntry.isP ? 'p' : '-');
+        EXPECT_EQ(ss1.str(), line.substr(splitIndexes[2], splitIndexes[3] - splitIndexes[2]));
 
 
         //Check if offset is the same
         char str[10];
         sprintf(str, "%08x", curSegEntry.offset);
-        EXPECT_EQ(std::string(str), name.substr(splitIndexes[4], splitIndexes[5] - splitIndexes[4]));
+        EXPECT_EQ(std::string(str), line.substr(splitIndexes[4], splitIndexes[5] - splitIndexes[4]));
 
 
         //Check if device id is the same
-        EXPECT_EQ(curSegEntry.dev, name.substr(splitIndexes[6], splitIndexes[7] - splitIndexes[6]));
+        EXPECT_EQ(curSegEntry.dev, line.substr(splitIndexes[6], splitIndexes[7] - splitIndexes[6]));
 
         //Check if inode is the same
         char str1[256];
         sprintf(str1, "%d", curSegEntry.inode);
-        EXPECT_EQ(std::string(str1), name.substr(splitIndexes[8], splitIndexes[9] - splitIndexes[8]));
+        EXPECT_EQ(std::string(str1), line.substr(splitIndexes[8], splitIndexes[9] - splitIndexes[8]));
 
         if (splitIndexes.size() == 12) {
             //Check if pathname is the same
-            EXPECT_EQ(curSegEntry.pathName, name.substr(splitIndexes[10], splitIndexes[11] - splitIndexes[10]));
-        } else {
-            //If there's more entry, there's might be a mistake.
+            EXPECT_EQ(curSegEntry.pathName, line.substr(splitIndexes[10], splitIndexes[11] - splitIndexes[10]));
+        } else if (splitIndexes.size() != 10) {
+            //# of entires must be 10 or 12.
             ASSERT_TRUE(false);
         }
+
     }
 
 }

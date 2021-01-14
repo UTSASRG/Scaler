@@ -23,9 +23,9 @@ TEST(ExtFuncCallHook, locSectionInMem) {
     EXPECT_EQ(calcPltPtr.startAddr, &__startplt);
     EXPECT_EQ(calcPltPtr.endAddr, &__endplt);
     EXPECT_EQ(calcGotPtr.startAddr, &__startpltgot);
-    EXPECT_EQ(calcGotPtr.startAddr, &__endpltgot);
+    EXPECT_EQ(calcGotPtr.endAddr, &__endpltgot);
     EXPECT_EQ(calcPltSecPtr.startAddr, &__startpltsec);
-    EXPECT_EQ(calcPltSecPtr.startAddr, &__endpltsec);
+    EXPECT_EQ(calcPltSecPtr.endAddr, &__endpltsec);
 }
 
 //int main() {
