@@ -213,49 +213,93 @@ namespace scaler {
 extern "C" {
 //todo: Currently only pre-hook is implemented. We can't call a function that's not resolved. Have to return now
 //todo: A work-around would be don't hook libScalerHook.so 's PLT
-void *cPreHookHanlderSec(int index, void *callerFuncAddr) {
-    size_t fileId = __extFuncCallHookPtr->findExecNameByAddr(callerFuncAddr);
-
-    auto &pltSec = __extFuncCallHookPtr->fileSecMap[fileId][scaler::SEC_NAME::PLT_SEC];
-    auto &realAddrResolved = __extFuncCallHookPtr->realAddrResolved[fileId];
-    auto &hookedAddrs = __extFuncCallHookPtr->hookedAddrs[fileId];
-    auto &curGOT = __extFuncCallHookPtr->fileGotMap[fileId];
-    auto &hookedNames = __extFuncCallHookPtr->hookedNames[fileId];
-
-
-    callerFuncAddr = reinterpret_cast<void *>(uint64_t(callerFuncAddr) - 0xD);
-    //todo: 16 is machine specific
-    size_t funcId = ((ElfW(Addr) *) callerFuncAddr - (ElfW(Addr) *) pltSec.startAddr) / 16;
-
-    void *retOriFuncAddr = nullptr;
-
-
-    if (!realAddrResolved[funcId]) {
-        if (hookedAddrs[funcId] != curGOT[funcId]) {
-            printf("Address is now resolved，replace hookedAddrs with correct value\n");
-            //Update address and set it as correct address
-            realAddrResolved[funcId] = true;
-            hookedAddrs[funcId] = curGOT[funcId];
-            retOriFuncAddr = hookedAddrs[funcId];
-        } else {
-            printf("%s is not initialized, execute orignal PLT code\n", hookedNames[funcId].c_str());
-            //Execute original PLT function
-            //todo: 18 depends on opCode array
-            retOriFuncAddr = __extFuncCallHookPtr->pseudoPlt + funcId * 18;
-        }
-    }
-
-    if (SCALER_HOOK_IN_HOOK_HANDLER) {
-        return retOriFuncAddr;
-    }
-
-    /**
-     * Starting from here, we could call external symbols and it won't cause
-     */
-    SCALER_HOOK_IN_HOOK_HANDLER = true;
-    //Currently, I won't load plthook library
-    SCALER_HOOK_IN_HOOK_HANDLER = false;
-    return hookedAddrs[funcId];
+//todo: 16 is machine specific
+//todo: 18 depends on opCode array
+#define IMPL_PREHOOK(suffix, USED_SEC_NAME) \
+void *cPreHookHanlder##suffix(int index, void *callerFuncAddr) { \
+    size_t fileId = __extFuncCallHookPtr->findExecNameByAddr(callerFuncAddr); \
+    \
+    auto &pltSec = __extFuncCallHookPtr->fileSecMap[fileId][scaler::SEC_NAME::USED_SEC_NAME];\
+    auto &realAddrResolved = __extFuncCallHookPtr->realAddrResolved[fileId];\
+    auto &hookedAddrs = __extFuncCallHookPtr->hookedAddrs[fileId];\
+    auto &curGOT = __extFuncCallHookPtr->fileGotMap[fileId];\
+    auto &hookedNames = __extFuncCallHookPtr->hookedNames[fileId];\
+    \
+    callerFuncAddr = reinterpret_cast<void *>(uint64_t(callerFuncAddr) - 0xD);\
+    \
+    size_t funcId = ((ElfW(Addr) *) callerFuncAddr - (ElfW(Addr) *) pltSec.startAddr) / 16;\
+    \
+    void *retOriFuncAddr = nullptr;\
+    \
+    if (!realAddrResolved[funcId]) {\
+        if (hookedAddrs[funcId] != curGOT[funcId]) {\
+            printf("Address is now resolved，replace hookedAddrs with correct value\n");\
+            realAddrResolved[funcId] = true;\
+            hookedAddrs[funcId] = curGOT[funcId];\
+            retOriFuncAddr = hookedAddrs[funcId];\
+        } else {\
+            printf("%s is not initialized, execute orignal PLT code\n", hookedNames[funcId].c_str());\
+            retOriFuncAddr = __extFuncCallHookPtr->pseudoPlt + funcId * 18;\
+        }\
+    }\
+    \
+    if (SCALER_HOOK_IN_HOOK_HANDLER) {\
+        return retOriFuncAddr;\
+    }\
+    \
+    SCALER_HOOK_IN_HOOK_HANDLER = true;  \
+    \
+    \
+    SCALER_HOOK_IN_HOOK_HANDLER = false;\
+    return hookedAddrs[funcId];\
 }
+
+IMPL_PREHOOK(Sec, PLT_SEC)
+IMPL_PREHOOK(, PLT)
+
+//void *cPreHookHanlderSec(int index, void *callerFuncAddr) {
+//    size_t fileId = __extFuncCallHookPtr->findExecNameByAddr(callerFuncAddr);
+//
+//    auto &pltSec = __extFuncCallHookPtr->fileSecMap[fileId][scaler::SEC_NAME::PLT_SEC];
+//    auto &realAddrResolved = __extFuncCallHookPtr->realAddrResolved[fileId];
+//    auto &hookedAddrs = __extFuncCallHookPtr->hookedAddrs[fileId];
+//    auto &curGOT = __extFuncCallHookPtr->fileGotMap[fileId];
+//    auto &hookedNames = __extFuncCallHookPtr->hookedNames[fileId];
+//
+//
+//    callerFuncAddr = reinterpret_cast<void *>(uint64_t(callerFuncAddr) - 0xD);
+//    //todo: 16 is machine specific
+//    size_t funcId = ((ElfW(Addr) *) callerFuncAddr - (ElfW(Addr) *) pltSec.startAddr) / 16;
+//
+//    void *retOriFuncAddr = nullptr;
+//
+//
+//    if (!realAddrResolved[funcId]) {
+//        if (hookedAddrs[funcId] != curGOT[funcId]) {
+//            printf("Address is now resolved，replace hookedAddrs with correct value\n");
+//            //Update address and set it as correct address
+//            realAddrResolved[funcId] = true;
+//            hookedAddrs[funcId] = curGOT[funcId];
+//            retOriFuncAddr = hookedAddrs[funcId];
+//        } else {
+//            printf("%s is not initialized, execute orignal PLT code\n", hookedNames[funcId].c_str());
+//            //Execute original PLT function
+//            //todo: 18 depends on opCode array
+//            retOriFuncAddr = __extFuncCallHookPtr->pseudoPlt + funcId * 18;
+//        }
+//    }
+//
+//    if (SCALER_HOOK_IN_HOOK_HANDLER) {
+//        return retOriFuncAddr;
+//    }
+//
+//    /**
+//     * Starting from here, we could call external symbols and it won't cause
+//     */
+//    SCALER_HOOK_IN_HOOK_HANDLER = true;
+//    //Currently, I won't load plthook library
+//    SCALER_HOOK_IN_HOOK_HANDLER = false;
+//    return hookedAddrs[funcId];
+//}
 }
 

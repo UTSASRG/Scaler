@@ -69,7 +69,7 @@ namespace scaler {
         // The adddress of i'th hooked external function in a.so: hookedNames[id for a.so][i]
         std::map<size_t, std::vector<void *>> hookedAddrs;
         std::map<size_t, std::vector<std::string>> hookedNames;
-        uint8_t *pseudoPlt= nullptr;
+        uint8_t *pseudoPlt = nullptr;
 
 
         ExtFuncCallHook(ExtFuncCallHook &) = delete;
@@ -127,8 +127,13 @@ namespace scaler {
 
 static scaler::ExtFuncCallHook *__extFuncCallHookPtr;
 
+#define DECL_PREHOOK(suffix) \
+void *cPreHookHanlder##suffix(int index, void *callerFuncAddr);
+
 extern "C" {
-void *cHookHanlderSec(int index, void *callerFuncAddr);
+DECL_PREHOOK()
+
+DECL_PREHOOK(Sec)
 }
 
 
