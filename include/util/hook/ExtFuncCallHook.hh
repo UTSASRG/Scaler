@@ -8,6 +8,7 @@
 #include <util/tool/PMParser.h>
 #include "ExtFuncCallHookHandler.h"
 
+thread_local static bool SCALER_HOOK_IN_HOOK_HANDLER = false;
 
 namespace scaler {
 
@@ -15,7 +16,8 @@ namespace scaler {
     public:
         void *startAddr = nullptr;
         void *endAddr = nullptr;
-        long long int itemSize = -1;
+        unsigned long long int itemSize = -1;
+        unsigned long long int secTotalSize = -1;
     };
 
     class SegInfo {
@@ -55,6 +57,9 @@ namespace scaler {
         // Used to find which fileID  floor(i/2) the corresponding fileID of pointer addrFileMap[i]
         // This array should be sorted for fast lookup
         std::vector<SegInfo> segAddrFileMap;
+        // The first GOT entry of a.so : fileGotMap[id for a.so][0]
+        std::map<size_t, std::vector<void *>> fileGotMap;
+
 
         //Used by hook handler
         // Whether i'th external symbol has been resolved in a.so: realAddrResolved[id for a.so][i]
@@ -63,6 +68,8 @@ namespace scaler {
         std::map<size_t, std::vector<scaler::HookedExtSym>> hookedExtSymbols;
         // The adddress of i'th hooked external function in a.so: hookedNames[id for a.so][i]
         std::map<size_t, std::vector<void *>> hookedAddrs;
+        std::map<size_t, std::vector<std::string>> hookedNames;
+        uint8_t *pseudoPlt= nullptr;
 
 
         ExtFuncCallHook(ExtFuncCallHook &) = delete;
@@ -92,6 +99,12 @@ namespace scaler {
         void locSectionInMem();
 
         /**
+         * Save got into fileGotMap
+         * Called by locSectionInMem
+         */
+        void recordGOT(SecInfo &info, size_t fileId);
+
+        /**
          * Search the starting address of a single loaded section in memory
          */
         void *searchSecLoadingAddr(std::string secName, ELFParser &elfParser,
@@ -105,6 +118,8 @@ namespace scaler {
          * @param pmParser
          */
         void recordFileSecMap(PMParser &pmParser);
+
+
     };
 
 
@@ -112,7 +127,9 @@ namespace scaler {
 
 static scaler::ExtFuncCallHook *__extFuncCallHookPtr;
 
-
+extern "C" {
+void *cHookHanlderSec(int index, void *callerFuncAddr);
+}
 
 
 #endif

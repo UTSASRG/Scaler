@@ -48,6 +48,7 @@ namespace scaler {
             ELFParser elfParser(iter->first);
 
             try {
+                //Some segment may throw exception in parse. So we won't store invalid segments into fileSecMap
                 elfParser.parse();
 
                 filePltNameMap[counter] = elfParser.relaFuncName;
@@ -76,10 +77,24 @@ namespace scaler {
                 //We already have the starting address, let's calculate the end address
                 curPLT.endAddr =
                         (char *) curPLT.startAddr + elfParser.getSecLength(".plt");
+                auto *curPLTShHdr = elfParser.getSecHdrByName(".plt");
+                curPLT.itemSize = curPLTShHdr->sh_entsize;
+                curPLT.secTotalSize = curPLTShHdr->sh_size;
+
                 curPLTSec.endAddr =
                         (char *) curPLTSec.startAddr + elfParser.getSecLength(".plt.sec");
+                auto *curPLTSecShHdr = elfParser.getSecHdrByName(".plt.sec");
+                curPLTSec.itemSize = curPLTSecShHdr->sh_entsize;
+                curPLTSec.secTotalSize = curPLTSecShHdr->sh_size;
+
                 curPLTGot.endAddr =
                         (char *) curPLTGot.startAddr + elfParser.getSecLength(".plt.got");
+                auto *curPLTGotShHdr = elfParser.getSecHdrByName(".plt.got");
+                curPLTGot.itemSize = curPLTGotShHdr->sh_entsize;
+                curPLTGot.secTotalSize = curPLTGotShHdr->sh_size;
+
+                //We've got GOT table, store it
+                recordGOT(curPLTGot, counter);
 
             } catch (const ScalerException &e) {
                 std::stringstream ss;
@@ -184,12 +199,63 @@ namespace scaler {
         return instance;
     }
 
+    void ExtFuncCallHook::recordGOT(SecInfo &gotShHdr, size_t fileId) {
+        auto &curGOTTbl = fileGotMap[fileId];
+        auto itemSize = gotShHdr.secTotalSize / gotShHdr.itemSize;
+        for (int i = 0; i < itemSize; ++i) {
+            curGOTTbl.emplace_back((void *) (ElfW(Addr)(gotShHdr.startAddr) + i * itemSize));
+        }
+    }
+
+}
 
 
+extern "C" {
+//todo: Currently only pre-hook is implemented. We can't call a function that's not resolved. Have to return now
+//todo: A work-around would be don't hook libScalerHook.so 's PLT
+void *cPreHookHanlderSec(int index, void *callerFuncAddr) {
+    size_t fileId = __extFuncCallHookPtr->findExecNameByAddr(callerFuncAddr);
 
-//    GEN_C_HOOK_HANDLER()
-//    GEN_C_HOOK_HANDLER(Sec)
+    auto &pltSec = __extFuncCallHookPtr->fileSecMap[fileId][scaler::SEC_NAME::PLT_SEC];
+    auto &realAddrResolved = __extFuncCallHookPtr->realAddrResolved[fileId];
+    auto &hookedAddrs = __extFuncCallHookPtr->hookedAddrs[fileId];
+    auto &curGOT = __extFuncCallHookPtr->fileGotMap[fileId];
+    auto &hookedNames = __extFuncCallHookPtr->hookedNames[fileId];
 
 
+    callerFuncAddr = reinterpret_cast<void *>(uint64_t(callerFuncAddr) - 0xD);
+    //todo: 16 is machine specific
+    size_t funcId = ((ElfW(Addr) *) callerFuncAddr - (ElfW(Addr) *) pltSec.startAddr) / 16;
+
+    void *retOriFuncAddr = nullptr;
+
+
+    if (!realAddrResolved[funcId]) {
+        if (hookedAddrs[funcId] != curGOT[funcId]) {
+            printf("Address is now resolved，replace hookedAddrs with correct value\n");
+            //Update address and set it as correct address
+            realAddrResolved[funcId] = true;
+            hookedAddrs[funcId] = curGOT[funcId];
+            retOriFuncAddr = hookedAddrs[funcId];
+        } else {
+            printf("%s is not initialized, execute orignal PLT code\n", hookedNames[funcId].c_str());
+            //Execute original PLT function
+            //todo: 18 depends on opCode array
+            retOriFuncAddr = __extFuncCallHookPtr->pseudoPlt + funcId * 18;
+        }
+    }
+
+    if (SCALER_HOOK_IN_HOOK_HANDLER) {
+        return retOriFuncAddr;
+    }
+
+    /**
+     * Starting from here, we could call external symbols and it won't cause
+     */
+    SCALER_HOOK_IN_HOOK_HANDLER = true;
+    //Currently, I won't load plthook library
+    SCALER_HOOK_IN_HOOK_HANDLER = false;
+    return hookedAddrs[funcId];
+}
 }
 
