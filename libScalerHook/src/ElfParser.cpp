@@ -54,8 +54,11 @@ namespace scaler {
             throwScalerException(ss.str().c_str());
         }
 
+
+
         //Read section header
         secHdr = reinterpret_cast<ElfW(Shdr) *>(elfFile + elfHdr->e_shoff);
+
 
         //Read section name string table
         ElfW(Shdr) *strTblSecHdr = secHdr + elfHdr->e_shstrndx;
@@ -66,6 +69,11 @@ namespace scaler {
         //Read section header
         shnum = elfHdr->e_shnum;
 
+        for (int i = 0; i < shnum; ++i) {
+            ElfW(Shdr) *curShDr = &secHdr[i];
+            secNameIndexMap[std::string(secStrtbl + curShDr->sh_name)] = i;
+        }
+
     }
 
 
@@ -73,7 +81,6 @@ namespace scaler {
         //Iterate through sections
         ElfW(Shdr) *curShDr = getSecHdrByName(targetSecName);
         return elfFile + curShDr->sh_offset;
-        return nullptr;
     }
 
     ELFParser::~ELFParser() {
@@ -96,9 +103,8 @@ namespace scaler {
 
     std::vector<std::string> ELFParser::getSecNames() {
         std::vector<std::string> secNameVec;
-        for (int i = 0; i < shnum; ++i) {
-            ElfW(Shdr) curShDr = secHdr[i];
-            secNameVec.push_back(std::string(secStrtbl + curShDr.sh_name));
+        for (auto iter = secNameIndexMap.begin(); iter != secNameIndexMap.end(); ++iter) {
+            secNameVec.push_back(iter->first);
         }
         return secNameVec;
     }
@@ -146,14 +152,7 @@ namespace scaler {
     }
 
     ElfW(Shdr) *ELFParser::getSecHdrByName(std::string targetSecName) {
-        ElfW(Shdr) *curShDr = nullptr;
-        for (int i = 0; i < shnum; ++i) {
-            curShDr = &secHdr[i];
-            if (strncmp(targetSecName.c_str(), secStrtbl + curShDr->sh_name, targetSecName.size()) == 0) {
-                break;
-            }
-        }
-        return curShDr;
+        return &secHdr[secNameIndexMap[targetSecName]];
     }
 
 
