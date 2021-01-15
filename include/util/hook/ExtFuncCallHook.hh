@@ -6,7 +6,6 @@
 #include <util/tool/ElfParser.h>
 #include <vector>
 #include <util/tool/PMParser.h>
-#include "ExtFuncCallHookHandler.h"
 
 thread_local static bool SCALER_HOOK_IN_HOOK_HANDLER = false;
 
@@ -129,6 +128,7 @@ static scaler::ExtFuncCallHook *__extFuncCallHookPtr;
 
 #define DECL_PREHOOK(suffix) \
 void *cPreHookHanlder##suffix(int index, void *callerFuncAddr);
+
 
 extern "C" {
 DECL_PREHOOK()
