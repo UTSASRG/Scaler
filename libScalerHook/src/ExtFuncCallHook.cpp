@@ -5,6 +5,7 @@
 #include <util/tool/FileTool.h>
 #include <exceptions/ScalerException.h>
 #include <sys/mman.h>
+#include <algorithm>
 
 namespace scaler {
 #define PUSHXMM(ArgumentName) \
@@ -24,6 +25,10 @@ namespace scaler {
 "movdqu  (%rsp),%"#ArgumentName"\n\t"\
 "addq $16,%rsp\n\t"
 
+    std::map<size_t, std::vector<bool>> realAddrResolved;
+// The name of i'th hooked external function in a.so: hookedNames[id for a.so][i].name
+    std::map<size_t, std::vector<scaler::HookedExtSym>> hookedExtSymbols;
+
 #define ALIGN_ADDR(addr, page_size) (ElfW(Addr) *) ((size_t) (addr) / page_size * page_size)
 
     void ExtFuncCallHook::locSectionInMem() {
@@ -32,11 +37,13 @@ namespace scaler {
         PMParser pmParser;
         pmParser.parsePMMap();
 
+        recordFileSecMap(pmParser);
+
         size_t counter = 0;
         //Iterate through libraries
         for (auto iter = pmParser.procMap.begin(); iter != pmParser.procMap.end(); ++iter) {
             //Save file name to id table
-            symbolNames[iter->first] = counter;
+            fileNameIDMap[iter->first] = counter;
 
             //Open corresponding ELF file
             ELFParser elfParser(iter->first);
@@ -116,14 +123,12 @@ namespace scaler {
         locSectionInMem();
         //Step2: Change every plt location to writeable
         for (auto iterFile = fileSecMap.begin(); iterFile != fileSecMap.end(); ++iterFile) {
-            for (auto iterTable = iterFile->second.begin(); iterTable != iterFile->second.end(); ++iterTable) {
-                auto &curSecInfo = iterTable->second;
+            for (auto iterSec = iterFile->second.begin(); iterSec != iterFile->second.end(); ++iterSec) {
+                auto &curSecInfo = iterSec->second;
                 adjustMemPermission(curSecInfo.startAddr, curSecInfo.endAddr, PROT_READ | PROT_WRITE | PROT_EXEC);
             }
         }
         //Step3: Replace PLT
-
-
     }
 
     void ExtFuncCallHook::adjustMemPermission(void *startPtr, void *endPtr, int prem) {
@@ -139,11 +144,34 @@ namespace scaler {
     }
 
     size_t ExtFuncCallHook::findExecNameByAddr(void *addr) {
-        return 0;
+        //Binary search segAddrFileMap
+        long lo = 0, hi = segAddrFileMap.size(), md;
+        //[lo,hi) to prevent underflow
+        while (lo < hi-1) {
+            md = (lo + hi) / 2;
+            if (segAddrFileMap[md].startAddr > addr) {
+                hi = md;
+            } else {
+                lo = md + 1;
+            }
+        }
+        return lo;
     }
 
-    void ExtFuncCallHook::recordFileSecMap(PMParser& pmParser) {
-
+    void ExtFuncCallHook::recordFileSecMap(PMParser &pmParser) {
+        for (auto iterFile = pmParser.procMap.begin(); iterFile != pmParser.procMap.end(); ++iterFile) {
+            for (auto iterSeg = iterFile->second.begin(); iterSeg != iterFile->second.end(); ++iterSeg) {
+                SegInfo newEntry;
+                newEntry.fileName = iterFile->first;
+                newEntry.startAddr = iterSeg->addrStart;
+                newEntry.endAddr = iterSeg->addrEnd;
+                segAddrFileMap.emplace_back(newEntry);
+            }
+        }
+        //Sort by start address
+        std::sort(segAddrFileMap.begin(), segAddrFileMap.end(), [](const SegInfo &lhs, const SegInfo &rhs) {
+            return lhs.startAddr < rhs.startAddr;
+        });
     }
 
 //    GEN_C_HOOK_HANDLER()
