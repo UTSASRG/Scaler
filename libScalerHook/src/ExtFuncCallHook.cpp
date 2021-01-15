@@ -102,10 +102,7 @@ namespace scaler {
                 fprintf(stderr, "%s\n", ss.str().c_str());
             }
             counter++;
-
         }
-
-
     }
 
     void *ExtFuncCallHook::searchSecLoadingAddr(std::string secName, ELFParser &elfParser,
@@ -205,6 +202,63 @@ namespace scaler {
         for (int i = 0; i < itemSize; ++i) {
             curGOTTbl.emplace_back((void *) (ElfW(Addr)(gotShHdr.startAddr) + i * itemSize));
         }
+    }
+
+    std::vector<uint8_t> ExtFuncCallHook::fillDestAddr2HookCode(void *funcAddr) {
+        std::vector<uint8_t> binCodeArr = {73, 191, 00, 00, 00, 00, 00, 00, 00, 00, 65, 255, 215, 104, 144, 144};
+        const uint64_t h1 = 0b00000000000000000000000011111111;
+        const uint64_t h2 = h1 << 8;
+        const uint64_t h3 = h1 << 16;
+        const uint64_t h4 = h1 << 24;
+        const uint64_t h5 = h1 << 32;
+        const uint64_t h6 = h1 << 40;
+        const uint64_t h7 = h1 << 48;
+        const uint64_t h8 = h1 << 56;
+
+        auto _funcAddr = (ElfW(Addr)) funcAddr;
+
+        binCodeArr[2] = _funcAddr & h1;
+        binCodeArr[3] = (_funcAddr & h2) >> 8;
+        binCodeArr[4] = (_funcAddr & h3) >> 16;
+        binCodeArr[5] = (_funcAddr & h4) >> 24;
+        binCodeArr[6] = (_funcAddr & h5) >> 32;
+        binCodeArr[7] = (_funcAddr & h6) >> 40;
+        binCodeArr[8] = (_funcAddr & h7) >> 48;
+        binCodeArr[9] = (_funcAddr & h8) >> 56;
+
+        return binCodeArr;
+    }
+
+    std::vector<uint8_t> ExtFuncCallHook::fillDestAddr2PseudoPltCode(size_t funcId, void *funcAddr) {
+        std::vector<uint8_t> binCodeArr = {104, 00, 00, 00, 00, 73, 191, 00, 00, 00, 00, 00, 00, 00, 00, 65, 255, 231};
+
+        const uint64_t h1 = 0b00000000000000000000000011111111;
+        const uint64_t h2 = h1 << 8;
+        const uint64_t h3 = h1 << 16;
+        const uint64_t h4 = h1 << 24;
+        const uint64_t h5 = h1 << 32;
+        const uint64_t h6 = h1 << 40;
+        const uint64_t h7 = h1 << 48;
+        const uint64_t h8 = h1 << 56;
+
+
+        binCodeArr[1] = funcId & h1;
+        binCodeArr[2] = (funcId & h2) >> 8;
+        binCodeArr[3] = (funcId & h3) >> 16;
+        binCodeArr[4] = (funcId & h4) >> 24;
+
+        auto _funcAddr = (ElfW(Addr)) funcAddr;
+
+        binCodeArr[7] = _funcAddr & h1;
+        binCodeArr[8] = (_funcAddr & h2) >> 8;
+        binCodeArr[9] = (_funcAddr & h3) >> 16;
+        binCodeArr[10] = (_funcAddr & h4) >> 24;
+        binCodeArr[11] = (_funcAddr & h5) >> 32;
+        binCodeArr[12] = (_funcAddr & h6) >> 40;
+        binCodeArr[13] = (_funcAddr & h7) >> 48;
+        binCodeArr[14] = (_funcAddr & h8) >> 56;
+
+        return binCodeArr;
     }
 
 }

@@ -119,6 +119,22 @@ namespace scaler {
         void recordFileSecMap(PMParser &pmParser);
 
 
+        /**
+         * This function fills address into binary instruction array (Binary code used to replace .plt and .ple.sec)
+         * todo: This function is machine specific
+         * todo: Add assemboly code to comments to make it more clear
+         */
+        std::vector<uint8_t>  fillDestAddr2HookCode(void* funcAddr);
+
+        /**
+        * This function fills address into binary file  (Binary code used to store in Heap as Pseudo Plt table)
+        * todo: This function is machine specific
+        * todo: Add assemboly code to comments to make it more clear
+        */
+        std::vector<uint8_t> fillDestAddr2PseudoPltCode(size_t funcId, void* funcAddr);
+
+
+
     };
 
 
