@@ -54,13 +54,13 @@ namespace scaler {
 
                 auto &curFile = fileSecMap[counter];
 
-                auto &curPLT = curFile[".plt"];
+                auto &curPLT = curFile[SEC_NAME::PLT];
                 curPLT.startAddr = searchSecLoadingAddr(".plt", elfParser, iter->second);
 
-                auto &curPLTSec = curFile[".plt.sec"];
+                auto &curPLTSec = curFile[SEC_NAME::PLT_SEC];
                 curPLTSec.startAddr = searchSecLoadingAddr(".plt.sec", elfParser, iter->second);
 
-                auto &curPLTGot = curFile[".plt.got"];
+                auto &curPLTGot = curFile[SEC_NAME::GOT];
                 curPLTGot.startAddr = searchSecLoadingAddr(".plt.got", elfParser, iter->second);
 
                 //Make sure every section is found
@@ -175,7 +175,7 @@ namespace scaler {
 
     ExtFuncCallHook::ExtFuncCallHook() {
         //Expose self to CHookHandler
-        __globalExtFuncCallHookPtr = this;
+        __extFuncCallHookPtr = this;
     }
 
     ExtFuncCallHook *ExtFuncCallHook::getInst() {
@@ -192,5 +192,4 @@ namespace scaler {
 
 
 }
-
 
