@@ -25,11 +25,10 @@ namespace scaler {
 "movdqu  (%rsp),%"#ArgumentName"\n\t"\
 "addq $16,%rsp\n\t"
 
-    std::map<size_t, std::vector<bool>> realAddrResolved;
-// The name of i'th hooked external function in a.so: hookedNames[id for a.so][i].name
-    std::map<size_t, std::vector<scaler::HookedExtSym>> hookedExtSymbols;
 
 #define ALIGN_ADDR(addr, page_size) (ElfW(Addr) *) ((size_t) (addr) / page_size * page_size)
+
+    ExtFuncCallHook *ExtFuncCallHook::instance = nullptr;
 
     void ExtFuncCallHook::locSectionInMem() {
 
@@ -147,7 +146,7 @@ namespace scaler {
         //Binary search segAddrFileMap
         long lo = 0, hi = segAddrFileMap.size(), md;
         //[lo,hi) to prevent underflow
-        while (lo < hi-1) {
+        while (lo < hi - 1) {
             md = (lo + hi) / 2;
             if (segAddrFileMap[md].startAddr > addr) {
                 hi = md;
@@ -174,9 +173,24 @@ namespace scaler {
         });
     }
 
+    ExtFuncCallHook::ExtFuncCallHook() {
+        //Expose self to CHookHandler
+        __globalExtFuncCallHookPtr = this;
+    }
+
+    ExtFuncCallHook *ExtFuncCallHook::getInst() {
+        if (!instance)
+            instance = new ExtFuncCallHook();
+        return instance;
+    }
+
+
+
+
 //    GEN_C_HOOK_HANDLER()
 //    GEN_C_HOOK_HANDLER(Sec)
 
 
 }
+
 

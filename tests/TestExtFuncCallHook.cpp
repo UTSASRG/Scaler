@@ -13,12 +13,12 @@ TEST(ExtFuncCallHook, locSectionInMem) {
     PMParser parser;
     parser.parsePMMap();
 
-    ExtFuncCallHook hook;
-    hook.locSectionInMem();
+    ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
+    hook->locSectionInMem();
 
-    auto &calcPltPtr = hook.fileSecMap[hook.fileNameIDMap[parser.curExecFileName]][".plt"];
-    auto &calcGotPtr = hook.fileSecMap[hook.fileNameIDMap[parser.curExecFileName]][".plt.got"];
-    auto &calcPltSecPtr = hook.fileSecMap[hook.fileNameIDMap[parser.curExecFileName]][".plt.sec"];
+    auto &calcPltPtr = hook->fileSecMap[hook->fileNameIDMap[parser.curExecFileName]][".plt"];
+    auto &calcGotPtr = hook->fileSecMap[hook->fileNameIDMap[parser.curExecFileName]][".plt.got"];
+    auto &calcPltSecPtr = hook->fileSecMap[hook->fileNameIDMap[parser.curExecFileName]][".plt.sec"];
 
     EXPECT_EQ(calcPltPtr.startAddr, &__startplt);
     EXPECT_EQ(calcPltPtr.endAddr, &__endplt);
@@ -29,8 +29,8 @@ TEST(ExtFuncCallHook, locSectionInMem) {
 }
 
 TEST(ExtFuncCallHook, install) {
-    ExtFuncCallHook hook;
-    hook.install();
+    ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
+    hook->install();
 
 }
 
@@ -42,30 +42,32 @@ TEST(ExtFuncCallHook, findExecNameByAddr) {
     parser.parsePMMap();
 
 
-    ExtFuncCallHook hook;
-    hook.locSectionInMem();
-    size_t funcId = hook.findExecNameByAddr(addr1);
-    EXPECT_EQ(parser.curExecFileName, hook.segAddrFileMap[funcId].fileName);
+    ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
+
+    hook->locSectionInMem();
+    size_t funcId = hook->findExecNameByAddr(addr1);
+    EXPECT_EQ(parser.curExecFileName, hook->segAddrFileMap[funcId].fileName);
 
     void *funcPtr = (void *) printf;
-    funcId = hook.findExecNameByAddr(funcPtr);
-    auto &execName = hook.segAddrFileMap[funcId].fileName;
+    funcId = hook->findExecNameByAddr(funcPtr);
+    auto &execName = hook->segAddrFileMap[funcId].fileName;
 
     EXPECT_TRUE(execName.find("libc") != std::string::npos);
 
-    hook.segAddrFileMap.clear();
+    hook->segAddrFileMap.clear();
     for (int i = 0; i < 4; i += 2) {
         SegInfo newEntry;
         newEntry.startAddr = (void *) i;
-        hook.segAddrFileMap.emplace_back(newEntry);
+        hook->segAddrFileMap.emplace_back(newEntry);
     }
-    funcId = hook.findExecNameByAddr((void *) 0);
+    funcId = hook->findExecNameByAddr((void *) 0);
     EXPECT_EQ(funcId, 0);
-    funcId = hook.findExecNameByAddr((void *) 1);
+    funcId = hook->findExecNameByAddr((void *) 1);
     EXPECT_EQ(funcId, 0);
-    funcId = hook.findExecNameByAddr((void *) 2);
+    funcId = hook->findExecNameByAddr((void *) 2);
     EXPECT_EQ(funcId, 2);
-    funcId = hook.findExecNameByAddr((void *) 3);
+    funcId = hook->findExecNameByAddr((void *) 3);
     EXPECT_EQ(funcId, 2);
 
 }
+

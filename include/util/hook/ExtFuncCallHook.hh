@@ -8,18 +8,48 @@
 #include <util/tool/PMParser.h>
 #include "ExtFuncCallHookHandler.h"
 
+
 namespace scaler {
 
+    class SecInfo {
+    public:
+        void *startAddr = nullptr;
+        void *endAddr = nullptr;
+        long long int itemSize = -1;
+    };
+
+    class SegInfo {
+    public:
+        void *startAddr = nullptr;
+        void *endAddr = nullptr;
+        std::string fileName;
+    };
+
+    class HookedExtSym {
+    public:
+        std::string name;
+        size_t id;
+    };
 
     //A flag marking the entry of hook handler
     thread_local static bool SCALER_HOOK_IN_HOOK_HANDLER = false;
 
     class ExtFuncCallHook : public Hook {
     public:
+        static ExtFuncCallHook *getInst();
+
         void install() override;
+
+        static ExtFuncCallHook *instance; //Singeleton
+
+        ExtFuncCallHook(ExtFuncCallHook &) = delete;
+
+        ExtFuncCallHook(ExtFuncCallHook &&) = delete;
 
 
     private:
+        ExtFuncCallHook();
+
         // The pointer to .plt in a.so: sectionAddrMap[id for a.so][".plt"]
         std::map<size_t, std::map<std::string, SecInfo>> fileSecMap;
         // The i'th external symbol's name in a.so: sectionAddrMap[id for a.so][i]
@@ -29,6 +59,10 @@ namespace scaler {
         // Used to find which fileID  floor(i/2) the corresponding fileID of pointer addrFileMap[i]
         // This array should be sorted for fast lookup
         std::vector<SegInfo> segAddrFileMap;
+        // Whether i'th external symbol has been resolved in a.so: realAddrResolved[id for a.so][i]
+        std::map<size_t, std::vector<bool>> realAddrResolved;
+        // The name of i'th hooked external function in a.so: hookedNames[id for a.so][i].name
+        std::map<size_t, std::vector<scaler::HookedExtSym>> hookedExtSymbols;
 
         // An array to the copy of orignal PLT table
         uint8_t *oriPltBin;
@@ -58,6 +92,11 @@ namespace scaler {
          */
         void recordFileSecMap(PMParser &pmParser);
     };
+
+
 }
+
+static scaler::ExtFuncCallHook *__globalExtFuncCallHookPtr;
+
 
 #endif
