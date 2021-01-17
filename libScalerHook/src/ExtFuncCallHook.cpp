@@ -51,7 +51,7 @@ namespace scaler {
                 //Some segment may throw exception in parse. So we won't store invalid segments into fileSecMap
                 elfParser.parse();
 
-                filePltMap[fileID] = elfParser.relaFuncName;
+                fileExtFuncNameMap[fileID] = elfParser.relaFuncName;
 
                 auto &curFile = fileSecMap[fileID];
 
@@ -264,6 +264,11 @@ namespace scaler {
         binCodeArr[14] = (_funcAddr & h8) >> 56;
 
         return binCodeArr;
+    }
+
+    void ExtFuncCallHook::getCurFuncAddrFromGOT() {
+
+
     }
 
 }
