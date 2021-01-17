@@ -130,7 +130,7 @@ namespace scaler {
 
         char *dynStrTbl = static_cast<char *>(getSecPtr(".dynstr"));
 
-        size_t relaSecSize = relaPltSecHdr->sh_size / relaPltSecHdr->sh_entsize;
+        size_t relaSecSize = relaPltSecHdr->sh_size == 0 ? 0 : relaPltSecHdr->sh_size / relaPltSecHdr->sh_entsize;
         for (int i = 0; i < relaSecSize; ++i) {
             //todo: ELF64_R_SYM is platform dependent
             name = dynStrTbl + (dynSymTbl + ELF64_R_SYM(relaPlt->r_info))->st_name;

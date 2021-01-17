@@ -3,4 +3,4 @@
 	url = https://github.com/google/googletest.git
 [submodule "tests/plthook"]
 	path = tests/plthook
-	url = git@github.com:kubo/plthook.git
+	url = git@github.com:GammaPi/plthook.git

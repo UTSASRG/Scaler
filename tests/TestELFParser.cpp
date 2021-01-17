@@ -28,29 +28,31 @@ TEST(ELFParser, parseFuncName) {
     void *a = malloc(1);
     system("");
 
-    //Parse /proc/self/map to get current executable file name
-    PMParser pars;
-    pars.parsePMMap();
-
+    std::string fileName = "/home/st/Projects/Scaler/cmake-build-debug/tests/libNaiveInvocationApp.so";
     //Parse current ELF file and see if those method exists and if address matches
-    ELFParser parser(pars.curExecFileName);
+    ELFParser parser(fileName);
     parser.parse();
 
     plthook_t *myPltHook;
+    if (!myPltHook)
+        fprintf(stderr, "Please add the directory containing libNaiveInvocationApp.so to LD_LIBRARY_PATH.\n");
+
     //Find plthook
-    plthook_open(&myPltHook, NULL);
+    plthook_open(&myPltHook, fileName.c_str());
     //Check plt hook entry size
 
     auto refFuncName = getFuncNameRetByKuboPlthook(myPltHook);
 
+
     for (int i = 0; i < parser.relaFuncName.size(); ++i) {
         EXPECT_EQ(parser.relaFuncName[i], refFuncName[i]);
-        printf("%s\n", refFuncName[i].c_str());
     }
-    printf("------------------------------------------------------------\n");
-    for (int i = parser.relaFuncName.size(); i < refFuncName.size(); ++i) {
-        printf("%s\n", refFuncName[i].c_str());
-    }
+
+    // There might be entries discovered by plthook. However, they are external symbols rather than functions, meaning
+    // they don't exist in PLT, We don't need to consider them.
+    //for (int i = parser.relaFuncName.size(); i < refFuncName.size(); ++i) {
+    //    printf("%s\n", refFuncName[i].c_str());
+}
 
 
 }
