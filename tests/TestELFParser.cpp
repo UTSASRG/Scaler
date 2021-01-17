@@ -28,18 +28,19 @@ TEST(ELFParser, parseFuncName) {
     void *a = malloc(1);
     system("");
 
-    std::string fileName = "/home/st/Projects/Scaler/cmake-build-debug/tests/libNaiveInvocationApp.so";
+    PMParser pmParser;
+    pmParser.parsePMMap();
+
     //Parse current ELF file and see if those method exists and if address matches
-    ELFParser parser(fileName);
+    ELFParser parser(pmParser.curExecFileName);
     parser.parse();
 
     plthook_t *myPltHook;
+    //Find plthook
+    plthook_open(&myPltHook,NULL);
+
     if (!myPltHook)
         fprintf(stderr, "Please add the directory containing libNaiveInvocationApp.so to LD_LIBRARY_PATH.\n");
-
-    //Find plthook
-    plthook_open(&myPltHook, fileName.c_str());
-    //Check plt hook entry size
 
     auto refFuncName = getFuncNameRetByKuboPlthook(myPltHook);
 

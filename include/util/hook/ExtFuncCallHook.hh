@@ -53,6 +53,7 @@ namespace scaler {
         std::map<size_t, std::map<std::string, size_t>> fileExtFuncNameMap;
         // The id of a.so : fileNameIDMap[full path for a.so]
         std::map<std::string, size_t> fileIDMap;
+
         // Used to find which fileID  floor(i/2) the corresponding fileID of pointer addrFileMap[i]
         // This array should be sorted for fast lookup
         std::vector<SegInfo> segAddrFileMap;

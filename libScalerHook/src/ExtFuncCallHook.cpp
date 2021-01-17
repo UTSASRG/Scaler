@@ -53,7 +53,7 @@ namespace scaler {
 
                 fileExtFuncNameMap[fileID] = elfParser.relaFuncName;
 
-                auto &curFile = fileSecMap.at(fileID);
+                auto &curFile = fileSecMap[fileID];
 
                 auto &curPLT = curFile[SEC_NAME::PLT];
                 curPLT.startAddr = searchSecLoadingAddr(".plt", elfParser, iter->second);
@@ -205,7 +205,8 @@ namespace scaler {
         //auto &curGOTTbl = fileGotMap.at(fileId);
         auto itemSize = gotShHdr.secTotalSize / gotShHdr.itemSize;
         for (int i = 0; i < itemSize; ++i) {
-            fileGotMap.at(fileId).emplace_back((void *) (ElfW(Addr)(gotShHdr.startAddr) + i * itemSize));
+            auto gotEntryAddr= (void **) (ElfW(Addr)(gotShHdr.startAddr) + i * itemSize);
+            fileGotMap[fileId].emplace_back(*gotEntryAddr);
         }
     }
 
