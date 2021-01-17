@@ -45,7 +45,7 @@ TEST(ELFParser, parseFuncName) {
 
 
     for (int i = 0; i < parser.relaFuncName.size(); ++i) {
-        EXPECT_EQ(parser.relaFuncName[i], refFuncName[i]);
+        EXPECT_EQ(parser.relaFuncName.at(refFuncName[i]), i);
     }
 
     // There might be entries discovered by plthook. However, they are external symbols rather than functions, meaning
@@ -55,6 +55,5 @@ TEST(ELFParser, parseFuncName) {
 }
 
 
-}
 
 

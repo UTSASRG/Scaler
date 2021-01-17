@@ -10,7 +10,7 @@ extern int SELF_EXTERN;
 int SELF_EXTERN = 0;
 
 
-int main() {
+int nativeFunc() {
     funcA();
     funcB(1);
     funcC(1, 2);

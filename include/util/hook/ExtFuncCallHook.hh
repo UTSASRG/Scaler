@@ -50,7 +50,7 @@ namespace scaler {
         // The pointer to .plt in a.so: sectionAddrMap[id for a.so][PLT]
         std::map<size_t, std::map<SEC_NAME, SecInfo>> fileSecMap;
         // The i'th external symbol's name in a.so: sectionAddrMap[id for a.so][i]
-        std::map<size_t, std::vector<std::string>> fileExtFuncNameMap;
+        std::map<size_t, std::map<std::string, size_t>> fileExtFuncNameMap;
         // The id of a.so : fileNameIDMap[full path for a.so]
         std::map<std::string, size_t> fileIDMap;
         // Used to find which fileID  floor(i/2) the corresponding fileID of pointer addrFileMap[i]
@@ -85,7 +85,7 @@ namespace scaler {
          */
         size_t findExecNameByAddr(void *addr);
 
-        void getCurFuncAddrFromGOT();
+        void *getFuncAddrFromGOTByName(size_t fileId, std::string name);
 
     private:
         ExtFuncCallHook();
@@ -126,15 +126,14 @@ namespace scaler {
          * todo: This function is machine specific
          * todo: Add assemboly code to comments to make it more clear
          */
-        std::vector<uint8_t>  fillDestAddr2HookCode(void* funcAddr);
+        std::vector<uint8_t> fillDestAddr2HookCode(void *funcAddr);
 
         /**
         * This function fills address into binary file  (Binary code used to store in Heap as Pseudo Plt table)
         * todo: This function is machine specific
         * todo: Add assemboly code to comments to make it more clear
         */
-        std::vector<uint8_t> fillDestAddr2PseudoPltCode(size_t funcId, void* funcAddr);
-
+        std::vector<uint8_t> fillDestAddr2PseudoPltCode(size_t funcId, void *funcAddr);
 
 
     };

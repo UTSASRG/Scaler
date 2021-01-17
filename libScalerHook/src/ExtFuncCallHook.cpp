@@ -53,7 +53,7 @@ namespace scaler {
 
                 fileExtFuncNameMap[fileID] = elfParser.relaFuncName;
 
-                auto &curFile = fileSecMap[fileID];
+                auto &curFile = fileSecMap.at(fileID);
 
                 auto &curPLT = curFile[SEC_NAME::PLT];
                 curPLT.startAddr = searchSecLoadingAddr(".plt", elfParser, iter->second);
@@ -202,10 +202,10 @@ namespace scaler {
     }
 
     void ExtFuncCallHook::recordGOT(SecInfo &gotShHdr, size_t fileId) {
-        auto &curGOTTbl = fileGotMap[fileId];
+        //auto &curGOTTbl = fileGotMap.at(fileId);
         auto itemSize = gotShHdr.secTotalSize / gotShHdr.itemSize;
         for (int i = 0; i < itemSize; ++i) {
-            curGOTTbl.emplace_back((void *) (ElfW(Addr)(gotShHdr.startAddr) + i * itemSize));
+            fileGotMap.at(fileId).emplace_back((void *) (ElfW(Addr)(gotShHdr.startAddr) + i * itemSize));
         }
     }
 
@@ -266,9 +266,10 @@ namespace scaler {
         return binCodeArr;
     }
 
-    void ExtFuncCallHook::getCurFuncAddrFromGOT() {
-
-
+    void *ExtFuncCallHook::getFuncAddrFromGOTByName(size_t fileId, std::string name) {
+        size_t funcID = fileExtFuncNameMap.at(fileId).at(name);
+        printf("File Size: %zu\n",fileGotMap.at(fileId).size());
+        return fileGotMap.at(fileId)[funcID];
     }
 
 }
@@ -282,11 +283,11 @@ namespace scaler {
 void *cPreHookHanlder##suffix(int index, void *callerFuncAddr) { \
     size_t fileId = __extFuncCallHookPtr->findExecNameByAddr(callerFuncAddr); \
     \
-    auto &pltSec = __extFuncCallHookPtr->fileSecMap[fileId][scaler::SEC_NAME::USED_SEC_NAME];\
-    auto &realAddrResolved = __extFuncCallHookPtr->realAddrResolved[fileId];\
-    auto &hookedAddrs = __extFuncCallHookPtr->hookedAddrs[fileId];\
-    auto &curGOT = __extFuncCallHookPtr->fileGotMap[fileId];\
-    auto &hookedFuncNames = __extFuncCallHookPtr->hookedFuncNames[fileId];\
+    auto &pltSec = __extFuncCallHookPtr->fileSecMap.at(fileId).at(scaler::SEC_NAME::USED_SEC_NAME);\
+    auto &realAddrResolved = __extFuncCallHookPtr->realAddrResolved.at(fileId);\
+    auto &hookedAddrs = __extFuncCallHookPtr->hookedAddrs.at(fileId);\
+    auto &curGOT = __extFuncCallHookPtr->fileGotMap.at(fileId);\
+    auto &hookedFuncNames = __extFuncCallHookPtr->hookedFuncNames.at(fileId);\
     \
     callerFuncAddr = reinterpret_cast<void *>(uint64_t(callerFuncAddr) - 0xD);\
     \
@@ -294,14 +295,14 @@ void *cPreHookHanlder##suffix(int index, void *callerFuncAddr) { \
     \
     void *retOriFuncAddr = nullptr;\
     \
-    if (!realAddrResolved[funcId]) {\
-        if (hookedAddrs[funcId] != curGOT[funcId]) {\
+    if (!realAddrResolved.at(funcId)) {\
+        if (hookedAddrs.at(funcId) != curGOT[funcId]) {\
             printf("Address is now resolved，replace hookedAddrs with correct value\n");\
-            realAddrResolved[funcId] = true;\
-            hookedAddrs[funcId] = curGOT[funcId];\
-            retOriFuncAddr = hookedAddrs[funcId];\
+            realAddrResolved.at(funcId) = true;\
+            hookedAddrs.at(funcId) = curGOT[funcId];\
+            retOriFuncAddr = hookedAddrs.at(funcId);\
         } else {\
-            printf("%s is not initialized, execute orignal PLT code\n", hookedFuncNames[funcId].c_str());\
+            printf("%s is not initialized, execute orignal PLT code\n", hookedFuncNames.at(funcId).c_str());\
             retOriFuncAddr = __extFuncCallHookPtr->pseudoPlt + funcId * 18;\
         }\
     }\
@@ -314,7 +315,7 @@ void *cPreHookHanlder##suffix(int index, void *callerFuncAddr) { \
     \
     \
     SCALER_HOOK_IN_HOOK_HANDLER = false;\
-    return hookedAddrs[funcId];\
+    return hookedAddrs.at(funcId);\
 }
 
 extern "C" {
@@ -325,10 +326,10 @@ IMPL_PREHOOK_HANDLER(, PLT)
 void *cPreHookHanlderSec(int index, void *callerFuncAddr) {
     size_t fileId = __extFuncCallHookPtr->findExecNameByAddr(callerFuncAddr);
 
-    auto &pltSec = __extFuncCallHookPtr->fileSecMap[fileId][scaler::SEC_NAME::PLT_SEC];
-    auto &realAddrResolved = __extFuncCallHookPtr->realAddrResolved[fileId];
-    auto &hookedAddrs = __extFuncCallHookPtr->hookedAddrs[fileId];
-    auto &curGOT = __extFuncCallHookPtr->fileGotMap[fileId];
+    auto &pltSec = __extFuncCallHookPtr->fileSecMap.at(fileId).at(scaler::SEC_NAME::PLT_SEC);
+    auto &realAddrResolved = __extFuncCallHookPtr->realAddrResolved.at(fileId);
+    auto &hookedAddrs = __extFuncCallHookPtr->hookedAddrs.at(fileId);
+    auto &curGOT = __extFuncCallHookPtr->fileGotMap.at(fileId);
     auto &hookedNames = __extFuncCallHookPtr->hookedNames[fileId];
 
 
@@ -339,13 +340,13 @@ void *cPreHookHanlderSec(int index, void *callerFuncAddr) {
     void *retOriFuncAddr = nullptr;
 
 
-    if (!realAddrResolved[funcId]) {
-        if (hookedAddrs[funcId] != curGOT[funcId]) {
+    if (!realAddrResolved.at(funcId)) {
+        if (hookedAddrs.at(funcId) != curGOT[funcId]) {
             printf("Address is now resolved，replace hookedAddrs with correct value\n");
             //Update address and set it as correct address
-            realAddrResolved[funcId] = true;
-            hookedAddrs[funcId] = curGOT[funcId];
-            retOriFuncAddr = hookedAddrs[funcId];
+            realAddrResolved.at(funcId) = true;
+            hookedAddrs.at(funcId) = curGOT[funcId];
+            retOriFuncAddr = hookedAddrs.at(funcId);
         } else {
             printf("%s is not initialized, execute orignal PLT code\n", hookedNames[funcId].c_str());
             //Execute original PLT function
@@ -362,7 +363,7 @@ void *cPreHookHanlderSec(int index, void *callerFuncAddr) {
     SCALER_HOOK_IN_HOOK_HANDLER = true;
     //Currently, I won't load plthook library
     SCALER_HOOK_IN_HOOK_HANDLER = false;
-    return hookedAddrs[funcId];
+    return hookedAddrs.at(funcId);
 }
 **/
 

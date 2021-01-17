@@ -59,7 +59,7 @@ namespace scaler {
                 newEntry.isE = (perm[2] == 'x');
                 newEntry.isP = (perm[3] == 'p');
 
-                procMap[newEntry.pathName].emplace_back(newEntry);
+                procMap.at(newEntry.pathName).emplace_back(newEntry);
 
                 ss.str("");
                 ss.clear();

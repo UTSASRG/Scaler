@@ -136,7 +136,7 @@ namespace scaler {
             name = dynStrTbl + (dynSymTbl + ELF64_R_SYM(relaPlt->r_info))->st_name;
             //The number of entries in a given table can be found by dividing the size of the table (given by sh_size
             //in the section header) by the size of each entry (given by sh_entsize).
-            relaFuncName.emplace_back(name);
+            relaFuncName[name] = i;
 
             relaPlt++;
         }
@@ -145,7 +145,7 @@ namespace scaler {
     }
 
     ElfW(Shdr) *ELFParser::getSecHdrByName(std::string targetSecName) {
-        return &secHdr[secNameIndexMap[targetSecName]];
+        return &secHdr[secNameIndexMap.at(targetSecName)];
     }
 
 

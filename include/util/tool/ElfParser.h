@@ -13,7 +13,7 @@ namespace scaler {
     class ELFParser : Object {
     public:
         std::string elfPath;
-        std::vector<std::string> relaFuncName;
+        std::map<std::string,size_t> relaFuncName;
 
         explicit ELFParser(std::string elfPath);
 

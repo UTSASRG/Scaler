@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 #include <util/hook/ExtFuncCallHook.hh>
+#include <plthook.h>
 
 using namespace std;
 using namespace scaler;
@@ -16,9 +17,9 @@ TEST(ExtFuncCallHook, locSectionInMem) {
     ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
     hook->locSectionInMem();
 
-    auto &calcPltPtr = hook->fileSecMap[hook->fileIDMap[parser.curExecFileName]][SEC_NAME::PLT];
-    auto &calcGotPtr = hook->fileSecMap[hook->fileIDMap[parser.curExecFileName]][SEC_NAME::GOT];
-    auto &calcPltSecPtr = hook->fileSecMap[hook->fileIDMap[parser.curExecFileName]][SEC_NAME::PLT_SEC];
+    auto &calcPltPtr = hook->fileSecMap.at(hook->fileIDMap.at(parser.curExecFileName)).at(SEC_NAME::PLT);
+    auto &calcGotPtr = hook->fileSecMap.at(hook->fileIDMap.at(parser.curExecFileName)).at(SEC_NAME::GOT);
+    auto &calcPltSecPtr = hook->fileSecMap.at(hook->fileIDMap.at(parser.curExecFileName)).at(SEC_NAME::PLT_SEC);
 
     EXPECT_EQ(calcPltPtr.startAddr, &__startplt);
     EXPECT_EQ(calcPltPtr.endAddr, &__endplt);
@@ -70,4 +71,39 @@ TEST(ExtFuncCallHook, findExecNameByAddr) {
     EXPECT_EQ(funcId, 2);
 
 }
+
+TEST(ExtFuncCallHook, getFuncAddrFromGOTByName) {
+    ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
+    hook->locSectionInMem();
+
+    std::string fileName = "/home/st/Projects/Scaler/cmake-build-debug/tests/libNaiveInvocationApp.so";
+    //Parse current ELF file and see if those method exists and if address matches
+    ELFParser parser(fileName);
+    parser.parse();
+
+    plthook_t *myPltHook;
+    if (!myPltHook)
+        fprintf(stderr, "Please add the directory containing libNaiveInvocationApp.so to LD_LIBRARY_PATH.\n");
+
+    //Find plthook
+    plthook_open(&myPltHook, fileName.c_str());
+    //Check plt hook entry size
+
+    unsigned int pos = 0;
+    const char *name;
+    void **addr;
+    int i = 0;
+    while (plthook_enum(myPltHook, &pos, &name, &addr) == 0) {
+        //printf("   %s\n", name);
+
+        EXPECT_EQ(parser.relaFuncName.at(std::string(name)), i);
+        auto fileId = hook->fileIDMap.at(std::string(name));
+        void *curGOTAddr = hook->getFuncAddrFromGOTByName(fileId, std::string(name));
+        EXPECT_EQ(curGOTAddr, *addr);
+        i++;
+    }
+
+
+}
+
 
