@@ -123,28 +123,21 @@ namespace scaler {
             throwScalerException("Cannot find .rela.plt")
         }
 
-
         //Find symbol table
         ElfW(Sym) *dynSymTbl = static_cast<ElfW(Sym) *>(getSecPtr(".dynsym"));
 
-
-        ElfW(Rela) *curRel = relaPlt;
-        size_t idx = 0;
-
         const char *name;
-        void **addr;
 
         char *dynStrTbl = static_cast<char *>(getSecPtr(".dynstr"));
 
         size_t relaSecSize = relaPltSecHdr->sh_size / relaPltSecHdr->sh_entsize;
         for (int i = 0; i < relaSecSize; ++i) {
-            addr = reinterpret_cast<void **>(elfFile + relaPlt->r_offset);
             //todo: ELF64_R_SYM is platform dependent
             name = dynStrTbl + (dynSymTbl + ELF64_R_SYM(relaPlt->r_info))->st_name;
             //The number of entries in a given table can be found by dividing the size of the table (given by sh_size
             //in the section header) by the size of each entry (given by sh_entsize).
             relaFuncName.emplace_back(name);
-            idx = ELF64_R_SYM(relaPlt->r_info);
+
             relaPlt++;
         }
 

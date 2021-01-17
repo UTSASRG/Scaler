@@ -44,7 +44,8 @@ namespace scaler {
         ElfW(Half) shnum = 0;//The number of sections in section header
         ElfW(Rela) *relaPlt = nullptr;
         ElfW(Rela) *relaDyn = nullptr;
-        std::map<std::string,size_t> secNameIndexMap;
+        std::map<std::string, size_t> secNameIndexMap;
+
         /**
         * Parse seciton header and program header for ELF
         */
