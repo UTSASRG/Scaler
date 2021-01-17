@@ -50,9 +50,9 @@ namespace scaler {
         // The pointer to .plt in a.so: sectionAddrMap[id for a.so][PLT]
         std::map<size_t, std::map<SEC_NAME, SecInfo>> fileSecMap;
         // The i'th external symbol's name in a.so: sectionAddrMap[id for a.so][i]
-        std::map<size_t, std::vector<std::string>> filePltNameMap;
+        std::map<size_t, std::vector<std::string>> filePltMap;
         // The id of a.so : fileNameIDMap[full path for a.so]
-        std::map<std::string, size_t> fileNameIDMap;
+        std::map<std::string, size_t> fileIDMap;
         // Used to find which fileID  floor(i/2) the corresponding fileID of pointer addrFileMap[i]
         // This array should be sorted for fast lookup
         std::vector<SegInfo> segAddrFileMap;
@@ -67,7 +67,7 @@ namespace scaler {
         std::map<size_t, std::vector<scaler::HookedExtSym>> hookedExtSymbols;
         // The adddress of i'th hooked external function in a.so: hookedNames[id for a.so][i]
         std::map<size_t, std::vector<void *>> hookedAddrs;
-        std::map<size_t, std::vector<std::string>> hookedNames;
+        std::map<size_t, std::vector<std::string>> hookedFuncNames;
         uint8_t *pseudoPlt = nullptr;
 
 

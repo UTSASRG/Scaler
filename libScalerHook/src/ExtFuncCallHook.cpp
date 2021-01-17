@@ -38,11 +38,11 @@ namespace scaler {
 
         recordFileSecMap(pmParser);
 
-        size_t counter = 0;
+        size_t fileID = 0;
         //Iterate through libraries
         for (auto iter = pmParser.procMap.begin(); iter != pmParser.procMap.end(); ++iter) {
             //Save file name to id table
-            fileNameIDMap[iter->first] = counter;
+            fileIDMap[iter->first] = fileID;
 
             //Open corresponding ELF file
             ELFParser elfParser(iter->first);
@@ -51,9 +51,9 @@ namespace scaler {
                 //Some segment may throw exception in parse. So we won't store invalid segments into fileSecMap
                 elfParser.parse();
 
-                filePltNameMap[counter] = elfParser.relaFuncName;
+                filePltMap[fileID] = elfParser.relaFuncName;
 
-                auto &curFile = fileSecMap[counter];
+                auto &curFile = fileSecMap[fileID];
 
                 auto &curPLT = curFile[SEC_NAME::PLT];
                 curPLT.startAddr = searchSecLoadingAddr(".plt", elfParser, iter->second);
@@ -94,14 +94,14 @@ namespace scaler {
                 curPLTGot.secTotalSize = curPLTGotShHdr->sh_size;
 
                 //We've got GOT table, store it
-                recordGOT(curPLTGot, counter);
+                recordGOT(curPLTGot, fileID);
 
             } catch (const ScalerException &e) {
                 std::stringstream ss;
                 ss << "Hook Failed for \"" << elfParser.elfPath << "\" because " << e.info;
                 fprintf(stderr, "%s\n", ss.str().c_str());
             }
-            counter++;
+            fileID++;
         }
     }
 
@@ -132,14 +132,19 @@ namespace scaler {
     void ExtFuncCallHook::install() {
         //Step1: Locating table in memory
         locSectionInMem();
-        //Step2: Change every plt location to writeable
+        //Step2: Change every plt table memory into writeable
         for (auto iterFile = fileSecMap.begin(); iterFile != fileSecMap.end(); ++iterFile) {
             for (auto iterSec = iterFile->second.begin(); iterSec != iterFile->second.end(); ++iterSec) {
                 auto &curSecInfo = iterSec->second;
                 adjustMemPermission(curSecInfo.startAddr, curSecInfo.endAddr, PROT_READ | PROT_WRITE | PROT_EXEC);
             }
         }
+        //Step3: Decide which to hook
+
+
+
         //Step3: Replace PLT
+
     }
 
     void ExtFuncCallHook::adjustMemPermission(void *startPtr, void *endPtr, int prem) {
@@ -276,7 +281,7 @@ void *cPreHookHanlder##suffix(int index, void *callerFuncAddr) { \
     auto &realAddrResolved = __extFuncCallHookPtr->realAddrResolved[fileId];\
     auto &hookedAddrs = __extFuncCallHookPtr->hookedAddrs[fileId];\
     auto &curGOT = __extFuncCallHookPtr->fileGotMap[fileId];\
-    auto &hookedNames = __extFuncCallHookPtr->hookedNames[fileId];\
+    auto &hookedFuncNames = __extFuncCallHookPtr->hookedFuncNames[fileId];\
     \
     callerFuncAddr = reinterpret_cast<void *>(uint64_t(callerFuncAddr) - 0xD);\
     \
@@ -291,7 +296,7 @@ void *cPreHookHanlder##suffix(int index, void *callerFuncAddr) { \
             hookedAddrs[funcId] = curGOT[funcId];\
             retOriFuncAddr = hookedAddrs[funcId];\
         } else {\
-            printf("%s is not initialized, execute orignal PLT code\n", hookedNames[funcId].c_str());\
+            printf("%s is not initialized, execute orignal PLT code\n", hookedFuncNames[funcId].c_str());\
             retOriFuncAddr = __extFuncCallHookPtr->pseudoPlt + funcId * 18;\
         }\
     }\
