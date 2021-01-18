@@ -10,16 +10,17 @@ using namespace scaler;
 //Reference
 extern char __startplt, __endplt, __startpltgot, __endpltgot, __startpltsec, __endpltsec;
 
-TEST(ExtFuncCallHook, locSectionInMem) {
+TEST(ExtFuncCallHook, locSecAndSegInMem) {
     PMParser parser;
     parser.parsePMMap();
 
     ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
-    hook->locSectionInMem();
+    hook->locSecAndSegInMem();
 
-    auto &calcPltPtr = hook->fileSecMap.at(hook->fileIDMap.at(parser.curExecFileName)).at(SEC_NAME::PLT);
-    auto &calcGotPtr = hook->fileSecMap.at(hook->fileIDMap.at(parser.curExecFileName)).at(SEC_NAME::GOT);
-    auto &calcPltSecPtr = hook->fileSecMap.at(hook->fileIDMap.at(parser.curExecFileName)).at(SEC_NAME::PLT_SEC);
+    auto &curFileSecInfo = hook->fileSecInfoMap.at(hook->fileIDMap.at(parser.curExecFileName));
+    auto &calcPltPtr = curFileSecInfo.at(SEC_NAME::PLT);
+    auto &calcGotPtr = curFileSecInfo.at(SEC_NAME::GOT);
+    auto &calcPltSecPtr = curFileSecInfo.at(SEC_NAME::PLT_SEC);
 
     EXPECT_EQ(calcPltPtr.startAddr, &__startplt);
     EXPECT_EQ(calcPltPtr.endAddr, &__endplt);
@@ -27,6 +28,13 @@ TEST(ExtFuncCallHook, locSectionInMem) {
     EXPECT_EQ(calcGotPtr.endAddr, &__endpltgot);
     EXPECT_EQ(calcPltSecPtr.startAddr, &__startpltsec);
     EXPECT_EQ(calcPltSecPtr.endAddr, &__endpltsec);
+
+    auto &curFileSegInfo = hook->fileSegInfoMap.at(hook->fileIDMap.at(parser.curExecFileName));
+    auto &calcDynamicSegPtr = curFileSegInfo.at(PT_DYNAMIC);
+
+    printf("_DYNAMIC file:%p ptr:%p\n", calcDynamicSegPtr.startAddr, _DYNAMIC);
+
+    EXPECT_EQ(calcDynamicSegPtr.startAddr, _DYNAMIC);
 }
 
 TEST(ExtFuncCallHook, install) {
@@ -45,21 +53,21 @@ TEST(ExtFuncCallHook, findExecNameByAddr) {
 
     ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
 
-    hook->locSectionInMem();
+    hook->locSecAndSegInMem();
     size_t funcId = hook->findExecNameByAddr(addr1);
-    EXPECT_EQ(parser.curExecFileName, hook->segAddrFileMap[funcId].fileName);
+    EXPECT_EQ(parser.curExecFileName, hook->fileLoadMap[funcId].fileName);
 
     void *funcPtr = (void *) printf;
     funcId = hook->findExecNameByAddr(funcPtr);
-    auto &execName = hook->segAddrFileMap[funcId].fileName;
+    auto &execName = hook->fileLoadMap[funcId].fileName;
 
     EXPECT_TRUE(execName.find("libc") != std::string::npos);
 
-    hook->segAddrFileMap.clear();
+    hook->fileLoadMap.clear();
     for (int i = 0; i < 4; i += 2) {
-        SegInfo newEntry;
+        LoadingInfo newEntry;
         newEntry.startAddr = (void *) i;
-        hook->segAddrFileMap.emplace_back(newEntry);
+        hook->fileLoadMap.emplace_back(newEntry);
     }
     funcId = hook->findExecNameByAddr((void *) 0);
     EXPECT_EQ(funcId, 0);
@@ -107,57 +115,3 @@ int nativeFunc() {
 
 }
 
-TEST(ExtFuncCallHook, externalNameAndAddress) {
-
-}
-
-
-int main() {
-    nativeFunc();
-
-    ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
-    hook->locSectionInMem();
-
-    PMParser pmParser;
-    pmParser.parsePMMap();
-
-//Parse current ELF file and see if those method exists and if address matches
-    ELFParser parser(pmParser.curExecFileName);
-    parser.parse();
-
-    plthook_t *myPltHook;
-    if (!myPltHook)
-        fprintf(stderr, "Please add the directory containing libNaiveInvocationApp.so to LD_LIBRARY_PATH.\n");
-
-//Find plthook
-    plthook_open(&myPltHook, NULL);
-//Check plt hook entry size
-
-    unsigned int pos = 0;
-    const char *name;
-    void **addr;
-    int i = 0;
-
-    std::string targetName = "funcEverything";
-    for (int i = 0; i < parser.relaFuncName.size(); ++i) {
-
-        plthook_enum(myPltHook, &pos, &name, &addr);
-        printf("CurFunc:%s\n", name);
-        if (strncmp(name, targetName.c_str(), 14) == 0) {
-            printf("funcEverything:%p\n", funcEverything);
-//Check if the name is correct
-//            EXPECT_EQ(parser.relaFuncName.at(std::string(name)), i);
-//
-//            //Check if the address is correct
-//            auto fileId = hook->fileIDMap.at(pmParser.curExecFileName);
-//            void *curGOTAddr = hook->getFuncAddrFromGOTByName(fileId, std::string(name));
-//            EXPECT_EQ(curGOTAddr, *addr);
-
-        }
-    }
-
-    while (plthook_enum(myPltHook, &pos, &name, &addr) == 0) {
-        printf("Left Over:%s\n", name);
-    }
-
-}

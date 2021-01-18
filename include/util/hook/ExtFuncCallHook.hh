@@ -10,7 +10,7 @@
 thread_local static bool SCALER_HOOK_IN_HOOK_HANDLER = false;
 
 namespace scaler {
-
+    //todo: Refactor into structures similar to ELF format but more convenient to use. Rather than fully customized structure
     class SecInfo {
     public:
         void *startAddr = nullptr;
@@ -19,11 +19,18 @@ namespace scaler {
         unsigned long long int secTotalSize = -1;
     };
 
+
     class SegInfo {
+    public:
+        void *startAddr = nullptr;
+    };
+
+    class LoadingInfo {
     public:
         void *startAddr = nullptr;
         void *endAddr = nullptr;
         std::string fileName;
+
     };
 
     class HookedExtSym {
@@ -38,7 +45,8 @@ namespace scaler {
     enum SEC_NAME {
         PLT,
         PLT_SEC,
-        GOT
+        GOT,
+        DYNAMIC
     };
 
     class ExtFuncCallHook : public Hook {
@@ -47,16 +55,21 @@ namespace scaler {
 
         static ExtFuncCallHook *instance; //Singeleton
 
-        // The pointer to .plt in a.so: sectionAddrMap[id for a.so][PLT]
-        std::map<size_t, std::map<SEC_NAME, SecInfo>> fileSecMap;
+        // The pointer to .plt in a.so: sectionAddrMap[id for a.so][PLT] (Used to store interested sections) //todo: Better naming?
+        std::map<size_t, std::map<SEC_NAME, SecInfo>> fileSecInfoMap;
+        //The pointer to _DYNAMIC segment in a.so: sectionAddrMap[id for a.so][PT_DYNAMIC][0]
+
+        std::map<size_t, std::map<ElfW(Word), SegInfo>> fileSegInfoMap;
+
+
         // The i'th external symbol's name in a.so: sectionAddrMap[id for a.so][i]
         std::map<size_t, std::map<std::string, size_t>> fileExtFuncNameMap;
         // The id of a.so : fileNameIDMap[full path for a.so]
         std::map<std::string, size_t> fileIDMap;
 
         // Used to find which fileID  floor(i/2) the corresponding fileID of pointer addrFileMap[i]
-        // This array should be sorted for fast lookup
-        std::vector<SegInfo> segAddrFileMap;
+        // This array should be sorted for fast lookup (Reflect /self/proc/maps content)
+        std::vector<LoadingInfo> fileLoadMap;
         // The first GOT entry of a.so : fileGotMap[id for a.so][0]
         std::map<size_t, std::vector<void *>> fileGotMap;
 
@@ -98,19 +111,25 @@ namespace scaler {
         /**
          * Locate the start position of sections in memory and store then in fileSecMap
          */
-        void locSectionInMem();
+        void locSecAndSegInMem();
 
         /**
          * Save got into fileGotMap
-         * Called by locSectionInMem
+         * Called by locSecAndSegInMem
          */
         void recordGOT(SecInfo &info, size_t fileId);
 
         /**
-         * Search the starting address of a single loaded section in memory
+         * Search the start, end address of a loaded section in memory
          */
         void *searchSecLoadingAddr(std::string secName, ELFParser &elfParser,
                                    const std::vector<PMEntry> &segments);
+
+
+        /**
+         * Search the start, end address of a loaded segment in memory
+         */
+        void *searchSegLoadingAddr(ELFParser &elfParser, ElfW(Word) segType, const std::vector<PMEntry> &segments);
 
         void adjustMemPermission(void *startPtr, void *endPtr, int prem);
 
@@ -119,7 +138,7 @@ namespace scaler {
          * Record segment address -> fileID info into segAddrFileMap
          * @param pmParser
          */
-        void recordFileSecMap(PMParser &pmParser);
+        void recordFileSegMap(PMParser &pmParser);
 
 
         /**

@@ -54,25 +54,29 @@ namespace scaler {
             throwScalerException(ss.str().c_str());
         }
 
-
-
         //Read section header
         secHdr = reinterpret_cast<ElfW(Shdr) *>(elfFile + elfHdr->e_shoff);
-
 
         //Read section name string table
         ElfW(Shdr) *strTblSecHdr = secHdr + elfHdr->e_shstrndx;
         secStrtbl = reinterpret_cast<const char *>(elfFile + strTblSecHdr->sh_offset);
 
-
-
         //Read section header
         shnum = elfHdr->e_shnum;
-
         for (int i = 0; i < shnum; ++i) {
-            ElfW(Shdr) *curShDr = &secHdr[i];
-            secNameIndexMap[std::string(secStrtbl + curShDr->sh_name)] = i;
+            ElfW(Shdr) &curShDr = secHdr[i];
+            secNameIndexMap[std::string(secStrtbl + curShDr.sh_name)] = i;
         }
+
+        //Read Program header
+        progHdr = reinterpret_cast<ElfW(Phdr) *>(elfFile + elfHdr->e_phoff);
+        phnum = elfHdr->e_phnum;
+
+        for (int i = 0; i < phnum; ++i) {
+            auto &curPhDr = progHdr[i];
+            progHdrs.emplace_back(curPhDr);
+        }
+
 
     }
 
@@ -83,22 +87,20 @@ namespace scaler {
         return elfFile + curShDr->sh_offset;
     }
 
+    void *ELFParser::getSegPtr(ElfW(Word) segType) {
+        //Iterate through sections
+        ElfW(Phdr) *curPhDr = getProgHdrByType(segType);
+        return elfFile + curPhDr->p_offset;
+    }
+
     ELFParser::~ELFParser() {
         closeELFFile();
     }
 
+    //todo: unify get length/ptr/hdr api
     long long int ELFParser::getSecLength(std::string targetSecName) {
-        //Iterate through sections
-        for (int i = 0; i < shnum; ++i) {
-            ElfW(Shdr) curShDr = secHdr[i];
-            if (targetSecName == secStrtbl + curShDr.sh_name) {
-                return curShDr.sh_size;
-            }
-        }
-        std::stringstream ss;
-        ss << "Cannot get section \"" << targetSecName << "\"'s length from ELF file" << elfPath;
-        throwScalerException(ss.str().c_str())
-        return -1;
+        ElfW(Shdr) *curShDr = getSecHdrByName(targetSecName);
+        return curShDr->sh_size;
     }
 
     std::vector<std::string> ELFParser::getSecNames() {
@@ -112,7 +114,6 @@ namespace scaler {
     void ELFParser::parse() {
         parseELFHeaders();
         parseRelocationTable();
-
     }
 
     void ELFParser::parseRelocationTable() {
@@ -146,6 +147,14 @@ namespace scaler {
 
     ElfW(Shdr) *ELFParser::getSecHdrByName(std::string targetSecName) {
         return &secHdr[secNameIndexMap.at(targetSecName)];
+    }
+
+    ElfW(Phdr) *ELFParser::getProgHdrByType(Elf64_Word type) {
+        for (int i = 0; i < progHdrs.size(); ++i) {
+            if (progHdrs[i].p_type == type) {
+                return &progHdrs[i];
+            }
+        }
     }
 
 

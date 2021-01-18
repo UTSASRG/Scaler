@@ -30,46 +30,64 @@ namespace scaler {
 
     ExtFuncCallHook *ExtFuncCallHook::instance = nullptr;
 
-    void ExtFuncCallHook::locSectionInMem() {
-
+    void ExtFuncCallHook::locSecAndSegInMem() {
         //Get segment info from /proc/self/maps
         PMParser pmParser;
         pmParser.parsePMMap();
 
-        recordFileSecMap(pmParser);
+        recordFileSegMap(pmParser);
 
         size_t fileID = 0;
         //Iterate through libraries
         for (auto iter = pmParser.procMap.begin(); iter != pmParser.procMap.end(); ++iter) {
+            auto &curFileName = iter->first;
+            auto &pmEntries = iter->second;
+
             //Save file name to id table
-            fileIDMap[iter->first] = fileID;
+            fileIDMap[curFileName] = fileID;
 
             //Open corresponding ELF file
-            ELFParser elfParser(iter->first);
+            ELFParser elfParser(curFileName);
 
             try {
-                //Some segment may throw exception in parse. So we won't store invalid segments into fileSecMap
+                //Some sections may throw exception in parse. So we won't store invalid sections into fileSecMap
                 elfParser.parse();
 
                 fileExtFuncNameMap[fileID] = elfParser.relaFuncName;
+                auto &curFileSecInfo = fileSecInfoMap[fileID];
 
-                auto &curFile = fileSecMap[fileID];
+                auto &curPLT = curFileSecInfo[SEC_NAME::PLT];
+                curPLT.startAddr = searchSecLoadingAddr(".plt", elfParser, pmEntries);
 
-                auto &curPLT = curFile[SEC_NAME::PLT];
-                curPLT.startAddr = searchSecLoadingAddr(".plt", elfParser, iter->second);
+                auto &curPLTSec = curFileSecInfo[SEC_NAME::PLT_SEC];
+                curPLTSec.startAddr = searchSecLoadingAddr(".plt.sec", elfParser, pmEntries);
 
-                auto &curPLTSec = curFile[SEC_NAME::PLT_SEC];
-                curPLTSec.startAddr = searchSecLoadingAddr(".plt.sec", elfParser, iter->second);
+                auto &curPLTGot = curFileSecInfo[SEC_NAME::GOT];
+                curPLTGot.startAddr = searchSecLoadingAddr(".plt.got", elfParser, pmEntries);
 
-                auto &curPLTGot = curFile[SEC_NAME::GOT];
-                curPLTGot.startAddr = searchSecLoadingAddr(".plt.got", elfParser, iter->second);
+                //Before prasing GOT. Let's first get _DYNAMIC structure. Otherwise we don't know the size of GOT entry. (GOT section header doesn't reveal exact amount)
+                //Get the starting address of _DYNAMIC in file
 
-                //Make sure every section is found
-                for (auto iter1 = curFile.begin();
-                     iter1 != curFile.end(); ++iter1) {
+                auto &curFileSegInfo = fileSegInfoMap[fileID];
+                auto &curDynamicSeg = curFileSegInfo[PT_DYNAMIC];
+                curDynamicSeg.startAddr = searchSegLoadingAddr(elfParser, PT_DYNAMIC, pmEntries);
+
+
+                //Make sure every sections are found
+                for (auto iter1 = curFileSecInfo.begin();
+                     iter1 != curFileSecInfo.end(); ++iter1) {
                     if (iter1->second.startAddr == nullptr) {
                         std::stringstream ss;
-                        ss << "Section " << iter1->first << " not found in " << iter->first;
+                        ss << "Section " << iter1->first << " not found in " << curFileName;
+                        throwScalerException(ss.str().c_str());
+                    }
+                }
+                //Make sure every segments are found
+                for (auto iter1 = curFileSegInfo.begin();
+                     iter1 != curFileSegInfo.end(); ++iter1) {
+                    if (iter1->second.startAddr == nullptr) {
+                        std::stringstream ss;
+                        ss << "Segment with type " << iter1->first << " not found in " << curFileName;
                         throwScalerException(ss.str().c_str());
                     }
                 }
@@ -93,7 +111,11 @@ namespace scaler {
                 curPLTGot.itemSize = curPLTGotShHdr->sh_entsize;
                 curPLTGot.secTotalSize = curPLTGotShHdr->sh_size;
 
-                //We've got GOT table, store it
+                //todo: Is it possible to calculate address? I don't think so, because segments may be loaded at different address.
+
+                //todo: Maybe I should build an r_debug structure. It's more elegant to represent things that way.
+
+                //We've got GOT table, store its contents.
                 recordGOT(curPLTGot, fileID);
 
             } catch (const ScalerException &e) {
@@ -104,6 +126,7 @@ namespace scaler {
             fileID++;
         }
     }
+
 
     void *ExtFuncCallHook::searchSecLoadingAddr(std::string secName, ELFParser &elfParser,
                                                 const std::vector<PMEntry> &segments) {
@@ -129,11 +152,34 @@ namespace scaler {
         return rltAddr;
     }
 
+    void *ExtFuncCallHook::searchSegLoadingAddr(ELFParser &elfParser, ElfW(Word) segType,
+                                                const std::vector<PMEntry> &segments) {
+        void *segPtr = elfParser.getSegPtr(segType);
+        if (!segPtr) {
+            std::stringstream ss;
+            ss << "Cannot find segment type " << segType << " in " << elfParser.elfPath;
+            throwScalerException(ss.str().c_str());
+        }
+
+        void *rltAddr = nullptr;
+
+        //Match the first 20 bytes
+        for (int i = 0; i < segments.size(); ++i) {
+            if (segments[i].isR && !segments[i].isE) {
+                //Only check executable secitons
+                rltAddr = binarySearch(segments[i].addrStart, segments[i].length, segPtr, 20);
+                if (rltAddr)
+                    break;
+            }
+        }
+    }
+
     void ExtFuncCallHook::install() {
         //Step1: Locating table in memory
-        locSectionInMem();
+        locSecAndSegInMem();
+
         //Step2: Change every plt table memory into writeable
-        for (auto iterFile = fileSecMap.begin(); iterFile != fileSecMap.end(); ++iterFile) {
+        for (auto iterFile = fileSecInfoMap.begin(); iterFile != fileSecInfoMap.end(); ++iterFile) {
             for (auto iterSec = iterFile->second.begin(); iterSec != iterFile->second.end(); ++iterSec) {
                 auto &curSecInfo = iterSec->second;
                 adjustMemPermission(curSecInfo.startAddr, curSecInfo.endAddr, PROT_READ | PROT_WRITE | PROT_EXEC);
@@ -161,11 +207,11 @@ namespace scaler {
 
     size_t ExtFuncCallHook::findExecNameByAddr(void *addr) {
         //Binary search segAddrFileMap
-        long lo = 0, hi = segAddrFileMap.size(), md;
+        long lo = 0, hi = fileLoadMap.size(), md;
         //[lo,hi) to prevent underflow
         while (lo < hi - 1) {
             md = (lo + hi) / 2;
-            if (segAddrFileMap[md].startAddr > addr) {
+            if (fileLoadMap[md].startAddr > addr) {
                 hi = md;
             } else {
                 lo = md + 1;
@@ -174,18 +220,18 @@ namespace scaler {
         return lo;
     }
 
-    void ExtFuncCallHook::recordFileSecMap(PMParser &pmParser) {
+    void ExtFuncCallHook::recordFileSegMap(PMParser &pmParser) {
         for (auto iterFile = pmParser.procMap.begin(); iterFile != pmParser.procMap.end(); ++iterFile) {
             for (auto iterSeg = iterFile->second.begin(); iterSeg != iterFile->second.end(); ++iterSeg) {
-                SegInfo newEntry;
+                LoadingInfo newEntry;
                 newEntry.fileName = iterFile->first;
                 newEntry.startAddr = iterSeg->addrStart;
                 newEntry.endAddr = iterSeg->addrEnd;
-                segAddrFileMap.emplace_back(newEntry);
+                fileLoadMap.emplace_back(newEntry);
             }
         }
         //Sort by start address
-        std::sort(segAddrFileMap.begin(), segAddrFileMap.end(), [](const SegInfo &lhs, const SegInfo &rhs) {
+        std::sort(fileLoadMap.begin(), fileLoadMap.end(), [](const LoadingInfo &lhs, const LoadingInfo &rhs) {
             return lhs.startAddr < rhs.startAddr;
         });
     }
@@ -205,7 +251,7 @@ namespace scaler {
         //auto &curGOTTbl = fileGotMap.at(fileId);
         auto itemSize = gotShHdr.secTotalSize / gotShHdr.itemSize;
         for (int i = 0; i < itemSize; ++i) {
-            auto gotEntryAddr= (void **) (ElfW(Addr)(gotShHdr.startAddr) + i * itemSize);
+            auto gotEntryAddr = (void **) (ElfW(Addr)(gotShHdr.startAddr) + i * itemSize);
             fileGotMap[fileId].emplace_back(*gotEntryAddr);
         }
     }
@@ -269,9 +315,11 @@ namespace scaler {
 
     void *ExtFuncCallHook::getFuncAddrFromGOTByName(size_t fileId, std::string name) {
         size_t funcID = fileExtFuncNameMap.at(fileId).at(name);
-        printf("File Size: %zu\n",fileGotMap.at(fileId).size());
+        //todo:remove printf
+        printf("File Size: %zu\n", fileGotMap.at(fileId).size());
         return fileGotMap.at(fileId)[funcID];
     }
+
 
 }
 
@@ -284,7 +332,7 @@ namespace scaler {
 void *cPreHookHanlder##suffix(int index, void *callerFuncAddr) { \
     size_t fileId = __extFuncCallHookPtr->findExecNameByAddr(callerFuncAddr); \
     \
-    auto &pltSec = __extFuncCallHookPtr->fileSecMap.at(fileId).at(scaler::SEC_NAME::USED_SEC_NAME);\
+    auto &pltSec = __extFuncCallHookPtr->fileSecInfoMap.at(fileId).at(scaler::SEC_NAME::USED_SEC_NAME);\
     auto &realAddrResolved = __extFuncCallHookPtr->realAddrResolved.at(fileId);\
     auto &hookedAddrs = __extFuncCallHookPtr->hookedAddrs.at(fileId);\
     auto &curGOT = __extFuncCallHookPtr->fileGotMap.at(fileId);\
