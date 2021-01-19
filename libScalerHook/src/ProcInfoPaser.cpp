@@ -1,5 +1,5 @@
 
-#include "util/tool/PMParser.h"
+#include "util/tool/ProcInfoPaser.h"
 #include <sstream>
 #include <cassert>
 #include <exceptions/ScalerException.h>
@@ -7,11 +7,11 @@
 #define PROCMAPS_LINE_MAX_LENGTH  (PATH_MAX + 100)
 
 namespace scaler {
-    PMParser::PMParser(int pid) : procID(pid) {
+    PmParser::PmParser(int pid) : procID(pid) {
         openPMMap();
     }
 
-    void PMParser::openPMMap() {
+    void PmParser::openPMMap() {
         std::stringstream ss;
         ss << "/proc/";
         if (procID >= 0)
@@ -28,7 +28,7 @@ namespace scaler {
         }
     }
 
-    void PMParser::parsePMMap() {
+    void PmParser::parsePMMap() {
         assert(file.is_open());
 
         std::string addr1, addr2, perm, offset;
@@ -69,14 +69,14 @@ namespace scaler {
 
     }
 
-    PMParser::~PMParser() {
+    PmParser::~PmParser() {
         if (file.is_open()) {
             file.close();
         }
 
     }
 
-    void PMParser::printPM() {
+    void PmParser::printPM() {
         std::stringstream ss;
         ss << "/proc/";
         if (procID >= 0)

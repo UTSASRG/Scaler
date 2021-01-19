@@ -7,13 +7,6 @@
 #include <unistd.h>
 #include <zconf.h>
 
-namespace scaler {
-
-    MemoryTool::~MemoryTool() {
-
-    }
-}
-
 #ifdef __linux
 
 namespace scaler {

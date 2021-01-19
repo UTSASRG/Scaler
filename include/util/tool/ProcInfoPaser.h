@@ -34,22 +34,31 @@ implied warranty.
 #include <iomanip>
 
 namespace scaler {
+    /**
+     * Represent a line in /prof/{pid}/map
+     */
     class PMEntry : public Object {
     public:
-        void *addrStart;    // start address of the area
-        void *addrEnd;    // end address
-        unsigned long length; // size of the range
-        bool isR;            // permission
-        bool isW;
-        bool isE;
-        bool isP;
+        void *addrStart;        // start address of the segment
+        void *addrEnd;          // end address
+        unsigned long length;   // size of the segment
+        bool isR;               // Is readable
+        bool isW;               // Is writeable
+        bool isE;               // Is executable
+        bool isP;               // Is private
 
-        long offset;    // offset
-        std::string dev;  // device major:minor
-        int inode;        // inode of the file that backs the area
+        long offset;            // offset
+        std::string dev;        // device major:minor
+        int inode;              // inode of the file that backs the area
 
-        std::string pathName; //Path name to that executable
+        std::string pathName;   //Path name to that executable
 
+        /**
+         * Print PMEntry just like /proc/{pid}/map
+         * You could:
+         * PmEntry pmEntry;
+         * cout<<pmEntry<<sendl;
+         */
         friend std::ostream &operator<<(std::ostream &os, const PMEntry &dt) {
 
             std::ios_base::fmtflags oldState(os.flags());
@@ -60,8 +69,8 @@ namespace scaler {
             ss << (dt.isE ? 'x' : '-');
             ss << (dt.isP ? 'p' : '-');
 
-            uint64_t addrStart = reinterpret_cast<uint64_t>(dt.addrStart);
-            uint64_t addrEnd = reinterpret_cast<uint64_t>(dt.addrEnd);
+            ElfW(Addr) addrStart = reinterpret_cast<ElfW(Addr)>(dt.addrStart);
+            ElfW(Addr) addrEnd = reinterpret_cast<ElfW(Addr)>(dt.addrEnd);
 
             os << std::noshowbase << std::hex << addrStart << "-" << addrEnd << " " << ss.str() << " ";
             os << std::setfill('0') << std::setw(8);
@@ -80,18 +89,18 @@ namespace scaler {
      * This class was a helper tool to parse /proc/self/map
      * Current implementation uses STL API and may not the most efficient way. But it's fine for initialization and the code looks cleaner.
      */
-    class PMParser : public Object {
+    class PmParser : public Object {
     public:
         std::map<std::string, std::vector<PMEntry>> procMap;
         std::string curExecFileName;
 
-        PMParser(int procID = -1);
+        PmParser(int procID = -1);
 
         void parsePMMap();
 
         void printPM();
 
-        ~PMParser() override;
+        ~PmParser() override;
 
     private:
         int procID;
