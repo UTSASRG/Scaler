@@ -14,10 +14,6 @@ namespace scaler {
     public:
         /**
         * Change the permission of a memory location.
-        *
-        * @param startPtr
-        * @param endPtr
-        * @param prem
         */
         virtual void adjustMemPerm(void *startPtr, void *endPtr, int prem) = 0;
 
@@ -52,6 +48,7 @@ namespace scaler {
          */
         void adjustMemPerm(void *startPtr, void *endPtr, int prem) override;
 
+        ~MemoryTool_Linux() override;
 
     private:
         MemoryTool_Linux();

@@ -4,12 +4,20 @@
 #include <sstream>
 #include <exceptions//ScalerException.h>
 #include <sys/mman.h>
-#include <bits/confname.h>
+#include <unistd.h>
 #include <zconf.h>
+
+namespace scaler {
+
+    MemoryTool::~MemoryTool() {
+
+    }
+}
 
 #ifdef __linux
 
 namespace scaler {
+
     //Initialize instance
     MemoryTool_Linux *MemoryTool_Linux::instance = nullptr;
 
@@ -36,5 +44,9 @@ namespace scaler {
     MemoryTool_Linux::MemoryTool_Linux() {
 
     }
+
+    MemoryTool_Linux::~MemoryTool_Linux() = default;
+
+
 }
 #endif
