@@ -22,14 +22,17 @@ namespace scaler {
     MemoryTool_Linux *MemoryTool_Linux::instance = nullptr;
 
     void MemoryTool_Linux::adjustMemPerm(void *startPtr, void *endPtr, int prem) {
+        //Get page size
         size_t pageSize = sysconf(_SC_PAGESIZE);
-        void *alignedStartPtr = ALIGN_ADDR(startPtr, pageSize);
-        void *alignedEndPtr = ALIGN_ADDR(endPtr, pageSize);
+        //Get Page Bound
+        void *startPtrBound = GET_PAGE_BOUND(startPtr, pageSize);
+        void *endPtrBound = GET_PAGE_BOUND(endPtr, pageSize);
 
-        if (mprotect(alignedStartPtr, (ElfW(Addr) *) alignedEndPtr - (ElfW(Addr) *)
-                alignedStartPtr, prem) != 0) {
+        if (mprotect(startPtrBound,
+                     (ElfW(Addr) *) endPtrBound - (ElfW(Addr) *) startPtrBound,
+                     prem) != 0) {
             std::stringstream ss;
-            ss << "Could not change the process memory permission at " << alignedStartPtr << " - " << alignedEndPtr;
+            ss << "Could not change the process memory permission at " << startPtrBound << " - " << endPtrBound;
             throwScalerException(ss.str().c_str());
         }
     }
