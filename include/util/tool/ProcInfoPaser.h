@@ -15,6 +15,9 @@ implied warranty.
 #ifndef H_PMPARSER
 #define H_PMPARSER
 
+
+#ifdef __linux__
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -32,12 +35,17 @@ implied warranty.
 #include <iostream>
 #include <sstream>
 #include <iomanip>
+#include <link.h>
+#include <elf.h>
 
 namespace scaler {
+
+//The following class is declared and defined only under linux.
+
     /**
      * Represent a line in /prof/{pid}/map
      */
-    class PMEntry : public Object {
+    class PMEntry_Linux : public Object {
     public:
         void *addrStart;        // start address of the segment
         void *addrEnd;          // end address
@@ -52,6 +60,7 @@ namespace scaler {
         int inode;              // inode of the file that backs the area
 
         std::string pathName;   //Path name to that executable
+        size_t fileId;          //Id of pathname in PmParser_Linux structure
 
         /**
          * Print PMEntry just like /proc/{pid}/map
@@ -59,7 +68,7 @@ namespace scaler {
          * PmEntry pmEntry;
          * cout<<pmEntry<<sendl;
          */
-        friend std::ostream &operator<<(std::ostream &os, const PMEntry &dt) {
+        friend std::ostream &operator<<(std::ostream &os, const PMEntry_Linux &dt) {
 
             std::ios_base::fmtflags oldState(os.flags());
 
@@ -86,30 +95,59 @@ namespace scaler {
     };
 
     /**
-     * This class was a helper tool to parse /proc/self/map
+     * This class was a helper tool to parse /proc/self/maps
      * Current implementation uses STL API and may not the most efficient way. But it's fine for initialization and the code looks cleaner.
      */
-    class PmParser : public Object {
+    class PmParser_Linux : public Object {
     public:
-        std::map<std::string, std::vector<PMEntry>> procMap;
+        //Map executable name with it's PMEntry
+        std::map<std::string, std::vector<PMEntry_Linux>> procMap;
+        // Used to find which fileID  floor(i/2) the corresponding fileID of pointer addrFileMap[i]
+        // This array should be sorted by starting address for fast lookup
+        std::vector<PMEntry_Linux> sortedSegments;
+
+        //This will be current executable name
         std::string curExecFileName;
 
-        PmParser(int procID = -1);
+        // The id of a.so : fileIDMap[full path for a.so]
+        std::map<std::string, size_t> fileIDMap;
+        // Map id to file name
+        std::vector<std::string> idFileMap;
 
-        void parsePMMap();
+        PmParser_Linux(int procID = -1);
 
+        /**
+         * A convenient way to print /proc/{pid}/maps
+         */
         void printPM();
 
-        ~PmParser() override;
+        /**
+         * Return addr is located in which file
+         * @param fileId in fileIDMap
+         */
+        size_t findExecNameByAddr(void *addr);
+
+
+        ~PmParser_Linux() override;
 
     private:
+        //Process ID
         int procID;
+
+        //The filestream for process file
         std::ifstream file;
 
-
+        /**
+         * Open /proc/{pid}/maps
+         */
         void openPMMap();
 
+        /**
+         * Parse /proc/{pid}/maps into procMap
+         */
+        void parsePMMap();
     };
-
 }
+
+#endif __linux__
 #endif
