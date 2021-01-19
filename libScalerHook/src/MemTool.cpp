@@ -1,13 +1,14 @@
 #include <util/tool/MemTool.h>
+
+
+#ifdef __linux
+
 #include <elf.h>
 #include <link.h>
 #include <sstream>
 #include <exceptions//ScalerException.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include <zconf.h>
-
-#ifdef __linux
 
 namespace scaler {
 
