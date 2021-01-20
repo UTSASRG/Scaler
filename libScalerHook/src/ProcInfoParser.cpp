@@ -7,12 +7,16 @@
 #include <cassert>
 #include <exceptions/ScalerException.h>
 #include <algorithm>
+#include <util/tool/FileTool.h>
+
 
 #define PROCMAPS_LINE_MAX_LENGTH  (PATH_MAX + 100)
 namespace scaler {
+
     PmParser_Linux::PmParser_Linux(int pid) : procID(pid) {
         openPMMap();
         parsePMMap();
+        parseDLPhdr();
     }
 
     void PmParser_Linux::openPMMap() {
@@ -38,6 +42,7 @@ namespace scaler {
         std::string addr1, addr2, perm, offset;
         if (file.is_open()) {
             std::string line;
+            std::string lastPathname = "";
 
             while (std::getline(file, line)) {
                 PMEntry_Linux newEntry;
@@ -118,7 +123,7 @@ namespace scaler {
             std::cout << ifs.rdbuf() << std::endl;
     }
 
-    size_t PmParser_Linux::findExecNameByAddr(void *addr) {
+    int PmParser_Linux::findExecNameByAddr(void *addr) {
         //Since sortedSegments are sorted by starting address and all address range are not overlapping.
         //We could use binary search to lookup addr in this array.
 
@@ -134,8 +139,32 @@ namespace scaler {
                 lo = md + 1;
             }
         }
-        return lo;
+
+        if (sortedSegments[lo].addrStart < addr && addr < sortedSegments[lo].addrEnd) {
+            return lo;
+        } else {
+            return -1;
+        }
     }
+
+    int dlCallback(struct dl_phdr_info *info, size_t size, void *data) {
+        PmParser_Linux *pmParser = (PmParser_Linux *) data;
+
+        if (pmParser->fileIDMap.count(info->dlpi_name) == 0) {
+            return 0;
+        }
+        size_t fileId = pmParser->fileIDMap.at(info->dlpi_name);
+        //pmParser->fileBaseAddrMap[fileId] = reinterpret_cast<uint8_t *>(info->dlpi_addr);
+        printf("Base addr loaded for %s is %p\n", info->dlpi_name, info->dlpi_addr);
+        return 0;
+    }
+
+    void PmParser_Linux::parseDLPhdr() {
+        //printPM();
+
+        dl_iterate_phdr(dlCallback, this);
+    }
+
 
 }
 

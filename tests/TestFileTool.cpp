@@ -57,3 +57,8 @@ TEST(FileTool, findStrSplit) {
     EXPECT_TRUE(splitIndexes.size() == 0);
 
 }
+
+TEST(FileTool, findLibName) {
+
+
+}

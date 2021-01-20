@@ -42,22 +42,15 @@ namespace scaler {
 
     void ExtFuncCallHook_Linux::locateRequiredSecAndSeg() {
         //Get segment info from /proc/self/maps
-        size_t fileID = 0;
         //Iterate through libraries
 
-        //todo:test 2
-        auto iter=pmParser.procMap.begin();
-        fileID=pmParser.fileIDMap[pmParser.curExecFileName];
-        for(int i=0;i<fileID;++i){
-            iter++;
-        }
+        //pmParser.printPM();
 
         for (auto iter = pmParser.procMap.begin(); iter != pmParser.procMap.end(); ++iter) {
             auto &curFileName = iter->first;
             auto &pmEntries = iter->second;
-            auto &curELFImgInfo = elfImgInfoMap[fileID];
-
-            printf("curFileName :%s\n", curFileName.c_str());
+            size_t curFileiD = pmParser.fileIDMap[curFileName];
+            auto &curELFImgInfo = elfImgInfoMap[curFileiD];
 
             try {
                 /**
@@ -75,7 +68,6 @@ namespace scaler {
                         codeSegments.emplace_back(pmEntry);
                     else if (pmEntry.isR)
                         readableNonCodeSegments.emplace_back(pmEntry);
-
                 }
 
                 /**
@@ -91,7 +83,6 @@ namespace scaler {
                 curELFImgInfo.pltEndAddr = (uint8_t *) curELFImgInfo.pltStartAddr
                                            + pltHdr.secHdr.sh_size;
                 assert(curELFImgInfo.pltEndAddr);
-
 
                 /**
                  * Get plt.sec from ELF file. An exception will be thrown if there's no plt.sec table in that elf file.
@@ -130,34 +121,64 @@ namespace scaler {
                                                                                         readableNonCodeSegments));
                 assert(curELFImgInfo._DYNAMICAddr);
 
+                //Find Base address through _DYNAMICAddr
+                Dl_info info;
+                assert(dladdr(curELFImgInfo._DYNAMICAddr, &info) != 0);
+
+                uint8_t *curBaseAddr = static_cast<uint8_t *>(info.dli_fbase);
+
+                printf("curFileName :%s curBaseAddr:%p\n", curFileName.c_str(), curBaseAddr);
+
                 const ElfW(Dyn) *dynsymDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_SYMTAB);
-                curELFImgInfo.dynSymTable = (const ElfW(Sym) *) dynsymDyn->d_un.d_ptr;
+                curELFImgInfo.dynSymTable = (const ElfW(Sym) *) (dynsymDyn->d_un.d_ptr);
+                if (pmParser.findExecNameByAddr((void *) curELFImgInfo.dynSymTable) == -1) {
+                    curELFImgInfo.dynSymTable = (const ElfW(Sym) *) (curBaseAddr + dynsymDyn->d_un.d_ptr);
+                }
+
+                //assert(dladdr(dynsymDyn, &info) != 0);
+                //printf("dynSymTable:%p %s\n", curELFImgInfo.dynSymTable, info.dli_fname);
+
                 const ElfW(Dyn) *strTabDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRTAB);
-                curELFImgInfo.dynStrTable = (const char *) strTabDyn->d_un.d_ptr;
+                //std::string strTabDynFileName = pmParser.idFileMap[pmParser.findExecNameByAddr((void *) strTabDyn)];
+                //assert(dladdr(strTabDyn, &info) != 0);
+                //printf("strTabDyn:%p %s\n", strTabDyn, info.dli_fname);
+                curELFImgInfo.dynStrTable = (const char *) (strTabDyn->d_un.d_ptr);
+                if (pmParser.findExecNameByAddr((void *) curELFImgInfo.dynStrTable) == -1) {
+                    curELFImgInfo.dynStrTable = (const char *) (curBaseAddr + strTabDyn->d_un.d_ptr);
+                }
+
+
                 const ElfW(Dyn) *strSizeDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRSZ);
+                //std::string strSizeDynFileName = pmParser.idFileMap[pmParser.findExecNameByAddr((void *) strSizeDyn)];
                 curELFImgInfo.dynStrSize = strSizeDyn->d_un.d_val;
+                //assert(dladdr(strSizeDyn, &info) != 0);
+                //printf("dynStrTable:%p %s\n", curELFImgInfo.dynStrTable, info.dli_fname);
 
                 ElfW(Dyn) *relaPltDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_JMPREL);
-                assert(relaPltDyn);
-                curELFImgInfo.relaPlt = (ElfW(Rela) *) relaPltDyn->d_un.d_ptr;
+                //assert(relaPltDyn);
+                //assert(dladdr(relaPltDyn, &info) != 0);
+                //std::string relaPltDynFileName = pmParser.idFileMap[pmParser.findExecNameByAddr((void *) relaPltDyn)];
+                curELFImgInfo.relaPlt = (ElfW(Rela) *) ( relaPltDyn->d_un.d_ptr);
+                //printf("relaPlt:%p %s\n", curELFImgInfo.relaPlt, info.dli_fname);
+                if (pmParser.findExecNameByAddr((void *) curELFImgInfo.relaPlt) == -1) {
+                    curELFImgInfo.relaPlt = (ElfW(Rela) *) (curBaseAddr + relaPltDyn->d_un.d_ptr);
+                }
+
                 const ElfW(Dyn) *relaSizeDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_PLTRELSZ);
                 curELFImgInfo.relaPltCnt = relaSizeDyn->d_un.d_val / sizeof(ElfW(Rela));
 
 
                 for (size_t i = 0; i < curELFImgInfo.relaPltCnt; ++i) {
                     ElfW(Rela) *curRelaPlt = curELFImgInfo.relaPlt + i;
-
-                    assert(ELF64_R_TYPE(curRelaPlt->r_info)==R_X86_64_JUMP_SLOT);
-
+                    //assert(ELF64_R_TYPE(curRelaPlt->r_info) == R_X86_64_JUMP_SLOT);
                     //todo: Used ELF64 here
-
                     size_t idx = ELF64_R_SYM(curRelaPlt->r_info);
                     idx = curELFImgInfo.dynSymTable[idx].st_name;
 
                     if (idx + 1 > curELFImgInfo.dynStrSize) {
                         throwScalerException("Too big section header string table index");
                     }
-                    printf("%s:%s\n",curFileName.c_str(),std::string(curELFImgInfo.dynStrTable + idx).c_str());
+                    printf("%s:%s\n", curFileName.c_str(), std::string(curELFImgInfo.dynStrTable + idx).c_str());
                     curELFImgInfo.allExtFuncNames.emplace_back(std::string(curELFImgInfo.dynStrTable + idx));
                     void **ptr2GotEntry = reinterpret_cast<void **>(curRelaPlt->r_offset);
                     curELFImgInfo.gotTablePtr.emplace_back(ptr2GotEntry);
@@ -165,12 +186,11 @@ namespace scaler {
 
             } catch (const ScalerException &e) {
                 //Remove current entry
-                elfImgInfoMap.erase(fileID);
+                elfImgInfoMap.erase(curFileiD);
                 std::stringstream ss;
                 ss << "Hook Failed for \"" << curFileName << "\" because " << e.info;
                 fprintf(stderr, "%s\n", ss.str().c_str());
             }
-            fileID++;
         }
 
         /**
@@ -189,7 +209,9 @@ namespace scaler {
             * However, the memory size of a section is not exactly the same as its size in elf file (I have proof).
             * Plus, if PIE is enabled, segments may be loaded randomly into memory. Making its loading address harder
             * to find in /proc/{pid}/maps. These factors make it evem more complicated to implement. Even if we implement this,
-            * the code would be too machine-dependent.
+            * the code would be too machine-dependent
+            *
+            * https://uaf.io/exploitation/misc/2016/04/02/Finding-Functions.html
             *
             * 2.Relying on linker script
             * It turns out we could modify linker script to ask linker to mark the starting/ending address of sections.

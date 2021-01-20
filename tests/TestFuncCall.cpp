@@ -33,6 +33,8 @@ extern int SELF_EXTERN;
 int SELF_EXTERN = 0;
 
 int main() {
+    findBaseAddrInALibrary();
+
 //    printf("Calling funcA\n");
 //    funcA();
 //    printf("Calling funcB\n");
@@ -108,5 +110,5 @@ int main() {
 //
 //
 //
-    return 0;
+//    return 0;
 }

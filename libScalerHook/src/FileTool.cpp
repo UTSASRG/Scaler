@@ -71,3 +71,8 @@ long int scaler::getFileSize(FILE *file) {
     fseek(file, 0L, SEEK_SET);
     return fileSize;
 }
+
+std::string scaler::extractFileName(std::string pathName) {
+    auto posi = pathName.find_last_of('/');
+    return pathName.substr(posi + 1, pathName.length() - posi);
+}

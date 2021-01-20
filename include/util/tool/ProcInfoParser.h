@@ -111,6 +111,10 @@ namespace scaler {
 
         // The id of a.so : fileIDMap[full path for a.so]
         std::map<std::string, size_t> fileIDMap;
+
+        //The base address of an executable
+        std::map<size_t, uint8_t *> fileBaseAddrMap;
+
         // Map id to file name
         std::vector<std::string> idFileMap;
 
@@ -125,10 +129,11 @@ namespace scaler {
          * Return addr is located in which file
          * @param fileId in fileIDMap
          */
-        size_t findExecNameByAddr(void *addr);
+        int findExecNameByAddr(void *addr);
 
 
         ~PmParser_Linux() override;
+
 
     protected:
         //Process ID
@@ -146,6 +151,17 @@ namespace scaler {
          * Parse /proc/{pid}/maps into procMap
          */
         void parsePMMap();
+
+
+        /**
+         * /proc/{pid}/maps only tells the actual loading address and permission of a segment.
+         * However, relocation table entries are relative to a base address
+         * To get the real address we have to parse it seperately.
+         */
+        void parseDLPhdr();
+
+        friend int dlCallback(struct dl_phdr_info *info, size_t size, void *data);
+
     };
 }
 

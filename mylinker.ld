@@ -40,6 +40,7 @@ SECTIONS
     }
   .rela.plt       :
     {
+      PROVIDE (__startRelaplt = .);
       *(.rela.plt)
       PROVIDE_HIDDEN (__rela_iplt_start = .);
       *(.rela.iplt)

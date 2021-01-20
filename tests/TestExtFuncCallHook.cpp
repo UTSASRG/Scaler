@@ -130,3 +130,41 @@ int nativeFunc() {
 
 }
 
+int main() {
+    plthook_t *myPltHook;
+    //Find plthook
+    plthook_open(&myPltHook, NULL);
+
+
+    vector<string> funcNameArr;
+    vector<void *> addrArr;
+
+    unsigned int pos = 0;
+    const char *name;
+    void **addr;
+    int i;
+    while (plthook_enum(myPltHook, &pos, &name, &addr) == 0) {
+        //printf("   %s\n", name);
+        funcNameArr.emplace_back(std::string(name));
+        addrArr.emplace_back(addr);
+    }
+
+    ExtFuncCallHook_Linux *hook = ExtFuncCallHook_Linux::getInst();
+    hook->install();
+
+    auto &curElfImgInfo = hook->elfImgInfoMap[hook->pmParser.fileIDMap[hook->pmParser.curExecFileName]];
+
+
+    EXPECT_EQ(curElfImgInfo.pltStartAddr, &__startplt);
+    EXPECT_EQ(curElfImgInfo.pltEndAddr, &__endplt);
+    EXPECT_EQ(curElfImgInfo.pltSecStartAddr, &__startpltsec);
+    EXPECT_EQ(curElfImgInfo.pltSecEndAddr, &__endpltsec);
+    EXPECT_EQ(curElfImgInfo._DYNAMICAddr, _DYNAMIC);
+    for (int i = 0; i < curElfImgInfo.allExtFuncNames.size(); ++i) {
+        EXPECT_EQ(curElfImgInfo.allExtFuncNames[i], funcNameArr[i]);
+    }
+    for (int i = 0; i < curElfImgInfo.gotTablePtr.size(); ++i) {
+        EXPECT_EQ(curElfImgInfo.gotTablePtr[i], addrArr[i]);
+    }
+    return 0;
+}
