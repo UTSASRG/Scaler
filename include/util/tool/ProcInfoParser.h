@@ -149,5 +149,5 @@ namespace scaler {
     };
 }
 
-#endif __linux__
+#endif
 #endif

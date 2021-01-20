@@ -25,7 +25,7 @@ namespace scaler {
         static MemoryTool_Linux *getInst();
 
 
-        void adjustMemPerm(void *startPtr, void *endPtr, int prem) override;
+        void adjustMemPerm(void *startPtr, void *endPtr, int prem);
 
         ~MemoryTool_Linux() override;
 

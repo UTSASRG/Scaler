@@ -1,4 +1,7 @@
 #include <util/tool/ElfParser.h>
+
+#ifdef __linux
+
 #include <util/tool/FileTool.h>
 #include <elf.h>
 #include <link.h>
@@ -8,102 +11,115 @@
 
 namespace scaler {
 
-    ELFParser::ELFParser(const std::string elfPath) {
+    ELFParser_Linux::ELFParser_Linux(const std::string elfPath) {
         this->elfPath = elfPath;
+        openELFFile();
+        //ELF header contains information the location of section table and program header table
+        readELFHeader();
+        readELFSecHeaders();
+        readELFProgHeaders();
+        fclose(file);
     }
 
-    void ELFParser::openELFFile() {
-        //Open ELF file
-        FILE *file = fopen(elfPath.c_str(), "rb");
+    void ELFParser_Linux::openELFFile() {
+        file = fopen(elfPath.c_str(), "rb");
         if (file == NULL) {
             std::stringstream ss;
             ss << "Can't open ELF file \"" << elfPath.c_str() << "\"";
             throwScalerException(ss.str().c_str());
         }
-        //Steak to the end of the file to determine the file size
-        auto fileSize = getFileSize(file);
+    }
 
+    void ELFParser_Linux::readELFHeader() {
         //Read ELF file to memory
-        elfFile = static_cast<uint8_t *>(malloc(fileSize));
-        if (!elfFile) {
-            throwScalerException("Memory allocation failed!");
+        elfHdr = static_cast<ElfW(Ehdr) *>(malloc(sizeof(ElfW(Ehdr))));
+        if (!elfHdr) {
+            throwScalerException("Faild to allocate memory for elfHdr");
         }
+        fread(elfHdr, 1, sizeof(ElfW(Ehdr)), file);
 
-        //Read file to memory todo: Parsing without load whole ELF into memory
-        fread(elfFile, 1, fileSize, file);
-        fclose(file);
+        //Check whether ELF file is valid through magic number
+        //This ELF Parser is only used for X86_64
+        if (strncmp((const char *) elfHdr->e_ident, ELFMAG, SELFMAG) != 0 ||
+            (elfHdr->e_ident[EI_CLASS] != ELFCLASS64) ||
+            (elfHdr->e_ident[EI_DATA] != ELFDATA2LSB) ||
+            (elfHdr->e_machine != EM_X86_64) ||
+            (elfHdr->e_version != 1)) {
+            throwScalerException("ELF type doesn't match. This ELF file maybe not compatible.");
+        }
     }
 
-    void ELFParser::closeELFFile() {
-        if (elfFile) {
-            free(elfFile);
-            elfFile = nullptr;
+    void ELFParser_Linux::readELFSecHeaders() {
+        //Read all section headers
+        secHdr = static_cast<ElfW(Shdr) *>(calloc(elfHdr->e_shnum, sizeof(ElfW(Shdr))));
+        if (!secHdr) {
+            throwScalerException("Faild to allocate memory for secHdr");
         }
-    }
-
-    void ELFParser::parseELFHeaders() {
-        openELFFile();
-
-        // read the elfHdr
-        elfHdr = reinterpret_cast<ElfW(Ehdr) *>(elfFile);
-
-        //Check magic number
-        if (memcmp(elfHdr->e_ident, ELFMAG, SELFMAG) != 0) {
-            std::stringstream ss;
-            ss << elfPath << " is not an ELF file";
-            throwScalerException(ss.str().c_str());
-        }
-
-        //Read section header
-        secHdr = reinterpret_cast<ElfW(Shdr) *>(elfFile + elfHdr->e_shoff);
+        fseek(file, elfHdr->e_shoff, SEEK_SET);
+        fread(secHdr, sizeof(ElfW(Shdr)), elfHdr->e_shnum, file);
 
         //Read section name string table
         ElfW(Shdr) *strTblSecHdr = secHdr + elfHdr->e_shstrndx;
-        secStrtbl = reinterpret_cast<const char *>(elfFile + strTblSecHdr->sh_offset);
+        secStrtbl = static_cast<const char *>(malloc(sizeof(char) * strTblSecHdr->sh_size));
+        if (!secStrtbl) {
+            throwScalerException("Faild to allocate memory for secStrtbl");
+        }
+        fseek(file, strTblSecHdr->sh_offset, SEEK_SET);
+        fread((void *) secStrtbl, 1, strTblSecHdr->sh_size, file);
 
-        //Read section header
+        //Store section header into secNameIndexMap for faster lookup
         shnum = elfHdr->e_shnum;
         for (int i = 0; i < shnum; ++i) {
             ElfW(Shdr) &curShDr = secHdr[i];
-            secNameIndexMap[std::string(secStrtbl + curShDr.sh_name)] = i;
+            //printf("%s\n", secStrtbl + curShDr.sh_name);
+            SecInfo curSecInfo;
+            curSecInfo.secHdr = curShDr;
+            curSecInfo.secId = i;
+            secNameIndexMap[std::string(secStrtbl + curShDr.sh_name)] = curSecInfo;
         }
 
-        //Read Program header
-        progHdr = reinterpret_cast<ElfW(Phdr) *>(elfFile + elfHdr->e_phoff);
+    }
+
+    void ELFParser_Linux::readELFProgHeaders() {
+        //Read all program headers
+        progHdr = static_cast<ElfW(Phdr) *>(calloc(elfHdr->e_phnum, sizeof(ElfW(Phdr))));
+        if (!progHdr) {
+            throwScalerException("Faild to allocate memory for progHdr");
+        }
+        fseek(file, elfHdr->e_phoff, SEEK_SET);
+        fread(progHdr, sizeof(ElfW(Phdr)), elfHdr->e_phnum, file);
+
+        //Store program header into segTypeIndexMap for faster lookup
         phnum = elfHdr->e_phnum;
-
         for (int i = 0; i < phnum; ++i) {
-            auto &curPhDr = progHdr[i];
-            progHdrs.emplace_back(curPhDr);
+            auto &curProgHdr = progHdr[i];
+            SegInfo curSegInfo;
+            curSegInfo.progHdr = curProgHdr;
+            curSegInfo.segId = i;
+            segTypeIndexMap[curProgHdr.p_type].emplace_back(curSegInfo);
         }
-
-
     }
 
 
-    void *ELFParser::getSecPtr(std::string targetSecName) {
-        //Iterate through sections
-        ElfW(Shdr) *curShDr = getSecHdrByName(targetSecName);
-        return elfFile + curShDr->sh_offset;
+    ELFParser_Linux::~ELFParser_Linux() {
+        if (elfHdr)
+            free(elfHdr);
+        if (secHdr)
+            free(secHdr);
+        if (progHdr)
+            free(progHdr);
+        if (secStrtbl)
+            free((void *) secStrtbl);
+        for (auto &iter : secIdContentMap) {
+            free(iter.second);
+        }
+        for (auto &iter : segIdContentMap) {
+            free(iter.second);
+        }
     }
 
-    void *ELFParser::getSegPtr(ElfW(Word) segType) {
-        //Iterate through sections
-        ElfW(Phdr) *curPhDr = getProgHdrByType(segType);
-        return elfFile + curPhDr->p_offset;
-    }
 
-    ELFParser::~ELFParser() {
-        closeELFFile();
-    }
-
-    //todo: unify get length/ptr/hdr api
-    long long int ELFParser::getSecLength(std::string targetSecName) {
-        ElfW(Shdr) *curShDr = getSecHdrByName(targetSecName);
-        return curShDr->sh_size;
-    }
-
-    std::vector<std::string> ELFParser::getSecNames() {
+    std::vector<std::string> ELFParser_Linux::getSecNames() {
         std::vector<std::string> secNameVec;
         for (auto iter = secNameIndexMap.begin(); iter != secNameIndexMap.end(); ++iter) {
             secNameVec.push_back(iter->first);
@@ -111,51 +127,67 @@ namespace scaler {
         return secNameVec;
     }
 
-    void ELFParser::parse() {
-        parseELFHeaders();
-        parseRelocationTable();
+    SecInfo ELFParser_Linux::getSecHdrByName(std::string targetSecName) {
+        return secNameIndexMap.at(targetSecName);
     }
 
-    void ELFParser::parseRelocationTable() {
-        //Find the starting point to .rela.plt.
-        ElfW(Shdr) *relaPltSecHdr = getSecHdrByName(".rela.plt");
-        ElfW(Rela) *relaPlt = reinterpret_cast<ElfW(Rela) *>(elfFile + relaPltSecHdr->sh_offset);
-        if (!relaPlt) {
-            throwScalerException("Cannot find .rela.plt")
-        }
 
-        //Find symbol table
-        ElfW(Sym) *dynSymTbl = static_cast<ElfW(Sym) *>(getSecPtr(".dynsym"));
-
-        const char *name;
-
-        char *dynStrTbl = static_cast<char *>(getSecPtr(".dynstr"));
-
-        size_t relaSecSize = relaPltSecHdr->sh_size == 0 ? 0 : relaPltSecHdr->sh_size / relaPltSecHdr->sh_entsize;
-        for (int i = 0; i < relaSecSize; ++i) {
-            //todo: ELF64_R_SYM is platform dependent
-            name = dynStrTbl + (dynSymTbl + ELF64_R_SYM(relaPlt->r_info))->st_name;
-            //The number of entries in a given table can be found by dividing the size of the table (given by sh_size
-            //in the section header) by the size of each entry (given by sh_entsize).
-            relaFuncName[name] = i;
-
-            relaPlt++;
-        }
-
-
+    std::vector<SegInfo> ELFParser_Linux::getProgHdrByType(ElfW(Word) type) {
+        return segTypeIndexMap.at(type);
     }
 
-    ElfW(Shdr) *ELFParser::getSecHdrByName(std::string targetSecName) {
-        return &secHdr[secNameIndexMap.at(targetSecName)];
+
+    void *ELFParser_Linux::getSecContent(const SecInfo &targetSecInfo) {
+        openELFFile();
+
+        void *targetSecHdrContent;
+        if (secIdContentMap.count(targetSecInfo.secId) == 0) {
+            //If targetSecInfo have not been loaded, read the elffile file and cache it
+
+            targetSecHdrContent = malloc(targetSecInfo.secHdr.sh_size);
+            fseek(file, targetSecInfo.secHdr.sh_offset, SEEK_SET);
+            fread(targetSecHdrContent, targetSecInfo.secHdr.sh_size, 1, file);
+            //Store address for faster lookup
+            secIdContentMap[targetSecInfo.secId] = targetSecHdrContent;
+        } else {
+            //The content has been loaded before, return it directly
+
+            targetSecHdrContent = secIdContentMap.at(targetSecInfo.secId);
+        }
+        fclose(file);
+        return targetSecHdrContent;
     }
 
-    ElfW(Phdr) *ELFParser::getProgHdrByType(Elf64_Word type) {
-        for (int i = 0; i < progHdrs.size(); ++i) {
-            if (progHdrs[i].p_type == type) {
-                return &progHdrs[i];
-            }
+    void *ELFParser_Linux::getSegContent(const SegInfo &targetSegInfo) {
+        openELFFile();
+
+        void *targetSegHdrContent;
+        if (secIdContentMap.count(targetSegInfo.segId) == 0) {
+            //If targetSegInfo have not been loaded, read the elffile file and cache it
+
+            targetSegHdrContent = malloc(targetSegInfo.progHdr.p_filesz);
+            fseek(file, targetSegInfo.progHdr.p_offset, SEEK_SET);
+            fread(targetSegHdrContent, targetSegInfo.progHdr.p_filesz, 1, file);
+            //Store address for faster lookup
+            segIdContentMap[targetSegInfo.segId] = targetSegHdrContent;
+        } else {
+            //The content has been loaded before, return it directly
+
+            targetSegHdrContent = secIdContentMap.at(targetSegInfo.segId);
         }
+        fclose(file);
+        return targetSegHdrContent;
+    }
+
+    std::vector<void *> ELFParser_Linux::getSegContent(std::vector<SegInfo> &targetSegInfos) {
+        std::vector<void *> rltVec;
+        for (int i = 0; i < targetSegInfos.size(); ++i) {
+            //Call getSegContent to load and cache individual segment
+            rltVec.emplace_back(getSegContent(targetSegInfos)[i]);
+        }
+        return rltVec;
     }
 
 
 }
+#endif
