@@ -38,7 +38,7 @@ std::vector<size_t> scaler::findStrSplit(std::string &srcStr, char splitChar) {
     return splitPoints;
 }
 
-void *scaler::binarySearch(void *target, size_t targetSize, void *keyword, size_t keywordSize) {
+void *scaler::binCodeSearch(void *target, size_t targetSize, void *keyword, size_t keywordSize) {
     //Convert it to uint8* so that we can perform arithmetic operation on those pointers
     uint8_t *kwd = static_cast<uint8_t *>(keyword);
     uint8_t *tgt = static_cast<uint8_t *>(target);

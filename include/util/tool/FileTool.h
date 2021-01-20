@@ -36,7 +36,7 @@ namespace scaler {
      * @param keyword Keyword to search
      * @return The pointer of the first starting address of keyword in target
      */
-    void *binarySearch(void *target, size_t targetSize, void *keyword, size_t keywordSize);
+    void *binCodeSearch(void *target, size_t targetSize, void *keyword, size_t keywordSize);
 
 }
 

@@ -2,143 +2,95 @@
 #define SCALER_EXTFUNCCALLHOOK_HH
 
 #include <util/hook/hook.hh>
+
+#ifdef __linux
+
 #include <string>
 #include <util/tool/ElfParser.h>
 #include <vector>
-#include <util/tool/PMParser.h>
-
-thread_local static bool SCALER_HOOK_IN_HOOK_HANDLER = false;
+#include <util/tool/ProcInfoParser.h>
 
 namespace scaler {
-    //todo: Refactor into structures similar to ELF format but more convenient to use. Rather than fully customized structure
-    class SecInfo {
+
+
+    class ExtFuncCallHook_Linux : public Hook {
+
     public:
-        void *startAddr = nullptr;
-        void *endAddr = nullptr;
-        unsigned long long int itemSize = -1;
-        unsigned long long int secTotalSize = -1;
-    };
-
-
-    class SegInfo {
-    public:
-        void *startAddr = nullptr;
-    };
-
-    class LoadingInfo {
-    public:
-        void *startAddr = nullptr;
-        void *endAddr = nullptr;
-        std::string fileName;
-
-    };
-
-    class HookedExtSym {
-    public:
-        std::string name;
-        size_t id;
-    };
-
-    //A flag marking the entry of hook handler
-    thread_local static bool SCALER_HOOK_IN_HOOK_HANDLER = false;
-
-    enum SEC_NAME {
-        PLT,
-        PLT_SEC,
-        GOT,
-        DYNAMIC
-    };
-
-    class ExtFuncCallHook : public Hook {
-    public:
-
-
-        static ExtFuncCallHook *instance; //Singeleton
-
-        // The pointer to .plt in a.so: sectionAddrMap[id for a.so][PLT] (Used to store interested sections) //todo: Better naming?
-        std::map<size_t, std::map<SEC_NAME, SecInfo>> fileSecInfoMap;
-        //The pointer to _DYNAMIC segment in a.so: sectionAddrMap[id for a.so][PT_DYNAMIC][0]
-
-        std::map<size_t, std::map<ElfW(Word), SegInfo>> fileSegInfoMap;
-
-
-        // The i'th external symbol's name in a.so: sectionAddrMap[id for a.so][i]
-        std::map<size_t, std::map<std::string, size_t>> fileExtFuncNameMap;
-        // The id of a.so : fileNameIDMap[full path for a.so]
-        std::map<std::string, size_t> fileIDMap;
-
-        // Used to find which fileID  floor(i/2) the corresponding fileID of pointer addrFileMap[i]
-        // This array should be sorted for fast lookup (Reflect /self/proc/maps content)
-        std::vector<LoadingInfo> fileLoadMap;
-        // The first GOT entry of a.so : fileGotMap[id for a.so][0]
-        std::map<size_t, std::vector<void *>> fileGotMap;
-
-
-        //Used by hook handler
-        // Whether i'th external symbol has been resolved in a.so: realAddrResolved[id for a.so][i]
-        std::map<size_t, std::vector<bool>> realAddrResolved;
-        // The name of i'th hooked external function in a.so: hookedNames[id for a.so][i].name
-        std::map<size_t, std::vector<scaler::HookedExtSym>> hookedExtSymbols;
-        // The adddress of i'th hooked external function in a.so: hookedNames[id for a.so][i]
-        std::map<size_t, std::vector<void *>> hookedAddrs;
-        std::map<size_t, std::vector<std::string>> hookedFuncNames;
-        uint8_t *pseudoPlt = nullptr;
-
-
-        ExtFuncCallHook(ExtFuncCallHook &) = delete;
-
-        ExtFuncCallHook(ExtFuncCallHook &&) = delete;
-
-        static ExtFuncCallHook *getInst();
-
         void install() override;
 
+        void uninstall() override;
+
+
+        static ExtFuncCallHook_Linux *getInst();
+
+        ExtFuncCallHook_Linux(ExtFuncCallHook_Linux &) = delete;
+
+        ExtFuncCallHook_Linux(ExtFuncCallHook_Linux &&) = delete;
+
+
+    protected:
+        class HookedExtSym {
+        public:
+            std::string name;
+            size_t id;
+        };
+
+        class ELFImgInfo {
+        public:
+            std::string fileName;
+            void *pltStartAddr = nullptr;
+            void *pltEndAddr = nullptr;
+            void *pltSecStartAddr = nullptr;
+            void *pltSecEndAddr = nullptr;
+            ElfW(Dyn) *_DYNAMICAddr = nullptr;
+
+            std::vector<bool> realAddrResolved;
+            std::vector<void *> hookedAddrs;
+            std::vector<std::string> hookedFuncNames;
+
+            uint8_t *pseudoPlt = nullptr;
+
+            std::vector<HookedExtSym> hookedExtFuncNames;
+
+            std::vector<std::string> allExtFuncNames;
+            std::vector<void*> gotTablePtr;
+
+
+            //todo: Check const for all variables
+            ElfW(Rela) *relaPlt;
+            ElfW(Xword) relaPltCnt;
+            const ElfW(Sym) * dynSymTable;
+            const char * dynStrTable;
+            size_t dynStrSize;
+        };
+
+
+        static ExtFuncCallHook_Linux *instance; //Singleton
+
+        std::map<size_t, ELFImgInfo> elfImgInfoMap; //Map file id with it's own ELFImgInfo struct
+
+        PmParser_Linux pmParser;
+
         /**
-         * Return addr is located in which
-         * @param addr
+         * Prohibit initialization
          */
-        size_t findExecNameByAddr(void *addr);
+        ExtFuncCallHook_Linux();
 
-        void *getFuncAddrFromGOTByName(size_t fileId, std::string name);
-
-    private:
-        ExtFuncCallHook();
-
-
-        // An array to the copy of orignal PLT table
-        uint8_t *oriPltBin;
 
         /**
-         * Locate the start position of sections in memory and store then in fileSecMap
+         * Locate the address of required sections in memory
          */
-        void locSecAndSegInMem();
-
-        /**
-         * Save got into fileGotMap
-         * Called by locSecAndSegInMem
-         */
-        void recordGOT(SecInfo &info, size_t fileId);
+        void locateRequiredSecAndSeg();
 
         /**
          * Search the start, end address of a loaded section in memory
+         * @param secPtrInFile: The section pointer in ELF file
+         * @param firstEntrySize: # of bytes to search. The size of the first entry would be ideal,
+         * because memory alignment typically happens after one entry
+         * @param segments Specify wich segment to search
          */
-        void *searchSecLoadingAddr(std::string secName, ELFParser &elfParser,
-                                   const std::vector<PMEntry> &segments);
-
-
-        /**
-         * Search the start, end address of a loaded segment in memory
-         */
-        void *searchSegLoadingAddr(ELFParser &elfParser, ElfW(Word) segType, const std::vector<PMEntry> &segments);
-
-        void adjustMemPermission(void *startPtr, void *endPtr, int prem);
-
-
-        /**
-         * Record segment address -> fileID info into segAddrFileMap
-         * @param pmParser
-         */
-        void recordFileSegMap(PMParser &pmParser);
+        void *searchBinInMemory(void *secPtrInFile, size_t firstEntrySize,
+                                const std::vector<PMEntry_Linux> &segments);
 
 
         /**
@@ -155,16 +107,22 @@ namespace scaler {
         */
         std::vector<uint8_t> fillDestAddr2PseudoPltCode(size_t funcId, void *funcAddr);
 
+        /**
+        * Find entry in Dyn, compare it's tag with parameter "tag"
+        * @return Matched Dyn entry
+        */
+        ElfW(Dyn) *findDynEntryByTag(ElfW(Dyn) *dyn, ElfW(Sxword) tag);
+
+        friend void *cPreHookHanlderLinuxSec(int index, void *callerFuncAddr);
+
 
     };
 
-
 }
 
-static scaler::ExtFuncCallHook *__extFuncCallHookPtr;
+static scaler::ExtFuncCallHook_Linux *__extFuncCallHookPtr;
 
-#define DECL_PREHOOK(suffix) \
-void *cPreHookHanlder##suffix(int index, void *callerFuncAddr);
+#define DECL_PREHOOK(suffix) void *cPreHookHanlderLinux##suffix(int index, void *callerFuncAddr);
 
 
 extern "C" {
@@ -173,5 +131,6 @@ DECL_PREHOOK()
 DECL_PREHOOK(Sec)
 }
 
+#endif
 
 #endif

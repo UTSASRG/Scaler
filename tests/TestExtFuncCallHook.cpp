@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include <util/hook/ExtFuncCallHook.hh>
 #include <plthook.h>
+#include <util/tool/ProcInfoParser.h>
 
 using namespace std;
 using namespace scaler;
@@ -11,35 +12,49 @@ using namespace scaler;
 extern char __startplt, __endplt, __startpltgot, __endpltgot, __startpltsec, __endpltsec;
 
 TEST(ExtFuncCallHook, locSecAndSegInMem) {
-    PMParser parser;
-    parser.parsePMMap();
 
-    ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
-    hook->locSecAndSegInMem();
+    plthook_t *myPltHook;
+    //Find plthook
+    plthook_open(&myPltHook, NULL);
 
-    auto &curFileSecInfo = hook->fileSecInfoMap.at(hook->fileIDMap.at(parser.curExecFileName));
-    auto &calcPltPtr = curFileSecInfo.at(SEC_NAME::PLT);
-    auto &calcGotPtr = curFileSecInfo.at(SEC_NAME::GOT);
-    auto &calcPltSecPtr = curFileSecInfo.at(SEC_NAME::PLT_SEC);
 
-    EXPECT_EQ(calcPltPtr.startAddr, &__startplt);
-    EXPECT_EQ(calcPltPtr.endAddr, &__endplt);
-    EXPECT_EQ(calcGotPtr.startAddr, &__startpltgot);
-    EXPECT_EQ(calcGotPtr.endAddr, &__endpltgot);
-    EXPECT_EQ(calcPltSecPtr.startAddr, &__startpltsec);
-    EXPECT_EQ(calcPltSecPtr.endAddr, &__endpltsec);
+    vector<string> funcNameArr;
+    vector<void *> addrArr;
 
-    auto &curFileSegInfo = hook->fileSegInfoMap.at(hook->fileIDMap.at(parser.curExecFileName));
-    auto &calcDynamicSegPtr = curFileSegInfo.at(PT_DYNAMIC);
+    unsigned int pos = 0;
+    const char *name;
+    void **addr;
+    int i;
+    while (plthook_enum(myPltHook, &pos, &name, &addr) == 0) {
+        //printf("   %s\n", name);
+        funcNameArr.emplace_back(std::string(name));
+        addrArr.emplace_back(addr);
+    }
 
-    printf("_DYNAMIC file:%p ptr:%p\n", calcDynamicSegPtr.startAddr, _DYNAMIC);
+    ExtFuncCallHook_Linux *hook = ExtFuncCallHook_Linux::getInst();
+    hook->install();
 
-    EXPECT_EQ(calcDynamicSegPtr.startAddr, _DYNAMIC);
+    auto &curElfImgInfo = hook->elfImgInfoMap[hook->pmParser.fileIDMap[hook->pmParser.curExecFileName]];
+
+
+    EXPECT_EQ(curElfImgInfo.pltStartAddr, &__startplt);
+    EXPECT_EQ(curElfImgInfo.pltEndAddr, &__endplt);
+    EXPECT_EQ(curElfImgInfo.pltSecStartAddr, &__startpltsec);
+    EXPECT_EQ(curElfImgInfo.pltSecEndAddr, &__endpltsec);
+    EXPECT_EQ(curElfImgInfo._DYNAMICAddr, _DYNAMIC);
+    for (int i = 0; i < curElfImgInfo.allExtFuncNames.size(); ++i) {
+        EXPECT_EQ(curElfImgInfo.allExtFuncNames[i], funcNameArr[i]);
+    }
+    for (int i = 0; i < curElfImgInfo.gotTablePtr.size(); ++i) {
+        EXPECT_EQ(curElfImgInfo.gotTablePtr[i], addrArr[i]);
+    }
+
+
 }
 
 TEST(ExtFuncCallHook, install) {
-    ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
-    hook->install();
+    //ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
+//    hook->install();
 
 }
 
@@ -47,36 +62,36 @@ void *addr1;
 
 TEST(ExtFuncCallHook, findExecNameByAddr) {
     //Get current executable file name
-    PMParser parser;
-    parser.parsePMMap();
-
-
-    ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
-
-    hook->locSecAndSegInMem();
-    size_t funcId = hook->findExecNameByAddr(addr1);
-    EXPECT_EQ(parser.curExecFileName, hook->fileLoadMap[funcId].fileName);
-
-    void *funcPtr = (void *) printf;
-    funcId = hook->findExecNameByAddr(funcPtr);
-    auto &execName = hook->fileLoadMap[funcId].fileName;
-
-    EXPECT_TRUE(execName.find("libc") != std::string::npos);
-
-    hook->fileLoadMap.clear();
-    for (int i = 0; i < 4; i += 2) {
-        LoadingInfo newEntry;
-        newEntry.startAddr = (void *) i;
-        hook->fileLoadMap.emplace_back(newEntry);
-    }
-    funcId = hook->findExecNameByAddr((void *) 0);
-    EXPECT_EQ(funcId, 0);
-    funcId = hook->findExecNameByAddr((void *) 1);
-    EXPECT_EQ(funcId, 0);
-    funcId = hook->findExecNameByAddr((void *) 2);
-    EXPECT_EQ(funcId, 2);
-    funcId = hook->findExecNameByAddr((void *) 3);
-    EXPECT_EQ(funcId, 2);
+//    PMParser parser;
+//    parser.parsePMMap();
+//
+//
+//    ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
+//
+//    hook->locSecAndSegInMem();
+//    size_t funcId = hook->findExecNameByAddr(addr1);
+//    EXPECT_EQ(parser.curExecFileName, hook->fileLoadMap[funcId].fileName);
+//
+//    void *funcPtr = (void *) printf;
+//    funcId = hook->findExecNameByAddr(funcPtr);
+//    auto &execName = hook->fileLoadMap[funcId].fileName;
+//
+//    EXPECT_TRUE(execName.find("libc") != std::string::npos);
+//
+//    hook->fileLoadMap.clear();
+//    for (int i = 0; i < 4; i += 2) {
+//        LoadingInfo newEntry;
+//        newEntry.startAddr = (void *) i;
+//        hook->fileLoadMap.emplace_back(newEntry);
+//    }
+//    funcId = hook->findExecNameByAddr((void *) 0);
+//    EXPECT_EQ(funcId, 0);
+//    funcId = hook->findExecNameByAddr((void *) 1);
+//    EXPECT_EQ(funcId, 0);
+//    funcId = hook->findExecNameByAddr((void *) 2);
+//    EXPECT_EQ(funcId, 2);
+//    funcId = hook->findExecNameByAddr((void *) 3);
+//    EXPECT_EQ(funcId, 2);
 
 }
 

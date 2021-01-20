@@ -7,16 +7,23 @@
 #include <iostream>
 
 //Please comment fprintf clause when not debugging
+
 #define throwScalerException(msg) \
     fprintf(stderr, "Scalar Exception thrown @ %s:%d: %s\n", __FILE__, __LINE__,msg); \
-    throw ScalerException(msg, __FILE__, __LINE__);
+    throw ScalerException(msg,0, __FILE__, __LINE__);
+
+#define throwScalerExceptionWithCode(msg,code) \
+    fprintf(stderr, "Scalar Exception thrown @ %s:%d: %s\n", __FILE__, __LINE__,msg); \
+    throw ScalerException(msg,code, __FILE__, __LINE__);
 
 class ScalerException : std::runtime_error, Object {
 public:
     std::string info;
+    int code;
 
-    ScalerException(const std::string &info, const std::string &fileName, int lineNo) : runtime_error(info) {
+    ScalerException(const std::string &info,int code, const std::string &fileName, int lineNo) : runtime_error(info) {
         this->info = info;
+        this->code=code;
         this->fileName = fileName;
         this->lineNo = lineNo;
 

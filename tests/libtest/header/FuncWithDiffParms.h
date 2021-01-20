@@ -2,6 +2,7 @@
 #define LISTTEST_H
 
 #include "immintrin.h"
+#include <string>
 
 extern "C" {
 
@@ -30,11 +31,16 @@ void funcEverything(int e, int f,
                     __m512 z,
                     double n, int i, int j, int k);
 
+void *getFuncAddr(std::string funcName);
+
+void *findRdbg();
+
+void *findDYNAMIC();
+
 class A {
 public:
     static int asdf;
 };
-
 
 
 }

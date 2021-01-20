@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <util/tool/PMParser.h>
+#include <util/tool/ProcInfoParser.h>
 #include <gtest/gtest.h>
 #include <iostream>
 #include <util/tool/FileTool.h>
@@ -8,19 +8,18 @@
 using namespace std;
 using namespace scaler;
 TEST(PMParser, openPMMap) {
-    PMParser pmp;
+    PmParser_Linux pmp;
 }
 
 
 TEST(PMParser, parsePMMap) {
 
     //Use PMParser to extract /proc/self/map
-    PMParser pmp;
-    pmp.parsePMMap();
+    PmParser_Linux pmp;
 
     //Index entries by addr
 
-    std::map<void *, PMEntry> entryByAddrMap;
+    std::map<void *, PMEntry_Linux> entryByAddrMap;
     auto begIter = pmp.procMap.begin();
     while (begIter != pmp.procMap.end()) {
         auto &segVec = (*begIter).second;
@@ -52,6 +51,20 @@ TEST(PMParser, parsePMMap) {
         vector<size_t> splitIndexes = findStrSplit(line, ' ');
         //May miss path but other fields should be consistent
         ASSERT_TRUE(splitIndexes.size() >= 5 * 2);
+        //check if path is the same
+        if (splitIndexes.size() == 12) {
+            //Check if pathname is the same
+            EXPECT_EQ(curSegEntry.pathName, line.substr(splitIndexes[10], splitIndexes[11] - splitIndexes[10]));
+        } else if (splitIndexes.size() != 10) {
+            //# of entires must be 10 or 12.
+            ASSERT_TRUE(false);
+        }
+
+        if (curSegEntry.pathName[0] == '[') {
+            //skip, pathname starting with [ are subject to change
+            continue;
+        }
+
 
         //Check if address is the same
         EXPECT_EQ(curStartAddr, curSegEntry.addrStart);
@@ -82,19 +95,7 @@ TEST(PMParser, parsePMMap) {
         sprintf(str1, "%d", curSegEntry.inode);
         EXPECT_EQ(std::string(str1), line.substr(splitIndexes[8], splitIndexes[9] - splitIndexes[8]));
 
-        if (splitIndexes.size() == 12) {
-            //Check if pathname is the same
-            EXPECT_EQ(curSegEntry.pathName, line.substr(splitIndexes[10], splitIndexes[11] - splitIndexes[10]));
-        } else if (splitIndexes.size() != 10) {
-            //# of entires must be 10 or 12.
-            ASSERT_TRUE(false);
-        }
 
     }
 
 }
-
-
-//int main() {
-//    return 0;
-//}
