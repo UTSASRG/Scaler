@@ -10,6 +10,8 @@
 #include <exceptions/ScalerException.h>
 
 namespace scaler {
+    typedef ELFParser_Linux::ErrCode MyErrCode;
+
 
     ELFParser_Linux::ELFParser_Linux(const std::string elfPath) {
         this->elfPath = elfPath;
@@ -127,12 +129,22 @@ namespace scaler {
         return secNameVec;
     }
 
-    SecInfo ELFParser_Linux::getSecHdrByName(std::string targetSecName) {
+    ELFParser_Linux::SecInfo ELFParser_Linux::getSecHdrByName(std::string targetSecName) {
+        if (secNameIndexMap.count(targetSecName) == 0) {
+            std::stringstream ss;
+            ss << "Cannot find section " << targetSecName;
+            throwScalerExceptionWithCode(ss.str().c_str(), MyErrCode::SYMBOL_NOT_FOUND);
+        }
         return secNameIndexMap.at(targetSecName);
     }
 
 
-    std::vector<SegInfo> ELFParser_Linux::getProgHdrByType(ElfW(Word) type) {
+    std::vector<ELFParser_Linux::SegInfo> ELFParser_Linux::getProgHdrByType(ElfW(Word) type) {
+        if (segTypeIndexMap.count(type) == 0) {
+            std::stringstream ss;
+            ss << "Cannot find segment of type " << type;
+            throwScalerExceptionWithCode(ss.str().c_str(), MyErrCode::SYMBOL_NOT_FOUND);
+        }
         return segTypeIndexMap.at(type);
     }
 

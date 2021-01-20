@@ -16,6 +16,11 @@ namespace scaler {
     class ELFParser_Linux : Object {
 
     public:
+        enum ErrCode {
+            SYMBOL_NOT_FOUND=-1
+        };
+
+
         class SecInfo {
         public:
             size_t secId;
