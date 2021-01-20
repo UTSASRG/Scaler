@@ -29,7 +29,7 @@ namespace scaler {
 
         ~MemoryTool_Linux() override;
 
-    private:
+    protected:
         //Singeleton
         MemoryTool_Linux();
 

@@ -130,7 +130,7 @@ namespace scaler {
 
         ~PmParser_Linux() override;
 
-    private:
+    protected:
         //Process ID
         int procID;
 

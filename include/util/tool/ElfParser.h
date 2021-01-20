@@ -12,22 +12,22 @@
 #include <map>
 
 namespace scaler {
-    class SecInfo {
-    public:
-        size_t secId;
-        ElfW(Shdr) secHdr;
-    };
-
-    class SegInfo {
-    public:
-        size_t segId;
-        ElfW(Phdr) progHdr;
-    };
-
-
     //todo: Making ELF Parser a more complete class. (Make it possible to parse everything. ELF parser culd be a standalone module)
     class ELFParser_Linux : Object {
+
     public:
+        class SecInfo {
+        public:
+            size_t secId;
+            ElfW(Shdr) secHdr;
+        };
+
+        class SegInfo {
+        public:
+            size_t segId;
+            ElfW(Phdr) progHdr;
+        };
+
         //The path for current ELF file
         std::string elfPath;
 
@@ -71,7 +71,7 @@ namespace scaler {
         ~ELFParser_Linux() override;
 
 
-    private:
+    protected:
         FILE *file;
         ElfW(Ehdr) *elfHdr = nullptr; //ELF Header
         ElfW(Shdr) *secHdr = nullptr; //Secion Header
@@ -99,6 +99,7 @@ namespace scaler {
 
 
     };
+
 }
 #endif
 
