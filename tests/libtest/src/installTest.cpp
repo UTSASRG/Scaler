@@ -2,6 +2,8 @@
 #include <FuncWithDiffParms.h>
 #include <string>
 #include <link.h>
+#include "../../libInstalltest/header/installTest.h"
+
 
 extern "C" {
 
@@ -93,6 +95,5 @@ void *findBaseAddrInALibrary() {
 }
 
 int A::asdf = 1;
-
 
 

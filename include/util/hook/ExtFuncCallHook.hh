@@ -38,7 +38,7 @@ namespace scaler {
             std::map<size_t, ExtSym> hookedExtSymbol;
             std::map<size_t, ExtSym> allExtSymbol;
             std::map<std::string, size_t> funcIdMap;
-            std::vector<std::string> idFuncMap;
+            std::map<size_t,std::string> idFuncMap;
 
 
 

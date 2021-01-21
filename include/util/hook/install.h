@@ -6,7 +6,7 @@
 //    scaler::Hook *libPltHook = scaler::ExtFuncCallHook_Linux::getInst();
 //    libPltHook->install();
 //}
-//
+
 //__attribute__((destructor)) void libDeConstructor() {
 //    printf("DeConstructor\n");
 //}

@@ -189,9 +189,9 @@ namespace scaler {
                     newSymbol.symbolName = std::string(curELFImgInfo.dynStrTable + idx);
                     newSymbol.gotTableAddr = reinterpret_cast<void **>(curBaseAddr + curRelaPlt->r_offset);
 
-                    curELFImgInfo.idFuncMap.emplace_back(newSymbol.symbolName);
-                    curELFImgInfo.funcIdMap[newSymbol.symbolName] = curELFImgInfo.idFuncMap.size() - 1;
-                    curELFImgInfo.allExtSymbol[curELFImgInfo.funcIdMap.size() - 1] = newSymbol;
+                    curELFImgInfo.idFuncMap[i] = newSymbol.symbolName;
+                    curELFImgInfo.funcIdMap[newSymbol.symbolName] = i;
+                    curELFImgInfo.allExtSymbol[i] = newSymbol;
 
                 }
 
@@ -275,20 +275,23 @@ namespace scaler {
         }
 
         //Step3: Decide which to hook
-        //todo: implement API to decide which to hook. Here I'll only hook current executable.
+        //todo: Implement API to help user specify which function to hook. Here, I'll only hook current executable.
+
         std::vector<int> fileIdToHook;
         fileIdToHook.emplace_back(0);
+        fileIdToHook.emplace_back(9);
 
         //Step3: Build pseodo PLT
         for (int i = 0; i < fileIdToHook.size(); ++i) {
-            auto &curELFImgInfo = elfImgInfoMap.at(i);
+            auto &curELFImgInfo = elfImgInfoMap.at(fileIdToHook[i]);
 
             //Malloc mem area for pseodo plt
-            //todo: 18 is related to binary code. I should use a global config file to stroe it.
+            //todo: 18 is related to binary code. I should use a global config file to store it.
             curELFImgInfo.pseudoPlt = (uint8_t *) malloc(curELFImgInfo.allExtSymbol.size() * 18);
 
-            for (int funcId = 0; i < curELFImgInfo.idFuncMap.size(); ++i) {
-                auto &curExtSym = curELFImgInfo.allExtSymbol[i];
+            for (auto iter = curELFImgInfo.idFuncMap.begin(); iter != curELFImgInfo.idFuncMap.end(); ++iter) {
+                auto &funcId = iter->first;
+                auto &curExtSym = curELFImgInfo.allExtSymbol.at(funcId);
                 //Resole current address
                 curExtSym.funcAddr = *curExtSym.gotTableAddr;
 
@@ -302,13 +305,15 @@ namespace scaler {
 
         //todo: Also replace .plt
         //Step4: Replace .plt.sec
-        for (int fileID = 0; fileID < fileIdToHook.size(); ++fileID) {
-            auto &curELFImgInfo = elfImgInfoMap.at(fileID);
+        for (int i = 0; i < fileIdToHook.size(); ++i) {
+            auto &curELFImgInfo = elfImgInfoMap.at(fileIdToHook[i]);
 
-            for (int funcId = 0; fileID < curELFImgInfo.idFuncMap.size(); ++fileID) {
+            for (auto iter = curELFImgInfo.idFuncMap.begin(); iter != curELFImgInfo.idFuncMap.end(); ++iter) {
+                auto &funcId = iter->first;
+
                 auto &curSymbol = curELFImgInfo.allExtSymbol.at(funcId);
-                size_t symbolFileId=pmParser.findExecNameByAddr(curSymbol.funcAddr);
-                curELFImgInfo.realAddrResolved.emplace_back(symbolFileId!=fileID);
+                size_t symbolFileId = pmParser.findExecNameByAddr(curSymbol.funcAddr);
+                curELFImgInfo.realAddrResolved.emplace_back(symbolFileId != i);
 
                 curELFImgInfo.hookedExtSymbol[funcId] = curSymbol;
                 //pmParser.findExecNameByAddr()
@@ -578,9 +583,12 @@ void *cPreHookHanlderLinuxSec(int index, void *callerFuncAddr) {
     //todo: 16 is machine specific
     size_t funcId = ((ElfW(Addr) *) callerFuncAddr - (ElfW(Addr) *) pltSec) / 16;
 
-    auto &curSymbol = curElfImgInfo.hookedExtSymbol[funcId];
+    auto &curSymbol = curElfImgInfo.hookedExtSymbol.at(funcId);
 
     void *retOriFuncAddr = nullptr;
+
+    printf("\"%s\" in %s is called\n", curSymbol.symbolName.c_str(),
+           __extFuncCallHookPtr->pmParser.idFileMap[fileId].c_str());
 
     //__extFuncCallHookPtr->pmParser.printPM();
 
@@ -588,13 +596,14 @@ void *cPreHookHanlderLinuxSec(int index, void *callerFuncAddr) {
         void *curAddr = curSymbol.funcAddr;
         void *newAddr = *curSymbol.gotTableAddr;
         if (curAddr != newAddr) {
-            printf("Address is now resolved，replace hookedAddrs with correct value\n");
+            printf("\"%s\"'s address is now resolved，update record with the correct address\n",
+                   curSymbol.symbolName.c_str());
             //Update address and set it as correct address
             realAddrResolved[funcId] = true;
             curSymbol.funcAddr = newAddr;
             retOriFuncAddr = newAddr;
         } else {
-            printf("%s is not initialized, execute orignal PLT code\n", curSymbol.symbolName.c_str());
+            printf("\"%s\" is not initialized by linker, execute original PLT code\n", curSymbol.symbolName.c_str());
             //Execute original PLT function
             //todo: 18 depends on opCode array
             retOriFuncAddr = curElfImgInfo.pseudoPlt + funcId * 18;

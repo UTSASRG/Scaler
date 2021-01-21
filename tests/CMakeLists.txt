@@ -1,21 +1,25 @@
 # This cmake file builds
 project(Tests)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -ldl --verbose -znow -O0 -fPIE -fPIC -fno-access-control -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -ldl --verbose -zlazy -O0 -fPIE -fPIC -fno-access-control -std=c++11")
 
 # Improt google test
 add_subdirectory(googletest)
 
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
+
+
+
 # This library is used to test external funciton invocation
-add_library(FuncCallTest SHARED ./libtest/src/FuncWithDiffParms.cpp
+add_library(FuncCallTest SHARED libtest/src/installTest.cpp
         ./libtest/src/TenThousandFunc.cpp)
 target_include_directories(FuncCallTest PUBLIC ./libtest/header)
 
 # PltHook is used to comapre results
 add_library(KuBoPltHook ./plthook/plthook_elf.c)
 target_include_directories(KuBoPltHook PUBLIC ./plthook)
+
 
 
 # Build unittest examples for libhook
@@ -35,6 +39,11 @@ target_include_directories(TestExtSymbol PUBLIC ../libScalerHook/headers ./libte
 target_link_libraries(TestExtSymbol scalerhook KuBoPltHook FuncCallTest dl)
 
 
+add_library(InstallTest SHARED ./libInstalltest/src/installTest.cpp)
+target_include_directories(InstallTest PUBLIC  ./libInstalltest/header)
+target_link_libraries(InstallTest PUBLIC FuncCallTest)
+
 add_executable(TestInstall TestInstall.cpp)
 target_include_directories(TestInstall PUBLIC ./libtest/header)
-target_link_libraries(TestInstall scalerhook FuncCallTest dl)
+target_link_libraries(TestInstall scalerhook FuncCallTest InstallTest dl)
+
