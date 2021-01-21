@@ -26,6 +26,11 @@ int funcE(int a, int b, int c) {
     return 1;
 }
 
+void resolveSystemFunc() {
+    system("");
+    system("");
+    system("");
+}
 
 void funcEverything(int e, int f, structparm s, int g, int h, long double ld,
                     double m, __m256 y, __m512 z, double n, int i, int j, int k) {
@@ -49,6 +54,7 @@ void *getFuncAddr(std::string funcName) {
     } else if (funcName == "funcEverything") {
         return (void *) funcEverything;
     }
+
 
 }
 

@@ -29,10 +29,10 @@ namespace scaler {
 
 
     protected:
-        class HookedExtSym {
+        class ExtSym {
         public:
-            std::string name;
-            size_t id;
+            std::string symbolName;
+            void **gotTableAddr;
         };
 
         class ELFImgInfo {
@@ -45,22 +45,20 @@ namespace scaler {
             ElfW(Dyn) *_DYNAMICAddr = nullptr;
 
             std::vector<bool> realAddrResolved;
-            std::vector<void *> hookedAddrs;
-            std::vector<std::string> hookedFuncNames;
 
             uint8_t *pseudoPlt = nullptr;
 
-            std::vector<HookedExtSym> hookedExtFuncNames;
-
-            std::vector<std::string> allExtFuncNames;
-            std::vector<void*> gotTablePtr;
+            std::map<size_t, ExtSym> hookedExtSymbol;
+            std::map<size_t, ExtSym> allExtSymbol;
+            std::map<std::string, size_t> funcIdMap;
+            std::vector<std::string> idFuncMap;
 
 
             //todo: Check const for all variables
             ElfW(Rela) *relaPlt;
             ElfW(Xword) relaPltCnt;
-            const ElfW(Sym) * dynSymTable;
-            const char * dynStrTable;
+            const ElfW(Sym) *dynSymTable;
+            const char *dynStrTable;
             size_t dynStrSize;
         };
 
@@ -114,8 +112,6 @@ namespace scaler {
         ElfW(Dyn) *findDynEntryByTag(ElfW(Dyn) *dyn, ElfW(Sxword) tag);
 
         friend void *cPreHookHanlderLinuxSec(int index, void *callerFuncAddr);
-
-
 
 
     };

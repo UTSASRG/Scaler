@@ -16,6 +16,7 @@ void funcD(int a, int b, int c);
 
 int funcE(int a, int b, int c);
 
+void resolveSystemFunc();
 
 int funcF(int a, int b, int c);
 

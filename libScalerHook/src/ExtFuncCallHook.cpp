@@ -46,7 +46,7 @@ namespace scaler {
         //Get segment info from /proc/self/maps
         //Iterate through libraries
 
-        pmParser.printPM();
+        //pmParser.printPM();
 
         for (auto iter = pmParser.procMap.begin(); iter != pmParser.procMap.end(); ++iter) {
             auto &curFileName = iter->first;
@@ -124,8 +124,8 @@ namespace scaler {
                 assert(curELFImgInfo._DYNAMICAddr);
 
                 //Find Base address through _DYNAMICAddr
-                Dl_info info;
-                assert(dladdr(curELFImgInfo._DYNAMICAddr, &info) != 0);
+                //Dl_info info;
+                //assert(dladdr(curELFImgInfo._DYNAMICAddr, &info) != 0);
 
                 uint8_t *curBaseAddr = pmParser.fileBaseAddrMap[curFileiD];
 
@@ -150,7 +150,6 @@ namespace scaler {
                 curELFImgInfo.dynSymTable = (const ElfW(Sym) *) (curBaseAddr + dynsymDyn->d_un.d_ptr);
 
 
-                assert(dladdr(dynsymDyn, &info) != 0);
                 //printf("dynSymTable:%p %s\n", curELFImgInfo.dynSymTable, info.dli_fname);
                 const ElfW(Dyn) *strTabDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRTAB);
                 curELFImgInfo.dynStrTable = (const char *) (curBaseAddr + strTabDyn->d_un.d_ptr);
@@ -175,10 +174,16 @@ namespace scaler {
                     if (idx + 1 > curELFImgInfo.dynStrSize) {
                         throwScalerException("Too big section header string table index");
                     }
-                    printf("%s:%s\n", curFileName.c_str(), std::string(curELFImgInfo.dynStrTable + idx).c_str());
-                    curELFImgInfo.allExtFuncNames.emplace_back(std::string(curELFImgInfo.dynStrTable + idx));
-                    void **ptr2GotEntry = reinterpret_cast<void **>(curRelaPlt->r_offset);
-                    curELFImgInfo.gotTablePtr.emplace_back(ptr2GotEntry);
+                    //printf("%s:%s\n", curFileName.c_str(), std::string(curELFImgInfo.dynStrTable + idx).c_str());
+
+                    ExtSym newSymbol;
+                    newSymbol.symbolName = std::string(curELFImgInfo.dynStrTable + idx);
+                    newSymbol.gotTableAddr = reinterpret_cast<void **>(curBaseAddr + curRelaPlt->r_offset);
+
+                    curELFImgInfo.idFuncMap.emplace_back(newSymbol.symbolName);
+                    curELFImgInfo.funcIdMap[newSymbol.symbolName] = curELFImgInfo.idFuncMap.size() - 1;
+                    curELFImgInfo.allExtSymbol[curELFImgInfo.funcIdMap.size() - 1] = newSymbol;
+
                 }
 
             } catch (const ScalerException &e) {
@@ -356,46 +361,47 @@ namespace scaler {
     }
 
     void *cPreHookHanlderLinuxSec(int index, void *callerFuncAddr) {
-        size_t fileId = __extFuncCallHookPtr->pmParser.findExecNameByAddr(callerFuncAddr);
-        auto &curElfImgInfo = __extFuncCallHookPtr->elfImgInfoMap[fileId];
-        auto &pltSec = curElfImgInfo.pltStartAddr;
-        auto &realAddrResolved = curElfImgInfo.realAddrResolved;
-        auto &hookedAddrs = curElfImgInfo.hookedAddrs;
-        auto &curGOT = curElfImgInfo.gotTablePtr;
-        auto &hookedNames = curElfImgInfo.hookedFuncNames;
-
-
-        callerFuncAddr = reinterpret_cast<void *>(uint64_t(callerFuncAddr) - 0xD);
-        //todo: 16 is machine specific
-        size_t funcId = ((ElfW(Addr) *) callerFuncAddr - (ElfW(Addr) *) pltSec) / 16;
-
-        void *retOriFuncAddr = nullptr;
-
-
-        if (!realAddrResolved[funcId]) {
-            if (hookedAddrs.at(funcId) != curGOT[funcId]) {
-                printf("Address is now resolved，replace hookedAddrs with correct value\n");
-                //Update address and set it as correct address
-                realAddrResolved.at(funcId) = true;
-                hookedAddrs.at(funcId) = curGOT[funcId];
-                retOriFuncAddr = hookedAddrs.at(funcId);
-            } else {
-                printf("%s is not initialized, execute orignal PLT code\n", hookedNames[funcId].c_str());
-                //Execute original PLT function
-                //todo: 18 depends on opCode array
-                retOriFuncAddr = curElfImgInfo.pseudoPlt + funcId * 18;
-            }
-        }
-
-        if (Hook::SCALER_HOOK_IN_HOOK_HANDLER) {
-            return retOriFuncAddr;
-        }
-
-        //Starting from here, we could call external symbols and it won't cause
-        Hook::SCALER_HOOK_IN_HOOK_HANDLER = true;
-        //Currently, I won't load plthook library
-        Hook::SCALER_HOOK_IN_HOOK_HANDLER = false;
-        return hookedAddrs.at(funcId);
+//        size_t fileId = __extFuncCallHookPtr->pmParser.findExecNameByAddr(callerFuncAddr);
+//        auto &curElfImgInfo = __extFuncCallHookPtr->elfImgInfoMap[fileId];
+//        auto &pltSec = curElfImgInfo.pltStartAddr;
+//        auto &realAddrResolved = curElfImgInfo.realAddrResolved;
+//        auto &hookedAddrs = curElfImgInfo.hookedExtSymbol;
+//        auto &curGOT = curElfImgInfo.gotTablePtr;
+//        auto &hookedNames = curElfImgInfo.hookedFuncNames;
+//
+//
+//        callerFuncAddr = reinterpret_cast<void *>(uint64_t(callerFuncAddr) - 0xD);
+//        //todo: 16 is machine specific
+//        size_t funcId = ((ElfW(Addr) *) callerFuncAddr - (ElfW(Addr) *) pltSec) / 16;
+//
+//        void *retOriFuncAddr = nullptr;
+//
+//
+//        if (!realAddrResolved[funcId]) {
+//            if (hookedAddrs.at(funcId) != curGOT[funcId]) {
+//                printf("Address is now resolved，replace hookedAddrs with correct value\n");
+//                //Update address and set it as correct address
+//                realAddrResolved.at(funcId) = true;
+//                hookedAddrs.at(funcId) = curGOT[funcId];
+//                retOriFuncAddr = hookedAddrs.at(funcId);
+//            } else {
+//                printf("%s is not initialized, execute orignal PLT code\n", hookedNames[funcId].c_str());
+//                //Execute original PLT function
+//                //todo: 18 depends on opCode array
+//                retOriFuncAddr = curElfImgInfo.pseudoPlt + funcId * 18;
+//            }
+//        }
+//
+//        if (Hook::SCALER_HOOK_IN_HOOK_HANDLER) {
+//            return retOriFuncAddr;
+//        }
+//
+//        //Starting from here, we could call external symbols and it won't cause
+//        Hook::SCALER_HOOK_IN_HOOK_HANDLER = true;
+//        //Currently, I won't load plthook library
+//        Hook::SCALER_HOOK_IN_HOOK_HANDLER = false;
+//        return hookedAddrs.at(funcId);
+        return nullptr;
     }
 
 }

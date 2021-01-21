@@ -16,7 +16,7 @@ namespace scaler {
     PmParser_Linux::PmParser_Linux(int pid) : procID(pid) {
         openPMMap();
         parsePMMap();
-        parseDLPhdr();
+        //parseDLPhdr();
     }
 
     void PmParser_Linux::openPMMap() {
