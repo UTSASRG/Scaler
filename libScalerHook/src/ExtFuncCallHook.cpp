@@ -41,10 +41,12 @@ namespace scaler {
 
 
     void ExtFuncCallHook_Linux::locateRequiredSecAndSeg() {
+        //todo: this function is too long.
+
         //Get segment info from /proc/self/maps
         //Iterate through libraries
 
-        //pmParser.printPM();
+        pmParser.printPM();
 
         for (auto iter = pmParser.procMap.begin(); iter != pmParser.procMap.end(); ++iter) {
             auto &curFileName = iter->first;
@@ -132,41 +134,39 @@ namespace scaler {
                 const ElfW(Dyn) *dynsymDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_SYMTAB);
                 curELFImgInfo.dynSymTable = (const ElfW(Sym) *) (dynsymDyn->d_un.d_ptr);
                 if (pmParser.findExecNameByAddr((void *) curELFImgInfo.dynSymTable) == -1) {
+                    printf("dynSymTable adds baseAddr\n");
                     curELFImgInfo.dynSymTable = (const ElfW(Sym) *) (curBaseAddr + dynsymDyn->d_un.d_ptr);
+                } else {
+                    printf("dynSymTable doesn't need baseAddr\n");
                 }
 
                 //assert(dladdr(dynsymDyn, &info) != 0);
                 //printf("dynSymTable:%p %s\n", curELFImgInfo.dynSymTable, info.dli_fname);
 
                 const ElfW(Dyn) *strTabDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRTAB);
-                //std::string strTabDynFileName = pmParser.idFileMap[pmParser.findExecNameByAddr((void *) strTabDyn)];
-                //assert(dladdr(strTabDyn, &info) != 0);
-                //printf("strTabDyn:%p %s\n", strTabDyn, info.dli_fname);
                 curELFImgInfo.dynStrTable = (const char *) (strTabDyn->d_un.d_ptr);
                 if (pmParser.findExecNameByAddr((void *) curELFImgInfo.dynStrTable) == -1) {
+                    printf("dynStrTable adds baseAddr\n");
                     curELFImgInfo.dynStrTable = (const char *) (curBaseAddr + strTabDyn->d_un.d_ptr);
-                }
+                } else {
+                    printf("dynStrTable doesn't need baseAddr\n");
+                };
 
 
                 const ElfW(Dyn) *strSizeDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRSZ);
-                //std::string strSizeDynFileName = pmParser.idFileMap[pmParser.findExecNameByAddr((void *) strSizeDyn)];
                 curELFImgInfo.dynStrSize = strSizeDyn->d_un.d_val;
-                //assert(dladdr(strSizeDyn, &info) != 0);
-                //printf("dynStrTable:%p %s\n", curELFImgInfo.dynStrTable, info.dli_fname);
 
                 ElfW(Dyn) *relaPltDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_JMPREL);
-                //assert(relaPltDyn);
-                //assert(dladdr(relaPltDyn, &info) != 0);
-                //std::string relaPltDynFileName = pmParser.idFileMap[pmParser.findExecNameByAddr((void *) relaPltDyn)];
-                curELFImgInfo.relaPlt = (ElfW(Rela) *) ( relaPltDyn->d_un.d_ptr);
-                //printf("relaPlt:%p %s\n", curELFImgInfo.relaPlt, info.dli_fname);
+                curELFImgInfo.relaPlt = (ElfW(Rela) *) (relaPltDyn->d_un.d_ptr);
                 if (pmParser.findExecNameByAddr((void *) curELFImgInfo.relaPlt) == -1) {
+                    printf("relaPlt adds baseAddr\n");
                     curELFImgInfo.relaPlt = (ElfW(Rela) *) (curBaseAddr + relaPltDyn->d_un.d_ptr);
+                } else {
+                    printf("relaPlt doesn't need baseAddr\n");
                 }
 
                 const ElfW(Dyn) *relaSizeDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_PLTRELSZ);
                 curELFImgInfo.relaPltCnt = relaSizeDyn->d_un.d_val / sizeof(ElfW(Rela));
-
 
                 for (size_t i = 0; i < curELFImgInfo.relaPltCnt; ++i) {
                     ElfW(Rela) *curRelaPlt = curELFImgInfo.relaPlt + i;
@@ -178,7 +178,7 @@ namespace scaler {
                     if (idx + 1 > curELFImgInfo.dynStrSize) {
                         throwScalerException("Too big section header string table index");
                     }
-                    printf("%s:%s\n", curFileName.c_str(), std::string(curELFImgInfo.dynStrTable + idx).c_str());
+                    //printf("%s:%s\n", curFileName.c_str(), std::string(curELFImgInfo.dynStrTable + idx).c_str());
                     curELFImgInfo.allExtFuncNames.emplace_back(std::string(curELFImgInfo.dynStrTable + idx));
                     void **ptr2GotEntry = reinterpret_cast<void **>(curRelaPlt->r_offset);
                     curELFImgInfo.gotTablePtr.emplace_back(ptr2GotEntry);

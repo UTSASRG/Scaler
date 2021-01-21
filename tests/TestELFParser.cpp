@@ -10,6 +10,8 @@
 using namespace std;
 using namespace scaler;
 
+//todo; Put old test code to tests folder
+
 vector<string> getFuncNameRetByKuboPlthook(plthook_t *plthook) {
     unsigned int pos = 0;
     const char *name;
