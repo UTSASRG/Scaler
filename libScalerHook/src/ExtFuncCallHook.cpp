@@ -131,39 +131,29 @@ namespace scaler {
 
                 printf("curFileName :%s curBaseAddr:%p\n", curFileName.c_str(), curBaseAddr);
 
+                if (curFileName == pmParser.curExecFileName
+                || curFileName == "/usr/lib/x86_64-linux-gnu/ld-2.31.so"
+                || curFileName == "/lib/x86_64-linux-gnu/libc.so.6"
+                || curFileName == "/usr/lib/x86_64-linux-gnu/libc-2.31.so"
+                || curFileName == "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28")
+                    curBaseAddr = 0; //Executable use absolute address
+
+
+
                 const ElfW(Dyn) *dynsymDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_SYMTAB);
-                curELFImgInfo.dynSymTable = (const ElfW(Sym) *) (dynsymDyn->d_un.d_ptr);
-                if (pmParser.findExecNameByAddr((void *) curELFImgInfo.dynSymTable) == -1) {
-                    printf("dynSymTable adds baseAddr\n");
-                    curELFImgInfo.dynSymTable = (const ElfW(Sym) *) (curBaseAddr + dynsymDyn->d_un.d_ptr);
-                } else {
-                    printf("dynSymTable doesn't need baseAddr\n");
-                }
+                curELFImgInfo.dynSymTable = (const ElfW(Sym) *) (curBaseAddr + dynsymDyn->d_un.d_ptr);
 
                 //assert(dladdr(dynsymDyn, &info) != 0);
-                //printf("dynSymTable:%p %s\n", curELFImgInfo.dynSymTable, info.dli_fname);
-
+                printf("dynSymTable:%p %s\n", curELFImgInfo.dynSymTable, info.dli_fname);
                 const ElfW(Dyn) *strTabDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRTAB);
-                curELFImgInfo.dynStrTable = (const char *) (strTabDyn->d_un.d_ptr);
-                if (pmParser.findExecNameByAddr((void *) curELFImgInfo.dynStrTable) == -1) {
-                    printf("dynStrTable adds baseAddr\n");
-                    curELFImgInfo.dynStrTable = (const char *) (curBaseAddr + strTabDyn->d_un.d_ptr);
-                } else {
-                    printf("dynStrTable doesn't need baseAddr\n");
-                };
+                curELFImgInfo.dynStrTable = (const char *) (curBaseAddr + strTabDyn->d_un.d_ptr);
 
 
                 const ElfW(Dyn) *strSizeDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRSZ);
                 curELFImgInfo.dynStrSize = strSizeDyn->d_un.d_val;
 
                 ElfW(Dyn) *relaPltDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_JMPREL);
-                curELFImgInfo.relaPlt = (ElfW(Rela) *) (relaPltDyn->d_un.d_ptr);
-                if (pmParser.findExecNameByAddr((void *) curELFImgInfo.relaPlt) == -1) {
-                    printf("relaPlt adds baseAddr\n");
-                    curELFImgInfo.relaPlt = (ElfW(Rela) *) (curBaseAddr + relaPltDyn->d_un.d_ptr);
-                } else {
-                    printf("relaPlt doesn't need baseAddr\n");
-                }
+                curELFImgInfo.relaPlt = (ElfW(Rela) *) (curBaseAddr + relaPltDyn->d_un.d_ptr);
 
                 const ElfW(Dyn) *relaSizeDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_PLTRELSZ);
                 curELFImgInfo.relaPltCnt = relaSizeDyn->d_un.d_val / sizeof(ElfW(Rela));
