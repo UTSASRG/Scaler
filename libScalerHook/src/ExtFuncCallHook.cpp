@@ -127,24 +127,31 @@ namespace scaler {
                 Dl_info info;
                 assert(dladdr(curELFImgInfo._DYNAMICAddr, &info) != 0);
 
-                uint8_t *curBaseAddr = static_cast<uint8_t *>(info.dli_fbase);
+                uint8_t *curBaseAddr = pmParser.fileBaseAddrMap[curFileiD];
 
-                printf("curFileName :%s curBaseAddr:%p\n", curFileName.c_str(), curBaseAddr);
-
-                if (curFileName == pmParser.curExecFileName
-                || curFileName == "/usr/lib/x86_64-linux-gnu/ld-2.31.so"
-                || curFileName == "/lib/x86_64-linux-gnu/libc.so.6"
-                || curFileName == "/usr/lib/x86_64-linux-gnu/libc-2.31.so"
-                || curFileName == "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28")
-                    curBaseAddr = 0; //Executable use absolute address
-
+                //printf("curFileName :%s curBaseAddr:%p\n", curFileName.c_str(), curBaseAddr);
 
 
                 const ElfW(Dyn) *dynsymDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_SYMTAB);
+
+                //Defermine whether current elf file use relative address or absolute address
+
+
+                if (pmParser.findExecNameByAddr(curBaseAddr + dynsymDyn->d_un.d_ptr) == curFileiD) {
+                    //Relative
+                } else if (pmParser.findExecNameByAddr((void *) dynsymDyn->d_un.d_ptr) == curFileiD) {
+                    //Absolute
+                    curBaseAddr = 0;
+                } else {
+                    assert(false);
+                }
+
+
                 curELFImgInfo.dynSymTable = (const ElfW(Sym) *) (curBaseAddr + dynsymDyn->d_un.d_ptr);
 
-                //assert(dladdr(dynsymDyn, &info) != 0);
-                printf("dynSymTable:%p %s\n", curELFImgInfo.dynSymTable, info.dli_fname);
+
+                assert(dladdr(dynsymDyn, &info) != 0);
+                //printf("dynSymTable:%p %s\n", curELFImgInfo.dynSymTable, info.dli_fname);
                 const ElfW(Dyn) *strTabDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRTAB);
                 curELFImgInfo.dynStrTable = (const char *) (curBaseAddr + strTabDyn->d_un.d_ptr);
 
@@ -168,7 +175,7 @@ namespace scaler {
                     if (idx + 1 > curELFImgInfo.dynStrSize) {
                         throwScalerException("Too big section header string table index");
                     }
-                    //printf("%s:%s\n", curFileName.c_str(), std::string(curELFImgInfo.dynStrTable + idx).c_str());
+                    printf("%s:%s\n", curFileName.c_str(), std::string(curELFImgInfo.dynStrTable + idx).c_str());
                     curELFImgInfo.allExtFuncNames.emplace_back(std::string(curELFImgInfo.dynStrTable + idx));
                     void **ptr2GotEntry = reinterpret_cast<void **>(curRelaPlt->r_offset);
                     curELFImgInfo.gotTablePtr.emplace_back(ptr2GotEntry);

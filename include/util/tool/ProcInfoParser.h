@@ -104,7 +104,8 @@ namespace scaler {
         std::map<std::string, std::vector<PMEntry_Linux>> procMap;
         // Used to find which fileID  floor(i/2) the corresponding fileID of pointer addrFileMap[i]
         // This array should be sorted by starting address for fast lookup
-        std::vector<PMEntry_Linux> sortedSegments;
+        std::vector<std::pair<size_t,PMEntry_Linux>> sortedSegments;
+
 
         //This will be current executable name
         std::string curExecFileName;
@@ -152,15 +153,16 @@ namespace scaler {
          */
         void parsePMMap();
 
+        //todo: Build a library dependency graph
 
         /**
          * /proc/{pid}/maps only tells the actual loading address and permission of a segment.
          * However, relocation table entries are relative to a base address
          * To get the real address we have to parse it seperately.
          */
-        void parseDLPhdr();
+        //void parseDLPhdr();
 
-        friend int dlCallback(struct dl_phdr_info *info, size_t size, void *data);
+        //friend int dlCallback(struct dl_phdr_info *info, size_t size, void *data);
 
     };
 }

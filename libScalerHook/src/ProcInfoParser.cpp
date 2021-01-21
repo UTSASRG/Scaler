@@ -43,7 +43,6 @@ namespace scaler {
         if (file.is_open()) {
             std::string line;
             std::string lastPathname = "";
-
             while (std::getline(file, line)) {
                 PMEntry_Linux newEntry;
 
@@ -78,26 +77,36 @@ namespace scaler {
                 newEntry.isE = (perm[2] == 'x');
                 newEntry.isP = (perm[3] == 'p');
 
+
+                if (fileIDMap.count(newEntry.pathName) == 0) {
+                    //New File, add it to fileId idFile map. Fill it's starting address as base address
+                    idFileMap.emplace_back(newEntry.pathName);
+                    fileIDMap[newEntry.pathName] = idFileMap.size() - 1;
+                    fileBaseAddrMap[idFileMap.size() - 1] = (uint8_t *) (newEntry.addrStart);
+                }
+
                 //Map pathname to PmEntry for easier lookup
                 procMap[newEntry.pathName].emplace_back(newEntry);
 
-                sortedSegments.emplace_back(newEntry);
+                sortedSegments.emplace_back(std::make_pair(idFileMap.size() - 1, newEntry));
             }
             file.close();
         }
         //Sort sortedSegments by starting address
-        std::sort(sortedSegments.begin(), sortedSegments.end(), [](const PMEntry_Linux &lhs, const PMEntry_Linux &rhs) {
-            return lhs.addrStart < rhs.addrStart;
-        });
+        std::sort(sortedSegments.begin(), sortedSegments.end(),
+                  [](const std::pair<size_t, PMEntry_Linux> &lhs, const std::pair<size_t, PMEntry_Linux> &rhs) {
+                      return (ElfW(Addr)) lhs.second.addrStart < (ElfW(Addr)) rhs.second.addrStart;
+                  });
+
 
         //Store entries name and it's id for faster lookup
-        auto procMapIter = procMap.begin();
-        for (int i = 0; i < procMap.size(); ++i) {
-            auto &fileName = procMapIter->first;
-            fileIDMap[fileName] = i;
-            idFileMap.emplace_back(fileName);
-            ++procMapIter;
-        }
+        //auto procMapIter = procMap.begin();
+        //for (int i = 0; i < procMap.size(); ++i) {
+        //    auto &fileName = procMapIter->first;
+        //    fileIDMap[fileName] = i;
+        //    idFileMap.emplace_back(fileName);
+        //    ++procMapIter;
+        //}
 
 
     }
@@ -127,43 +136,44 @@ namespace scaler {
         //Since sortedSegments are sorted by starting address and all address range are not overlapping.
         //We could use binary search to lookup addr in this array.
 
-
         //Binary search segAddrFileMap
-        long lo = 0, hi = procMap.size(), md;
+        long lo = 0, hi = sortedSegments.size(), md;
         //[lo,hi) to prevent underflow
         while (lo < hi - 1) {
             md = (lo + hi) / 2;
-            if (sortedSegments[md].addrStart > addr) {
+
+            if (sortedSegments[md].second.addrStart > addr) {
                 hi = md;
             } else {
-                lo = md + 1;
+                lo = md;
             }
+
         }
 
-        if (sortedSegments[lo].addrStart < addr && addr < sortedSegments[lo].addrEnd) {
-            return lo;
+        if (sortedSegments[lo].second.addrStart <= addr && addr <= sortedSegments[lo].second.addrEnd) {
+            return sortedSegments[lo].first;
         } else {
             return -1;
         }
     }
 
-    int dlCallback(struct dl_phdr_info *info, size_t size, void *data) {
-        PmParser_Linux *pmParser = (PmParser_Linux *) data;
-
-        if (pmParser->fileIDMap.count(info->dlpi_name) == 0) {
-            return 0;
-        }
-        size_t fileId = pmParser->fileIDMap.at(info->dlpi_name);
-        //pmParser->fileBaseAddrMap[fileId] = reinterpret_cast<uint8_t *>(info->dlpi_addr);
-        printf("Base addr loaded for %s is %p\n", info->dlpi_name, info->dlpi_addr);
-        return 0;
-    }
-
-    void PmParser_Linux::parseDLPhdr() {
-        //printPM();
-
-        dl_iterate_phdr(dlCallback, this);
-    }
+//    int dlCallback(struct dl_phdr_info *info, size_t size, void *data) {
+//        PmParser_Linux *pmParser = (PmParser_Linux *) data;
+//
+//        if (pmParser->fileIDMap.count(info->dlpi_name) == 0) {
+//            return 0;
+//        }
+//        size_t fileId = pmParser->fileIDMap.at(info->dlpi_name);
+//        //pmParser->fileBaseAddrMap[fileId] = reinterpret_cast<uint8_t *>(info->dlpi_addr);
+//        printf("Base addr loaded for %s is %p\n", info->dlpi_name, info->dlpi_addr);
+//        return 0;
+//    }
+//
+//    void PmParser_Linux::parseDLPhdr() {
+//        //printPM();
+//
+//        dl_iterate_phdr(dlCallback, this);
+//    }
 
 
 }
