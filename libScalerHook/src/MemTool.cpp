@@ -22,9 +22,8 @@ namespace scaler {
         void *startPtrBound = GET_PAGE_BOUND(startPtr, pageSize);
         void *endPtrBound = GET_PAGE_BOUND(endPtr, pageSize);
 
-        if (mprotect(startPtrBound,
-                     (ElfW(Addr) *) endPtrBound - (ElfW(Addr) *) startPtrBound,
-                     prem) != 0) {
+        //todo:(uint8_t *) endPtrBound - (uint8_t  *) startPtrBound,
+        if (mprotect(startPtrBound, 1024, prem) != 0) {
             std::stringstream ss;
             ss << "Could not change the process memory permission at " << startPtrBound << " - " << endPtrBound;
             throwScalerException(ss.str().c_str());

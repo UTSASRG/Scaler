@@ -9,7 +9,7 @@ add_subdirectory(googletest)
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
 # This library is used to test external funciton invocation
-add_library(FuncCallTest  SHARED ./libtest/src/FuncWithDiffParms.cpp
+add_library(FuncCallTest SHARED ./libtest/src/FuncWithDiffParms.cpp
         ./libtest/src/TenThousandFunc.cpp)
 target_include_directories(FuncCallTest PUBLIC ./libtest/header)
 
@@ -35,4 +35,6 @@ target_include_directories(TestExtSymbol PUBLIC ../libScalerHook/headers ./libte
 target_link_libraries(TestExtSymbol scalerhook KuBoPltHook FuncCallTest dl)
 
 
-
+add_executable(TestInstall TestInstall.cpp)
+target_include_directories(TestInstall PUBLIC ./libtest/header)
+target_link_libraries(TestInstall scalerhook FuncCallTest dl)

@@ -14,25 +14,12 @@ namespace scaler {
 
 
     class ExtFuncCallHook_Linux : public Hook {
-
     public:
-        void install() override;
-
-        void uninstall() override;
-
-
-        static ExtFuncCallHook_Linux *getInst();
-
-        ExtFuncCallHook_Linux(ExtFuncCallHook_Linux &) = delete;
-
-        ExtFuncCallHook_Linux(ExtFuncCallHook_Linux &&) = delete;
-
-
-    protected:
         class ExtSym {
         public:
             std::string symbolName;
             void **gotTableAddr;
+            void *funcAddr;
         };
 
         class ELFImgInfo {
@@ -54,20 +41,38 @@ namespace scaler {
             std::vector<std::string> idFuncMap;
 
 
+
             //todo: Check const for all variables
             ElfW(Rela) *relaPlt;
             ElfW(Xword) relaPltCnt;
             const ElfW(Sym) *dynSymTable;
             const char *dynStrTable;
             size_t dynStrSize;
+
+            uint8_t *baseAddr;
         };
+
+        void install() override;
+
+        void uninstall() override;
+
+        void updateGotAddr(ELFImgInfo& curELFImgInfo,size_t funcID);
+
+        static ExtFuncCallHook_Linux *getInst();
+
+        ExtFuncCallHook_Linux(ExtFuncCallHook_Linux &) = delete;
+
+        ExtFuncCallHook_Linux(ExtFuncCallHook_Linux &&) = delete;
+
+
+        PmParser_Linux pmParser;
+        std::map<size_t, ELFImgInfo> elfImgInfoMap;
+    protected:
 
 
         static ExtFuncCallHook_Linux *instance; //Singleton
 
-        std::map<size_t, ELFImgInfo> elfImgInfoMap; //Map file id with it's own ELFImgInfo struct
-
-        PmParser_Linux pmParser;
+        //Map file id with it's own ELFImgInfo struct
 
         /**
          * Prohibit initialization

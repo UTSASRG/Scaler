@@ -2,6 +2,7 @@
 #define SCALER_HOOK_HH
 
 #include <type/Object.hpp>
+#include <cstdio>
 
 namespace scaler {
     class Hook : Object {

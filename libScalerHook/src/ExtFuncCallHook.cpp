@@ -15,6 +15,11 @@
 #include <util/tool/MemTool.h>
 //#include "FileTool.h"
 
+void __attribute__((naked)) asmHookHandlerSec();
+
+void *cPreHookHanlderLinuxSec(int index, void *callerFuncAddr);
+
+
 namespace scaler {
 
 #define PUSHXMM(ArgumentName) \
@@ -33,6 +38,7 @@ namespace scaler {
 #define POP64bits(ArgumentName) \
 "movdqu  (%rsp),%"#ArgumentName"\n\t"\
 "addq $16,%rsp\n\t"
+
 
     //todo: ElfW is not correct. Because types are determined by the type of ELF file
     //todo: rather than the type of the machine
@@ -53,6 +59,7 @@ namespace scaler {
             auto &pmEntries = iter->second;
             size_t curFileiD = pmParser.fileIDMap[curFileName];
             auto &curELFImgInfo = elfImgInfoMap[curFileiD];
+            curELFImgInfo.fileName = curFileName;
 
             try {
                 /**
@@ -128,6 +135,7 @@ namespace scaler {
                 //assert(dladdr(curELFImgInfo._DYNAMICAddr, &info) != 0);
 
                 uint8_t *curBaseAddr = pmParser.fileBaseAddrMap[curFileiD];
+                curELFImgInfo.baseAddr = curBaseAddr;
 
                 //printf("curFileName :%s curBaseAddr:%p\n", curFileName.c_str(), curBaseAddr);
 
@@ -142,6 +150,7 @@ namespace scaler {
                 } else if (pmParser.findExecNameByAddr((void *) dynsymDyn->d_un.d_ptr) == curFileiD) {
                     //Absolute
                     curBaseAddr = 0;
+                    curELFImgInfo.baseAddr = 0;
                 } else {
                     assert(false);
                 }
@@ -263,16 +272,54 @@ namespace scaler {
             if (curELFImgInfo.pltSecStartAddr)
                 memTool->adjustMemPerm(curELFImgInfo.pltSecStartAddr, curELFImgInfo.pltSecEndAddr,
                                        PROT_READ | PROT_WRITE | PROT_EXEC);
+        }
 
+        //Step3: Decide which to hook
+        //todo: implement API to decide which to hook. Here I'll only hook current executable.
+        std::vector<int> fileIdToHook;
+        fileIdToHook.emplace_back(0);
+
+        //Step3: Build pseodo PLT
+        for (int i = 0; i < fileIdToHook.size(); ++i) {
+            auto &curELFImgInfo = elfImgInfoMap.at(i);
+
+            //Malloc mem area for pseodo plt
+            //todo: 18 is related to binary code. I should use a global config file to stroe it.
+            curELFImgInfo.pseudoPlt = (uint8_t *) malloc(curELFImgInfo.allExtSymbol.size() * 18);
+
+            for (int funcId = 0; i < curELFImgInfo.idFuncMap.size(); ++i) {
+                auto &curExtSym = curELFImgInfo.allExtSymbol[i];
+                //Resole current address
+                curExtSym.funcAddr = *curExtSym.gotTableAddr;
+
+                //Allocate plt table
+                auto binCodeArr = fillDestAddr2PseudoPltCode(funcId, curELFImgInfo.pltStartAddr);
+                //Copy array
+                memcpy(curELFImgInfo.pseudoPlt + 18 * funcId, binCodeArr.data(), 18);
+            }
 
         }
 
+        //todo: Also replace .plt
+        //Step4: Replace .plt.sec
+        for (int fileID = 0; fileID < fileIdToHook.size(); ++fileID) {
+            auto &curELFImgInfo = elfImgInfoMap.at(fileID);
 
-        //Step3: Decide which to hook
+            for (int funcId = 0; fileID < curELFImgInfo.idFuncMap.size(); ++fileID) {
+                auto &curSymbol = curELFImgInfo.allExtSymbol.at(funcId);
+                size_t symbolFileId=pmParser.findExecNameByAddr(curSymbol.funcAddr);
+                curELFImgInfo.realAddrResolved.emplace_back(symbolFileId!=fileID);
 
+                curELFImgInfo.hookedExtSymbol[funcId] = curSymbol;
+                //pmParser.findExecNameByAddr()
 
+                auto binCodeArr = fillDestAddr2HookCode((void *) asmHookHandlerSec);
+                //Replace PLT
+                //todo: 16 is bin code dependent
+                memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * funcId, binCodeArr.data(), 16);
+            }
 
-        //Step3: Replace PLT
+        }
 
     }
 
@@ -360,49 +407,11 @@ namespace scaler {
         return binCodeArr;
     }
 
-    void *cPreHookHanlderLinuxSec(int index, void *callerFuncAddr) {
-//        size_t fileId = __extFuncCallHookPtr->pmParser.findExecNameByAddr(callerFuncAddr);
-//        auto &curElfImgInfo = __extFuncCallHookPtr->elfImgInfoMap[fileId];
-//        auto &pltSec = curElfImgInfo.pltStartAddr;
-//        auto &realAddrResolved = curElfImgInfo.realAddrResolved;
-//        auto &hookedAddrs = curElfImgInfo.hookedExtSymbol;
-//        auto &curGOT = curElfImgInfo.gotTablePtr;
-//        auto &hookedNames = curElfImgInfo.hookedFuncNames;
-//
-//
-//        callerFuncAddr = reinterpret_cast<void *>(uint64_t(callerFuncAddr) - 0xD);
-//        //todo: 16 is machine specific
-//        size_t funcId = ((ElfW(Addr) *) callerFuncAddr - (ElfW(Addr) *) pltSec) / 16;
-//
-//        void *retOriFuncAddr = nullptr;
-//
-//
-//        if (!realAddrResolved[funcId]) {
-//            if (hookedAddrs.at(funcId) != curGOT[funcId]) {
-//                printf("Address is now resolved，replace hookedAddrs with correct value\n");
-//                //Update address and set it as correct address
-//                realAddrResolved.at(funcId) = true;
-//                hookedAddrs.at(funcId) = curGOT[funcId];
-//                retOriFuncAddr = hookedAddrs.at(funcId);
-//            } else {
-//                printf("%s is not initialized, execute orignal PLT code\n", hookedNames[funcId].c_str());
-//                //Execute original PLT function
-//                //todo: 18 depends on opCode array
-//                retOriFuncAddr = curElfImgInfo.pseudoPlt + funcId * 18;
-//            }
-//        }
-//
-//        if (Hook::SCALER_HOOK_IN_HOOK_HANDLER) {
-//            return retOriFuncAddr;
-//        }
-//
-//        //Starting from here, we could call external symbols and it won't cause
-//        Hook::SCALER_HOOK_IN_HOOK_HANDLER = true;
-//        //Currently, I won't load plthook library
-//        Hook::SCALER_HOOK_IN_HOOK_HANDLER = false;
-//        return hookedAddrs.at(funcId);
-        return nullptr;
+    void ExtFuncCallHook_Linux::updateGotAddr(ELFImgInfo &curELFImgInfo, size_t funcID) {
+
+
     }
+
 
 }
 
@@ -509,8 +518,6 @@ namespace scaler {
 //    IMPL_ASMHANDLER(Sec)
 //    }
 
-void *ptr2ScalerPreHook = (void *) scaler::cPreHookHanlderLinuxSec;
-
 //todo: This function is machine specific
 //todo: Binary analysis and support after hook
 void __attribute__((naked)) asmHookHandlerSec() {
@@ -535,7 +542,7 @@ void __attribute__((naked)) asmHookHandlerSec() {
 
     "movq %r15,%rsi\n\t" //Pass PLT call address to cPreHookHanlderLinux
     "movq $1,%rdi\n\t"
-    "call  ptr2ScalerPreHook\n\t"
+    "call  cPreHookHanlderLinuxSec\n\t"
     "movq %rax,%r15\n\t"
 
     //Restore environment
@@ -559,5 +566,51 @@ void __attribute__((naked)) asmHookHandlerSec() {
     "ret\n\t"
     );
 }
+
+void *cPreHookHanlderLinuxSec(int index, void *callerFuncAddr) {
+    //Calculate fileID
+    size_t fileId = __extFuncCallHookPtr->pmParser.findExecNameByAddr(callerFuncAddr);
+    auto &curElfImgInfo = __extFuncCallHookPtr->elfImgInfoMap[fileId];
+    auto &pltSec = curElfImgInfo.pltStartAddr;
+    auto &realAddrResolved = curElfImgInfo.realAddrResolved;
+
+    callerFuncAddr = reinterpret_cast<void *>(uint64_t(callerFuncAddr) - 0xD);
+    //todo: 16 is machine specific
+    size_t funcId = ((ElfW(Addr) *) callerFuncAddr - (ElfW(Addr) *) pltSec) / 16;
+
+    auto &curSymbol = curElfImgInfo.hookedExtSymbol[funcId];
+
+    void *retOriFuncAddr = nullptr;
+
+    //__extFuncCallHookPtr->pmParser.printPM();
+
+    if (!realAddrResolved[funcId]) {
+        void *curAddr = curSymbol.funcAddr;
+        void *newAddr = *curSymbol.gotTableAddr;
+        if (curAddr != newAddr) {
+            printf("Address is now resolved，replace hookedAddrs with correct value\n");
+            //Update address and set it as correct address
+            realAddrResolved[funcId] = true;
+            curSymbol.funcAddr = newAddr;
+            retOriFuncAddr = newAddr;
+        } else {
+            printf("%s is not initialized, execute orignal PLT code\n", curSymbol.symbolName.c_str());
+            //Execute original PLT function
+            //todo: 18 depends on opCode array
+            retOriFuncAddr = curElfImgInfo.pseudoPlt + funcId * 18;
+        }
+    }
+
+    if (scaler::Hook::SCALER_HOOK_IN_HOOK_HANDLER) {
+        return retOriFuncAddr;
+    }
+
+    //Starting from here, we could call external symbols and it won't cause
+    scaler::Hook::SCALER_HOOK_IN_HOOK_HANDLER = true;
+    //Currently, I won't load plthook library
+    scaler::Hook::SCALER_HOOK_IN_HOOK_HANDLER = false;
+    return curSymbol.funcAddr;
+}
+
 
 #endif
