@@ -15,10 +15,11 @@
 #include <util/tool/MemTool.h>
 //#include "FileTool.h"
 
+extern "C" {
 void __attribute__((naked)) asmHookHandlerSec();
 
-void *cPreHookHanlderLinuxSec(int index, void *callerFuncAddr);
-
+void *cPreHookHanlderLinuxSec(void *callerFuncAddr);
+}
 
 namespace scaler {
 
@@ -83,8 +84,9 @@ namespace scaler {
                  * Get plt from ELF file.
                  */
                 auto pltHdr = elfParser.getSecHdrByName(".plt");
+                //todo 32 is take
                 void *pltAddrInFile = elfParser.getSecContent(pltHdr);
-                curELFImgInfo.pltStartAddr = searchBinInMemory(pltAddrInFile, pltHdr.secHdr.sh_entsize,
+                curELFImgInfo.pltStartAddr = searchBinInMemory(pltAddrInFile, 32,
                                                                codeSegments);
                 assert(curELFImgInfo.pltStartAddr);
 
@@ -100,7 +102,7 @@ namespace scaler {
                 try {
                     auto pltSecHdr = elfParser.getSecHdrByName(".plt.sec");
                     void *pltSecAddrInFile = elfParser.getSecContent(pltSecHdr);
-                    curELFImgInfo.pltSecStartAddr = searchBinInMemory(pltSecAddrInFile, pltSecHdr.secHdr.sh_entsize,
+                    curELFImgInfo.pltSecStartAddr = searchBinInMemory(pltSecAddrInFile, 32,
                                                                       codeSegments);
 
                     //We already have the starting address, let's calculate the end address
@@ -279,7 +281,8 @@ namespace scaler {
 
         std::vector<int> fileIdToHook;
         fileIdToHook.emplace_back(0);
-        fileIdToHook.emplace_back(9);
+        fileIdToHook.emplace_back(
+                pmParser.fileIDMap["/home/st/Projects/Scaler/cmake-build-debug/tests/libInstallTest.so"]);
 
         //Step3: Build pseodo PLT
         for (int i = 0; i < fileIdToHook.size(); ++i) {
@@ -316,7 +319,10 @@ namespace scaler {
                 curELFImgInfo.realAddrResolved.emplace_back(symbolFileId != i);
 
                 curELFImgInfo.hookedExtSymbol[funcId] = curSymbol;
+                curSymbol.funcAddr = *curSymbol.gotTableAddr;
                 //pmParser.findExecNameByAddr()
+
+                //printf("%s hooked (ID: %d)\n", curSymbol.symbolName.c_str(), funcId);
 
                 auto binCodeArr = fillDestAddr2HookCode((void *) asmHookHandlerSec);
                 //Replace PLT
@@ -419,6 +425,7 @@ namespace scaler {
 
 
 }
+
 
 //todo: Currently only pre-hook is implemented. We can't call a function that's not resolved. Have to return now
 //todo: A work-around would be don't hook libScalerHook.so 's PLT
@@ -527,7 +534,7 @@ namespace scaler {
 //todo: Binary analysis and support after hook
 void __attribute__((naked)) asmHookHandlerSec() {
     __asm__ __volatile__ (
-    "popq %r15\n\t" //Save caller address from PLT
+    "popq %r14\n\t" //Save caller address from PLT
 
     //Save environment
     "push %rdi\n\t"
@@ -545,10 +552,9 @@ void __attribute__((naked)) asmHookHandlerSec() {
     PUSHXMM(6)
     PUSHXMM(7)
 
-    "movq %r15,%rsi\n\t" //Pass PLT call address to cPreHookHanlderLinux
-    "movq $1,%rdi\n\t"
+    "movq %r14,%rdi\n\t" //Pass PLT call address to cPreHookHanlderLinux
     "call  cPreHookHanlderLinuxSec\n\t"
-    "movq %rax,%r15\n\t"
+    "movq %rax,%r14\n\t"
 
     //Restore environment
     POPXMM(7)
@@ -567,22 +573,21 @@ void __attribute__((naked)) asmHookHandlerSec() {
     "pop %rdi\n\t"
 
 
-    "jmp *%r15\n\t"
+    "jmp *%r14\n\t"
     "ret\n\t"
     );
 }
 
-void *cPreHookHanlderLinuxSec(int index, void *callerFuncAddr) {
+void *cPreHookHanlderLinuxSec(void *callerFuncAddr) {
     //Calculate fileID
     size_t fileId = __extFuncCallHookPtr->pmParser.findExecNameByAddr(callerFuncAddr);
     auto &curElfImgInfo = __extFuncCallHookPtr->elfImgInfoMap[fileId];
-    auto &pltSec = curElfImgInfo.pltStartAddr;
+    auto &pltSec = curElfImgInfo.pltSecStartAddr;
     auto &realAddrResolved = curElfImgInfo.realAddrResolved;
 
-    callerFuncAddr = reinterpret_cast<void *>(uint64_t(callerFuncAddr) - 0xD);
+    callerFuncAddr = reinterpret_cast<void *>((uint8_t *) (callerFuncAddr) - 0xD);
     //todo: 16 is machine specific
-    size_t funcId = ((ElfW(Addr) *) callerFuncAddr - (ElfW(Addr) *) pltSec) / 16;
-
+    size_t funcId = ((ElfW(Addr)) callerFuncAddr - (ElfW(Addr)) pltSec) / 16;
     auto &curSymbol = curElfImgInfo.hookedExtSymbol.at(funcId);
 
     void *retOriFuncAddr = nullptr;
@@ -610,15 +615,15 @@ void *cPreHookHanlderLinuxSec(int index, void *callerFuncAddr) {
         }
     }
 
-    if (scaler::Hook::SCALER_HOOK_IN_HOOK_HANDLER) {
-        return retOriFuncAddr;
-    }
+    // if (scaler::Hook::SCALER_HOOK_IN_HOOK_HANDLER) {
+    //     return retOriFuncAddr;
+    // }
 
     //Starting from here, we could call external symbols and it won't cause
-    scaler::Hook::SCALER_HOOK_IN_HOOK_HANDLER = true;
+    //scaler::Hook::SCALER_HOOK_IN_HOOK_HANDLER = true;
     //Currently, I won't load plthook library
-    scaler::Hook::SCALER_HOOK_IN_HOOK_HANDLER = false;
-    return curSymbol.funcAddr;
+    //scaler::Hook::SCALER_HOOK_IN_HOOK_HANDLER = false;
+    return *curSymbol.gotTableAddr;
 }
 
 

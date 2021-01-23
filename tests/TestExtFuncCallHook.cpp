@@ -32,7 +32,7 @@ TEST(ExtFuncCallHook, locSecAndSegInMem) {
     }
 
     ExtFuncCallHook_Linux *hook = ExtFuncCallHook_Linux::getInst();
-    hook->install();
+    hook->locateRequiredSecAndSeg();
 
 
     auto &curElfImgInfo = hook->elfImgInfoMap[hook->pmParser.fileIDMap[hook->pmParser.curExecFileName]];

@@ -67,6 +67,12 @@ namespace scaler {
 
         PmParser_Linux pmParser;
         std::map<size_t, ELFImgInfo> elfImgInfoMap;
+
+        /**
+             * Locate the address of required sections in memory
+             */
+        void locateRequiredSecAndSeg();
+
     protected:
 
 
@@ -79,11 +85,6 @@ namespace scaler {
          */
         ExtFuncCallHook_Linux();
 
-
-        /**
-         * Locate the address of required sections in memory
-         */
-        void locateRequiredSecAndSeg();
 
         /**
          * Search the start, end address of a loaded section in memory
@@ -116,7 +117,6 @@ namespace scaler {
         */
         ElfW(Dyn) *findDynEntryByTag(ElfW(Dyn) *dyn, ElfW(Sxword) tag);
 
-        friend void *cPreHookHanlderLinuxSec(int index, void *callerFuncAddr);
 
 
     };
@@ -128,11 +128,11 @@ static scaler::ExtFuncCallHook_Linux *__extFuncCallHookPtr;
 #define DECL_PREHOOK(suffix) void *cPreHookHanlderLinux##suffix(int index, void *callerFuncAddr);
 
 
-extern "C" {
-DECL_PREHOOK()
-
-DECL_PREHOOK(Sec)
-}
+//extern "C" {
+//DECL_PREHOOK()
+//
+//DECL_PREHOOK(Sec)
+//}
 
 #endif
 

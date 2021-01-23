@@ -11,8 +11,19 @@
 //    printf("DeConstructor\n");
 //}
 
-void install(){
+void* load() {
     printf("Constructor\n");
-    scaler::Hook *libPltHook = scaler::ExtFuncCallHook_Linux::getInst();
+    scaler::ExtFuncCallHook_Linux *libPltHook = scaler::ExtFuncCallHook_Linux::getInst();
+    libPltHook->locateRequiredSecAndSeg();
+    auto &curELFImgMap = libPltHook->elfImgInfoMap[0];
+    return curELFImgMap.pltSecStartAddr;
+}
+void *install() {
+    printf("Constructor\n");
+    scaler::ExtFuncCallHook_Linux *libPltHook = scaler::ExtFuncCallHook_Linux::getInst();
+    libPltHook->locateRequiredSecAndSeg();
+//    libPltHook->pmParser.printPM();
     libPltHook->install();
+    auto &curELFImgMap = libPltHook->elfImgInfoMap[0];
+    return curELFImgMap.pltSecStartAddr;
 }

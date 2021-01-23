@@ -6,14 +6,14 @@
 
 using namespace std;
 
+extern char __startpltsec;
 
 int main() {
-    install();
+    //void *pltSecStartAddr = load();
+    //printf("%p,%p\n", pltSecStartAddr, &__startpltsec);
 //    printf("Library A\n");
-//    funcA();
-//    funcA();
-//    funcA();
-//    funcA();
+    install();
+    funcA();
     funcB(1);
     funcC(2, 3);
     funcD(2, 3, 4);
@@ -21,7 +21,7 @@ int main() {
 //    funcA();
 
     //调main
-    printf("Library B\n");
+//    printf("Library B\n");
 
     callFuncA();
     callFunc1000();
