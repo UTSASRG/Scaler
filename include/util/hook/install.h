@@ -11,14 +11,14 @@
 //    printf("DeConstructor\n");
 //}
 
-void* load() {
-    printf("Constructor\n");
-    scaler::ExtFuncCallHook_Linux *libPltHook = scaler::ExtFuncCallHook_Linux::getInst();
-    libPltHook->locateRequiredSecAndSeg();
-    auto &curELFImgMap = libPltHook->elfImgInfoMap[0];
-    return curELFImgMap.pltSecStartAddr;
+void *load() {
+//    scaler::ExtFuncCallHook_Linux::cPreHookHanlderLinuxSec(nullptr);
+    //scaler::ExtFuncCallHook_Linux::cPreHookHanlderLinux(nullptr);
+
 }
+
 void *install() {
+
     printf("Constructor\n");
     scaler::ExtFuncCallHook_Linux *libPltHook = scaler::ExtFuncCallHook_Linux::getInst();
     libPltHook->locateRequiredSecAndSeg();

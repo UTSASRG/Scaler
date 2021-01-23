@@ -12,6 +12,7 @@ int main() {
     //void *pltSecStartAddr = load();
     //printf("%p,%p\n", pltSecStartAddr, &__startpltsec);
 //    printf("Library A\n");
+    //load();
     install();
     funcA();
     funcB(1);

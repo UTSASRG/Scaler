@@ -97,18 +97,6 @@ namespace scaler {
                   [](const std::pair<size_t, PMEntry_Linux> &lhs, const std::pair<size_t, PMEntry_Linux> &rhs) {
                       return (ElfW(Addr)) lhs.second.addrStart < (ElfW(Addr)) rhs.second.addrStart;
                   });
-
-
-        //Store entries name and it's id for faster lookup
-        //auto procMapIter = procMap.begin();
-        //for (int i = 0; i < procMap.size(); ++i) {
-        //    auto &fileName = procMapIter->first;
-        //    fileIDMap[fileName] = i;
-        //    idFileMap.emplace_back(fileName);
-        //    ++procMapIter;
-        //}
-
-
     }
 
     PmParser_Linux::~PmParser_Linux() {
@@ -156,25 +144,6 @@ namespace scaler {
             return -1;
         }
     }
-
-//    int dlCallback(struct dl_phdr_info *info, size_t size, void *data) {
-//        PmParser_Linux *pmParser = (PmParser_Linux *) data;
-//
-//        if (pmParser->fileIDMap.count(info->dlpi_name) == 0) {
-//            return 0;
-//        }
-//        size_t fileId = pmParser->fileIDMap.at(info->dlpi_name);
-//        //pmParser->fileBaseAddrMap[fileId] = reinterpret_cast<uint8_t *>(info->dlpi_addr);
-//        printf("Base addr loaded for %s is %p\n", info->dlpi_name, info->dlpi_addr);
-//        return 0;
-//    }
-//
-//    void PmParser_Linux::parseDLPhdr() {
-//        //printPM();
-//
-//        dl_iterate_phdr(dlCallback, this);
-//    }
-
 
 }
 

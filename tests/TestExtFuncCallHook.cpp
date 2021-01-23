@@ -47,7 +47,7 @@ TEST(ExtFuncCallHook, locSecAndSegInMem) {
         EXPECT_EQ(curElfImgInfo.idFuncMap[i], funcNameArr[i]);
     }
     for (int i = 0; i < curElfImgInfo.idFuncMap.size(); ++i) {
-        EXPECT_EQ(curElfImgInfo.allExtSymbol[i].gotTableAddr, addrArr[i]);
+        EXPECT_EQ(curElfImgInfo.allExtSymbol[i].gotEntry, addrArr[i]);
     }
 
 
@@ -134,7 +134,7 @@ TEST(ExtFuncCallHook, compareAddressAndFuncName){
 
     for (int i = 0; i < curElfImgInfo.idFuncMap.size(); ++i) {
         EXPECT_EQ(curElfImgInfo.allExtSymbol[i].symbolName, funcNameArr[i]);
-        EXPECT_EQ(curElfImgInfo.allExtSymbol[i].gotTableAddr, addrArr[i]);
+        EXPECT_EQ(curElfImgInfo.allExtSymbol[i].gotEntry, addrArr[i]);
         //printf("%s:%p:%p\n", curElfImgInfo.allExtSymbol[i].symbolName.c_str(),
         //       *curElfImgInfo.allExtSymbol[i].gotTableAddr, addrArr[i]);
     }
@@ -144,7 +144,7 @@ TEST(ExtFuncCallHook, compareAddressAndFuncName){
     auto &libTestELFInfo = hook->elfImgInfoMap[hook->pmParser.fileIDMap.at(
             "/home/st/Projects/Scaler/cmake-build-debug/tests/libFuncCallTest.so")];
     auto systemFuncId = libTestELFInfo.funcIdMap.at("system");
-    void **gotTableAddr = libTestELFInfo.allExtSymbol.at(systemFuncId).gotTableAddr;
+    void **gotTableAddr = libTestELFInfo.allExtSymbol.at(systemFuncId).gotEntry;
 
     EXPECT_EQ(*gotTableAddr, (void *) system);
 

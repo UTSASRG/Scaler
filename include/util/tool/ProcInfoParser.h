@@ -162,7 +162,7 @@ namespace scaler {
          */
         //void parseDLPhdr();
 
-        //friend int dlCallback(struct dl_phdr_info *info, size_t size, void *data);
+        friend int dlCallback(struct dl_phdr_info *info, size_t size, void *data);
 
     };
 }

@@ -15,6 +15,7 @@ namespace scaler {
         virtual void uninstall() = 0;
 
     };
+
 }
 
 
