@@ -46,7 +46,7 @@ target_link_libraries(InstallTest PUBLIC FuncCallTest)
 
 add_executable(TestInstall TestInstall.cpp)
 target_include_directories(TestInstall PUBLIC ./libtest/header)
-target_link_libraries(TestInstall scalerhook FuncCallTest InstallTest dl)
+target_link_libraries(TestInstall FuncCallTest InstallTest dl)
 target_link_options(TestInstall PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/mylinker.ld")
 
 

@@ -11,5 +11,5 @@ include_directories(include)
 add_subdirectory(libScalerHook)
 
 # unit tests
-add_subdirectory(tests)
+add_subdirectory(unittests)
 
