@@ -1,4 +1,3 @@
-#include <util/hook/ExtFuncCallHook.hh>
 
 
 //__attribute__((constructor)) void libConstructor() {
@@ -11,19 +10,12 @@
 //    printf("DeConstructor\n");
 //}
 
-void *load() {
+//void *load() {
 //    scaler::ExtFuncCallHook_Linux::cPreHookHanlderLinuxSec(nullptr);
-    //scaler::ExtFuncCallHook_Linux::cPreHookHanlderLinux(nullptr);
+//    scaler::ExtFuncCallHook_Linux::cPreHookHanlderLinux(nullptr);
+//    scaler::ExtFuncCallHook_Linux::cAfterHookHanlderLinux();
+//    scaler::ExtFuncCallHook_Linux::(nullptr);
 
-}
+//}
 
-void *install() {
-
-    printf("Constructor\n");
-    scaler::ExtFuncCallHook_Linux *libPltHook = scaler::ExtFuncCallHook_Linux::getInst();
-    libPltHook->locateRequiredSecAndSeg();
-//    libPltHook->pmParser.printPM();
-    libPltHook->install();
-    auto &curELFImgMap = libPltHook->elfImgInfoMap[0];
-    return curELFImgMap.pltSecStartAddr;
-}
+void install();

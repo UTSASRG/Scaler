@@ -73,8 +73,11 @@ namespace scaler {
             uint8_t *baseAddr;                              //The loading address of current elf image
         };
 
+
+
         PmParser_Linux pmParser;                            //A parser to /proc/self/maps
         std::map<size_t, ELFImgInfo> elfImgInfoMap;         //Mapping fileID to ELFImgInfo
+
 
         static ExtFuncCallHook_Linux *instance; //Singleton
 
@@ -128,6 +131,7 @@ namespace scaler {
 
         static void *cPreHookHanlderLinux(void *callerFuncAddr);
 
+        static void cAfterHookHanlderLinux();
 
     };
 

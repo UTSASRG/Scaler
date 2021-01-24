@@ -30,9 +30,22 @@ namespace scaler {
 "movdqu  (%rsp),%"#ArgumentName"\n\t"\
 "addq $16,%rsp\n\t"
 
+
+    class Context {
+    public:
+        //todo: Initialize using maximum stack size
+        std::vector<size_t> funcId;
+        std::vector<size_t> fileId;
+
+        //Variables used to determine whether it's called by hook handler or not
+        bool inHookHanlder = false;
+    };
+
+    thread_local Context curContext;
+
     //Declare hook handler written in assembly code
 
-    void __attribute__((naked)) asmHookHandler();
+    //void __attribute__((naked)) asmHookHandler();
 
     void __attribute__((naked)) asmHookHandlerSec();
 
@@ -41,8 +54,6 @@ namespace scaler {
     //Initialize instance variable to nullptr;
     ExtFuncCallHook_Linux *ExtFuncCallHook_Linux::instance = nullptr;
 
-    //Variables used to determine whether it's called by hook handler or not
-    thread_local bool Hook::SCALER_HOOK_IN_HOOK_HANDLER = false;
 
     void ExtFuncCallHook_Linux::locateRequiredSecAndSeg() {
         //Get segment info from /proc/self/maps
@@ -301,6 +312,7 @@ namespace scaler {
 
                 curELFImgInfo.hookedExtSymbol[funcId] = curSymbol;
 
+                printf("%s in %s hooked\n", curSymbol.symbolName.c_str(), curELFImgInfo.filePath.c_str());
                 //Check if current address has already been hooked
                 auto binCodeArr = fillDestAddr2HookCode((void *) asmHookHandlerSec);
 
@@ -309,9 +321,9 @@ namespace scaler {
                 memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * funcId, binCodeArr.data(), 16);
                 binCodeArr.clear();
 
-                binCodeArr = fillDestAddr2HookCode((void *) asmHookHandler);
+                //binCodeArr = fillDestAddr2HookCode((void *) asmHookHandler);
                 //Replace PLT
-                memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * funcId, binCodeArr.data(), 16);
+                //memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * funcId, binCodeArr.data(), 16);
             }
 
         }
@@ -416,13 +428,13 @@ namespace scaler {
 #define IMPL_CHANDLER(SUFFIX, SEC_START_ADDR_VAR) \
     void *ExtFuncCallHook_Linux::cPreHookHanlderLinux##SUFFIX(void *callerFuncAddr) {\
         auto &_this = ExtFuncCallHook_Linux::instance;\
-        size_t fileId = _this->pmParser.findExecNameByAddr(callerFuncAddr);\
+        auto fileId=_this->pmParser.findExecNameByAddr(callerFuncAddr);              \
         auto &curElfImgInfo = _this->elfImgInfoMap[fileId];\
         auto &SEC_START_ADDR_VAR = curElfImgInfo.SEC_START_ADDR_VAR;\
         auto &realAddrResolved = curElfImgInfo.realAddrResolved;\
         \
         callerFuncAddr = reinterpret_cast<void *>((uint8_t *) (callerFuncAddr) - 0xD);\
-        size_t funcId = ((ElfW(Addr)) callerFuncAddr - (ElfW(Addr)) SEC_START_ADDR_VAR) / 16;\
+        auto funcId=((ElfW(Addr)) callerFuncAddr - (ElfW(Addr)) SEC_START_ADDR_VAR) / 16;\
         auto &curSymbol = curElfImgInfo.hookedExtSymbol.at(funcId);                  \
         \
         void *retOriFuncAddr = nullptr; \
@@ -443,70 +455,104 @@ namespace scaler {
                 retOriFuncAddr = newAddr;\
             }\
         }\
-        if (scaler::Hook::SCALER_HOOK_IN_HOOK_HANDLER) {\
+        if (curContext.inHookHanlder) {\
             return retOriFuncAddr;\
         }\
         \
-        scaler::Hook::SCALER_HOOK_IN_HOOK_HANDLER = true;\
-        \
-        scaler::Hook::SCALER_HOOK_IN_HOOK_HANDLER = false;\
+        curContext.inHookHanlder = true;\
+        printf("[Pre Hook] File:%s, Func: %s\n", _this->pmParser.idFileMap[fileId].c_str(),  curElfImgInfo.idFuncMap.at(funcId).c_str());\
+                                                  \
+                                                  \
+        curContext.fileId.emplace_back(fileId);          \
+        curContext.funcId.emplace_back(funcId);          \
+                                                  \
+                                                  \
+        curContext.inHookHanlder = false;\
         return *curSymbol.gotEntry;\
     }
+
 
     IMPL_CHANDLER(, pltStartAddr)
 
     IMPL_CHANDLER(Sec, pltSecStartAddr)
-/**void *ExtFuncCallHook_Linux::cPreHookHanlderLinuxSec(void *callerFuncAddr) {
-    //Calculate fileID
-    auto &_this = ExtFuncCallHook_Linux::instance;
 
-    size_t fileId = _this->pmParser.findExecNameByAddr(callerFuncAddr);
-    auto &curElfImgInfo = _this->elfImgInfoMap[fileId];
-    auto &pltSec = curElfImgInfo.pltSecStartAddr;
-    auto &realAddrResolved = curElfImgInfo.realAddrResolved;
+    /**
+    void *ExtFuncCallHook_Linux::cPreHookHanlderLinuxSec(void *callerFuncAddr) {
+        //Calculate fileID
+        auto &_this = ExtFuncCallHook_Linux::instance;
+        auto fileId = _this->pmParser.findExecNameByAddr(callerFuncAddr);
+        curContext.fileId.emplace_back(fileId);
+        auto &curElfImgInfo = _this->elfImgInfoMap[fileId];
+        auto &pltSec = curElfImgInfo.pltSecStartAddr;
+        auto &realAddrResolved = curElfImgInfo.realAddrResolved;
 
-    callerFuncAddr = reinterpret_cast<void *>((uint8_t *) (callerFuncAddr) - 0xD);
-    //todo: 16 is machine specific
-    size_t funcId = ((ElfW(Addr)) callerFuncAddr - (ElfW(Addr)) pltSec) / 16;
-    auto &curSymbol = curElfImgInfo.hookedExtSymbol.at(funcId);
+        callerFuncAddr = reinterpret_cast<void *>((uint8_t *) (callerFuncAddr) - 0xD);
+        //todo: 16 is machine specific
+        size_t funcId = ((ElfW(Addr)) callerFuncAddr - (ElfW(Addr)) pltSec) / 16;
+        curContext.funcId.emplace_back(funcId);
+        auto &curSymbol = curElfImgInfo.hookedExtSymbol.at(funcId);
 
-    void *retOriFuncAddr = nullptr;
+        void *retOriFuncAddr = nullptr;
 
-    //printf("\"%s\" in %s is called\n", curSymbol.symbolName.c_str(),
-    //       _this->pmParser.idFileMap[fileId].c_str());
+        //printf("\"%s\" in %s is called\n", curSymbol.symbolName.c_str(),
+        //       _this->pmParser.idFileMap[fileId].c_str());
 
-    //_this->pmParser.printPM();
+        //_this->pmParser.printPM();
 
-    if (!realAddrResolved[funcId]) {
-        void *curAddr = curSymbol.addr;
-        void *newAddr = *curSymbol.gotEntry;
-        if (curAddr == newAddr) {
-            printf("\"%s\" is not initialized by linker, execute original PLT code\n",
-                   curSymbol.symbolName.c_str());
-            //Execute original PLT function
-            //todo: 18 depends on opCode array
-            retOriFuncAddr = curElfImgInfo.pseudoPlt + funcId * 18;
-        } else {
-            printf("\"%s\"'s address is now resolved，update record with the correct address\n",
-                   curSymbol.symbolName.c_str());
-            //Update address and set it as correct address
-            realAddrResolved[funcId] = true;
-            curSymbol.addr = newAddr;
-            retOriFuncAddr = newAddr;
+
+
+        if (!realAddrResolved[funcId]) {
+            void *curAddr = curSymbol.addr;
+            void *newAddr = *curSymbol.gotEntry;
+            if (curAddr == newAddr) {
+                printf("\"%s\" is not initialized by linker, execute original PLT code\n",
+                       curSymbol.symbolName.c_str());
+                //Execute original PLT function
+                //todo: 18 depends on opCode array
+                retOriFuncAddr = curElfImgInfo.pseudoPlt + funcId * 18;
+            } else {
+                printf("\"%s\"'s address is now resolved，update record with the correct address\n",
+                       curSymbol.symbolName.c_str());
+                //Update address and set it as correct address
+                realAddrResolved[funcId] = true;
+                curSymbol.addr = newAddr;
+                retOriFuncAddr = newAddr;
+            }
         }
+
+        if (curContext.inHookHanlder) {
+            return retOriFuncAddr;
+        }
+
+        //Starting from here, we could call external symbols and it won't cause
+        curContext.inHookHanlder = true;
+        printf("[Pre Hook] File:%s, Func: %s\n", _this->pmParser.idFileMap[fileId].c_str(),
+               curElfImgInfo.idFuncMap.at(funcId).c_str());\
+        //Currently, I won't load plthook library
+//        _this->fileId1.push_back(fileId);
+//        _this->funcId1.push_back(funcId);
+
+        curContext.inHookHanlder = false;
+        return *curSymbol.gotEntry;
     }
+**/
 
-    if (scaler::Hook::SCALER_HOOK_IN_HOOK_HANDLER) {
-        return retOriFuncAddr;
+    void ExtFuncCallHook_Linux::cAfterHookHanlderLinux() {
+        auto &_this = ExtFuncCallHook_Linux::instance;
+
+        size_t fileId = curContext.fileId.at(curContext.fileId.size() - 1);
+        curContext.fileId.pop_back();
+
+        auto &curELFImgInfo = _this->elfImgInfoMap.at(fileId);
+
+        auto &fileName = curELFImgInfo.filePath;
+
+        size_t funcId = curContext.funcId.at(curContext.funcId.size() - 1);
+        curContext.funcId.pop_back();
+        auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
+
+        printf("[After Hook] File:%s, Func: %s\n", fileName.c_str(), funcName.c_str());
     }
-
-    //Starting from here, we could call external symbols and it won't cause
-    scaler::Hook::SCALER_HOOK_IN_HOOK_HANDLER = true;
-    //Currently, I won't load plthook library
-    scaler::Hook::SCALER_HOOK_IN_HOOK_HANDLER = false;
-    return *curSymbol.gotEntry;
-}**/
-
 
 //todo: This function is machine specific
 //todo: Binary analysis and support after hook
@@ -515,6 +561,7 @@ namespace scaler {
     void __attribute__((naked)) asmHookHandler##SUFFIX() {\
         __asm__ __volatile__ (\
         "popq %r14\n\t" \
+        \
         \
         "push %rdi\n\t"\
         "push %rsi\n\t"\
@@ -550,9 +597,11 @@ namespace scaler {
         "pop %rsi\n\t"\
         "pop %rdi\n\t"\
         \
+        "call *%r14\n\t"\
         \
-        "jmp *%r14\n\t"\
-        "ret\n\t"\
+        "call  _ZN6scaler21ExtFuncCallHook_Linux22cAfterHookHanlderLinuxEv\n\t"  \
+        "popq %r13\n\t" \
+        "jmp *%r13\n\t"\
         );\
     }
 
@@ -610,9 +659,11 @@ namespace scaler {
     "pop %rsi\n\t"
     "pop %rdi\n\t"
 
+    "call *%r14\n\t"
 
-    "jmp *%r14\n\t"
-    "ret\n\t"
+    "call  cHookHanlderAfter\n\t"
+
+    "jmp *%r13\n\t"
     );
 } **/
 

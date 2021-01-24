@@ -6,4 +6,5 @@ add_library(scalerhook SHARED
         src/ProcInfoParser.cpp
         src/ElfParser.cpp
         src/MemTool.cpp
-        src/FileTool.cpp)
+        src/FileTool.cpp
+        src/install.cpp)

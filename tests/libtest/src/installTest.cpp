@@ -8,23 +8,23 @@
 extern "C" {
 
 void funcA() {
-    int i = 1;
-    int j = 2;
-    int k = i + j;
-    printf("This is Function A\n");
+    printf("Inside Function A\n");
 }
 
 void funcB(int a) {
+    printf("Inside Function B\n");
 }
 
 void funcC(int a, int b) {
+    printf("Inside Function C\n");
 }
 
 void funcD(int a, int b, int c) {
-    printf("This is Function D\n");
+    printf("Inside Function D\n");
 }
 
 int funcE(int a, int b, int c) {
+    printf("Inside Function E\n");
     return 1;
 }
 
@@ -37,8 +37,7 @@ void resolveSystemFunc() {
 void funcEverything(int e, int f, structparm s, int g, int h, long double ld,
                     double m, __m256 y, __m512 z, double n, int i, int j, int k) {
 
-    printf("This is Function Everything\n");
-    system("");
+    printf("Inside Function Everything\n");
 
 }
 

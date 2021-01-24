@@ -5,13 +5,12 @@
 extern "C" {
 
 void callFuncA() {
-    printf("callFuncA\n");
+    printf("Inside callFuncA\n");
     funcA();
 }
 
 void callFunc1000() {
-    printf("callFunc1000\n");
-
+    printf("Inside callFunc1000\n");
     func1000();
 }
 
