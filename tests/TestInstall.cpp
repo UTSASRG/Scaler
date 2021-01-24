@@ -1,21 +1,12 @@
 #include <iostream>
 
-#include <FuncWithDiffParms.h>
 #include <installTest.h>
-#include <util/hook/install.h>
 
 using namespace std;
 
 extern char __startpltsec;
 
 int main() {
-    install();
-//    funcA();
-//    funcB(1);
-//    funcC(2, 3);
-//    funcD(2, 3, 4);
-
-//    funcA();
 
     //调main
     printf("Library B\n");
