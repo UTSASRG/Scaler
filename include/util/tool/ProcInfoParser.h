@@ -94,6 +94,8 @@ namespace scaler {
 
     };
 
+
+
     /**
      * This class was a helper tool to parse /proc/self/maps
      * Current implementation uses STL API and may not the most efficient way. But it's fine for initialization and the code looks cleaner.
@@ -118,6 +120,8 @@ namespace scaler {
 
         // Map id to file name
         std::vector<std::string> idFileMap;
+
+        std::vector<size_t> linkedFileID;
 
         PmParser_Linux(int procID = -1);
 
@@ -160,7 +164,7 @@ namespace scaler {
          * However, relocation table entries are relative to a base address
          * To get the real address we have to parse it seperately.
          */
-        //void parseDLPhdr();
+        void parseDLPhdr();
 
         friend int dlCallback(struct dl_phdr_info *info, size_t size, void *data);
 

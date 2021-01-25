@@ -16,7 +16,7 @@ namespace scaler {
     PmParser_Linux::PmParser_Linux(int pid) : procID(pid) {
         openPMMap();
         parsePMMap();
-        //parseDLPhdr();
+        parseDLPhdr();
     }
 
     void PmParser_Linux::openPMMap() {
@@ -144,6 +144,20 @@ namespace scaler {
             return -1;
         }
     }
+
+    int dlCallback(struct dl_phdr_info *info, size_t size, void *data)
+    {
+        //todo: file not found error
+//        PmParser_Linux* _this= static_cast<PmParser_Linux *>(data);
+//        size_t curFileId=_this->fileIDMap.at(std::string(info->dlpi_name));
+//        _this->linkedFileID.emplace_back(curFileId);
+        return 0;
+    }
+
+    void PmParser_Linux::parseDLPhdr() {
+//        dl_iterate_phdr(dlCallback, this);
+    }
+
 
 }
 

@@ -38,7 +38,7 @@ namespace scaler {
         std::vector<size_t> fileId;
         //Variables used to determine whether it's called by hook handler or not
         bool inHookHanlder = false;
-        std::vector<void*> callerAddr;
+        std::vector<void *> callerAddr;
 
     };
 
@@ -268,16 +268,32 @@ namespace scaler {
             if (curELFImgInfo.pltSecStartAddr)
                 memTool->adjustMemPerm(curELFImgInfo.pltSecStartAddr, curELFImgInfo.pltSecEndAddr,
                                        PROT_READ | PROT_WRITE | PROT_EXEC);
+
+            //.got
+            memTool->adjustMemPerm(curELFImgInfo.pltSecStartAddr, curELFImgInfo.pltSecEndAddr,
+                                   PROT_READ | PROT_WRITE | PROT_EXEC);
         }
 
         //Step3: Decide which to hook
         //todo: Implement API to help user specify which function to hook. Here, I'll only hook current executable.
 
-        std::vector<int> fileIdToHook;
+        std::vector<size_t> fileIdToHook;
+//        for (int i=0;i<pmParser.linkedFileID.size();++i) {
+//            auto& curFileId=pmParser.linkedFileID[i];
+//            auto& curFileName=pmParser.idFileMap.at(curFileId);
+//
+//            if (curFileName != "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/libscalerhook.so"
+//                &&
+//                curFileName !=
+//                "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/libscalerhook_installer.so") {
+//                fileIdToHook.emplace_back(curFileId);
+//            }
+//        }
+
         fileIdToHook.emplace_back(0);
-        fileIdToHook.emplace_back(
-                pmParser.fileIDMap.at(
-                        "/home/st/Projects/Scaler/cmake-build-debug/unittests/libscalerhook/libInstallTest.so"));
+//        fileIdToHook.emplace_back(
+//                pmParser.fileIDMap.at(
+//                        "/home/st/Projects/Scaler/cmake-build-debug/unittests/libscalerhook/libInstallTest.so"));
 
         //Step3: Build pseodo PLT
         for (int i = 0; i < fileIdToHook.size(); ++i) {
@@ -290,6 +306,10 @@ namespace scaler {
             for (auto iter = curELFImgInfo.idFuncMap.begin(); iter != curELFImgInfo.idFuncMap.end(); ++iter) {
                 auto &funcId = iter->first;
                 auto &curExtSym = curELFImgInfo.allExtSymbol.at(funcId);
+
+
+                memTool->adjustMemPerm(curExtSym.gotEntry, curExtSym.gotEntry + 1,
+                                       PROT_READ | PROT_WRITE | PROT_EXEC);
                 //Resole current address
                 curExtSym.addr = *curExtSym.gotEntry;
 
@@ -314,7 +334,8 @@ namespace scaler {
 
                 curELFImgInfo.hookedExtSymbol[funcId] = curSymbol;
 
-                printf("%s in %s hooked\n", curSymbol.symbolName.c_str(), curELFImgInfo.filePath.c_str());
+                printf("[%s] %s in %s hooked\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
+                       curELFImgInfo.filePath.c_str());
                 //Check if current address has already been hooked
                 auto binCodeArr = fillDestAddr2HookCode((void *) asmHookHandlerSec);
 
@@ -556,7 +577,7 @@ namespace scaler {
 
         printf("[After Hook] File:%s, Func: %s\n", fileName.c_str(), funcName.c_str());
 
-        void* callerAddr = curContext.callerAddr.at(curContext.callerAddr.size() - 1);
+        void *callerAddr = curContext.callerAddr.at(curContext.callerAddr.size() - 1);
         curContext.callerAddr.pop_back();
 
         return callerAddr;
@@ -611,8 +632,10 @@ namespace scaler {
         \
         "call *%r14\n\t"\
         \
+        "push %rax\n\t" \
         "call  _ZN6scaler21ExtFuncCallHook_Linux22cAfterHookHanlderLinuxEv\n\t"  \
         "movq %rax,%r13\n\t" \
+        "pop %rax\n\t"  \
         "jmp *%r13\n\t"\
         );\
     }

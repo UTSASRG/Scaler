@@ -11,8 +11,8 @@ add_library(FuncCallTest SHARED libtest/src/installTest.cpp
 target_include_directories(FuncCallTest PUBLIC ./libtest/header)
 
 # PltHook is used to comapre results
-add_library(KuBoPltHook ./plthook/plthook_elf.c)
-target_include_directories(KuBoPltHook PUBLIC ./plthook)
+add_library(KuBoPltHook ../plthook/plthook_elf.c)
+target_include_directories(KuBoPltHook PUBLIC ../plthook)
 
 
 
@@ -42,4 +42,11 @@ target_include_directories(TestInstall PUBLIC ./libtest/header)
 target_link_libraries(TestInstall scalerhook_installer FuncCallTest InstallTest dl)
 target_link_options(TestInstall PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/mylinker.ld")
 
+add_executable(TestMultiThreadFuncCall TestMultiThreadFuncCall.cpp)
+target_include_directories(TestMultiThreadFuncCall PUBLIC ./libtest/header)
+target_link_libraries(TestMultiThreadFuncCall scalerhook_installer FuncCallTest InstallTest dl)
 
+
+add_executable(TestMultiThreadFuncCallPthread TestMultiThreadFuncCallPthread.cpp)
+target_include_directories(TestMultiThreadFuncCallPthread PUBLIC ./libtest/header)
+target_link_libraries(TestMultiThreadFuncCallPthread scalerhook_installer FuncCallTest InstallTest dl)

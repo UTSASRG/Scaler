@@ -132,6 +132,9 @@ namespace scaler {
 
         static void* cAfterHookHanlderLinux();
 
+
+
+
     };
 
 }

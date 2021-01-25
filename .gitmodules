@@ -4,3 +4,6 @@
 [submodule "tests/plthook"]
 	path = tests/plthook
 	url = git@github.com:GammaPi/plthook.git
+[submodule "unittests/multithreadingtests"]
+	path = unittests/multithreadingtests
+	url = git@github.com:UTSASRG/multithreadingtests.git

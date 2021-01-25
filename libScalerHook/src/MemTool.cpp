@@ -21,7 +21,8 @@ namespace scaler {
         //Get Page Bound
         void *startPtrBound = GET_PAGE_BOUND(startPtr, pageSize);
         void *endPtrBound = GET_PAGE_BOUND(endPtr, pageSize);
-
+        if (startPtrBound == endPtrBound)
+            endPtrBound = (uint8_t *) startPtrBound + pageSize;
         //todo:(uint8_t *) endPtrBound - (uint8_t  *) startPtrBound,
         if (mprotect(startPtrBound, 1024, prem) != 0) {
             std::stringstream ss;
