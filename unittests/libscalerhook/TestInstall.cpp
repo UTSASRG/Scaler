@@ -4,8 +4,6 @@
 
 using namespace std;
 
-extern char __startpltsec;
-
 int main() {
 
     //调main

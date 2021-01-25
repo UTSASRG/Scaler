@@ -36,16 +36,17 @@ namespace scaler {
         //todo: Initialize using maximum stack size
         std::vector<size_t> funcId;
         std::vector<size_t> fileId;
-
         //Variables used to determine whether it's called by hook handler or not
         bool inHookHanlder = false;
+        std::vector<void*> callerAddr;
+
     };
 
     thread_local Context curContext;
 
     //Declare hook handler written in assembly code
 
-    //void __attribute__((naked)) asmHookHandler();
+//    void __attribute__((naked)) asmHookHandler();
 
     void __attribute__((naked)) asmHookHandlerSec();
 
@@ -275,7 +276,8 @@ namespace scaler {
         std::vector<int> fileIdToHook;
         fileIdToHook.emplace_back(0);
         fileIdToHook.emplace_back(
-                pmParser.fileIDMap.at("/home/st/Projects/Scaler/cmake-build-debug/tests/libInstallTest.so"));
+                pmParser.fileIDMap.at(
+                        "/home/st/Projects/Scaler/cmake-build-debug/unittests/libscalerhook/libInstallTest.so"));
 
         //Step3: Build pseodo PLT
         for (int i = 0; i < fileIdToHook.size(); ++i) {
@@ -426,15 +428,16 @@ namespace scaler {
     }
 
 #define IMPL_CHANDLER(SUFFIX, SEC_START_ADDR_VAR) \
-    void *ExtFuncCallHook_Linux::cPreHookHanlderLinux##SUFFIX(void *callerFuncAddr) {\
+    void *ExtFuncCallHook_Linux::cPreHookHanlderLinux##SUFFIX(void *pltEntryAddr,void* callerAddr) {\
+        curContext.callerAddr.emplace_back(callerAddr);                                          \
         auto &_this = ExtFuncCallHook_Linux::instance;\
-        auto fileId=_this->pmParser.findExecNameByAddr(callerFuncAddr);              \
+        auto fileId=_this->pmParser.findExecNameByAddr(pltEntryAddr);              \
         auto &curElfImgInfo = _this->elfImgInfoMap[fileId];\
         auto &SEC_START_ADDR_VAR = curElfImgInfo.SEC_START_ADDR_VAR;\
         auto &realAddrResolved = curElfImgInfo.realAddrResolved;\
         \
-        callerFuncAddr = reinterpret_cast<void *>((uint8_t *) (callerFuncAddr) - 0xD);\
-        auto funcId=((ElfW(Addr)) callerFuncAddr - (ElfW(Addr)) SEC_START_ADDR_VAR) / 16;\
+        pltEntryAddr = reinterpret_cast<void *>((uint8_t *) (pltEntryAddr) - 0xD);\
+        auto funcId=((ElfW(Addr)) pltEntryAddr - (ElfW(Addr)) SEC_START_ADDR_VAR) / 16;\
         auto &curSymbol = curElfImgInfo.hookedExtSymbol.at(funcId);                  \
         \
         void *retOriFuncAddr = nullptr; \
@@ -537,7 +540,7 @@ namespace scaler {
     }
 **/
 
-    void ExtFuncCallHook_Linux::cAfterHookHanlderLinux() {
+    void *ExtFuncCallHook_Linux::cAfterHookHanlderLinux() {
         auto &_this = ExtFuncCallHook_Linux::instance;
 
         size_t fileId = curContext.fileId.at(curContext.fileId.size() - 1);
@@ -552,6 +555,11 @@ namespace scaler {
         auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
 
         printf("[After Hook] File:%s, Func: %s\n", fileName.c_str(), funcName.c_str());
+
+        void* callerAddr = curContext.callerAddr.at(curContext.callerAddr.size() - 1);
+        curContext.callerAddr.pop_back();
+
+        return callerAddr;
     }
 
 //todo: This function is machine specific
@@ -561,6 +569,7 @@ namespace scaler {
     void __attribute__((naked)) asmHookHandler##SUFFIX() {\
         __asm__ __volatile__ (\
         "popq %r14\n\t" \
+        "popq %r13\n\t" \
         \
         \
         "push %rdi\n\t"\
@@ -577,11 +586,14 @@ namespace scaler {
         PUSHXMM(5)\
         PUSHXMM(6)\
         PUSHXMM(7)\
+        PUSHXMM(8)\
         \
-        "movq %r14,%rdi\n\t" \
+        "movq %r14,%rdi\n\t"\
+        "movq %r13,%rsi\n\t"\
         "call  "#FUNC_NAME"\n\t" \
         "movq %rax,%r14\n\t" \
         \
+        POPXMM(8)\
         POPXMM(7)\
         POPXMM(6)\
         POPXMM(5)\
@@ -600,7 +612,7 @@ namespace scaler {
         "call *%r14\n\t"\
         \
         "call  _ZN6scaler21ExtFuncCallHook_Linux22cAfterHookHanlderLinuxEv\n\t"  \
-        "popq %r13\n\t" \
+        "movq %rax,%r13\n\t" \
         "jmp *%r13\n\t"\
         );\
     }
@@ -610,9 +622,9 @@ namespace scaler {
     //If I use friend function, it cannot be called by Assembly code.
     //To make code more elegant, I finally put everything in scaler namespace.
     //The cost is I have to find compiled function name once
-    IMPL_ASMHANDLER(, _ZN6scaler21ExtFuncCallHook_Linux20cPreHookHanlderLinuxEPv)
+    IMPL_ASMHANDLER(, _ZN6scaler21ExtFuncCallHook_Linux20cPreHookHanlderLinuxEPvS1_)
 
-    IMPL_ASMHANDLER(Sec, _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEPv)
+    IMPL_ASMHANDLER(Sec, _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEPvS1_)
 
 /**
  * Source code version for #define IMPL_ASMHANDLER

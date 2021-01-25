@@ -74,7 +74,6 @@ namespace scaler {
         };
 
 
-
         PmParser_Linux pmParser;                            //A parser to /proc/self/maps
         std::map<size_t, ELFImgInfo> elfImgInfoMap;         //Mapping fileID to ELFImgInfo
 
@@ -127,11 +126,11 @@ namespace scaler {
          * @param callerFuncAddr The next caller
          * @return
          */
-        static void *cPreHookHanlderLinuxSec(void *callerFuncAddr);
+        static void *cPreHookHanlderLinuxSec(void *pltEntryAddr, void *callerAddr);
 
-        static void *cPreHookHanlderLinux(void *callerFuncAddr);
+        static void *cPreHookHanlderLinux(void *pltEntryAddr, void *callerAddr);
 
-        static void cAfterHookHanlderLinux();
+        static void* cAfterHookHanlderLinux();
 
     };
 

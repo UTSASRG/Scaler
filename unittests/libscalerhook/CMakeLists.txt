@@ -1,16 +1,9 @@
 # This cmake file builds
 project(Tests)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-access-control")
-
-
-# Improt google test
-add_subdirectory(googletest)
-
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
-
-
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-access-control")
 
 # This library is used to test external funciton invocation
 add_library(FuncCallTest SHARED libtest/src/installTest.cpp
@@ -46,7 +39,7 @@ target_link_libraries(InstallTest PUBLIC FuncCallTest)
 
 add_executable(TestInstall TestInstall.cpp)
 target_include_directories(TestInstall PUBLIC ./libtest/header)
-target_link_libraries(TestInstall FuncCallTest InstallTest dl)
+target_link_libraries(TestInstall scalerhook_installer FuncCallTest InstallTest dl)
 target_link_options(TestInstall PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/mylinker.ld")
 
 
