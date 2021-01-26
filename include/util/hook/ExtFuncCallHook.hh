@@ -12,11 +12,11 @@
 
 namespace scaler {
 
-
     class ExtFuncCallHook_Linux : public Hook {
     public:
 
-        void install() override;
+        void install(SYMBOL_FILTER filterCallB) override;
+
 
         void uninstall() override;
 
@@ -32,15 +32,6 @@ namespace scaler {
 
     protected:
 
-        /**
-         * Symbol information
-         */
-        class ExtSymInfo {
-        public:
-            std::string symbolName;     //The name of a symbol in symbol table
-            void **gotEntry;            //Pointer to a symbol's GOT entry. Use *gotEntry to get this symbol's real address.
-            void *addr;                 //The address of a symbol. After a symbol is resolved, it's equal to *gotEntry;
-        };
 
         /**
          * ELF image (ELF file in memory) information.
@@ -130,9 +121,7 @@ namespace scaler {
 
         static void *cPreHookHanlderLinux(void *pltEntryAddr, void *callerAddr);
 
-        static void* cAfterHookHanlderLinux();
-
-
+        static void *cAfterHookHanlderLinux();
 
 
     };

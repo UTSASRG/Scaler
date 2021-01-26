@@ -38,7 +38,7 @@ namespace scaler {
      */
     void *binCodeSearch(void *target, size_t targetSize, void *keyword, size_t keywordSize);
 
-    std::string extractFileName(std::string pathName);
+    std::string extractFileName_Linux(std::string pathName);
 }
 
 

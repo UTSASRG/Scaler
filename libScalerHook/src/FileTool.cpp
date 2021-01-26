@@ -72,7 +72,12 @@ long int scaler::getFileSize(FILE *file) {
     return fileSize;
 }
 
-std::string scaler::extractFileName(std::string pathName) {
+std::string scaler::extractFileName_Linux(std::string pathName) {
     auto posi = pathName.find_last_of('/');
-    return pathName.substr(posi + 1, pathName.length() - posi);
+    if (posi == std::string::npos) {
+        //Not found, return full string
+        return pathName;
+    } else {
+        return pathName.substr(posi + 1, pathName.length() - posi);
+    }
 }

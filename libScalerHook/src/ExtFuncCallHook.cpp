@@ -11,6 +11,7 @@
 #include <cassert>
 #include <elf.h>
 #include <util/tool/MemTool.h>
+#include <set>
 
 namespace scaler {
 
@@ -46,7 +47,7 @@ namespace scaler {
 
     //Declare hook handler written in assembly code
 
-//    void __attribute__((naked)) asmHookHandler();
+    void __attribute__((naked)) asmHookHandler();
 
     void __attribute__((naked)) asmHookHandlerSec();
 
@@ -185,6 +186,8 @@ namespace scaler {
                     ExtSymInfo newSymbol;
                     newSymbol.symbolName = std::string(curELFImgInfo.dynStrTable + idx);
                     newSymbol.gotEntry = reinterpret_cast<void **>(curBaseAddr + curRelaPlt->r_offset);
+                    newSymbol.fileId = curFileiD;
+                    newSymbol.funcId = i;
 
                     curELFImgInfo.idFuncMap[i] = newSymbol.symbolName;
                     curELFImgInfo.funcIdMap[newSymbol.symbolName] = i;
@@ -251,7 +254,7 @@ namespace scaler {
         return rltAddr;
     }
 
-    void ExtFuncCallHook_Linux::install() {
+    void ExtFuncCallHook_Linux::install(Hook::SYMBOL_FILTER filterCallB) {
         //Step1: Locating table in memory
         locateRequiredSecAndSeg();
 
@@ -274,81 +277,83 @@ namespace scaler {
                                    PROT_READ | PROT_WRITE | PROT_EXEC);
         }
 
-        //Step3: Decide which to hook
-        //todo: Implement API to help user specify which function to hook. Here, I'll only hook current executable.
+        //Step3: Use callback to determine which ID to hook
+        std::vector<ExtSymInfo> symbolToHook;
+        std::set<size_t> fileToHook;
 
-        std::vector<size_t> fileIdToHook;
-//        for (int i=0;i<pmParser.linkedFileID.size();++i) {
-//            auto& curFileId=pmParser.linkedFileID[i];
-//            auto& curFileName=pmParser.idFileMap.at(curFileId);
-//
-//            if (curFileName != "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/libscalerhook.so"
-//                &&
-//                curFileName !=
-//                "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/libscalerhook_installer.so") {
-//                fileIdToHook.emplace_back(curFileId);
-//            }
-//        }
+        for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
+            auto &curFileId = iterFile->first;
+            auto &curFileName = pmParser.idFileMap.at(curFileId);
+            auto &curElfImgInfo = iterFile->second;
 
-        fileIdToHook.emplace_back(0);
-//        fileIdToHook.emplace_back(
-//                pmParser.fileIDMap.at(
-//                        "/home/st/Projects/Scaler/cmake-build-debug/unittests/libscalerhook/libInstallTest.so"));
+            //loop through external symbols
+            for (auto iterSymbol = curElfImgInfo.idFuncMap.begin();
+                 iterSymbol != curElfImgInfo.idFuncMap.end(); ++iterSymbol) {
+                auto &curSymbolId = iterSymbol->first;
+                auto &curSymbolName = iterSymbol->second;
+                if (filterCallB(curFileName, curSymbolName)) {
+                    //The user wants this symbol
+                    symbolToHook.emplace_back(curElfImgInfo.allExtSymbol.at(curSymbolId));
+                    fileToHook.emplace(curFileId);
+                }
+            }
+        }
 
-        //Step3: Build pseodo PLT
-        for (int i = 0; i < fileIdToHook.size(); ++i) {
-            auto &curELFImgInfo = elfImgInfoMap.at(fileIdToHook[i]);
+        //Step4: Build pseodo PLT
 
+        //Allocate pseudo address
+        for (auto &curFileID:fileToHook) {
+            auto &curELFImgInfo = elfImgInfoMap.at(curFileID);
             //Malloc mem area for pseodo plt
             //todo: 18 is related to binary code. I should use a global config file to store it.
             curELFImgInfo.pseudoPlt = (uint8_t *) malloc(curELFImgInfo.allExtSymbol.size() * 18);
-
-            for (auto iter = curELFImgInfo.idFuncMap.begin(); iter != curELFImgInfo.idFuncMap.end(); ++iter) {
-                auto &funcId = iter->first;
-                auto &curExtSym = curELFImgInfo.allExtSymbol.at(funcId);
-
-
-                memTool->adjustMemPerm(curExtSym.gotEntry, curExtSym.gotEntry + 1,
-                                       PROT_READ | PROT_WRITE | PROT_EXEC);
-                //Resole current address
-                curExtSym.addr = *curExtSym.gotEntry;
-
-                //Allocate plt table
-                auto binCodeArr = fillDestAddr2PseudoPltCode(funcId, curELFImgInfo.pltStartAddr);
-                //Copy array
-                memcpy(curELFImgInfo.pseudoPlt + 18 * funcId, binCodeArr.data(), 18);
-            }
-
         }
 
-        //Step4: Replace .plt.sec
-        for (int i = 0; i < fileIdToHook.size(); ++i) {
-            auto &curELFImgInfo = elfImgInfoMap.at(fileIdToHook[i]);
+        for (auto &curSymbol:symbolToHook) {
 
-            for (auto iter = curELFImgInfo.idFuncMap.begin(); iter != curELFImgInfo.idFuncMap.end(); ++iter) {
-                auto &funcId = iter->first;
-
-                auto &curSymbol = curELFImgInfo.allExtSymbol.at(funcId);
-                size_t symbolFileId = pmParser.findExecNameByAddr(curSymbol.addr);
-                curELFImgInfo.realAddrResolved.emplace_back(symbolFileId != i);
-
-                curELFImgInfo.hookedExtSymbol[funcId] = curSymbol;
-
-                printf("[%s] %s in %s hooked\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
-                       curELFImgInfo.filePath.c_str());
-                //Check if current address has already been hooked
-                auto binCodeArr = fillDestAddr2HookCode((void *) asmHookHandlerSec);
-
-                //Replace PLT.SEC
-                //todo: 16 is bin code dependent
-                memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * funcId, binCodeArr.data(), 16);
-                binCodeArr.clear();
-
-                //binCodeArr = fillDestAddr2HookCode((void *) asmHookHandler);
-                //Replace PLT
-                //memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * funcId, binCodeArr.data(), 16);
+            try {
+                memTool->adjustMemPerm(curSymbol.gotEntry, curSymbol.gotEntry + 1,
+                                       PROT_READ | PROT_WRITE | PROT_EXEC);
+            } catch (const ScalerException &e) {
+                std::stringstream ss;
+                ss << "Hook Failed for \"" << pmParser.idFileMap.at(curSymbol.fileId) << ":"
+                   << curSymbol.symbolName
+                   << "\" because " << e.info;
+                fprintf(stderr, "%s\n", ss.str().c_str());
+                continue;
             }
 
+            //Resolve current address
+            curSymbol.addr = *curSymbol.gotEntry;
+
+            auto &curELFImgInfo = elfImgInfoMap.at(curSymbol.fileId);
+            //Allocate plt table
+            auto binCodeArrPseudoPLT = fillDestAddr2PseudoPltCode(curSymbol.funcId, curELFImgInfo.pltStartAddr);
+            //Copy array todo:18 is machine specific
+            memcpy(curELFImgInfo.pseudoPlt + 18 * curSymbol.funcId, binCodeArrPseudoPLT.data(), 18);
+
+
+            //Step5: Replace .plt.sec
+            //Check if address is already resolved
+            size_t symbolFileId = pmParser.findExecNameByAddr(curSymbol.addr);
+            //Since it's external symbol, it's address must be in anotehr file.
+            curELFImgInfo.realAddrResolved.emplace_back(symbolFileId != curSymbol.fileId);
+
+            curELFImgInfo.hookedExtSymbol[curSymbol.funcId] = curSymbol;
+
+            printf("[%s] %s in %s hooked\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
+                   curELFImgInfo.filePath.c_str());
+
+            auto binCodeArr = fillDestAddr2HookCode((void *) asmHookHandlerSec);
+
+            //Step6: Replace PLT.SEC
+            //todo: 16 is bin code dependent
+            memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.funcId, binCodeArr.data(), 16);
+            binCodeArr.clear();
+
+            binCodeArr = fillDestAddr2HookCode((void *) asmHookHandler);
+            //todo:Replace PLT
+            memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * curSymbol.funcId, binCodeArr.data(), 16);
         }
 
     }
@@ -498,25 +503,23 @@ namespace scaler {
 
     IMPL_CHANDLER(, pltStartAddr)
 
-    IMPL_CHANDLER(Sec, pltSecStartAddr)
+//    IMPL_CHANDLER(Sec, pltSecStartAddr)
 
-    /**
-    void *ExtFuncCallHook_Linux::cPreHookHanlderLinuxSec(void *callerFuncAddr) {
+    void *ExtFuncCallHook_Linux::cPreHookHanlderLinuxSec(void *pltEntryAddr, void *callerAddr) {
+        curContext.callerAddr.emplace_back(callerAddr);                                          \
         //Calculate fileID
         auto &_this = ExtFuncCallHook_Linux::instance;
-        auto fileId = _this->pmParser.findExecNameByAddr(callerFuncAddr);
-        curContext.fileId.emplace_back(fileId);
+        auto fileId = _this->pmParser.findExecNameByAddr(pltEntryAddr);
         auto &curElfImgInfo = _this->elfImgInfoMap[fileId];
-        auto &pltSec = curElfImgInfo.pltSecStartAddr;
+        auto &SEC_START_ADDR_VAR = curElfImgInfo.pltSecStartAddr;
         auto &realAddrResolved = curElfImgInfo.realAddrResolved;
 
-        callerFuncAddr = reinterpret_cast<void *>((uint8_t *) (callerFuncAddr) - 0xD);
-        //todo: 16 is machine specific
-        size_t funcId = ((ElfW(Addr)) callerFuncAddr - (ElfW(Addr)) pltSec) / 16;
-        curContext.funcId.emplace_back(funcId);
-        auto &curSymbol = curElfImgInfo.hookedExtSymbol.at(funcId);
+        pltEntryAddr = reinterpret_cast<void *>((uint8_t *) (pltEntryAddr) - 0xD);\
+        auto funcId = ((ElfW(Addr)) pltEntryAddr - (ElfW(Addr)) SEC_START_ADDR_VAR) / 16;\
+        auto &curSymbol = curElfImgInfo.hookedExtSymbol.at(funcId);                  \
+        \
+        void *retOriFuncAddr = curSymbol.addr; \
 
-        void *retOriFuncAddr = nullptr;
 
         //printf("\"%s\" in %s is called\n", curSymbol.symbolName.c_str(),
         //       _this->pmParser.idFileMap[fileId].c_str());
@@ -553,13 +556,12 @@ namespace scaler {
         printf("[Pre Hook] File:%s, Func: %s\n", _this->pmParser.idFileMap[fileId].c_str(),
                curElfImgInfo.idFuncMap.at(funcId).c_str());\
         //Currently, I won't load plthook library
-//        _this->fileId1.push_back(fileId);
-//        _this->funcId1.push_back(funcId);
+        curContext.fileId.emplace_back(fileId);
+        curContext.funcId.emplace_back(funcId);
 
         curContext.inHookHanlder = false;
         return *curSymbol.gotEntry;
     }
-**/
 
     void *ExtFuncCallHook_Linux::cAfterHookHanlderLinux() {
         auto &_this = ExtFuncCallHook_Linux::instance;
@@ -582,6 +584,8 @@ namespace scaler {
 
         return callerAddr;
     }
+
+
 
 //todo: This function is machine specific
 //todo: Binary analysis and support after hook
@@ -640,19 +644,75 @@ namespace scaler {
         );\
     }
 
-    //I used to put cHookHandler out of scaler namespace
-    //However, cHookHandler needs to access variables defined in ExtHook_Linux
-    //If I use friend function, it cannot be called by Assembly code.
-    //To make code more elegant, I finally put everything in scaler namespace.
-    //The cost is I have to find compiled function name once
+//I used to put cHookHandler out of scaler namespace
+//However, cHookHandler needs to access variables defined in ExtHook_Linux
+//If I use friend function, it cannot be called by Assembly code.
+//To make code more elegant, I finally put everything in scaler namespace.
+//The cost is I have to find compiled function name once
     IMPL_ASMHANDLER(, _ZN6scaler21ExtFuncCallHook_Linux20cPreHookHanlderLinuxEPvS1_)
 
-    IMPL_ASMHANDLER(Sec, _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEPvS1_)
+//    IMPL_ASMHANDLER(Sec, _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEPvS1_)
 
 /**
  * Source code version for #define IMPL_ASMHANDLER
  * We can't add comments to a macro
  */
+
+    void __attribute__((naked)) asmHookHandlerSec() {
+        \
+        __asm__ __volatile__ (\
+        "popq %r14\n\t" \
+        "popq %r13\n\t" \
+        \
+        \
+        "push %rdi\n\t"\
+        "push %rsi\n\t"\
+        "push %rdx\n\t"\
+        "push %rcx\n\t"\
+        "push %r8\n\t"\
+        "push %r9\n\t"\
+        PUSHXMM(0)\
+        PUSHXMM(1)\
+        PUSHXMM(2)\
+        PUSHXMM(3)\
+        PUSHXMM(4)\
+        PUSHXMM(5)\
+        PUSHXMM(6)\
+        PUSHXMM(7)\
+        PUSHXMM(8)\
+        \
+        "movq %r14,%rdi\n\t"\
+        "movq %r13,%rsi\n\t"\
+        "call  _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEPvS1_\n\t" \
+        "movq %rax,%r14\n\t" \
+        \
+        POPXMM(8)\
+        POPXMM(7)\
+        POPXMM(6)\
+        POPXMM(5)\
+        POPXMM(4)\
+        POPXMM(3)\
+        POPXMM(2)\
+        POPXMM(1)\
+        POPXMM(0)\
+        "pop %r9\n\t"\
+        "pop %r8\n\t"\
+        "pop %rcx\n\t"\
+        "pop %rdx\n\t"\
+        "pop %rsi\n\t"\
+        "pop %rdi\n\t"\
+        \
+        "call *%r14\n\t"\
+        \
+        "push %rax\n\t" \
+        "call  _ZN6scaler21ExtFuncCallHook_Linux22cAfterHookHanlderLinuxEv\n\t"  \
+        "movq %rax,%r13\n\t" \
+        "pop %rax\n\t"  \
+        "jmp *%r13\n\t"\
+        );\
+
+    }
+
 /**    void __attribute__((naked)) asmHookHandlerSec() {
     __asm__ __volatile__ (
     "popq %r14\n\t" //Save caller address from PLT

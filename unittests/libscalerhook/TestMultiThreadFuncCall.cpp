@@ -14,7 +14,6 @@ void threadB() {
 }
 
 int main() {
-
     std::thread thread1(callFuncA);
     thread1.join();
     std::thread thread2(callFuncA);
@@ -22,6 +21,7 @@ int main() {
 
     return 0;
 }
+
 
 /*
 #include <iostream>

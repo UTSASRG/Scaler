@@ -50,3 +50,7 @@ target_link_libraries(TestMultiThreadFuncCall scalerhook_installer FuncCallTest 
 add_executable(TestMultiThreadFuncCallPthread TestMultiThreadFuncCallPthread.cpp)
 target_include_directories(TestMultiThreadFuncCallPthread PUBLIC ./libtest/header)
 target_link_libraries(TestMultiThreadFuncCallPthread scalerhook_installer FuncCallTest InstallTest dl)
+
+add_executable(TestHookEverything TestHookEverything.cpp)
+target_include_directories(TestHookEverything PUBLIC ./libtest/header)
+target_link_libraries(TestHookEverything scalerhook FuncCallTest InstallTest dl)

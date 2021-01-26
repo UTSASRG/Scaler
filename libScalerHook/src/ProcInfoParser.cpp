@@ -49,11 +49,11 @@ namespace scaler {
                 std::stringstream ss;
                 //Parse current line
                 ss << line;
-                //Put all address into addr1. Seperate them afterwards
+                //Put all address into addr1. Seperate them afterward
                 ss >> addr1 >> perm >> offset >> newEntry.dev >> newEntry.inode >> newEntry.pathName;
                 if (curExecFileName == "")
                     //The first filename wuold always be the executable file
-                    curExecFileName = newEntry.pathName;
+                    curExecFileName = extractFileName_Linux(newEntry.pathName);
 
                 //Split address into starting address
                 auto splitPoint = addr1.find('-');
@@ -145,17 +145,21 @@ namespace scaler {
         }
     }
 
-    int dlCallback(struct dl_phdr_info *info, size_t size, void *data)
-    {
+    int dlCallback(struct dl_phdr_info *info, size_t size, void *data) {
         //todo: file not found error
-//        PmParser_Linux* _this= static_cast<PmParser_Linux *>(data);
-//        size_t curFileId=_this->fileIDMap.at(std::string(info->dlpi_name));
-//        _this->linkedFileID.emplace_back(curFileId);
+        PmParser_Linux *_this = static_cast<PmParser_Linux *>(data);
+
+        if(_this->fileIDMap.count(std::string(info->dlpi_name))!=0){
+            size_t curFileId = _this->fileIDMap.at(std::string(info->dlpi_name));
+            _this->linkedFileID.emplace_back(curFileId);
+        }else{
+            printf("%s not found in /self/proc/maps\n",info->dlpi_name);
+        }
         return 0;
     }
 
     void PmParser_Linux::parseDLPhdr() {
-//        dl_iterate_phdr(dlCallback, this);
+        dl_iterate_phdr(dlCallback, this);
     }
 
 
