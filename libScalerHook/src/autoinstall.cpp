@@ -14,12 +14,13 @@ int doubletake_main(int argc, char **argv, char **envp) {
 
     libPltHook->install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
-        if (fileName.substr(fileName.length() - 16, 16) == "libscalerhook.so"
-            ||
-            funcName.substr(funcName.length() - 26, 26) != "libscalerhook_installer.so") {
+        if (fileName.substr(funcName.length()>=16 && fileName.length() - 16, 16) == "libscalerhook.so") {
             return false;
+        } else if (funcName.length()>=26 && funcName.substr(funcName.length() - 26, 26) != "libscalerhook_installer.so"){
+            return false;
+        } else {
+            return true;
         }
-        return true;
     });
 
     // Call the program's main function

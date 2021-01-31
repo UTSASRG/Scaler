@@ -117,9 +117,9 @@ namespace scaler {
          * @param callerFuncAddr The next caller
          * @return
          */
-        static void *cPreHookHanlderLinuxSec(void *pltEntryAddr, void *callerAddr);
+        static  void *cPreHookHanlderLinuxSec(void *pltEntryAddr, void *callerAddr);
 
-        static void *cPreHookHanlderLinux(void *pltEntryAddr, void *callerAddr);
+        //static __attribute__((optimize("O0"))) void *cPreHookHanlderLinux(void *pltEntryAddr, void *callerAddr);
 
         static void *cAfterHookHanlderLinux();
 

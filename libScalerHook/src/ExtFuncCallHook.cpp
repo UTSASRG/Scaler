@@ -23,15 +23,6 @@ namespace scaler {
 "movdqu  (%rsp),%xmm"#ArgumentName"\n\t"\
 "addq $16,%rsp\n\t"
 
-#define PUSH64bits(ArgumentName) \
-"subq $8,%rsp\n\t" \
-"movdqu  %"#ArgumentName",(%rsp)\n\t"
-
-#define POP64bits(ArgumentName) \
-"movdqu  (%rsp),%"#ArgumentName"\n\t"\
-"addq $16,%rsp\n\t"
-
-
     class Context {
     public:
         //todo: Initialize using maximum stack size
@@ -47,9 +38,9 @@ namespace scaler {
 
     //Declare hook handler written in assembly code
 
-    void __attribute__((naked)) asmHookHandler();
+    //void __attribute__((naked)) asmHookHandler();
 
-    void __attribute__((naked)) asmHookHandlerSec();
+    void __attribute__((naked,optimize("O0"))) asmHookHandlerSec();
 
     //todo: ElfW is not correct. Because types are determined by the type of ELF file
     //todo: rather than the type of the machine
@@ -351,9 +342,9 @@ namespace scaler {
             memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.funcId, binCodeArr.data(), 16);
             binCodeArr.clear();
 
-            binCodeArr = fillDestAddr2HookCode((void *) asmHookHandler);
+            //binCodeArr = fillDestAddr2HookCode((void *) asmHookHandler);
             //todo:Replace PLT
-            memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * curSymbol.funcId, binCodeArr.data(), 16);
+            //memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * curSymbol.funcId, binCodeArr.data(), 16);
         }
 
     }
@@ -454,7 +445,7 @@ namespace scaler {
     }
 
 #define IMPL_CHANDLER(SUFFIX, SEC_START_ADDR_VAR) \
-    void *ExtFuncCallHook_Linux::cPreHookHanlderLinux##SUFFIX(void *pltEntryAddr,void* callerAddr) {\
+   __attribute__ ((__used__)) void *ExtFuncCallHook_Linux::cPreHookHanlderLinux##SUFFIX(void *pltEntryAddr,void* callerAddr) {\
         curContext.callerAddr.emplace_back(callerAddr);                                          \
         auto &_this = ExtFuncCallHook_Linux::instance;\
         auto fileId=_this->pmParser.findExecNameByAddr(pltEntryAddr);              \
@@ -501,24 +492,25 @@ namespace scaler {
     }
 
 
-    IMPL_CHANDLER(, pltStartAddr)
+    //IMPL_CHANDLER(, pltStartAddr)
 
 //    IMPL_CHANDLER(Sec, pltSecStartAddr)
 
-    void *ExtFuncCallHook_Linux::cPreHookHanlderLinuxSec(void *pltEntryAddr, void *callerAddr) {
-        curContext.callerAddr.emplace_back(callerAddr);                                          \
+    __attribute__((optimize("O0"))) void *ExtFuncCallHook_Linux::cPreHookHanlderLinuxSec(void *pltEntryAddr, void *callerAddr) {
+        printf("PreHook Handler\n");
+        curContext.callerAddr.emplace_back(callerAddr);
         //Calculate fileID
         auto &_this = ExtFuncCallHook_Linux::instance;
         auto fileId = _this->pmParser.findExecNameByAddr(pltEntryAddr);
-        auto &curElfImgInfo = _this->elfImgInfoMap[fileId];
+        auto &curElfImgInfo = _this->elfImgInfoMap.at(fileId);
         auto &SEC_START_ADDR_VAR = curElfImgInfo.pltSecStartAddr;
         auto &realAddrResolved = curElfImgInfo.realAddrResolved;
 
-        pltEntryAddr = reinterpret_cast<void *>((uint8_t *) (pltEntryAddr) - 0xD);\
-        auto funcId = ((ElfW(Addr)) pltEntryAddr - (ElfW(Addr)) SEC_START_ADDR_VAR) / 16;\
-        auto &curSymbol = curElfImgInfo.hookedExtSymbol.at(funcId);                  \
-        \
-        void *retOriFuncAddr = curSymbol.addr; \
+        pltEntryAddr = reinterpret_cast<void *>((uint8_t *) (pltEntryAddr) - 0xD);
+        auto funcId = ((ElfW(Addr)) pltEntryAddr - (ElfW(Addr)) SEC_START_ADDR_VAR) / 16;
+        auto &curSymbol = curElfImgInfo.hookedExtSymbol.at(funcId);
+        
+        void *retOriFuncAddr = curSymbol.addr;
 
 
         //printf("\"%s\" in %s is called\n", curSymbol.symbolName.c_str(),
@@ -526,20 +518,20 @@ namespace scaler {
 
         //_this->pmParser.printPM();
 
-
-
         if (!realAddrResolved[funcId]) {
             void *curAddr = curSymbol.addr;
             void *newAddr = *curSymbol.gotEntry;
             if (curAddr == newAddr) {
-                printf("\"%s\" is not initialized by linker, execute original PLT code\n",
-                       curSymbol.symbolName.c_str());
+                //printf("\"%s\" is not initialized by linker, execute original PLT code\n",
+                //       curSymbol.symbolName.c_str());
                 //Execute original PLT function
                 //todo: 18 depends on opCode array
                 retOriFuncAddr = curElfImgInfo.pseudoPlt + funcId * 18;
+
+
             } else {
-                printf("\"%s\"'s address is now resolved，update record with the correct address\n",
-                       curSymbol.symbolName.c_str());
+                //printf("\"%s\"'s address is now resolved，update record with the correct address\n",
+                //       curSymbol.symbolName.c_str());
                 //Update address and set it as correct address
                 realAddrResolved[funcId] = true;
                 curSymbol.addr = newAddr;
@@ -553,8 +545,8 @@ namespace scaler {
 
         //Starting from here, we could call external symbols and it won't cause
         curContext.inHookHanlder = true;
-        printf("[Pre Hook] File:%s, Func: %s\n", _this->pmParser.idFileMap[fileId].c_str(),
-               curElfImgInfo.idFuncMap.at(funcId).c_str());\
+        //printf("[Pre Hook] File:%s, Func: %s\n", _this->pmParser.idFileMap[fileId].c_str(),
+        //       curElfImgInfo.idFuncMap.at(funcId).c_str());\
         //Currently, I won't load plthook library
         curContext.fileId.emplace_back(fileId);
         curContext.funcId.emplace_back(funcId);
@@ -563,21 +555,21 @@ namespace scaler {
         return *curSymbol.gotEntry;
     }
 
-    void *ExtFuncCallHook_Linux::cAfterHookHanlderLinux() {
+    __attribute__((optimize("O0"))) void *ExtFuncCallHook_Linux::cAfterHookHanlderLinux() {
         auto &_this = ExtFuncCallHook_Linux::instance;
 
-        size_t fileId = curContext.fileId.at(curContext.fileId.size() - 1);
-        curContext.fileId.pop_back();
+//        size_t fileId = curContext.fileId.at(curContext.fileId.size() - 1);
+//        curContext.fileId.pop_back();
+//
+//        auto &curELFImgInfo = _this->elfImgInfoMap.at(fileId);
+//
+//        auto &fileName = curELFImgInfo.filePath;
+//
+//        size_t funcId = curContext.funcId.at(curContext.funcId.size() - 1);
+//        curContext.funcId.pop_back();
+//        auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
 
-        auto &curELFImgInfo = _this->elfImgInfoMap.at(fileId);
-
-        auto &fileName = curELFImgInfo.filePath;
-
-        size_t funcId = curContext.funcId.at(curContext.funcId.size() - 1);
-        curContext.funcId.pop_back();
-        auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
-
-        printf("[After Hook] File:%s, Func: %s\n", fileName.c_str(), funcName.c_str());
+        //printf("[After Hook] File:%s, Func: %s\n", fileName.c_str(), funcName.c_str());
 
         void *callerAddr = curContext.callerAddr.at(curContext.callerAddr.size() - 1);
         curContext.callerAddr.pop_back();
@@ -649,118 +641,103 @@ namespace scaler {
 //If I use friend function, it cannot be called by Assembly code.
 //To make code more elegant, I finally put everything in scaler namespace.
 //The cost is I have to find compiled function name once
-    IMPL_ASMHANDLER(, _ZN6scaler21ExtFuncCallHook_Linux20cPreHookHanlderLinuxEPvS1_)
+//    IMPL_ASMHANDLER(, _ZN6scaler21ExtFuncCallHook_Linux20cPreHookHanlderLinuxEPvS1_)
 
 //    IMPL_ASMHANDLER(Sec, _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEPvS1_)
 
-/**
- * Source code version for #define IMPL_ASMHANDLER
- * We can't add comments to a macro
- */
-
+    /**
+     * Source code version for #define IMPL_ASMHANDLER
+     * We can't add comments to a macro
+     */
     void __attribute__((naked)) asmHookHandlerSec() {
-        \
-        __asm__ __volatile__ (\
-        "popq %r14\n\t" \
-        "popq %r13\n\t" \
-        \
-        \
-        "push %rdi\n\t"\
-        "push %rsi\n\t"\
-        "push %rdx\n\t"\
-        "push %rcx\n\t"\
-        "push %r8\n\t"\
-        "push %r9\n\t"\
-        PUSHXMM(0)\
-        PUSHXMM(1)\
-        PUSHXMM(2)\
-        PUSHXMM(3)\
-        PUSHXMM(4)\
-        PUSHXMM(5)\
-        PUSHXMM(6)\
-        PUSHXMM(7)\
-        PUSHXMM(8)\
-        \
-        "movq %r14,%rdi\n\t"\
-        "movq %r13,%rsi\n\t"\
-        "call  _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEPvS1_\n\t" \
-        "movq %rax,%r14\n\t" \
-        \
-        POPXMM(8)\
-        POPXMM(7)\
-        POPXMM(6)\
-        POPXMM(5)\
-        POPXMM(4)\
-        POPXMM(3)\
-        POPXMM(2)\
-        POPXMM(1)\
-        POPXMM(0)\
-        "pop %r9\n\t"\
-        "pop %r8\n\t"\
-        "pop %rcx\n\t"\
-        "pop %rdx\n\t"\
-        "pop %rsi\n\t"\
-        "pop %rdi\n\t"\
-        \
-        "call *%r14\n\t"\
-        \
-        "push %rax\n\t" \
-        "call  _ZN6scaler21ExtFuncCallHook_Linux22cAfterHookHanlderLinuxEv\n\t"  \
-        "movq %rax,%r13\n\t" \
-        "pop %rax\n\t"  \
-        "jmp *%r13\n\t"\
-        );\
+
+        __asm__ __volatile__ (
+        "popq %r14\n\t"
+        "popq %r13\n\t"
+
+
+        "push %rdi\n\t"
+        "push %rsi\n\t"
+        "push %rdx\n\t"
+        "push %rcx\n\t"
+        "push %r8\n\t"
+        "push %r9\n\t"
+        PUSHXMM(0)
+        PUSHXMM(1)
+        PUSHXMM(2)
+        PUSHXMM(3)
+        PUSHXMM(4)
+        PUSHXMM(5)
+        PUSHXMM(6)
+        PUSHXMM(7)
+        PUSHXMM(8)
+
+        "movq %r14,%rdi\n\t"
+        "movq %r13,%rsi\n\t"
+        "call  _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEPvS1_\n\t"
+        "movq %rax,%r14\n\t"
+
+        POPXMM(8)
+        POPXMM(7)
+        POPXMM(6)
+        POPXMM(5)
+        POPXMM(4)
+        POPXMM(3)
+        POPXMM(2)
+        POPXMM(1)
+        POPXMM(0)
+        "pop %r9\n\t"
+        "pop %r8\n\t"
+        "pop %rcx\n\t"
+        "pop %rdx\n\t"
+        "pop %rsi\n\t"
+        "pop %rdi\n\t"
+
+        "call *%r14\n\t"
+
+        "push %rax\n\t"
+
+        "push %rdi\n\t"
+        "push %rsi\n\t"
+        "push %rdx\n\t"
+        "push %rcx\n\t"
+        "push %r8\n\t"
+        "push %r9\n\t"
+        PUSHXMM(0)
+        PUSHXMM(1)
+        PUSHXMM(2)
+        PUSHXMM(3)
+        PUSHXMM(4)
+        PUSHXMM(5)
+        PUSHXMM(6)
+        PUSHXMM(7)
+        PUSHXMM(8)
+
+        "call  _ZN6scaler21ExtFuncCallHook_Linux22cAfterHookHanlderLinuxEv\n\t"
+        "movq %rax,%r13\n\t"
+
+        POPXMM(8)
+        POPXMM(7)
+        POPXMM(6)
+        POPXMM(5)
+        POPXMM(4)
+        POPXMM(3)
+        POPXMM(2)
+        POPXMM(1)
+        POPXMM(0)
+        "pop %r9\n\t"
+        "pop %r8\n\t"
+        "pop %rcx\n\t"
+        "pop %rdx\n\t"
+        "pop %rsi\n\t"
+        "pop %rdi\n\t"
+
+        "pop %rax\n\t"
+
+        "jmp *%r13\n\t"
+        );
 
     }
-
-/**    void __attribute__((naked)) asmHookHandlerSec() {
-    __asm__ __volatile__ (
-    "popq %r14\n\t" //Save caller address from PLT
-
-    //Save environment
-    "push %rdi\n\t"
-    "push %rsi\n\t"
-    "push %rdx\n\t"
-    "push %rcx\n\t"
-    "push %r8\n\t"
-    "push %r9\n\t"
-    PUSHXMM(0)
-    PUSHXMM(1)
-    PUSHXMM(2)
-    PUSHXMM(3)
-    PUSHXMM(4)
-    PUSHXMM(5)
-    PUSHXMM(6)
-    PUSHXMM(7)
-
-    "movq %r14,%rdi\n\t" //Pass PLT call address to cPreHookHanlderLinux
-    //cPreHookHanlderLinuxSec needs access to ExtFuncCallHook_Linux
-    "call  _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEPv\n\t" //Calling cPreHookHanlderLinuxSec
-    "movq %rax,%r14\n\t"
-
-    //Restore environment
-    POPXMM(7)
-    POPXMM(6)
-    POPXMM(5)
-    POPXMM(4)
-    POPXMM(3)
-    POPXMM(2)
-    POPXMM(1)
-    POPXMM(0)
-    "pop %r9\n\t"
-    "pop %r8\n\t"
-    "pop %rcx\n\t"
-    "pop %rdx\n\t"
-    "pop %rsi\n\t"
-    "pop %rdi\n\t"
-
-    "call *%r14\n\t"
-
-    "call  cHookHanlderAfter\n\t"
-
-    "jmp *%r13\n\t"
-    );
-} **/
 
 }
 

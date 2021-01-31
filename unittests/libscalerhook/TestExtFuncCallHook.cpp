@@ -121,7 +121,8 @@ TEST(ExtFuncCallHook, compareAddressAndFuncName){
     }
 
     ExtFuncCallHook_Linux *hook = ExtFuncCallHook_Linux::getInst();
-    hook->install();
+    //todo:fix
+    //hook->install();
 
     auto &curElfImgInfo = hook->elfImgInfoMap[hook->pmParser.fileIDMap[hook->pmParser.curExecFileName]];
 

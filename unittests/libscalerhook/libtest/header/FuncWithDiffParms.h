@@ -4,6 +4,7 @@
 #include "immintrin.h"
 #include <string>
 
+
 extern "C" {
 
 void funcA();
@@ -15,6 +16,8 @@ void funcC(int a, int b);
 void funcD(int a, int b, int c);
 
 int funcE(int a, int b, int c);
+
+uint64_t funcTiming();
 
 void resolveSystemFunc();
 

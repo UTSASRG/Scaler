@@ -5,5 +5,7 @@
     <mapping directory="$PROJECT_DIR$/tests/googletest" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/tests/plthook" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/unittests/googletest" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/unittests/multithreadingtests" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/unittests/plthook" vcs="Git" />
   </component>
 </project>

@@ -6,7 +6,6 @@ using namespace std;
 
 
 int main() {
-    install();
 
     return 0;
 }

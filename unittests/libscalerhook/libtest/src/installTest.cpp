@@ -27,6 +27,10 @@ int funcE(int a, int b, int c) {
     printf("Inside Function E\n");
     return 1;
 }
+uint64_t funcTiming() {
+//    return __rdtsc();
+    return 0;
+}
 
 void resolveSystemFunc() {
     system("");
