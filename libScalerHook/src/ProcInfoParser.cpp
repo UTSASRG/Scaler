@@ -149,17 +149,76 @@ namespace scaler {
         //todo: file not found error
         PmParser_Linux *_this = static_cast<PmParser_Linux *>(data);
 
-        if(_this->fileIDMap.count(std::string(info->dlpi_name))!=0){
+        if (_this->fileIDMap.count(std::string(info->dlpi_name)) != 0) {
             size_t curFileId = _this->fileIDMap.at(std::string(info->dlpi_name));
             _this->linkedFileID.emplace_back(curFileId);
-        }else{
-            printf("%s not found in /self/proc/maps\n",info->dlpi_name);
+        } else {
+            printf("%s not found in /self/proc/maps\n", info->dlpi_name);
         }
         return 0;
     }
 
     void PmParser_Linux::parseDLPhdr() {
         dl_iterate_phdr(dlCallback, this);
+    }
+
+    PmParserC_Linux::PmParserC_Linux(int procID) : PmParser_Linux(procID) {
+        //Now parsing is complete by super clalss. We need to convert the datastructure to C-compatible local variable.
+        fillCDataStructure();
+    }
+
+
+    int PmParserC_Linux::findExecNameByAddr(void *addr) {
+        //Since sortedSegments are sorted by starting address and all address range are not overlapping.
+        //We could use binary search to lookup addr in this array.
+
+        //Binary search segAddrFileMap
+        long lo = 0, hi = sortedSegSizeC, md;
+        //[lo,hi) to prevent underflow
+        while (lo < hi - 1) {
+            md = (lo + hi) / 2;
+
+            if (sortedStartAddrC[md] > addr) {
+                hi = md;
+            } else {
+                lo = md;
+            }
+
+        }
+
+        if (sortedStartAddrC[lo] <= addr && addr <= sortedEndAddrC[lo]) {
+            return sortedSegIDC[lo];
+        } else {
+            return -1;
+        }
+    }
+
+
+    PmParserC_Linux::~PmParserC_Linux() {
+        delete[] sortedStartAddrC;
+        delete[] sortedEndAddrC;
+        delete[] sortedSegIDC;
+    }
+
+    void PmParserC_Linux::fillCDataStructure() {
+
+        //Now sortedSegments is built. We'll copy it's content to
+        sortedSegSizeC = sortedSegments.size();
+        sortedStartAddrC = new void *[sortedSegSizeC];
+        sortedEndAddrC = new void *[sortedSegSizeC];
+        sortedSegIDC = new int[sortedSegSizeC];
+
+        //Copy contents
+        for (int i = 0; i < sortedSegSizeC; ++i) {
+            sortedSegIDC[i] = sortedSegments[i].first;
+            sortedStartAddrC[i] = sortedSegments[i].second.addrStart;
+            sortedEndAddrC[i] = sortedSegments[i].second.addrEnd;
+        }
+
+    }
+
+    void PmParserC_Linux::openPMMap() {
+        PmParser_Linux::openPMMap();
     }
 
 

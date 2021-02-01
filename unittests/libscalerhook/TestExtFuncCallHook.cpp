@@ -61,40 +61,7 @@ TEST(ExtFuncCallHook, install) {
 
 void *addr1;
 
-TEST(ExtFuncCallHook, findExecNameByAddr) {
-    //Get current executable file name
-//    PMParser parser;
-//    parser.parsePMMap();
-//
-//
-//    ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
-//
-//    hook->locSecAndSegInMem();
-//    size_t funcId = hook->findExecNameByAddr(addr1);
-//    EXPECT_EQ(parser.curExecFileName, hook->fileLoadMap[funcId].fileName);
-//
-//    void *funcPtr = (void *) printf;
-//    funcId = hook->findExecNameByAddr(funcPtr);
-//    auto &execName = hook->fileLoadMap[funcId].fileName;
-//
-//    EXPECT_TRUE(execName.find("libc") != std::string::npos);
-//
-//    hook->fileLoadMap.clear();
-//    for (int i = 0; i < 4; i += 2) {
-//        LoadingInfo newEntry;
-//        newEntry.startAddr = (void *) i;
-//        hook->fileLoadMap.emplace_back(newEntry);
-//    }
-//    funcId = hook->findExecNameByAddr((void *) 0);
-//    EXPECT_EQ(funcId, 0);
-//    funcId = hook->findExecNameByAddr((void *) 1);
-//    EXPECT_EQ(funcId, 0);
-//    funcId = hook->findExecNameByAddr((void *) 2);
-//    EXPECT_EQ(funcId, 2);
-//    funcId = hook->findExecNameByAddr((void *) 3);
-//    EXPECT_EQ(funcId, 2);
 
-}
 
 #include <FuncWithDiffParms.h>
 #include <TenThousandFunc.h>

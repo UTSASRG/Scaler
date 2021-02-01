@@ -95,7 +95,6 @@ namespace scaler {
     };
 
 
-
     /**
      * This class was a helper tool to parse /proc/self/maps
      * Current implementation uses STL API and may not the most efficient way. But it's fine for initialization and the code looks cleaner.
@@ -106,7 +105,7 @@ namespace scaler {
         std::map<std::string, std::vector<PMEntry_Linux>> procMap;
         // Used to find which fileID  floor(i/2) the corresponding fileID of pointer addrFileMap[i]
         // This array should be sorted by starting address for fast lookup
-        std::vector<std::pair<size_t,PMEntry_Linux>> sortedSegments;
+        std::vector<std::pair<size_t, PMEntry_Linux>> sortedSegments;
 
 
         //This will be current executable name
@@ -125,6 +124,7 @@ namespace scaler {
 
         PmParser_Linux(int procID = -1);
 
+
         /**
          * A convenient way to print /proc/{pid}/maps
          */
@@ -134,8 +134,7 @@ namespace scaler {
          * Return addr is located in which file
          * @param fileId in fileIDMap
          */
-        int findExecNameByAddr(void *addr);
-
+        virtual int findExecNameByAddr(void *addr);
 
         ~PmParser_Linux() override;
 
@@ -150,12 +149,12 @@ namespace scaler {
         /**
          * Open /proc/{pid}/maps
          */
-        void openPMMap();
+        virtual void openPMMap();
 
         /**
          * Parse /proc/{pid}/maps into procMap
          */
-        void parsePMMap();
+        virtual void parsePMMap();
 
         //todo: Build a library dependency graph
 
@@ -164,12 +163,51 @@ namespace scaler {
          * However, relocation table entries are relative to a base address
          * To get the real address we have to parse it seperately.
          */
-        void parseDLPhdr();
+        virtual void parseDLPhdr();
 
         friend int dlCallback(struct dl_phdr_info *info, size_t size, void *data);
 
     };
-}
+
+
+    class PmParserC_Linux : public PmParser_Linux {
+    public:
+
+        PmParserC_Linux(int procID = -1);
+
+        ~PmParserC_Linux();
+
+        int findExecNameByAddr(void *addr) override;
+
+    protected:
+        void openPMMap() override;
+
+    protected:
+
+        //C datastructure for PmParser_Linux::sortedSegments
+        //Developers should fill these variable after sortedSegments is built
+        size_t sortedSegSizeC = 0;
+        void **sortedStartAddrC = nullptr;
+        void **sortedEndAddrC = nullptr;
+        int *sortedSegIDC = nullptr;
+
+
+        /**
+         * Although STL data structures are easy to use.
+         * We can't use them inside certain part of the hook handler (before function ID is resolved).
+         * That's why we need to transfer existing datastructures to C array.
+         * In this way we could keep elegant code and still make it work.
+         *
+         * This function is called at the end of parsing stage. It's main function is to convert STL datastructure to
+         * C compatible structure.
+        */
+        void fillCDataStructure();
+
+
+    };
+
+};
+
 
 #endif
 #endif

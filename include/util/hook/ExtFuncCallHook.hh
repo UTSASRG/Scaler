@@ -29,6 +29,7 @@ namespace scaler {
 
         ExtFuncCallHook_Linux(ExtFuncCallHook_Linux &&) = delete;
 
+        ~ExtFuncCallHook_Linux() override;
 
     protected:
 
@@ -38,7 +39,7 @@ namespace scaler {
          */
         class ELFImgInfo {
         public:
-            std::string filePath;                           //The absolute path of an ELF image (It's consistent with /proc/{pid}/maps)
+            std::string filePath = "";                           //The absolute path of an ELF image (It's consistent with /proc/{pid}/maps)
             void *pltStartAddr = nullptr;                   //The starting address of the PLT table
             void *pltEndAddr = nullptr;                     //The ending address of the PLT table
             void *pltSecStartAddr = nullptr;                //The starting address of the PLT.SEC table
@@ -46,27 +47,47 @@ namespace scaler {
             ElfW(Dyn) *_DYNAMICAddr = nullptr;              //The staring address of _DYNAMIC
 
             std::vector<bool> realAddrResolved;             //Whether function with id i has been resolved.
+            bool *realAddrResolvedC = nullptr;
+            size_t realAddrResolvedCSize=0;
+
 
             uint8_t *pseudoPlt = nullptr;                   //A pointer to pseudoPlt table
 
             std::map<size_t, ExtSymInfo> hookedExtSymbol;   //External symbols that has already been hooked
+
+            ExtSymInfo *hookedExtSymbolC = nullptr;
+            size_t hookedExtSymbolCSize=0;
+
             std::map<size_t, ExtSymInfo> allExtSymbol;      //All external symbols in ELF image
             std::map<std::string, size_t> funcIdMap;        //Mapping function name to it's id
             std::map<size_t, std::string> idFuncMap;        //Mapping function id to it's name
 
             //todo: Check const for all variables
-            ElfW(Rela) *relaPlt;                            //The first .plt.rela entry in ELF iamge
-            ElfW(Xword) relaPltCnt;                         //The number of entries in relaPlt
-            const ElfW(Sym) *dynSymTable;                   //The first .dynamic entry in ELF image
-            const char *dynStrTable;                        //The starting position of dynamic symbol name
-            size_t dynStrSize;                              //The size of dynamic string table
+            ElfW(Rela) *relaPlt= nullptr;                            //The first .plt.rela entry in ELF iamge
+            ElfW(Xword) relaPltCnt=0;                         //The number of entries in relaPlt
+            const ElfW(Sym) *dynSymTable= nullptr;                   //The first .dynamic entry in ELF image
+            const char *dynStrTable= nullptr;                        //The starting position of dynamic symbol name
+            size_t dynStrSize=0;                              //The size of dynamic string table
 
-            uint8_t *baseAddr;                              //The loading address of current elf image
+            uint8_t *baseAddr= nullptr;                              //The loading address of current elf image
+
+            ~ELFImgInfo();
+
+            ELFImgInfo();
+
+            ELFImgInfo(const ELFImgInfo &rho);
+
+            void operator=(const ELFImgInfo &rho);
+
+
         };
 
 
-        PmParser_Linux pmParser;                            //A parser to /proc/self/maps
+        PmParserC_Linux pmParser;                            //A parser to /proc/self/maps
         std::map<size_t, ELFImgInfo> elfImgInfoMap;         //Mapping fileID to ELFImgInfo
+
+        ELFImgInfo *elfImgInfoMapC = nullptr;
+        size_t elfImgInfoMapCSize=0;
 
 
         static ExtFuncCallHook_Linux *instance; //Singleton
@@ -117,7 +138,7 @@ namespace scaler {
          * @param callerFuncAddr The next caller
          * @return
          */
-        static  void *cPreHookHanlderLinuxSec(void *pltEntryAddr, void *callerAddr);
+        static void *cPreHookHanlderLinuxSec(void *pltEntryAddr, void *callerAddr);
 
         //static __attribute__((optimize("O0"))) void *cPreHookHanlderLinux(void *pltEntryAddr, void *callerAddr);
 

@@ -92,7 +92,7 @@ inline unsigned long long getTimeByTSC() {
 int main() {
     install([](std::string fileName, std::string funcName) -> bool {
         if (funcName == "funcTiming") {
-            return false;
+            return true;
         } else {
             return false;
         }
