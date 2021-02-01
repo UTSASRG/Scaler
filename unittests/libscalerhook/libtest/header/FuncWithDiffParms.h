@@ -17,11 +17,11 @@ void funcD(int a, int b, int c);
 
 int funcE(int a, int b, int c);
 
+float funcF(float a, float b, float c);
+
 uint64_t funcTiming();
 
 void resolveSystemFunc();
-
-int funcF(int a, int b, int c);
 
 typedef struct {
     int a, b;

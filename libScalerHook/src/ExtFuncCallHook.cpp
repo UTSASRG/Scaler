@@ -555,14 +555,10 @@ namespace scaler {
         //Calculate fileID
         auto &_this = ExtFuncCallHook_Linux::instance;
 
-        _this->pmParser.printPM();
-
         auto fileId = _this->pmParser.findExecNameByAddr(pltEntryAddr); //Find current plt belongs to which file
 
         auto &curElfImgInfo = _this->elfImgInfoMapC[fileId];
         auto &SEC_START_ADDR_VAR = curElfImgInfo.pltSecStartAddr;
-
-        printf("pltEntryAddr:%p callerAddr:%p PLTStart Addr: %p\n", pltEntryAddr, callerAddr, SEC_START_ADDR_VAR);
 
 
         pltEntryAddr = reinterpret_cast<void *>((uint8_t *) (pltEntryAddr) - 0xD);
@@ -807,6 +803,10 @@ namespace scaler {
         "call *%r11\n\t"
         //Save return value to stack
         "push %rax\n\t"
+        "push %rdx\n\t"
+        PUSHXMM(0)
+        PUSHXMM(1)
+        //todo: Handle YMM and ZMM
 
         /**
         * Save Environment
@@ -839,7 +839,11 @@ namespace scaler {
         "pop %rbx\n\t"
 
         //Restore return value of real function from stack
+        POPXMM(1)
+        POPXMM(0)
+        "pop %rdx\n\t"
         "pop %rax\n\t"
+        //todo: Handle float return and XMM return
 
         //Remove pltSecure Address from stack
         "addq $8,%rsp\n\t"

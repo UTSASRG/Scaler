@@ -97,6 +97,10 @@ void *findBaseAddrInALibrary() {
     dl_iterate_phdr(callback, NULL);
 }
 
+float funcF(float a, float b, float c) {
+    return a + b + c;
+}
+
 int A::asdf = 1;
 
 
