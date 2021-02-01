@@ -563,7 +563,7 @@ namespace scaler {
 
         auto funcId = ((ElfW(Addr)) pltEntryAddr - (ElfW(Addr)) SEC_START_ADDR_VAR) / 16;
 
-        auto &curSymbol = curElfImgInfo.hookedExtSymbol.at(funcId);
+        auto &curSymbol = curElfImgInfo.hookedExtSymbolC[funcId];
 
         void *retOriFuncAddr = curSymbol.addr;
 
