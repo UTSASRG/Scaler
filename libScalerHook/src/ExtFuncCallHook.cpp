@@ -12,6 +12,7 @@
 #include <elf.h>
 #include <util/tool/MemTool.h>
 #include <set>
+#include <immintrin.h>
 
 namespace scaler {
 
@@ -383,8 +384,9 @@ namespace scaler {
 
             auto binCodeArr = fillDestAddr2HookCode((void *) asmHookHandlerSec);
 
-            printf("[%s] %s in %s hooked\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
-                   curELFImgInfo.filePath.c_str());
+            printf("[%s] %s in %s hooked (ID:%d)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
+                   curELFImgInfo.filePath.c_str(),
+                   curSymbol.funcId);
 
             //Step6: Replace PLT.SEC
             //todo: 16 is bin code dependent
@@ -552,10 +554,15 @@ namespace scaler {
 
         //Calculate fileID
         auto &_this = ExtFuncCallHook_Linux::instance;
-        auto fileId = _this->pmParser.findExecNameByAddr(pltEntryAddr);
+
+        _this->pmParser.printPM();
+
+        auto fileId = _this->pmParser.findExecNameByAddr(pltEntryAddr); //Find current plt belongs to which file
 
         auto &curElfImgInfo = _this->elfImgInfoMapC[fileId];
         auto &SEC_START_ADDR_VAR = curElfImgInfo.pltSecStartAddr;
+
+        printf("pltEntryAddr:%p callerAddr:%p PLTStart Addr: %p\n", pltEntryAddr, callerAddr, SEC_START_ADDR_VAR);
 
 
         pltEntryAddr = reinterpret_cast<void *>((uint8_t *) (pltEntryAddr) - 0xD);
@@ -563,7 +570,7 @@ namespace scaler {
 
         auto funcId = ((ElfW(Addr)) pltEntryAddr - (ElfW(Addr)) SEC_START_ADDR_VAR) / 16;
 
-        auto &curSymbol = curElfImgInfo.hookedExtSymbolC[funcId];
+        auto &curSymbol = curElfImgInfo.hookedExtSymbol.at(funcId);
 
         void *retOriFuncAddr = curSymbol.addr;
 
@@ -706,10 +713,24 @@ namespace scaler {
     void __attribute__((naked)) asmHookHandlerSec() {
 
         __asm__ __volatile__ (
-        "popq %r14\n\t"
-        "popq %r13\n\t"
+        /**
+         * Save environment
+         */
 
+        //R11 is the only register we can use. Store stack address in it.
+        "movq %rsp,%r11\n\t"
 
+        // RAX, RCX, RDX, R8, R9, R10, R11 Caller Saved
+        // RBX, RBP, RDI, RSI, RSP, R12, R13, R14, and R15 Callee saved
+
+        // The first six integer or pointer arguments are passed in registers
+        //RDI, RSI, RDX, RCX, R8, R9 (R10 is used as a static chain pointer
+        //in case of nested functions[25]:21), while XMM0, XMM1, XMM2, XMM3,
+        //XMM4, XMM5, XMM6 and XMM7 are used for the first floating point arguments.
+        //If the callee wishes to use registers RBX, RSP, RBP, and R12–R15,
+        //it must restore their original values before returning control to the caller.
+
+        //Save Parameter registers and RBX,RSP,RBP,R12-15
         "push %rdi\n\t"
         "push %rsi\n\t"
         "push %rdx\n\t"
@@ -724,14 +745,45 @@ namespace scaler {
         PUSHXMM(5)
         PUSHXMM(6)
         PUSHXMM(7)
-        PUSHXMM(8)
+        //todo: Also save YMM0-7 and ZMM0-7
 
-        "movq %r14,%rdi\n\t"
-        "movq %r13,%rsi\n\t"
+        //Save RBX, RSP, RBP, and R12–R15
+        "push %rbx\n\t"
+        "push %rsp\n\t"
+        "push %rbp\n\t"
+        "push %r12\n\t"
+        "push %r13\n\t"
+        "push %r14\n\t"
+        "push %r15\n\t"
+
+
+        /**
+         * Getting PLT entry address and caller address from stack
+         */
+        "movq (%r11),%r15\n\t" //R15 stores PLT entry address
+        "addq $8,%r11\n\t"
+        "movq (%r11),%r14\n\t" //R14 stores caller address //Todo: We don't have to record this!
+
+
+        /**
+         * Pre-Hook
+         */
+        "movq %r15,%rdi\n\t" //Pass caller address to last parameter
+        "movq %r14,%rsi\n\t" //Pass PLT entry address to first parameter
         "call  _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEPvS1_\n\t"
-        "movq %rax,%r14\n\t"
+        "movq %rax,%r11\n\t" //Save return value to R11. This is the address of real function parsed by handler.
 
-        POPXMM(8)
+
+        /**
+        * Restore Registers
+        */
+        "pop %r15\n\t"
+        "pop %r14\n\t"
+        "pop %r13\n\t"
+        "pop %r12\n\t"
+        "pop %rbp\n\t"
+        "pop %rsp\n\t"
+        "pop %rbx\n\t"
         POPXMM(7)
         POPXMM(6)
         POPXMM(5)
@@ -747,48 +799,53 @@ namespace scaler {
         "pop %rsi\n\t"
         "pop %rdi\n\t"
 
-        "call *%r14\n\t"
 
+        /**
+         * Call actual function
+         */
+
+        "call *%r11\n\t"
+        //Save return value to stack
         "push %rax\n\t"
 
-        "push %rdi\n\t"
-        "push %rsi\n\t"
-        "push %rdx\n\t"
-        "push %rcx\n\t"
-        "push %r8\n\t"
-        "push %r9\n\t"
-        PUSHXMM(0)
-        PUSHXMM(1)
-        PUSHXMM(2)
-        PUSHXMM(3)
-        PUSHXMM(4)
-        PUSHXMM(5)
-        PUSHXMM(6)
-        PUSHXMM(7)
-        PUSHXMM(8)
+        /**
+        * Save Environment
+        */
 
+        "push %rbx\n\t"
+        "push %rsp\n\t"
+        "push %rbp\n\t"
+        "push %r12\n\t"
+        "push %r13\n\t"
+        "push %r14\n\t"
+        "push %r15\n\t"
+
+        /**
+         * Call After Hook
+         */
         "call  _ZN6scaler21ExtFuncCallHook_Linux22cAfterHookHanlderLinuxEv\n\t"
-        "movq %rax,%r13\n\t"
+        //Save return value to R11. R11 now has the address of caller.
+        "movq %rax,%r11\n\t"
 
-        POPXMM(8)
-        POPXMM(7)
-        POPXMM(6)
-        POPXMM(5)
-        POPXMM(4)
-        POPXMM(3)
-        POPXMM(2)
-        POPXMM(1)
-        POPXMM(0)
-        "pop %r9\n\t"
-        "pop %r8\n\t"
-        "pop %rcx\n\t"
-        "pop %rdx\n\t"
-        "pop %rsi\n\t"
-        "pop %rdi\n\t"
+        /**
+        * Restore Environment
+        */
+        "pop %r15\n\t"
+        "pop %r14\n\t"
+        "pop %r13\n\t"
+        "pop %r12\n\t"
+        "pop %rbp\n\t"
+        "pop %rsp\n\t"
+        "pop %rbx\n\t"
 
+        //Restore return value of real function from stack
         "pop %rax\n\t"
 
-        "jmp *%r13\n\t"
+        //Remove pltSecure Address from stack
+        "addq $8,%rsp\n\t"
+
+        //Retrun to caller
+        "ret\n\t"
         );
 
     }
