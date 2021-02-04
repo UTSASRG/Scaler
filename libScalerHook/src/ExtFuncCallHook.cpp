@@ -131,26 +131,13 @@ namespace scaler {
                 curELFImgInfo.baseAddr = curBaseAddr;
 
                 const ElfW(Dyn) *dynsymDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_SYMTAB);
-
-                //Defermine whether current elf file use relative address or absolute address
-
-
-                if (pmParser.findExecNameByAddr(curBaseAddr + dynsymDyn->d_un.d_ptr) == curFileiD) {
-                    //Relative
-                } else if (pmParser.findExecNameByAddr((void *) dynsymDyn->d_un.d_ptr) == curFileiD) {
-                    //Absolute
-                    curBaseAddr = nullptr;
-                    curELFImgInfo.baseAddr = nullptr;
-                } else {
-                    assert(false);
-                }
-
-
+                curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, dynsymDyn->d_un.d_ptr);
                 curELFImgInfo.dynSymTable = (const ElfW(Sym) *) (curBaseAddr + dynsymDyn->d_un.d_ptr);
 
 
                 //printf("dynSymTable:%p %s\n", curELFImgInfo.dynSymTable, info.dli_fname);
                 const ElfW(Dyn) *strTabDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRTAB);
+                curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, strTabDyn->d_un.d_ptr);
                 curELFImgInfo.dynStrTable = (const char *) (curBaseAddr + strTabDyn->d_un.d_ptr);
 
 
@@ -158,6 +145,7 @@ namespace scaler {
                 curELFImgInfo.dynStrSize = strSizeDyn->d_un.d_val;
 
                 ElfW(Dyn) *relaPltDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_JMPREL);
+                curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, relaPltDyn->d_un.d_ptr);
                 curELFImgInfo.relaPlt = (ElfW(Rela) *) (curBaseAddr + relaPltDyn->d_un.d_ptr);
 
                 const ElfW(Dyn) *relaSizeDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_PLTRELSZ);
@@ -181,6 +169,7 @@ namespace scaler {
                             throwScalerException("Failed to get symbol name.");
                         }
 
+                        curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, curRelaPlt->r_offset);
                         newSymbol.gotEntry = reinterpret_cast<void **>(curBaseAddr + curRelaPlt->r_offset);
 
                         if (newSymbol.gotEntry == nullptr) {
@@ -194,7 +183,6 @@ namespace scaler {
                         curELFImgInfo.funcIdMap[newSymbol.symbolName] = i;
                         curELFImgInfo.allExtSymbol[i] = newSymbol;
 
-                        printf("%d:%s &s\n", i, curELFImgInfo.idFuncMap[i].c_str(), newSymbol.symbolName.c_str());
 
                     } catch (const ScalerException &e) {
                         //Remove current entry
@@ -268,6 +256,7 @@ namespace scaler {
     }
 
     void ExtFuncCallHook_Linux::install(Hook::SYMBOL_FILTER filterCallB) {
+
         //Step1: Locating table in memory
         locateRequiredSecAndSeg();
 
@@ -321,6 +310,20 @@ namespace scaler {
             //Malloc mem area for pseodo plt
             //todo: 18 is related to binary code. I should use a global config file to store it.
             curELFImgInfo.pseudoPlt = (uint8_t *) malloc(curELFImgInfo.allExtSymbol.size() * 18);
+            //printf("mmprotect Allocate pseudo address\n");
+            try {
+                memTool->adjustMemPerm(curELFImgInfo.pseudoPlt,
+                                       curELFImgInfo.pseudoPlt + curELFImgInfo.allExtSymbol.size() * 18,
+                                       PROT_READ | PROT_WRITE | PROT_EXEC);
+            } catch (const ScalerException &e) {
+                std::stringstream ss;
+                ss << "Hook Failed, cannot change heap pseudoPlt permission. Exception Info:\""
+                   << e.info << "\"";
+                fprintf(stderr, "%s\n", ss.str().c_str());
+                continue;
+            }
+
+
         }
 
         for (auto &curSymbol:symbolToHook) {
@@ -344,6 +347,7 @@ namespace scaler {
             //Allocate plt table
             auto binCodeArrPseudoPLT = fillDestAddr2PseudoPltCode(curSymbol.funcId, curELFImgInfo.pltStartAddr);
             //Copy array todo:18 is machine specific
+
             memcpy(curELFImgInfo.pseudoPlt + 18 * curSymbol.funcId, binCodeArrPseudoPLT.data(), 18);
 
 
@@ -396,6 +400,7 @@ namespace scaler {
             elfImgInfoMapC[iter->first] = iter->second;
         }
 
+
         /**
          * Replace PLT entries
          */
@@ -409,13 +414,27 @@ namespace scaler {
                 printf("[%s] %s hooked (ID:%d)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
                        curSymbol.funcId);
 
-                if (curSymbol.funcId == 217) {
-                    printf("217 Found\n");
-                }
-
                 //Step6: Replace PLT.SEC
                 //todo: 16 is bin code dependent
-                memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.funcId, binCodeArr.data(), 16);
+                void *dataPtr = binCodeArr.data();
+
+
+                try {
+                    memTool->adjustMemPerm((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.funcId,
+                                           (uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * (curSymbol.funcId + 1),
+                                           PROT_READ | PROT_WRITE | PROT_EXEC);
+                } catch (const ScalerException &e) {
+                    std::stringstream ss;
+                    ss << "Hook Failed for \"" << pmParser.idFileMap.at(curSymbol.fileId) << ":"
+                       << curSymbol.symbolName
+                       << "\" because " << e.info;
+                    fprintf(stderr, "%s\n", ss.str().c_str());
+                    continue;
+                }
+
+
+                //printf("memcpy %p <- %p\n", (uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.funcId, dataPtr);
+                memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.funcId, dataPtr, 16);
                 binCodeArr.clear();
 
                 //binCodeArr = fillDestAddr2HookCode((void *) asmHookHandler);
@@ -424,7 +443,6 @@ namespace scaler {
             }
 
         }
-
 
     }
 
@@ -619,14 +637,14 @@ namespace scaler {
 
 
         //Push callerAddr into stack
-        curContext.callerAddr.emplace_back(callerAddr);
+        //curContext.callerAddr.emplace_back(callerAddr);
 
         //Push calling info to afterhook
         curContext.fileId.emplace_back(fileId);
         curContext.funcId.emplace_back(funcId);
 
 
-        for (int i = 0; i < curContext.fileId.size()*4; ++i) {
+        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
             printf(" ");
         }
 
@@ -638,11 +656,15 @@ namespace scaler {
     }
 
     void *ExtFuncCallHook_Linux::cAfterHookHanlderLinux() {
+        if (curContext.inHookHanlder) {
+            return nullptr;
+        }
+
         curContext.inHookHanlder = true;
 
         auto &_this = ExtFuncCallHook_Linux::instance;
 
-        for (int i = 0; i < curContext.fileId.size()*4; ++i) {
+        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
             printf(" ");
         }
 
@@ -660,11 +682,12 @@ namespace scaler {
 
         printf("[After Hook] File:%s, Func: %s\n", fileName.c_str(), funcName.c_str());
 
-        void *callerAddr = curContext.callerAddr.at(curContext.callerAddr.size() - 1);
-        curContext.callerAddr.pop_back();
+        //void *callerAddr = curContext.callerAddr.at(curContext.callerAddr.size() - 1);
+        //curContext.callerAddr.pop_back();
 
         curContext.inHookHanlder = false;
-        return callerAddr;
+
+        return nullptr;
     }
 
 
@@ -673,6 +696,27 @@ namespace scaler {
             delete[] elfImgInfoMapC;
         }
 
+    }
+
+    /**
+     * Determine whether current elf file use relative address or absolute address
+     * @param curBaseAddr
+     * @param curFileiD
+     * @param targetAddr
+     * @return
+     */
+    uint8_t *ExtFuncCallHook_Linux::autoAddBaseAddr(uint8_t *curBaseAddr, size_t curFileiD, ElfW(Addr) targetAddr) {
+
+        if (pmParser.findExecNameByAddr(curBaseAddr + targetAddr) == curFileiD) {
+            //Relative
+            return curBaseAddr;
+        } else if (pmParser.findExecNameByAddr((void *) targetAddr) == curFileiD) {
+            //Absolute
+            return nullptr;
+        } else {
+            assert(false);
+            return nullptr;
+        }
     }
 
 
@@ -866,7 +910,7 @@ namespace scaler {
          */
         "call  _ZN6scaler21ExtFuncCallHook_Linux22cAfterHookHanlderLinuxEv\n\t"
         //Save return value to R11. R11 now has the address of caller.
-        "movq %rax,%r11\n\t"
+        //"movq %rax,%r11\n\t"
 
         /**
         * Restore Environment
@@ -896,11 +940,11 @@ namespace scaler {
     }
 
     ExtFuncCallHook_Linux::ELFImgInfo::~ELFImgInfo() {
-//        if (realAddrResolvedC)
-//            delete[] realAddrResolvedC;
-//
-//        if (hookedExtSymbolC)
-//            delete[] hookedExtSymbolC;
+        if (realAddrResolvedC)
+            delete[] realAddrResolvedC;
+
+        if (hookedExtSymbolC)
+            delete[] hookedExtSymbolC;
     }
 
 

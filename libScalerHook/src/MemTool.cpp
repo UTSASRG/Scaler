@@ -5,6 +5,7 @@
 
 #include <elf.h>
 #include <link.h>
+#include <cmath>
 #include <sstream>
 #include <exceptions//ScalerException.h>
 #include <sys/mman.h>
@@ -23,12 +24,16 @@ namespace scaler {
         void *endPtrBound = GET_PAGE_BOUND(endPtr, pageSize);
         if (startPtrBound == endPtrBound)
             endPtrBound = (uint8_t *) startPtrBound + pageSize;
+
         //todo:(uint8_t *) endPtrBound - (uint8_t  *) startPtrBound,
-        if (mprotect(startPtrBound, 1024, prem) != 0) {
+        size_t memoryLength = (ceil(((uint8_t *) endPtrBound - (uint8_t *) startPtrBound) / (double)pageSize)) * pageSize;
+        printf("mprotect %p-%p\n", startPtrBound, (uint8_t *) startPtrBound + memoryLength);
+        if (mprotect(startPtrBound, memoryLength, prem) != 0) {
             std::stringstream ss;
             ss << "Could not change the process memory permission at " << startPtrBound << " - " << endPtrBound;
             throwScalerException(ss.str().c_str());
         }
+
     }
 
     MemoryTool_Linux *scaler::MemoryTool_Linux::getInst() {

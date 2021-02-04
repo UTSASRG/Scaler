@@ -145,6 +145,7 @@ namespace scaler {
         static void *cAfterHookHanlderLinux();
 
 
+        uint8_t *autoAddBaseAddr(uint8_t *addr, size_t fileiD, Elf64_Addr dPtr);
     };
 
 }
