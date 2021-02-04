@@ -174,16 +174,36 @@ namespace scaler {
                         throwScalerException("Too big section header string table index");
                     }
                     //printf("%s:%s\n", curFileName.c_str(), std::string(curELFImgInfo.dynStrTable + idx).c_str());
+                    try {
+                        ExtSymInfo newSymbol;
+                        newSymbol.symbolName = std::string(curELFImgInfo.dynStrTable + idx);
+                        if (newSymbol.symbolName == "") {
+                            throwScalerException("Failed to get symbol name.");
+                        }
 
-                    ExtSymInfo newSymbol;
-                    newSymbol.symbolName = std::string(curELFImgInfo.dynStrTable + idx);
-                    newSymbol.gotEntry = reinterpret_cast<void **>(curBaseAddr + curRelaPlt->r_offset);
-                    newSymbol.fileId = curFileiD;
-                    newSymbol.funcId = i;
+                        newSymbol.gotEntry = reinterpret_cast<void **>(curBaseAddr + curRelaPlt->r_offset);
 
-                    curELFImgInfo.idFuncMap[i] = newSymbol.symbolName;
-                    curELFImgInfo.funcIdMap[newSymbol.symbolName] = i;
-                    curELFImgInfo.allExtSymbol[i] = newSymbol;
+                        if (newSymbol.gotEntry == nullptr) {
+                            throwScalerException("Failed to get got address.");
+                        }
+
+                        newSymbol.fileId = curFileiD;
+                        newSymbol.funcId = i;
+
+                        curELFImgInfo.idFuncMap[i] = newSymbol.symbolName;
+                        curELFImgInfo.funcIdMap[newSymbol.symbolName] = i;
+                        curELFImgInfo.allExtSymbol[i] = newSymbol;
+
+                        printf("%d:%s &s\n",i,curELFImgInfo.idFuncMap[i].c_str(),newSymbol.symbolName.c_str());
+
+                    } catch (const ScalerException &e) {
+                        //Remove current entry
+                        elfImgInfoMap.erase(curFileiD);
+                        std::stringstream ss;
+                        ss << "Hook Failed for " << curFileName << "in\"" << curELFImgInfo.filePath << "\" because "
+                           << e.info;
+                        fprintf(stderr, "%s\n", ss.str().c_str());
+                    }
 
                 }
 
@@ -379,23 +399,30 @@ namespace scaler {
         /**
          * Replace PLT entries
          */
-        for (auto &curSymbol:symbolToHook) {
-            auto &curELFImgInfo = elfImgInfoMap.at(curSymbol.fileId);
+        for (auto iter = elfImgInfoMap.begin(); iter != elfImgInfoMap.end(); ++iter) {
+            auto &curELFImgInfo = iter->second;
 
-            auto binCodeArr = fillDestAddr2HookCode((void *) asmHookHandlerSec);
+            for (auto &symbolPair: curELFImgInfo.hookedExtSymbol) {
+                auto& curSymbol=symbolPair.second;
+                auto binCodeArr = fillDestAddr2HookCode((void *) asmHookHandlerSec);
 
-            printf("[%s] %s in %s hooked (ID:%d)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
-                   curELFImgInfo.filePath.c_str(),
-                   curSymbol.funcId);
+                printf("[%s] %s hooked (ID:%d)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
+                       curSymbol.funcId);
 
-            //Step6: Replace PLT.SEC
-            //todo: 16 is bin code dependent
-            memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.funcId, binCodeArr.data(), 16);
-            binCodeArr.clear();
+                if (curSymbol.funcId == 217) {
+                    printf("217 Found\n");
+                }
 
-            //binCodeArr = fillDestAddr2HookCode((void *) asmHookHandler);
-            //todo:Replace PLT
-            //memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * curSymbol.funcId, binCodeArr.data(), 16);
+                //Step6: Replace PLT.SEC
+                //todo: 16 is bin code dependent
+                memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.funcId, binCodeArr.data(), 16);
+                binCodeArr.clear();
+
+                //binCodeArr = fillDestAddr2HookCode((void *) asmHookHandler);
+                //todo:Replace PLT
+                //memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * curSymbol.funcId, binCodeArr.data(), 16);
+            }
+
         }
 
 
@@ -551,7 +578,6 @@ namespace scaler {
 
 
     void *ExtFuncCallHook_Linux::cPreHookHanlderLinuxSec(void *pltEntryAddr, void *callerAddr) {
-
         //Calculate fileID
         auto &_this = ExtFuncCallHook_Linux::instance;
 
@@ -566,7 +592,7 @@ namespace scaler {
 
         auto funcId = ((ElfW(Addr)) pltEntryAddr - (ElfW(Addr)) SEC_START_ADDR_VAR) / 16;
 
-        auto &curSymbol = curElfImgInfo.hookedExtSymbol.at(funcId);
+        auto &curSymbol = curElfImgInfo.hookedExtSymbolC[funcId];
 
         void *retOriFuncAddr = curSymbol.addr;
 
@@ -590,6 +616,7 @@ namespace scaler {
         //Starting from here, we could call external symbols and it won't cause any problem
         curContext.inHookHanlder = true;
 
+        printf("CPreHookHandler Called\n");
         //Push callerAddr into stack
         curContext.callerAddr.emplace_back(callerAddr);
 
@@ -605,6 +632,9 @@ namespace scaler {
         curContext.inHookHanlder = true;
 
         auto &_this = ExtFuncCallHook_Linux::instance;
+
+        printf("CAfterHookHandler Called\n");
+
 
 //        size_t fileId = curContext.fileId.at(curContext.fileId.size() - 1);
 //        curContext.fileId.pop_back();
