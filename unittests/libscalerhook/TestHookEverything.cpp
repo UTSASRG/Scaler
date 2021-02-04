@@ -2,6 +2,7 @@
 #include <thread>
 #include <util/hook/install.h>
 #include <FuncWithDiffParms.h>
+#include <installTest.h>
 
 using namespace std;
 
@@ -17,14 +18,18 @@ int main() {
         } else if (funcName.length() >= 26 &&
                    funcName.substr(funcName.length() - 26, 26) != "libscalerhook_installer.so") {
             return false;
-        } else if (funcName == "puts" || funcName == "printf") {
-            return false;
         } else {
             return true;
         }
     });
 
     funcA();
+    malloc(190);
+    callFuncA();
+    printf("Hello\n");
+    printf("Hello %d %f\n",1,1.23);
+
+
     return 0;
 }
 

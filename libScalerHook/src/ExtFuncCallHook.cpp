@@ -194,7 +194,7 @@ namespace scaler {
                         curELFImgInfo.funcIdMap[newSymbol.symbolName] = i;
                         curELFImgInfo.allExtSymbol[i] = newSymbol;
 
-                        printf("%d:%s &s\n",i,curELFImgInfo.idFuncMap[i].c_str(),newSymbol.symbolName.c_str());
+                        printf("%d:%s &s\n", i, curELFImgInfo.idFuncMap[i].c_str(), newSymbol.symbolName.c_str());
 
                     } catch (const ScalerException &e) {
                         //Remove current entry
@@ -403,7 +403,7 @@ namespace scaler {
             auto &curELFImgInfo = iter->second;
 
             for (auto &symbolPair: curELFImgInfo.hookedExtSymbol) {
-                auto& curSymbol=symbolPair.second;
+                auto &curSymbol = symbolPair.second;
                 auto binCodeArr = fillDestAddr2HookCode((void *) asmHookHandlerSec);
 
                 printf("[%s] %s hooked (ID:%d)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
@@ -616,13 +616,22 @@ namespace scaler {
         //Starting from here, we could call external symbols and it won't cause any problem
         curContext.inHookHanlder = true;
 
-        printf("CPreHookHandler Called\n");
+
+
         //Push callerAddr into stack
         curContext.callerAddr.emplace_back(callerAddr);
 
         //Push calling info to afterhook
         curContext.fileId.emplace_back(fileId);
         curContext.funcId.emplace_back(funcId);
+
+
+        for (int i = 0; i < curContext.fileId.size()*4; ++i) {
+            printf(" ");
+        }
+
+        printf("[Pre Hook] File:%s, Func: %s\n", _this->pmParser.idFileMap.at(fileId).c_str(),
+               curElfImgInfo.idFuncMap.at(funcId).c_str());
 
         curContext.inHookHanlder = false;
         return *curSymbol.gotEntry;
@@ -633,21 +642,23 @@ namespace scaler {
 
         auto &_this = ExtFuncCallHook_Linux::instance;
 
-        printf("CAfterHookHandler Called\n");
+        for (int i = 0; i < curContext.fileId.size()*4; ++i) {
+            printf(" ");
+        }
+
+        size_t fileId = curContext.fileId.at(curContext.fileId.size() - 1);
+        curContext.fileId.pop_back();
+
+        auto &curELFImgInfo = _this->elfImgInfoMap.at(fileId);
+
+        auto &fileName = curELFImgInfo.filePath;
+
+        size_t funcId = curContext.funcId.at(curContext.funcId.size() - 1);
+        curContext.funcId.pop_back();
+        auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
 
 
-//        size_t fileId = curContext.fileId.at(curContext.fileId.size() - 1);
-//        curContext.fileId.pop_back();
-//
-//        auto &curELFImgInfo = _this->elfImgInfoMap.at(fileId);
-//
-//        auto &fileName = curELFImgInfo.filePath;
-//
-//        size_t funcId = curContext.funcId.at(curContext.funcId.size() - 1);
-//        curContext.funcId.pop_back();
-//        auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
-
-        //printf("[After Hook] File:%s, Func: %s\n", fileName.c_str(), funcName.c_str());
+        printf("[After Hook] File:%s, Func: %s\n", fileName.c_str(), funcName.c_str());
 
         void *callerAddr = curContext.callerAddr.at(curContext.callerAddr.size() - 1);
         curContext.callerAddr.pop_back();
