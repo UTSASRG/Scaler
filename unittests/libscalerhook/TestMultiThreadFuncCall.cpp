@@ -1,6 +1,7 @@
 #include <iostream>
 #include <thread>
 #include <installTest.h>
+#include <util/hook/install.h>
 
 using namespace std;
 
@@ -14,6 +15,20 @@ void threadB() {
 }
 
 int main() {
+    install([](std::string fileName, std::string funcName) -> bool {
+        //todo: User should be able to specify name here. Since they can change filename
+        if (fileName == "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/libscalerhook.so") {
+            return false;
+        } else if (fileName=="/home/st/Projects/Scaler/cmake-build-release/libScalerHook/libscalerhook.so"){
+            return false;
+        }
+        else if (fileName == "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28") {
+            return false;
+        } else{
+            return true;
+        }
+    });
+
     std::thread thread1(callFuncA);
     thread1.join();
     std::thread thread2(callFuncA);

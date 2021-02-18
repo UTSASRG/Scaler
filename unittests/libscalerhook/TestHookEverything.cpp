@@ -14,23 +14,25 @@ int main() {
         //todo: User should be able to specify name here. Since they can change filename
         if (fileName == "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/libscalerhook.so") {
             return false;
-        }else if (fileName == "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28") {
+        } else if (fileName=="/home/st/Projects/Scaler/cmake-build-release/libScalerHook/libscalerhook.so"){
             return false;
-        }
-        else{
+        } else if (fileName == "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28") {
+            return true;
+        } else{
             return true;
         }
     });
 
+    printf("Hello %d %f\n", 1, 1.23);
 
-//    scaler::PmParser_Linux parser;
-//    parser.printPM();
+    //scaler::PmParser_Linux parser;
+    //parser.printPM();
 //
-//    funcA();
-//    malloc(190);
-//    callFuncA();
-//    structparm strP;
-//
+    funcA();
+    malloc(190);
+    callFuncA();
+    structparm strP;
+
     structparm s;
     int e, f, g, h, i, j, k;
     long double ld;
@@ -38,8 +40,8 @@ int main() {
     __m256 y;
     __m512 z;
     funcEverything(e, f, s, g, h, ld, m, y, z, n, i, j, k);
-//    printf("Hello\n");
-//    printf("Hello %d %f\n", 1, 1.23);
+    printf("Hello\n");
+    printf("Hello %d %f\n", 1, 1.23);
 
     std::cout << "Hello world" <<1<<1.5<< endl;
 

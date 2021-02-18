@@ -24,6 +24,15 @@ namespace scaler {
 "movdqu  (%rsp),%xmm"#ArgumentName"\n\t"\
 "addq $16,%rsp\n\t"
 
+
+#define PUSHYMM(ArgumentName) \
+"subq $32,%rsp\n\t" \
+"vmovdqu  %ymm"#ArgumentName" ,(%rsp)\n\t"
+
+#define POPYMM(ArgumentName) \
+"vmovdqu  (%rsp),%ymm"#ArgumentName"\n\t"\
+"addq $32,%rsp\n\t"
+
     class Context {
     public:
         //todo: Initialize using maximum stack size
@@ -188,7 +197,7 @@ namespace scaler {
                         //Remove current entry
                         elfImgInfoMap.erase(curFileiD);
                         std::stringstream ss;
-                        ss << "Hook Failed for " << curFileName << "in\"" << curELFImgInfo.filePath << "\" because "
+                        ss << "Hook Failed for " << curFileName << "in \"" << curELFImgInfo.filePath << "\" because "
                            << e.info;
                         fprintf(stderr, "%s\n", ss.str().c_str());
                     }
@@ -640,8 +649,8 @@ namespace scaler {
         //curContext.callerAddr.emplace_back(callerAddr);
 
         //Push calling info to afterhook
-        curContext.fileId.emplace_back(fileId);
-        curContext.funcId.emplace_back(funcId);
+//        curContext.fileId.emplace_back(fileId);
+//        curContext.funcId.emplace_back(funcId);
 
 
         for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
@@ -799,7 +808,10 @@ namespace scaler {
          */
 
         //R11 is the only register we can use. Store stack address in it.
+        //"pushf\n\t"
+        "push %r11\n\t"
         "movq %rsp,%r11\n\t"
+        "addq $8,%r11\n\t"
 
         // RAX, RCX, RDX, R8, R9, R10, R11 Caller Saved
         // RBX, RBP, RDI, RSI, RSP, R12, R13, R14, and R15 Callee saved
@@ -818,6 +830,8 @@ namespace scaler {
         "push %rcx\n\t"
         "push %r8\n\t"
         "push %r9\n\t"
+        "push %r10\n\t"
+
         PUSHXMM(0)
         PUSHXMM(1)
         PUSHXMM(2)
@@ -826,9 +840,21 @@ namespace scaler {
         PUSHXMM(5)
         PUSHXMM(6)
         PUSHXMM(7)
+
+        PUSHYMM(0)
+        PUSHYMM(1)
+        PUSHYMM(2)
+        PUSHYMM(3)
+        PUSHYMM(4)
+        PUSHYMM(5)
+        PUSHYMM(6)
+        PUSHYMM(7)
+        PUSHYMM(8)
+
         //todo: Also save YMM0-7 and ZMM0-7
 
         //Save RBX, RSP, RBP, and R12–R15
+        "push %rax\n\t"
         "push %rbx\n\t"
         "push %rsp\n\t"
         "push %rbp\n\t"
@@ -852,8 +878,9 @@ namespace scaler {
         "movq %r15,%rdi\n\t" //Pass caller address to last parameter
         "movq %r14,%rsi\n\t" //Pass PLT entry address to first parameter
         "call  _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEPvS1_\n\t"
-        "movq %rax,%r11\n\t" //Save return value to R11. This is the address of real function parsed by handler.
+        //"movq %rax,%r11\n\t" //Save return value to R11. This is the address of real function parsed by handler.
 
+        "movq %rax,0x220(%rsp)\n\t"
 
         /**
         * Restore Registers
@@ -865,6 +892,17 @@ namespace scaler {
         "pop %rbp\n\t"
         "pop %rsp\n\t"
         "pop %rbx\n\t"
+        "pop %rax\n\t"
+        POPYMM(8)
+        POPYMM(7)
+        POPYMM(6)
+        POPYMM(5)
+        POPYMM(4)
+        POPYMM(3)
+        POPYMM(2)
+        POPYMM(1)
+        POPYMM(0)
+
         POPXMM(7)
         POPXMM(6)
         POPXMM(5)
@@ -873,6 +911,8 @@ namespace scaler {
         POPXMM(2)
         POPXMM(1)
         POPXMM(0)
+
+        "pop %r10\n\t"
         "pop %r9\n\t"
         "pop %r8\n\t"
         "pop %rcx\n\t"
@@ -881,63 +921,19 @@ namespace scaler {
         "pop %rdi\n\t"
 
 
+        "pop %r11\n\t"
+        //"popf\n\t"
+
         /**
          * Call actual function
          */
-
-        "call *%r11\n\t"
-        //Save return value to stack
-        "push %rax\n\t"
-        "push %rdx\n\t"
-        PUSHXMM(0)
-        PUSHXMM(1)
-        //todo: Handle YMM and ZMM
-
-        /**
-        * Save Environment
-        */
-
-        "push %rbx\n\t"
-        "push %rsp\n\t"
-        "push %rbp\n\t"
-        "push %r12\n\t"
-        "push %r13\n\t"
-        "push %r14\n\t"
-        "push %r15\n\t"
-
-        /**
-         * Call After Hook
-         */
-        "call  _ZN6scaler21ExtFuncCallHook_Linux22cAfterHookHanlderLinuxEv\n\t"
-        //Save return value to R11. R11 now has the address of caller.
-        //"movq %rax,%r11\n\t"
-
-        /**
-        * Restore Environment
-        */
-        "pop %r15\n\t"
-        "pop %r14\n\t"
-        "pop %r13\n\t"
-        "pop %r12\n\t"
-        "pop %rbp\n\t"
-        "pop %rsp\n\t"
-        "pop %rbx\n\t"
-
-        //Restore return value of real function from stack
-        POPXMM(1)
-        POPXMM(0)
-        "pop %rdx\n\t"
-        "pop %rax\n\t"
-        //todo: Handle float return and XMM return
-
-        //Remove pltSecure Address from stack
-        "addq $8,%rsp\n\t"
-
-        //Retrun to caller
         "ret\n\t"
+
+
         );
 
     }
+
 
     ExtFuncCallHook_Linux::ELFImgInfo::~ELFImgInfo() {
         if (realAddrResolvedC)

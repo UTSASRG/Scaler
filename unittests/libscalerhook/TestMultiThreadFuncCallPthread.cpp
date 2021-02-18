@@ -1,6 +1,7 @@
 #include <iostream>
 #include <pthread.h>
 #include <installTest.h>
+#include <util/hook/install.h>
 
 using namespace std;
 
@@ -8,6 +9,22 @@ void *print_message_function( void *ptr );
 
 int main()
 {
+    install([](std::string fileName, std::string funcName) -> bool {
+        //todo: User should be able to specify name here. Since they can change filename
+        if (fileName == "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/libscalerhook.so") {
+            return false;
+        } else if (fileName=="/home/st/Projects/Scaler/cmake-build-release/libScalerHook/libscalerhook.so"){
+            return false;
+        } else if (fileName == "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28") {
+            return true;
+        } else if (fileName == "/usr/lib/x86_64-linux-gnu/libpthread-2.31.so") {
+            return false;
+        } else{
+            return true;
+        }
+    });
+
+
     pthread_t thread1, thread2;
     char *message1 = "Thread 1";
     char *message2 = "Thread 2";

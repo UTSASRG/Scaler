@@ -18,7 +18,6 @@ int main() {
         }
     });
 
-
     funcA();
 
     structparm s;
