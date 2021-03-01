@@ -13,6 +13,7 @@
 #include <util/tool/MemTool.h>
 #include <set>
 #include <immintrin.h>
+#include <thread>
 
 namespace scaler {
 
@@ -24,6 +25,16 @@ namespace scaler {
 "movdqu  (%rsp),%xmm"#ArgumentName"\n\t"\
 "addq $16,%rsp\n\t"
 
+
+#define PUSHYMM(ArgumentName) \
+"subq $32,%rsp\n\t" \
+"vmovdqu  %ymm"#ArgumentName" ,(%rsp)\n\t"
+
+#define POPYMM(ArgumentName) \
+"vmovdqu  (%rsp),%ymm"#ArgumentName"\n\t"\
+"addq $32,%rsp\n\t"
+
+
     class Context {
     public:
         //todo: Initialize using maximum stack size
@@ -32,10 +43,38 @@ namespace scaler {
         //Variables used to determine whether it's called by hook handler or not
         bool inHookHanlder = false;
         std::vector<void *> callerAddr;
+    };
+
+    class ContextProxy {
+    public:
+
+        Context *ctx;
+        bool *released = nullptr;
+
+        ContextProxy() {
+            //Can't directly use new. Because new will call malloc. If new is hooked, then a hook handler will be called before context is intialized.
+            void *ptr = malloc(sizeof(Context));
+            ctx = new(ptr) Context();
+            ptr = malloc(sizeof(bool));
+            released = new(ptr) bool();
+            *released = false;
+        }
+
+        ~ContextProxy() {
+            *released = true;
+        }
+
+        void realDeconstructor() {
+            //todo: How to execute this in the last minute
+//            free(ctx);
+//            ctx = nullptr;
+//            free(released);
+//            released = nullptr;
+        }
 
     };
 
-    thread_local Context curContext;
+    thread_local ContextProxy curContext;
 
     //Declare hook handler written in assembly code
 
@@ -326,6 +365,10 @@ namespace scaler {
 
         }
 
+        //Step5: Write plt handler code to file
+        void *pltHookDl = writeAndCompileHookHanlder(symbolToHook);
+
+        //Step6: Replace PLT table, jmp to dll function
         for (auto &curSymbol:symbolToHook) {
 
             try {
@@ -344,6 +387,7 @@ namespace scaler {
             curSymbol.addr = *curSymbol.gotEntry;
 
             auto &curELFImgInfo = elfImgInfoMap.at(curSymbol.fileId);
+
             //Allocate plt table
             auto binCodeArrPseudoPLT = fillDestAddr2PseudoPltCode(curSymbol.funcId, curELFImgInfo.pltStartAddr);
             //Copy array todo:18 is machine specific
@@ -352,6 +396,7 @@ namespace scaler {
 
 
             //Step5: Replace .plt.sec
+
             //Check if address is already resolved
             size_t symbolFileId = pmParser.findExecNameByAddr(curSymbol.addr);
             //Since it's external symbol, it's address must be in anotehr file.
@@ -409,10 +454,21 @@ namespace scaler {
 
             for (auto &symbolPair: curELFImgInfo.hookedExtSymbol) {
                 auto &curSymbol = symbolPair.second;
-                auto binCodeArr = fillDestAddr2HookCode((void *) asmHookHandlerSec);
 
-                printf("[%s] %s hooked (ID:%d)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
-                       curSymbol.funcId);
+                //jmp to custom handler function
+                char output[256];
+                char *funcName = "pltHandler_%zu_%zu";
+                sprintf(output, funcName, curSymbol.fileId, curSymbol.funcId);
+                void *pltEntryAddr = dlsym(pltHookDl, output);
+
+                if (pltEntryAddr == NULL) {
+                    throwScalerExceptionWithCode("Failed to find pltEntry address from dll", -1);
+                }
+
+                auto binCodeArr = fillDestAddr2HookCode(pltEntryAddr);
+
+//                printf("[%s] %s hooked (ID:%d)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
+//                       curSymbol.funcId);
 
                 //Step6: Replace PLT.SEC
                 //todo: 16 is bin code dependent
@@ -474,13 +530,14 @@ namespace scaler {
 
     std::vector<uint8_t> ExtFuncCallHook_Linux::fillDestAddr2HookCode(void *funcAddr) {
         //The following "magical" numbers are actually two instructions
-        //mov  r15, funcAddr
-        //call r15
+        //"movq  $0xFFFFFFFF,%r11\n\t"   73, 187, 0, 0, 0, 0, 0, 0, 0, 0,
+        //"call *%r11\n\t" 65, 255, 211
+        //"jmp *%r11\n\t" 65, 255, 227 //Jump to dynamic symbol
 
         //After calling r15. The address of next instruction will be on stack. The hander will pop this address and
         //Calculating function ID by comparing it with the starting address of .plt/.plt.sec address
 
-        std::vector<uint8_t> binCodeArr = {73, 191, 0, 0, 0, 0, 0, 0, 0, 0, 65, 255, 215, 104, 144, 144};
+        std::vector<uint8_t> binCodeArr = {73, 187, 0, 0, 0, 0, 0, 0, 0, 0, 65, 255, 227, 144, 144, 144};
 
         //funcAddr cannot be placed into one byte. We need to convert funcAddr to binary code and put corresponding bytes
         //to the correct position (It's machine specific.)
@@ -511,7 +568,12 @@ namespace scaler {
     }
 
     std::vector<uint8_t> ExtFuncCallHook_Linux::fillDestAddr2PseudoPltCode(size_t funcId, void *funcAddr) {
-        std::vector<uint8_t> binCodeArr = {104, 00, 00, 00, 00, 73, 191, 00, 00, 00, 00, 00, 00, 00, 00, 65, 255, 231};
+        //The following "magical" numbers are actually two instructions
+        //push    0FFFFh   104, 00, 00, 00, 00,
+        //mov     r11, 0FFFFFFFFh 73, 187, 00, 00, 00, 00, 00, 00, 00, 00,
+        //jmp     r11 65, 255, 227
+
+        std::vector<uint8_t> binCodeArr = {104, 00, 00, 00, 00, 73, 187, 00, 00, 00, 00, 00, 00, 00, 00, 65, 255, 227};
 
         const uint64_t h1 = 0b00000000000000000000000011111111;
         const uint64_t h2 = h1 << 8;
@@ -542,73 +604,56 @@ namespace scaler {
         return binCodeArr;
     }
 
-#define IMPL_CHANDLER(SUFFIX, SEC_START_ADDR_VAR) \
-   __attribute__ ((__used__)) void *ExtFuncCallHook_Linux::cPreHookHanlderLinux##SUFFIX(void *pltEntryAddr,void* callerAddr) {\
-        curContext.callerAddr.emplace_back(callerAddr);                                          \
-        auto &_this = ExtFuncCallHook_Linux::instance;\
-        auto fileId=_this->pmParser.findExecNameByAddr(pltEntryAddr);              \
-        auto &curElfImgInfo = _this->elfImgInfoMap[fileId];\
-        auto &SEC_START_ADDR_VAR = curElfImgInfo.SEC_START_ADDR_VAR;\
-        auto &realAddrResolved = curElfImgInfo.realAddrResolved;\
-        \
-        pltEntryAddr = reinterpret_cast<void *>((uint8_t *) (pltEntryAddr) - 0xD);\
-        auto funcId=((ElfW(Addr)) pltEntryAddr - (ElfW(Addr)) SEC_START_ADDR_VAR) / 16;\
-        auto &curSymbol = curElfImgInfo.hookedExtSymbol.at(funcId);                  \
-        \
-        void *retOriFuncAddr = nullptr; \
-        \
-        if (!realAddrResolved[funcId]) {\
-            void *curAddr = curSymbol.addr;\
-            void *newAddr = *curSymbol.gotEntry;\
-            if (curAddr == newAddr) {\
-                printf("\"%s\" is not initialized by linker, execute original PLT code\n",\
-                curSymbol.symbolName.c_str());\
-                retOriFuncAddr = curElfImgInfo.pseudoPlt + funcId * 18;\
-            } else {\
-                printf("\"%s\"'s address is now resolved，update record with the correct address\n",\
-                curSymbol.symbolName.c_str());\
-                \
-                realAddrResolved[funcId] = true; \
-                curSymbol.addr = newAddr; \
-                retOriFuncAddr = newAddr;\
-            }\
-        }\
-        if (curContext.inHookHanlder) {\
-            return retOriFuncAddr;\
-        }\
-        \
-        curContext.inHookHanlder = true;\
-        printf("[Pre Hook] File:%s, Func: %s\n", _this->pmParser.idFileMap[fileId].c_str(),  curElfImgInfo.idFuncMap.at(funcId).c_str());\
-                                                  \
-                                                  \
-        curContext.fileId.emplace_back(fileId);          \
-        curContext.funcId.emplace_back(funcId);          \
-                                                  \
-                                                  \
-        curContext.inHookHanlder = false;\
-        return *curSymbol.gotEntry;\
+    void *ExtFuncCallHook_Linux::writeAndCompileHookHanlder(std::vector<ExtSymInfo> symbolToHook) {
+
+        FILE *fp = NULL;
+
+        fp = fopen("./testHandler.cpp", "w");
+        unsigned int pos = 0;
+        const char *name;
+        int i;
+        fprintf(fp, "extern \"C\"{\n");
+
+        for (auto &curSymbol:symbolToHook) {
+            auto &curELFImgInfo = elfImgInfoMap.at(curSymbol.fileId);
+
+            fprintf(fp, "void  __attribute__((naked)) pltHandler_%zu_%zu(){\n", curSymbol.fileId, curSymbol.funcId);
+            fprintf(fp, "__asm__ __volatile__ (\n");
+
+            fprintf(fp, "\"movq (%%rsp),%%r11\\n\\t\"\n");
+            fprintf(fp, "\"subq $128,%%rsp\\n\\t\"\n");
+
+            fprintf(fp, "\"pushq  $%lu\\n\\t\"\n", curSymbol.fileId);//fileId
+            fprintf(fp, "\"pushq  $%lu\\n\\t\"\n", curSymbol.funcId);//funcID
+            fprintf(fp, "\"pushq  %%r11\\n\\t\"\n"); //callerAddr
+
+
+            fprintf(fp, "\"movq  $%p,%%r11\\n\\t\"\n", asmHookHandlerSec);
+            fprintf(fp, "\"jmp *%%r11\\n\\t\"\n");
+
+            fprintf(fp, ");\n");
+            fprintf(fp, "}\n", pos);
+        }
+        fprintf(fp, "}\n");
+        fclose(fp);
+        int sysRet = system("gcc -shared -fPIC ./testHandler.cpp -o ./testHandler.so");
+        if (sysRet < 0) {
+            throwScalerExceptionWithCode("gcc compilation handler failed", sysRet)
+        }
+        void *handle = dlopen("/home/st/Projects/Scaler/cmake-build-debug/unittests/libscalerhook/testHandler.so",
+                              RTLD_NOW);
+        if (handle == NULL) {
+            throwScalerExceptionWithCode("dlOpen failed", sysRet)
+        }
+        return handle;
     }
 
 
-    //IMPL_CHANDLER(, pltStartAddr)
-
-//    IMPL_CHANDLER(Sec, pltSecStartAddr)
-
-
-    void *ExtFuncCallHook_Linux::cPreHookHanlderLinuxSec(void *pltEntryAddr, void *callerAddr) {
+    void *ExtFuncCallHook_Linux::cPreHookHanlderLinuxSec(size_t fileId, size_t funcId, void *callerAddr) {
         //Calculate fileID
         auto &_this = ExtFuncCallHook_Linux::instance;
 
-        auto fileId = _this->pmParser.findExecNameByAddr(pltEntryAddr); //Find current plt belongs to which file
-
         auto &curElfImgInfo = _this->elfImgInfoMapC[fileId];
-        auto &SEC_START_ADDR_VAR = curElfImgInfo.pltSecStartAddr;
-
-
-        pltEntryAddr = reinterpret_cast<void *>((uint8_t *) (pltEntryAddr) - 0xD);
-
-
-        auto funcId = ((ElfW(Addr)) pltEntryAddr - (ElfW(Addr)) SEC_START_ADDR_VAR) / 16;
 
         auto &curSymbol = curElfImgInfo.hookedExtSymbolC[funcId];
 
@@ -627,65 +672,75 @@ namespace scaler {
             }
         }
 
-        if (curContext.inHookHanlder) {
+        if (curContext.ctx->inHookHanlder) {
             return retOriFuncAddr;
         }
 
         //Starting from here, we could call external symbols and it won't cause any problem
-        curContext.inHookHanlder = true;
+        curContext.ctx->inHookHanlder = true;
 
 
 
         //Push callerAddr into stack
-        //curContext.callerAddr.emplace_back(callerAddr);
+        //curContext.ctx->callerAddr.emplace_back(callerAddr);
 
         //Push calling info to afterhook
-        curContext.fileId.emplace_back(fileId);
-        curContext.funcId.emplace_back(funcId);
+        curContext.ctx->fileId.emplace_back(fileId);
+        curContext.ctx->funcId.emplace_back(funcId);
 
 
-        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
-            printf(" ");
-        }
+//        for (int i = 0; i < curContext.ctx->fileId.size() * 4; ++i) {
+//            printf(" ");
+//        }
 
-        printf("[Pre Hook] File:%s, Func: %s\n", _this->pmParser.idFileMap.at(fileId).c_str(),
+        //std::stringstream ss;
+        //ss << 1;
+        // uint64_t id = std::stoull(ss.str());
+
+        printf("[Pre Hook] Thread:%lu File:%s, Func: %s\n", 0, _this->pmParser.idFileMap.at(fileId).c_str(),
                curElfImgInfo.idFuncMap.at(funcId).c_str());
 
-        curContext.inHookHanlder = false;
+        curContext.ctx->inHookHanlder = false;
         return *curSymbol.gotEntry;
     }
 
     void *ExtFuncCallHook_Linux::cAfterHookHanlderLinux() {
-        if (curContext.inHookHanlder) {
+        if (curContext.ctx->inHookHanlder) {
             return nullptr;
         }
-
-        curContext.inHookHanlder = true;
+        curContext.ctx->inHookHanlder = true;
 
         auto &_this = ExtFuncCallHook_Linux::instance;
 
-        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
-            printf(" ");
-        }
+//        for (int i = 0; i < curContext.ctx->fileId.size() * 4; ++i) {
+//            printf(" ");
+//        }
 
-        size_t fileId = curContext.fileId.at(curContext.fileId.size() - 1);
-        curContext.fileId.pop_back();
+        size_t fileId = curContext.ctx->fileId.at(curContext.ctx->fileId.size() - 1);
+        curContext.ctx->fileId.pop_back();
 
         auto &curELFImgInfo = _this->elfImgInfoMap.at(fileId);
 
         auto &fileName = curELFImgInfo.filePath;
 
-        size_t funcId = curContext.funcId.at(curContext.funcId.size() - 1);
-        curContext.funcId.pop_back();
+        size_t funcId = curContext.ctx->funcId.at(curContext.ctx->funcId.size() - 1);
+        curContext.ctx->funcId.pop_back();
         auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
 
+//        std::stringstream ss;
+//        ss << std::this_thread::get_id();
+//        uint64_t id = std::stoull(ss.str());
 
-        printf("[After Hook] File:%s, Func: %s\n", fileName.c_str(), funcName.c_str());
+        printf("[After Hook] Thread:%lu  File:%s, Func: %s\n", 0, fileName.c_str(), funcName.c_str());
 
         //void *callerAddr = curContext.callerAddr.at(curContext.callerAddr.size() - 1);
         //curContext.callerAddr.pop_back();
 
-        curContext.inHookHanlder = false;
+
+        curContext.ctx->inHookHanlder = false;
+
+//        if (*curContext.released && curContext.ctx->funcId.size() == 0)
+//            curContext.realDeconstructor();
 
         return nullptr;
     }
@@ -721,63 +776,6 @@ namespace scaler {
 
 
 
-//todo: This function is machine specific
-//todo: Binary analysis and support after hook
-
-#define IMPL_ASMHANDLER(SUFFIX, FUNC_NAME)\
-    void __attribute__((naked)) asmHookHandler##SUFFIX() {\
-        __asm__ __volatile__ (\
-        "popq %r14\n\t" \
-        "popq %r13\n\t" \
-        \
-        \
-        "push %rdi\n\t"\
-        "push %rsi\n\t"\
-        "push %rdx\n\t"\
-        "push %rcx\n\t"\
-        "push %r8\n\t"\
-        "push %r9\n\t"\
-        PUSHXMM(0)\
-        PUSHXMM(1)\
-        PUSHXMM(2)\
-        PUSHXMM(3)\
-        PUSHXMM(4)\
-        PUSHXMM(5)\
-        PUSHXMM(6)\
-        PUSHXMM(7)\
-        PUSHXMM(8)\
-        \
-        "movq %r14,%rdi\n\t"\
-        "movq %r13,%rsi\n\t"\
-        "call  "#FUNC_NAME"\n\t" \
-        "movq %rax,%r14\n\t" \
-        \
-        POPXMM(8)\
-        POPXMM(7)\
-        POPXMM(6)\
-        POPXMM(5)\
-        POPXMM(4)\
-        POPXMM(3)\
-        POPXMM(2)\
-        POPXMM(1)\
-        POPXMM(0)\
-        "pop %r9\n\t"\
-        "pop %r8\n\t"\
-        "pop %rcx\n\t"\
-        "pop %rdx\n\t"\
-        "pop %rsi\n\t"\
-        "pop %rdi\n\t"\
-        \
-        "call *%r14\n\t"\
-        \
-        "push %rax\n\t" \
-        "call  _ZN6scaler21ExtFuncCallHook_Linux22cAfterHookHanlderLinuxEv\n\t"  \
-        "movq %rax,%r13\n\t" \
-        "pop %rax\n\t"  \
-        "jmp *%r13\n\t"\
-        );\
-    }
-
 //I used to put cHookHandler out of scaler namespace
 //However, cHookHandler needs to access variables defined in ExtHook_Linux
 //If I use friend function, it cannot be called by Assembly code.
@@ -798,26 +796,33 @@ namespace scaler {
          * Save environment
          */
 
+
+        //The first six integer or pointer arguments are passed in registers RDI, RSI, RDX, RCX, R8, R9
+        // (R10 is used as a static chain pointer in case of nested functions[25]:21),
+        //XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6 and XMM7  are used for the first floating point arguments
+        //The wider YMM and ZMM registers
+
+        //If the callee wishes to use registers RBX, RSP, RBP, and R12–R15, it must restore their original
+
+        //Integer return values up to 64 bits in size are stored in RAX up to 128 bit are stored in RAX and RDX
+
+        //For leaf-node functions (functions which do not call any other function(s)), a 128-byte space is stored just
+        //beneath the stack pointer of the function. The space is called the red zone. This zone will not be clobbered
+        //by any signal or interrupt handlers. Compilers can thus utilize this zone to save local variables.
+        //gcc and clang offer the -mno-red-zone flag to disable red-zone optimizations.
+
         //R11 is the only register we can use. Store stack address in it.
         "movq %rsp,%r11\n\t"
 
-        // RAX, RCX, RDX, R8, R9, R10, R11 Caller Saved
-        // RBX, RBP, RDI, RSI, RSP, R12, R13, R14, and R15 Callee saved
-
-        // The first six integer or pointer arguments are passed in registers
-        //RDI, RSI, RDX, RCX, R8, R9 (R10 is used as a static chain pointer
-        //in case of nested functions[25]:21), while XMM0, XMM1, XMM2, XMM3,
-        //XMM4, XMM5, XMM6 and XMM7 are used for the first floating point arguments.
-        //If the callee wishes to use registers RBX, RSP, RBP, and R12–R15,
-        //it must restore their original values before returning control to the caller.
-
-        //Save Parameter registers and RBX,RSP,RBP,R12-15
+        //Save Parameter registers and RDI, RSI, RDX, RCX, R8, R9, R10
         "push %rdi\n\t"
         "push %rsi\n\t"
         "push %rdx\n\t"
         "push %rcx\n\t"
         "push %r8\n\t"
         "push %r9\n\t"
+        "push %r10\n\t"
+        //Save [XYZ]MM[0-7]
         PUSHXMM(0)
         PUSHXMM(1)
         PUSHXMM(2)
@@ -827,7 +832,14 @@ namespace scaler {
         PUSHXMM(6)
         PUSHXMM(7)
         //todo: Also save YMM0-7 and ZMM0-7
-
+        PUSHYMM(0)
+        PUSHYMM(1)
+        PUSHYMM(2)
+        PUSHYMM(3)
+        PUSHYMM(4)
+        PUSHYMM(5)
+        PUSHYMM(6)
+        PUSHYMM(7)
         //Save RBX, RSP, RBP, and R12–R15
         "push %rbx\n\t"
         "push %rsp\n\t"
@@ -841,17 +853,19 @@ namespace scaler {
         /**
          * Getting PLT entry address and caller address from stack
          */
-        "movq (%r11),%r15\n\t" //R15 stores PLT entry address
         "addq $8,%r11\n\t"
-        "movq (%r11),%r14\n\t" //R14 stores caller address //Todo: We don't have to record this!
+        "movq (%r11),%rsi\n\t" //R15 stores PLT entry address
+        "addq $8,%r11\n\t"
+        "movq (%r11),%rdi\n\t"
+        "addq $8,%r11\n\t"
+        "movq (%r11),%rdx\n\t" //R14 stores caller address //Todo: We don't have to record this!
 
+        //size_t fileId, size_t funcId, void *callerAddr
 
         /**
          * Pre-Hook
          */
-        "movq %r15,%rdi\n\t" //Pass caller address to last parameter
-        "movq %r14,%rsi\n\t" //Pass PLT entry address to first parameter
-        "call  _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEPvS1_\n\t"
+        "call  _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEmmPv\n\t"
         "movq %rax,%r11\n\t" //Save return value to R11. This is the address of real function parsed by handler.
 
 
@@ -873,6 +887,15 @@ namespace scaler {
         POPXMM(2)
         POPXMM(1)
         POPXMM(0)
+        POPYMM(7)
+        POPYMM(6)
+        POPYMM(5)
+        POPYMM(4)
+        POPYMM(3)
+        POPYMM(2)
+        POPYMM(1)
+        POPYMM(0)
+        "pop %r10\n\t"
         "pop %r9\n\t"
         "pop %r8\n\t"
         "pop %rcx\n\t"
@@ -881,22 +904,56 @@ namespace scaler {
         "pop %rdi\n\t"
 
 
+        //jmp
+        //"addq $152,%rsp\n\t" //138=128+8+8+8
+        //"jmp *%r11\n\t"
+
+
         /**
          * Call actual function
          */
-
+        "addq $152,%rsp\n\t" //138=128+8+8+8 -8 (Return addr no need)
         "call *%r11\n\t"
+
+
         //Save return value to stack
         "push %rax\n\t"
         "push %rdx\n\t"
         PUSHXMM(0)
         PUSHXMM(1)
-        //todo: Handle YMM and ZMM
+        PUSHYMM(0)
+        PUSHYMM(1)
+        //todo: Handle ZMM
 
         /**
         * Save Environment
         */
-
+        "push %rdi\n\t"
+        "push %rsi\n\t"
+        "push %rdx\n\t"
+        "push %rcx\n\t"
+        "push %r8\n\t"
+        "push %r9\n\t"
+        "push %r10\n\t"
+        //Save [XYZ]MM[0-7]
+        PUSHXMM(0)
+        PUSHXMM(1)
+        PUSHXMM(2)
+        PUSHXMM(3)
+        PUSHXMM(4)
+        PUSHXMM(5)
+        PUSHXMM(6)
+        PUSHXMM(7)
+        //todo: Also save YMM0-7 and ZMM0-7
+        PUSHYMM(0)
+        PUSHYMM(1)
+        PUSHYMM(2)
+        PUSHYMM(3)
+        PUSHYMM(4)
+        PUSHYMM(5)
+        PUSHYMM(6)
+        PUSHYMM(7)
+        //Save RBX, RSP, RBP, and R12–R15
         "push %rbx\n\t"
         "push %rsp\n\t"
         "push %rbp\n\t"
@@ -922,16 +979,39 @@ namespace scaler {
         "pop %rbp\n\t"
         "pop %rsp\n\t"
         "pop %rbx\n\t"
+        POPXMM(7)
+        POPXMM(6)
+        POPXMM(5)
+        POPXMM(4)
+        POPXMM(3)
+        POPXMM(2)
+        POPXMM(1)
+        POPXMM(0)
+        POPYMM(7)
+        POPYMM(6)
+        POPYMM(5)
+        POPYMM(4)
+        POPYMM(3)
+        POPYMM(2)
+        POPYMM(1)
+        POPYMM(0)
+        "pop %r10\n\t"
+        "pop %r9\n\t"
+        "pop %r8\n\t"
+        "pop %rcx\n\t"
+        "pop %rdx\n\t"
+        "pop %rsi\n\t"
+        "pop %rdi\n\t"
 
         //Restore return value of real function from stack
+        POPYMM(1)
+        POPYMM(0)
         POPXMM(1)
         POPXMM(0)
         "pop %rdx\n\t"
         "pop %rax\n\t"
         //todo: Handle float return and XMM return
 
-        //Remove pltSecure Address from stack
-        "addq $8,%rsp\n\t"
 
         //Retrun to caller
         "ret\n\t"

@@ -1,6 +1,8 @@
 #include <iostream>
 #include <thread>
 #include <installTest.h>
+#include <util/hook/install.h>
+#include <FuncWithDiffParms.h>
 
 using namespace std;
 
@@ -14,10 +16,28 @@ void threadB() {
 }
 
 int main() {
+    install([](std::string fileName, std::string funcName) -> bool {
+        //todo: User should be able to specify name here. Since they can change filename
+        if (fileName == "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/libscalerhook.so") {
+            return false;
+        }
+        else if (fileName == "/usr/lib/x86_64-linux-gnu/libdl-2.31.so") {
+            return false;
+        } else if (fileName == "/usr/lib/x86_64-linux-gnu/libdl-2.31.so") {
+            return false;
+        } else {
+            return true;
+        }
+    });
+    printf("Hello\n");
+    funcA();
+    printf("ThreadA\n");
     std::thread thread1(callFuncA);
+//    std::thread thread2(callFuncA);
+//    printf("Thread1.join()\n");
     thread1.join();
-    std::thread thread2(callFuncA);
-    thread2.join();
+//    thread2.join();
+    printf("Thread execution complete\n");
 
     return 0;
 }

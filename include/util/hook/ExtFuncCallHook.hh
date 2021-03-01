@@ -12,6 +12,7 @@
 
 namespace scaler {
 
+
     class ExtFuncCallHook_Linux : public Hook {
     public:
 
@@ -138,7 +139,7 @@ namespace scaler {
          * @param callerFuncAddr The next caller
          * @return
          */
-        static void *cPreHookHanlderLinuxSec(void *pltEntryAddr, void *callerAddr);
+        static void *cPreHookHanlderLinuxSec(size_t fileId ,size_t funcId, void *callerAddr);
 
         //static __attribute__((optimize("O0"))) void *cPreHookHanlderLinux(void *pltEntryAddr, void *callerAddr);
 
@@ -146,6 +147,8 @@ namespace scaler {
 
 
         uint8_t *autoAddBaseAddr(uint8_t *addr, size_t fileiD, Elf64_Addr dPtr);
+
+        void* writeAndCompileHookHanlder(std::vector<ExtSymInfo>);
     };
 
 }

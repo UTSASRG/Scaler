@@ -44,12 +44,12 @@ target_link_options(TestInstall PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/myl
 
 add_executable(TestMultiThreadFuncCall TestMultiThreadFuncCall.cpp)
 target_include_directories(TestMultiThreadFuncCall PUBLIC ./libtest/header)
-target_link_libraries(TestMultiThreadFuncCall scalerhook_installer FuncCallTest InstallTest dl)
+target_link_libraries(TestMultiThreadFuncCall scalerhook FuncCallTest InstallTest dl)
 
 
 add_executable(TestMultiThreadFuncCallPthread TestMultiThreadFuncCallPthread.cpp)
 target_include_directories(TestMultiThreadFuncCallPthread PUBLIC ./libtest/header)
-target_link_libraries(TestMultiThreadFuncCallPthread scalerhook_installer FuncCallTest InstallTest dl)
+target_link_libraries(TestMultiThreadFuncCallPthread scalerhook FuncCallTest InstallTest dl)
 
 add_executable(TestHookEverything TestHookEverything.cpp)
 target_include_directories(TestHookEverything PUBLIC ./libtest/header)
