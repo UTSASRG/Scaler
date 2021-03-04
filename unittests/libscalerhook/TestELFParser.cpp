@@ -33,7 +33,7 @@ TEST(ELFParser_Linux, parseFuncName) {
     PmParser_Linux pmParser;
 
     //Parse current ELF file and see if those method exists and if address matches
-    ELFParser_Linux parser(pmParser.curExecFileName);
+    ELFParser_Linux parser(pmParser.curExecAbsolutePath);
 
     plthook_t *myPltHook;
     //Find plthook

@@ -51,9 +51,13 @@ namespace scaler {
                 ss << line;
                 //Put all address into addr1. Seperate them afterward
                 ss >> addr1 >> perm >> offset >> newEntry.dev >> newEntry.inode >> newEntry.pathName;
-                if (curExecFileName == "")
+
+                if (curExecAbsolutePath == "") {
                     //The first filename wuold always be the executable file
-                    curExecFileName = extractFileName_Linux(newEntry.pathName);
+                    curExecAbsolutePath = newEntry.pathName;
+                    extractFileName_Linux(curExecAbsolutePath, curExecPath, curExecFileName);
+                }
+
 
                 //Split address into starting address
                 auto splitPoint = addr1.find('-');

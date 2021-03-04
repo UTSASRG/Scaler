@@ -395,8 +395,6 @@ namespace scaler {
             memcpy(curELFImgInfo.pseudoPlt + 18 * curSymbol.funcId, binCodeArrPseudoPLT.data(), 18);
 
 
-            //Step5: Replace .plt.sec
-
             //Check if address is already resolved
             size_t symbolFileId = pmParser.findExecNameByAddr(curSymbol.addr);
             //Since it's external symbol, it's address must be in anotehr file.
@@ -617,6 +615,10 @@ namespace scaler {
         for (auto &curSymbol:symbolToHook) {
             auto &curELFImgInfo = elfImgInfoMap.at(curSymbol.fileId);
 
+
+            fprintf(fp, "//%s\n", curELFImgInfo.filePath.c_str());
+            fprintf(fp, "//%s\n", curELFImgInfo.idFuncMap.at(curSymbol.funcId).c_str());
+
             fprintf(fp, "void  __attribute__((naked)) pltHandler_%zu_%zu(){\n", curSymbol.fileId, curSymbol.funcId);
             fprintf(fp, "__asm__ __volatile__ (\n");
 
@@ -640,7 +642,11 @@ namespace scaler {
         if (sysRet < 0) {
             throwScalerExceptionWithCode("gcc compilation handler failed", sysRet)
         }
-        void *handle = dlopen("/home/st/Projects/Scaler/cmake-build-debug/unittests/libscalerhook/testHandler.so",
+
+
+        std::stringstream ss;
+        ss << pmParser.curExecPath << "/testHandler.so";
+        void *handle = dlopen(ss.str().c_str(),
                               RTLD_NOW);
         if (handle == NULL) {
             throwScalerExceptionWithCode("dlOpen failed", sysRet)
@@ -854,11 +860,11 @@ namespace scaler {
          * Getting PLT entry address and caller address from stack
          */
         "addq $8,%r11\n\t"
-        "movq (%r11),%rsi\n\t" //R15 stores PLT entry address
+        "movq (%r11),%rsi\n\t" //R11 stores callerAddr
         "addq $8,%r11\n\t"
-        "movq (%r11),%rdi\n\t"
+        "movq (%r11),%rdi\n\t" //R11 stores funcID
         "addq $8,%r11\n\t"
-        "movq (%r11),%rdx\n\t" //R14 stores caller address //Todo: We don't have to record this!
+        "movq (%r11),%rdx\n\t" //R11 stores fileID //Todo: We don't have to record this!
 
         //size_t fileId, size_t funcId, void *callerAddr
 
@@ -879,14 +885,6 @@ namespace scaler {
         "pop %rbp\n\t"
         "pop %rsp\n\t"
         "pop %rbx\n\t"
-        POPXMM(7)
-        POPXMM(6)
-        POPXMM(5)
-        POPXMM(4)
-        POPXMM(3)
-        POPXMM(2)
-        POPXMM(1)
-        POPXMM(0)
         POPYMM(7)
         POPYMM(6)
         POPYMM(5)
@@ -895,6 +893,14 @@ namespace scaler {
         POPYMM(2)
         POPYMM(1)
         POPYMM(0)
+        POPXMM(7)
+        POPXMM(6)
+        POPXMM(5)
+        POPXMM(4)
+        POPXMM(3)
+        POPXMM(2)
+        POPXMM(1)
+        POPXMM(0)
         "pop %r10\n\t"
         "pop %r9\n\t"
         "pop %r8\n\t"
@@ -905,8 +911,8 @@ namespace scaler {
 
 
         //jmp
-        //"addq $152,%rsp\n\t" //138=128+8+8+8
-        //"jmp *%r11\n\t"
+        "addq $152,%rsp\n\t" //138=128+8+8+8
+        "jmp *%r11\n\t"
 
 
         /**

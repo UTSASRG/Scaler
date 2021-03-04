@@ -35,7 +35,7 @@ TEST(ExtFuncCallHook, locSecAndSegInMem) {
     hook->locateRequiredSecAndSeg();
 
 
-    auto &curElfImgInfo = hook->elfImgInfoMap[hook->pmParser.fileIDMap[hook->pmParser.curExecFileName]];
+    auto &curElfImgInfo = hook->elfImgInfoMap[hook->pmParser.fileIDMap[hook->pmParser.curExecAbsolutePath]];
 
 
     EXPECT_EQ(curElfImgInfo.pltStartAddr, &__startplt);
@@ -91,7 +91,7 @@ TEST(ExtFuncCallHook, compareAddressAndFuncName){
     //todo:fix
     //hook->install();
 
-    auto &curElfImgInfo = hook->elfImgInfoMap[hook->pmParser.fileIDMap[hook->pmParser.curExecFileName]];
+    auto &curElfImgInfo = hook->elfImgInfoMap[hook->pmParser.fileIDMap[hook->pmParser.curExecAbsolutePath]];
 
 
     EXPECT_EQ(curElfImgInfo.pltStartAddr, &__startplt);

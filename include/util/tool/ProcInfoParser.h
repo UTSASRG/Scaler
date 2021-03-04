@@ -109,7 +109,12 @@ namespace scaler {
 
 
         //This will be current executable name
+        std::string curExecAbsolutePath;
+        //Only path
+        std::string curExecPath;
+        //Only file name
         std::string curExecFileName;
+
 
         // The id of a.so : fileIDMap[full path for a.so]
         std::map<std::string, size_t> fileIDMap;

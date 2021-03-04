@@ -9,7 +9,7 @@ using namespace std;
 
 int main() {
     scaler::PmParser_Linux pmP;
-    std::string curFileName = pmP.curExecFileName;
+    std::string curFileName = pmP.curExecAbsolutePath;
     install([](std::string fileName, std::string funcName) -> bool {
         if (funcName.find("funcA") != std::string::npos) {
             return true;

@@ -12,6 +12,11 @@
 #include <sstream>
 
 namespace scaler {
+
+    enum ErrCode {
+        PATH_ERROR = -1
+    };
+
     /**
      * Get the size of a file
      */
@@ -38,7 +43,7 @@ namespace scaler {
      */
     void *binCodeSearch(void *target, size_t targetSize, void *keyword, size_t keywordSize);
 
-    std::string extractFileName_Linux(std::string pathName);
+    void extractFileName_Linux(std::string absolutePath, std::string &pathName, std::string &fileName);
 }
 
 
