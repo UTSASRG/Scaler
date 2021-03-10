@@ -93,7 +93,7 @@ namespace scaler {
         for (auto iter = pmParser.procMap.begin(); iter != pmParser.procMap.end(); ++iter) {
             auto &curFileName = iter->first;
             auto &pmEntries = iter->second;
-            size_t curFileiD = pmParser.fileIDMap[curFileName];
+            size_t curFileiD = pmParser.fileIDMap.at(curFileName);
             auto &curELFImgInfo = elfImgInfoMap[curFileiD];
             curELFImgInfo.filePath = curFileName;
 
@@ -166,19 +166,16 @@ namespace scaler {
                                                                                         readableNonCodeSegments));
                 assert(curELFImgInfo._DYNAMICAddr);
 
-                uint8_t *curBaseAddr = pmParser.fileBaseAddrMap[curFileiD];
+                uint8_t *curBaseAddr = pmParser.fileBaseAddrMap.at(curFileiD);
                 curELFImgInfo.baseAddr = curBaseAddr;
 
                 const ElfW(Dyn) *dynsymDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_SYMTAB);
                 curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, dynsymDyn->d_un.d_ptr);
                 curELFImgInfo.dynSymTable = (const ElfW(Sym) *) (curBaseAddr + dynsymDyn->d_un.d_ptr);
 
-
-                //printf("dynSymTable:%p %s\n", curELFImgInfo.dynSymTable, info.dli_fname);
                 const ElfW(Dyn) *strTabDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRTAB);
                 curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, strTabDyn->d_un.d_ptr);
                 curELFImgInfo.dynStrTable = (const char *) (curBaseAddr + strTabDyn->d_un.d_ptr);
-
 
                 const ElfW(Dyn) *strSizeDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRSZ);
                 curELFImgInfo.dynStrSize = strSizeDyn->d_un.d_val;
@@ -207,6 +204,13 @@ namespace scaler {
                         if (newSymbol.symbolName == "") {
                             throwScalerException("Failed to get symbol name.");
                         }
+
+                        //printf("Find symbol %s:%s in.rela.plt. Base:%p WBase:%p WOBase:%p\n",
+                        //pmParser.idFileMap[curFileiD].c_str(),
+                        //newSymbol.symbolName.c_str(),
+                        //curELFImgInfo.baseAddr,
+                        //curELFImgInfo.baseAddr + curRelaPlt->r_offset,
+                        //curRelaPlt->r_offset);
 
                         curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, curRelaPlt->r_offset);
                         newSymbol.gotEntry = reinterpret_cast<void **>(curBaseAddr + curRelaPlt->r_offset);
@@ -305,18 +309,24 @@ namespace scaler {
         //Loop through every linked file
         for (auto iter = elfImgInfoMap.begin(); iter != elfImgInfoMap.end(); ++iter) {
             auto &curELFImgInfo = iter->second;
+
+            //Now, I adjust memory permission only for selected symbol, rather than do it for all symbol at once,
+
+            //printf("AdjMemPerm from .plt\n");
             //.plt
-            memTool->adjustMemPerm(curELFImgInfo.pltStartAddr, curELFImgInfo.pltEndAddr,
-                                   PROT_READ | PROT_WRITE | PROT_EXEC);
+            //memTool->adjustMemPerm(curELFImgInfo.pltStartAddr, curELFImgInfo.pltEndAddr,
+            //                       PROT_READ | PROT_WRITE | PROT_EXEC);
 
-            //.plt.sec
-            if (curELFImgInfo.pltSecStartAddr)
-                memTool->adjustMemPerm(curELFImgInfo.pltSecStartAddr, curELFImgInfo.pltSecEndAddr,
-                                       PROT_READ | PROT_WRITE | PROT_EXEC);
+            //printf("AdjMemPerm from .plt.sec\n");
+            ////.plt.sec
+            //if (curELFImgInfo.pltSecStartAddr)
+            //    memTool->adjustMemPerm(curELFImgInfo.pltSecStartAddr, curELFImgInfo.pltSecEndAddr,
+            //                           PROT_READ | PROT_WRITE | PROT_EXEC);
 
-            //.got
-            memTool->adjustMemPerm(curELFImgInfo.pltSecStartAddr, curELFImgInfo.pltSecEndAddr,
-                                   PROT_READ | PROT_WRITE | PROT_EXEC);
+            //printf("AdjMemPerm from .got\n");
+            ////.got
+            //memTool->adjustMemPerm(curELFImgInfo.pltSecStartAddr, curELFImgInfo.pltSecEndAddr,
+            //                       PROT_READ | PROT_WRITE | PROT_EXEC);
         }
 
         //Step3: Use callback to determine which ID to hook
@@ -328,7 +338,7 @@ namespace scaler {
             auto &curFileName = pmParser.idFileMap.at(curFileId);
             auto &curElfImgInfo = iterFile->second;
 
-            //loop through external symbols
+            //loop through external symbols, let user decide which symbol to hook through callback function
             for (auto iterSymbol = curElfImgInfo.idFuncMap.begin();
                  iterSymbol != curElfImgInfo.idFuncMap.end(); ++iterSymbol) {
                 auto &curSymbolId = iterSymbol->first;
@@ -445,7 +455,7 @@ namespace scaler {
 
 
         /**
-         * Replace PLT entries
+         * Replace PLT (.plt, .plt.sec) entries
          */
         for (auto iter = elfImgInfoMap.begin(); iter != elfImgInfoMap.end(); ++iter) {
             auto &curELFImgInfo = iter->second;
@@ -465,35 +475,48 @@ namespace scaler {
 
                 auto binCodeArr = fillDestAddr2HookCode(pltEntryAddr);
 
-//                printf("[%s] %s hooked (ID:%d)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
-//                       curSymbol.funcId);
+                //printf("[%s] %s hooked (ID:%d)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
+                //       curSymbol.funcId);
 
-                //Step6: Replace PLT.SEC
+                //Step6: Replace .plt.sec and .plt
                 //todo: 16 is bin code dependent
                 void *dataPtr = binCodeArr.data();
 
 
+                if (curELFImgInfo.pltSecStartAddr != nullptr) {
+                    //.plt.sec table exists
+                    try {
+                        memTool->adjustMemPerm((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.funcId,
+                                               (uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * (curSymbol.funcId + 1),
+                                               PROT_READ | PROT_WRITE | PROT_EXEC);
+                        memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.funcId, dataPtr, 16);
+                    } catch (const ScalerException &e) {
+                        std::stringstream ss;
+                        ss << ".plt.sec replacement Failed for \"" << pmParser.idFileMap.at(curSymbol.fileId) << ":"
+                           << curSymbol.symbolName
+                           << "\" because " << e.info;
+                        fprintf(stderr, "%s\n", ss.str().c_str());
+                        continue;
+                    }
+                }
+
+
                 try {
-                    memTool->adjustMemPerm((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.funcId,
-                                           (uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * (curSymbol.funcId + 1),
+                    memTool->adjustMemPerm((uint8_t *) curELFImgInfo.pltStartAddr + 16 * curSymbol.funcId,
+                                           (uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.funcId + 1),
                                            PROT_READ | PROT_WRITE | PROT_EXEC);
+                    memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * curSymbol.funcId, dataPtr, 16);
                 } catch (const ScalerException &e) {
                     std::stringstream ss;
-                    ss << "Hook Failed for \"" << pmParser.idFileMap.at(curSymbol.fileId) << ":"
+                    ss << ".plt replacement Failed for \"" << pmParser.idFileMap.at(curSymbol.fileId) << ":"
                        << curSymbol.symbolName
                        << "\" because " << e.info;
                     fprintf(stderr, "%s\n", ss.str().c_str());
                     continue;
                 }
 
-
-                //printf("memcpy %p <- %p\n", (uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.funcId, dataPtr);
-                memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.funcId, dataPtr, 16);
                 binCodeArr.clear();
 
-                //binCodeArr = fillDestAddr2HookCode((void *) asmHookHandler);
-                //todo:Replace PLT
-                //memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * curSymbol.funcId, binCodeArr.data(), 16);
             }
 
         }
@@ -768,15 +791,17 @@ namespace scaler {
      */
     uint8_t *ExtFuncCallHook_Linux::autoAddBaseAddr(uint8_t *curBaseAddr, size_t curFileiD, ElfW(Addr) targetAddr) {
 
-        if (pmParser.findExecNameByAddr(curBaseAddr + targetAddr) == curFileiD) {
+        size_t idWithBaseAddr = pmParser.findExecNameByAddr(curBaseAddr + targetAddr);
+        size_t idWithoutBaseAddr = pmParser.findExecNameByAddr((void *) targetAddr);
+        if (idWithBaseAddr == curFileiD) {
             //Relative
             return curBaseAddr;
-        } else if (pmParser.findExecNameByAddr((void *) targetAddr) == curFileiD) {
+        } else if (idWithoutBaseAddr == curFileiD) {
             //Absolute
             return nullptr;
         } else {
+            printf("Not found, id1=%d, id2=%d, curFileID=%d\n", idWithBaseAddr, idWithoutBaseAddr, curFileiD);
             assert(false);
-            return nullptr;
         }
     }
 

@@ -16,7 +16,9 @@ int doubletake_main(int argc, char **argv, char **envp) {
         //todo: User should be able to specify name here. Since they can change filename
         if (funcName == "") {
             return false;
-        } else if (fileName.length() >= 16 && fileName.substr(fileName.length() - 16, 16) == "libscalerhook.so") {
+        } else if (fileName=="/lib/x86_64-linux-gnu/ld-2.27.so"){
+            return false;
+        }else if (fileName.length() >= 16 && fileName.substr(fileName.length() - 16, 16) == "libscalerhook.so") {
             return false;
         } else if (funcName.length() >= 26 &&
                    funcName.substr(funcName.length() - 26, 26) != "libscalerhook_installer.so") {

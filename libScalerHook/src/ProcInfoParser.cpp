@@ -16,7 +16,8 @@ namespace scaler {
     PmParser_Linux::PmParser_Linux(int pid) : procID(pid) {
         openPMMap();
         parsePMMap();
-        parseDLPhdr();
+        //todo: Parse used dll
+        //parseDLPhdr();
     }
 
     void PmParser_Linux::openPMMap() {
@@ -38,7 +39,6 @@ namespace scaler {
 
     void PmParser_Linux::parsePMMap() {
         assert(file.is_open());
-
         std::string addr1, addr2, perm, offset;
         if (file.is_open()) {
             std::string line;
@@ -85,6 +85,7 @@ namespace scaler {
                 if (fileIDMap.count(newEntry.pathName) == 0) {
                     //New File, add it to fileId idFile map. Fill it's starting address as base address
                     idFileMap.emplace_back(newEntry.pathName);
+                    startAddrFileMap[(uint8_t *) newEntry.addrStart] = idFileMap.size() - 1;
                     fileIDMap[newEntry.pathName] = idFileMap.size() - 1;
                     fileBaseAddrMap[idFileMap.size() - 1] = (uint8_t *) (newEntry.addrStart);
                 }
@@ -92,7 +93,7 @@ namespace scaler {
                 //Map pathname to PmEntry for easier lookup
                 procMap[newEntry.pathName].emplace_back(newEntry);
 
-                sortedSegments.emplace_back(std::make_pair(idFileMap.size() - 1, newEntry));
+                sortedSegments.emplace_back(std::make_pair( fileIDMap.at(newEntry.pathName), newEntry));
             }
             file.close();
         }
@@ -101,6 +102,7 @@ namespace scaler {
                   [](const std::pair<size_t, PMEntry_Linux> &lhs, const std::pair<size_t, PMEntry_Linux> &rhs) {
                       return (ElfW(Addr)) lhs.second.addrStart < (ElfW(Addr)) rhs.second.addrStart;
                   });
+
     }
 
     PmParser_Linux::~PmParser_Linux() {
@@ -143,7 +145,7 @@ namespace scaler {
         }
 
         if (sortedSegments[lo].second.addrStart <= addr && addr <= sortedSegments[lo].second.addrEnd) {
-            return sortedSegments[lo].first;
+            return startAddrFileMap.at((uint8_t *)sortedSegments[lo].second.addrStart);
         } else {
             return -1;
         }

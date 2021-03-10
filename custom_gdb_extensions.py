@@ -32,7 +32,7 @@ def event_handler(event):
         if asmHookHanlderAddr is None:
             asmHookHanlderAddr = curBreakpointLoc
             # Set breakpoint in the end
-            gdb.execute('break *' + str(hex((int(curBreakpointLoc) + 394))))
+            gdb.execute('break *' + str(hex((int(curBreakpointLoc) + 373))))
         elif asmHookHanlderRetAddr is None:
             asmHookHanlderRetAddr = curBreakpointLoc
 
@@ -48,7 +48,7 @@ def event_handler(event):
             asmHookHanlderAddr=None
             asmHookHanlderRetAddr=None
 
-        # if canContinue:
-        #     gdb.execute('c')
+        if canContinue:
+             gdb.execute('c')
 
 gdb.events.stop.connect(event_handler)

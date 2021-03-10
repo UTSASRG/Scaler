@@ -21,11 +21,7 @@ int main() {
         if (fileName == "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/libscalerhook.so") {
             return false;
         }
-        else if (fileName == "/usr/lib/x86_64-linux-gnu/libdl-2.31.so") {
-            return false;
-        } else if (fileName == "/usr/lib/x86_64-linux-gnu/libdl-2.31.so") {
-            return false;
-        } else {
+        else {
             return true;
         }
     });
