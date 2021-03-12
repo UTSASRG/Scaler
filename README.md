@@ -9,7 +9,13 @@ https://www.weave.works/blog/the-long-tail-tools-to-investigate-high-long-tail-l
 
 What type of contributions: 
 
-1. Identifying the data flow between components could actually identify the bottleneck. 
+1. Proposes to utilize the data flow between components to identify the performance bottleneck. This principled method could be utilized to find the bottleneck inside the whole software stack. 
+2. Develops a detailed method of capturing data flow between components. That is, we propose to intercept PLT invocations to identify data flow among components, which requires no changes of programs and imposes medium overhead. 
+3. Proposes multiple integration techniques to further identify root causes of performance bottlenecks. For instance, we could integrate information of serial and parallel phases, component-based, system call-based integration. We further design a visualized tool to visualize the performance bottleneck. 
+4. We performed extensive studies on a range of applications to evaluate the effectiveness of the approach. We further utilizes two sets of applications to evaluate the performance overhead and memory overhead of the proposed approach. Our conclusion is that Scaler can identify a range of performance issues while only imposing acceptable overhead. 
+
+Possible shortcomings: 
+This is not able to detect cache-related issues. Therefore, can combine with cache-related tools to consist of a full set of tools for performance analysis. 
 
 Two examples: 
 1. We could quickly diagnose the tail latency issues. For instance, we could quickly diagnose the memory issue inside Hoard on Swaptions. 
