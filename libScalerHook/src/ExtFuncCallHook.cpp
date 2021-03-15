@@ -301,7 +301,7 @@ namespace scaler {
     void ExtFuncCallHook_Linux::install(Hook::SYMBOL_FILTER filterCallB) {
         pmParser.printPM();
 
-        curContext.ctx->inHookHanlder=true;
+        curContext.ctx->inHookHanlder = true;
 
         //Step1: Locating table in memory
         locateRequiredSecAndSeg();
@@ -523,7 +523,7 @@ namespace scaler {
             }
 
         }
-        curContext.ctx->inHookHanlder=false;
+        curContext.ctx->inHookHanlder = false;
     }
 
 
@@ -631,8 +631,39 @@ namespace scaler {
     /**
      * todo: This function can be replaced by binary code. But writing this is easier for debugging.
      * Since it's easier to modify.
+     *
+     * The mission of this function is to skip redzone, save fileID and funcID and jump to the assembly hook handler
+     *
+     *
+     *
+     * When this function finishes (The control flow won't return here)
+     *
+     * todo: Currently, memory alignment is not considered.
+     *
+     * Input stack
+     *
+     * oldrsp-152  newrsp-23
+     *                      8 bytes caller address
+     * oldrsp-145  newrsp-16
+     *
+     *
+     * oldrsp-144  newrsp-15
+     *                      8 bytes funcID
+     * oldrsp-137  newrsp-8
+     *
+     *
+     * oldrsp-136  newrsp-7
+     *                      8 bytes fileID
+     * oldrsp-129  newrsp-0
+     *
+     *
+     * oldrsp-128
+     *              128 bytes redzone
+     * oldrsp-1
+     *
+     * oldrsp-0        caller(return) address
      */
-    void *ExtFuncCallHook_Linux::writeAndCompileHookHanlder(std::vector<ExtSymInfo> symbolToHook) {
+    void *ExtFuncCallHook_Linux::writeAndCompileHookHanlder(std::vector<ExtSymInfo> &symbolToHook) {
 
         FILE *fp = NULL;
 
@@ -649,15 +680,71 @@ namespace scaler {
             fprintf(fp, "//%s\n", curELFImgInfo.filePath.c_str());
             fprintf(fp, "//%s\n", curELFImgInfo.idFuncMap.at(curSymbol.funcId).c_str());
 
+            //todo: In GCC < 8, naked function wasn't supported!!
             fprintf(fp, "void  __attribute__((naked)) pltHandler_%zu_%zu(){\n", curSymbol.fileId, curSymbol.funcId);
             fprintf(fp, "__asm__ __volatile__ (\n");
 
+            //Store rsp into r11. We'll later use this value to recover rsp to the correct location
             fprintf(fp, "\"movq (%%rsp),%%r11\\n\\t\"\n");
+            //Skip 128-bit redzone. //todo: platform specific. Only on System V 64
             fprintf(fp, "\"subq $128,%%rsp\\n\\t\"\n");
 
+            //Now, everything happens after the redzone
+            //Store fileID into stack
             fprintf(fp, "\"pushq  $%lu\\n\\t\"\n", curSymbol.fileId);//fileId
+            //Store functionID into stack
             fprintf(fp, "\"pushq  $%lu\\n\\t\"\n", curSymbol.funcId);//funcID
-            fprintf(fp, "\"pushq  %%r11\\n\\t\"\n"); //callerAddr
+            //Store the original stack location into stack
+            fprintf(fp, "\"pushq  %%r11\\n\\t\"\n");
+
+            //jmp to assembly hook handler
+            fprintf(fp, "\"movq  $%p,%%r11\\n\\t\"\n", asmHookHandlerSec);
+            fprintf(fp, "\"jmp *%%r11\\n\\t\"\n");
+
+            fprintf(fp, ");\n");
+            fprintf(fp, "}\n", pos);
+        }
+        fprintf(fp, "}\n");
+        fclose(fp);
+        //compile it
+        int sysRet = system("gcc -shared -fPIC ./testHandler.cpp -o ./testHandler.so");
+        if (sysRet < 0) {
+            throwScalerExceptionWithCode("gcc compilation handler failed", sysRet)
+        }
+
+
+        std::stringstream ss;
+        ss << pmParser.curExecPath << "/testHandler.so";
+        void *handle = dlopen(ss.str().c_str(),
+                              RTLD_NOW);
+        if (handle == NULL) {
+            throwScalerExceptionWithCode("dlOpen failed", sysRet)
+        }
+        return handle;
+    }
+
+    /**
+     * todo: This function can be replaced by binary code. But writing this is easier for debugging.
+     * Since it's easier to modify.
+     */
+    void *ExtFuncCallHook_Linux::writeAndCompilePseudoPlt(std::vector<ExtSymInfo> &symbolToHook) {
+        FILE *fp = NULL;
+
+        fp = fopen("./testPseudoPlt.cpp", "w");
+        unsigned int pos = 0;
+        const char *name;
+        int i;
+        fprintf(fp, "extern \"C\"{\n");
+
+        for (auto &curSymbol:symbolToHook) {
+            auto &curELFImgInfo = elfImgInfoMap.at(curSymbol.fileId);
+
+
+            fprintf(fp, "//%s\n", curELFImgInfo.filePath.c_str());
+            fprintf(fp, "//%s\n", curELFImgInfo.idFuncMap.at(curSymbol.funcId).c_str());
+
+            fprintf(fp, "void  __attribute__((naked)) pseudoPlt_%zu_%zu(){\n", curSymbol.fileId, curSymbol.funcId);
+            fprintf(fp, "__asm__ __volatile__ (\n");
 
 
             fprintf(fp, "\"movq  $%p,%%r11\\n\\t\"\n", asmHookHandlerSec);
@@ -668,7 +755,7 @@ namespace scaler {
         }
         fprintf(fp, "}\n");
         fclose(fp);
-        int sysRet = system("gcc -shared -fPIC ./testHandler.cpp -o ./testHandler.so");
+        int sysRet = system("gcc -shared -fPIC ./testPseudoPlt.cpp -o ./testPseudoPlt.so");
         if (sysRet < 0) {
             throwScalerExceptionWithCode("gcc compilation handler failed", sysRet)
         }
@@ -826,6 +913,29 @@ namespace scaler {
     /**
      * Source code version for #define IMPL_ASMHANDLER
      * We can't add comments to a macro
+     *
+     * Input stack
+     *
+     * oldrsp-152  currsp+0
+     *                      8 bytes caller address
+     * oldrsp-145  currsp+7
+     *
+     *
+     * oldrsp-144  currsp+8
+     *                      8 bytes funcID
+     * oldrsp-137  currsp+15
+     *
+     *
+     * oldrsp-136  currsp+16
+     *                      8 bytes fileID
+     * oldrsp-129  currsp+23
+     *
+     *
+     * oldrsp-128
+     *              128 bytes redzone
+     * oldrsp-1
+     *
+     * oldrsp-0        caller(return) address
      */
     void __attribute__((naked)) asmHookHandlerSec() {
 
@@ -849,44 +959,45 @@ namespace scaler {
         //by any signal or interrupt handlers. Compilers can thus utilize this zone to save local variables.
         //gcc and clang offer the -mno-red-zone flag to disable red-zone optimizations.
 
-        //R11 is the only register we can use. Store stack address in it.
+        //R11 is the only register we can use. Store stack address in it. (%r11)==callerAddr. Later we'll pass this value
+        //as a parameter to prehook
         "movq %rsp,%r11\n\t"
 
+        // currsp=oldrsp-152
         //Save Parameter registers and RDI, RSI, RDX, RCX, R8, R9, R10
-        "push %rdi\n\t"
-        "push %rsi\n\t"
-        "push %rdx\n\t"
-        "push %rcx\n\t"
-        "push %r8\n\t"
-        "push %r9\n\t"
-        "push %r10\n\t"
+        "push %rdi\n\t"  // currsp=oldrsp-160
+        "push %rsi\n\t"  // currsp=oldrsp-168
+        "push %rdx\n\t"  // currsp=oldrsp-176
+        "push %rcx\n\t"  // currsp=oldrsp-184
+        "push %r8\n\t"   // currsp=oldrsp-192
+        "push %r9\n\t"   // currsp=oldrsp-200
+        "push %r10\n\t"  // currsp=oldrsp-208
         //Save [XYZ]MM[0-7]
-        PUSHXMM(0)
-        PUSHXMM(1)
-        PUSHXMM(2)
-        PUSHXMM(3)
-        PUSHXMM(4)
-        PUSHXMM(5)
-        PUSHXMM(6)
-        PUSHXMM(7)
+        PUSHXMM(0) // currsp=oldrsp-224
+        PUSHXMM(1) // currsp=oldrsp-240
+        PUSHXMM(2) // currsp=oldrsp-256
+        PUSHXMM(3) // currsp=oldrsp-272
+        PUSHXMM(4) // currsp=oldrsp-288
+        PUSHXMM(5) // currsp=oldrsp-304
+        PUSHXMM(6) // currsp=oldrsp-320
+        PUSHXMM(7) // currsp=oldrsp-336
         //todo: Also save YMM0-7 and ZMM0-7
-        PUSHYMM(0)
-        PUSHYMM(1)
-        PUSHYMM(2)
-        PUSHYMM(3)
-        PUSHYMM(4)
-        PUSHYMM(5)
-        PUSHYMM(6)
-        PUSHYMM(7)
+        PUSHYMM(0) // currsp=oldrsp-368
+        PUSHYMM(1) // currsp=oldrsp-400
+        PUSHYMM(2) // currsp=oldrsp-432
+        PUSHYMM(3) // currsp=oldrsp-464
+        PUSHYMM(4) // currsp=oldrsp-496
+        PUSHYMM(5) // currsp=oldrsp-528
+        PUSHYMM(6) // currsp=oldrsp-560
+        PUSHYMM(7) // currsp=oldrsp-592
         //Save RBX, RSP, RBP, and R12–R15
-        "push %rbx\n\t"
-        "push %rsp\n\t"
-        "push %rbp\n\t"
-        "push %r12\n\t"
-        "push %r13\n\t"
-        "push %r14\n\t"
-        "push %r15\n\t"
-
+        "push %rbx\n\t" // currsp=oldrsp-600
+        "push %rsp\n\t" // currsp=oldrsp-608
+        "push %rbp\n\t" // currsp=oldrsp-616
+        "push %r12\n\t" // currsp=oldrsp-624
+        "push %r13\n\t" // currsp=oldrsp-632
+        "push %r14\n\t" // currsp=oldrsp-640
+        "push %r15\n\t" // currsp=oldrsp-648
 
         /**
          * Getting PLT entry address and caller address from stack
@@ -896,54 +1007,57 @@ namespace scaler {
         "addq $8,%r11\n\t"
         "movq (%r11),%rdi\n\t" //R11 stores funcID
         "addq $8,%r11\n\t"
-        "movq (%r11),%rdx\n\t" //R11 stores fileID //Todo: We don't have to record this!
+        "movq (%r11),%rdx\n\t" //R11 stores fileID
 
-        //size_t fileId, size_t funcId, void *callerAddr
+        //size_t fileId (rdx), size_t funcId (rdi), void *callerAddr (rsi)
 
         /**
          * Pre-Hook
          */
         "call  _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEmmPv\n\t"
-        "movq %rax,%r11\n\t" //Save return value to R11. This is the address of real function parsed by handler.
+        //Save return value to R11. This is the address of real function parsed by handler.
+        //The return address is maybe the real function address. Or a pointer to the pseodoPlt table
+        "movq %rax,%r11\n\t"
 
 
         /**
         * Restore Registers
         */
-        "pop %r15\n\t"
-        "pop %r14\n\t"
-        "pop %r13\n\t"
-        "pop %r12\n\t"
-        "pop %rbp\n\t"
-        "pop %rsp\n\t"
-        "pop %rbx\n\t"
-        POPYMM(7)
-        POPYMM(6)
-        POPYMM(5)
-        POPYMM(4)
-        POPYMM(3)
-        POPYMM(2)
-        POPYMM(1)
-        POPYMM(0)
-        POPXMM(7)
-        POPXMM(6)
-        POPXMM(5)
-        POPXMM(4)
-        POPXMM(3)
-        POPXMM(2)
-        POPXMM(1)
-        POPXMM(0)
-        "pop %r10\n\t"
-        "pop %r9\n\t"
-        "pop %r8\n\t"
-        "pop %rcx\n\t"
-        "pop %rdx\n\t"
-        "pop %rsi\n\t"
-        "pop %rdi\n\t"
+        "pop %r15\n\t" // currsp=oldrsp-640
+        "pop %r14\n\t" // currsp=oldrsp-632
+        "pop %r13\n\t" // currsp=oldrsp-624
+        "pop %r12\n\t" // currsp=oldrsp-616
+        "pop %rbp\n\t" // currsp=oldrsp-608
+        "pop %rsp\n\t" // currsp=oldrsp-600
+        "pop %rbx\n\t" // currsp=oldrsp-592
+        POPYMM(7) // currsp=oldrsp-560
+        POPYMM(6) // currsp=oldrsp-528
+        POPYMM(5) // currsp=oldrsp-496
+        POPYMM(4) // currsp=oldrsp-464
+        POPYMM(3) // currsp=oldrsp-432
+        POPYMM(2) // currsp=oldrsp-400
+        POPYMM(1) // currsp=oldrsp-368
+        POPYMM(0) // currsp=oldrsp-336
+        POPXMM(7) // currsp=oldrsp-320
+        POPXMM(6) // currsp=oldrsp-304
+        POPXMM(5) // currsp=oldrsp-288
+        POPXMM(4) // currsp=oldrsp-272
+        POPXMM(3) // currsp=oldrsp-256
+        POPXMM(2) // currsp=oldrsp-240
+        POPXMM(1) // currsp=oldrsp-224
+        POPXMM(0) // currsp=oldrsp-208
+        "pop %r10\n\t" // currsp=oldrsp-200
+        "pop %r9\n\t" // currsp=oldrsp-192
+        "pop %r8\n\t" // currsp=oldrsp-184
+        "pop %rcx\n\t" // currsp=oldrsp-176
+        "pop %rdx\n\t" // currsp=oldrsp-168
+        "pop %rsi\n\t" // currsp=oldrsp-160
+        "pop %rdi\n\t" // currsp=oldrsp-152
 
+        // currsp=oldrsp-152
 
-        //jmp
-        "addq $152,%rsp\n\t" //138=128+8+8+8
+        //Restore rsp to original value
+        "addq $152,%rsp\n\t"
         "jmp *%r11\n\t"
 
 

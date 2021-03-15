@@ -49,7 +49,7 @@ namespace scaler {
 
             std::vector<bool> realAddrResolved;             //Whether function with id i has been resolved.
             bool *realAddrResolvedC = nullptr;
-            size_t realAddrResolvedCSize=0;
+            size_t realAddrResolvedCSize = 0;
 
 
             uint8_t *pseudoPlt = nullptr;                   //A pointer to pseudoPlt table
@@ -57,20 +57,20 @@ namespace scaler {
             std::map<size_t, ExtSymInfo> hookedExtSymbol;   //External symbols that has already been hooked
 
             ExtSymInfo *hookedExtSymbolC = nullptr;
-            size_t hookedExtSymbolCSize=0;
+            size_t hookedExtSymbolCSize = 0;
 
             std::map<size_t, ExtSymInfo> allExtSymbol;      //All external symbols in ELF image
             std::map<std::string, size_t> funcIdMap;        //Mapping function name to it's id
             std::map<size_t, std::string> idFuncMap;        //Mapping function id to it's name
 
             //todo: Check const for all variables
-            ElfW(Rela) *relaPlt= nullptr;                            //The first .plt.rela entry in ELF iamge
-            ElfW(Xword) relaPltCnt=0;                         //The number of entries in relaPlt
-            const ElfW(Sym) *dynSymTable= nullptr;                   //The first .dynamic entry in ELF image
-            const char *dynStrTable= nullptr;                        //The starting position of dynamic symbol name
-            size_t dynStrSize=0;                              //The size of dynamic string table
+            ElfW(Rela) *relaPlt = nullptr;                            //The first .plt.rela entry in ELF iamge
+            ElfW(Xword) relaPltCnt = 0;                         //The number of entries in relaPlt
+            const ElfW(Sym) *dynSymTable = nullptr;                   //The first .dynamic entry in ELF image
+            const char *dynStrTable = nullptr;                        //The starting position of dynamic symbol name
+            size_t dynStrSize = 0;                              //The size of dynamic string table
 
-            uint8_t *baseAddr= nullptr;                              //The loading address of current elf image
+            uint8_t *baseAddr = nullptr;                              //The loading address of current elf image
 
             ~ELFImgInfo();
 
@@ -88,7 +88,7 @@ namespace scaler {
         std::map<size_t, ELFImgInfo> elfImgInfoMap;         //Mapping fileID to ELFImgInfo
 
         ELFImgInfo *elfImgInfoMapC = nullptr;
-        size_t elfImgInfoMapCSize=0;
+        size_t elfImgInfoMapCSize = 0;
 
 
         static ExtFuncCallHook_Linux *instance; //Singleton
@@ -136,10 +136,12 @@ namespace scaler {
 
         /**
          * A handler written in C. It calls custom handler and calculates actual function address
+         * In the new code, .plt and .plt.sec uses the same handler. Since we currently don't calculate
+         * based on the first address.
          * @param callerFuncAddr The next caller
-         * @return
+         * @return Original function pointer
          */
-        static void *cPreHookHanlderLinuxSec(size_t fileId ,size_t funcId, void *callerAddr);
+        static void *cPreHookHanlderLinuxSec(size_t fileId, size_t funcId, void *callerAddr);
 
         //static __attribute__((optimize("O0"))) void *cPreHookHanlderLinux(void *pltEntryAddr, void *callerAddr);
 
@@ -148,7 +150,10 @@ namespace scaler {
 
         uint8_t *autoAddBaseAddr(uint8_t *addr, size_t fileiD, Elf64_Addr dPtr);
 
-        void* writeAndCompileHookHanlder(std::vector<ExtSymInfo>);
+        void *writeAndCompileHookHanlder(std::vector<ExtSymInfo> &symbolToHook);
+
+        void *writeAndCompilePseudoPlt(std::vector<ExtSymInfo> &symbolToHook);
+
     };
 
 }
