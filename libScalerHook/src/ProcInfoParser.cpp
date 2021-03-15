@@ -93,7 +93,7 @@ namespace scaler {
                 //Map pathname to PmEntry for easier lookup
                 procMap[newEntry.pathName].emplace_back(newEntry);
 
-                sortedSegments.emplace_back(std::make_pair( fileIDMap.at(newEntry.pathName), newEntry));
+                sortedSegments.emplace_back(std::make_pair(fileIDMap.at(newEntry.pathName), newEntry));
             }
             file.close();
         }
@@ -145,7 +145,7 @@ namespace scaler {
         }
 
         if (sortedSegments[lo].second.addrStart <= addr && addr <= sortedSegments[lo].second.addrEnd) {
-            return startAddrFileMap.at((uint8_t *)sortedSegments[lo].second.addrStart);
+            return startAddrFileMap.at((uint8_t *) sortedSegments[lo].second.addrStart);
         } else {
             return -1;
         }
@@ -216,9 +216,9 @@ namespace scaler {
 
         //Copy contents
         for (int i = 0; i < sortedSegSizeC; ++i) {
-            sortedSegIDC[i] = sortedSegments[i].first;
             sortedStartAddrC[i] = sortedSegments[i].second.addrStart;
             sortedEndAddrC[i] = sortedSegments[i].second.addrEnd;
+            sortedSegIDC[i] = fileIDMap.at(sortedSegments[i].second.pathName);
         }
 
     }

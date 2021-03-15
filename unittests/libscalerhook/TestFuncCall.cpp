@@ -2,23 +2,23 @@
 #include <cstdio>
 #include <FuncWithDiffParms.h>
 #include <TenThousandFunc.h>
-#include <plthook.h>
+//#include <plthook.h>
 #include <util/hook/ExtFuncCallHook.hh>
 
 using namespace std;
 using namespace scaler;
 
-void test_plthook_enum(plthook_t *plthook) {
-    unsigned int pos = 0;
-    const char *name;
-    void **addr;
-    int i;
-
-    while (plthook_enum(plthook, &pos, &name, &addr) == 0) {
-        printf("   %s\n", name);
-    }
-
-}
+//void test_plthook_enum(plthook_t *plthook) {
+//    unsigned int pos = 0;
+//    const char *name;
+//    void **addr;
+//    int i;
+//
+//    while (plthook_enum(plthook, &pos, &name, &addr) == 0) {
+//        printf("   %s\n", name);
+//    }
+//
+//}
 
 #include <FuncWithDiffParms.h>
 #include <TenThousandFunc.h>

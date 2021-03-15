@@ -299,6 +299,9 @@ namespace scaler {
     }
 
     void ExtFuncCallHook_Linux::install(Hook::SYMBOL_FILTER filterCallB) {
+        pmParser.printPM();
+
+        curContext.ctx->inHookHanlder=true;
 
         //Step1: Locating table in memory
         locateRequiredSecAndSeg();
@@ -407,7 +410,7 @@ namespace scaler {
 
             //Check if address is already resolved
             size_t symbolFileId = pmParser.findExecNameByAddr(curSymbol.addr);
-            //Since it's external symbol, it's address must be in anotehr file.
+            //Since it's external symbol, it's address must be in another file.
             curELFImgInfo.realAddrResolved.emplace_back(symbolFileId != curSymbol.fileId);
 
             curELFImgInfo.hookedExtSymbol[curSymbol.funcId] = curSymbol;
@@ -520,7 +523,7 @@ namespace scaler {
             }
 
         }
-
+        curContext.ctx->inHookHanlder=false;
     }
 
 
@@ -625,6 +628,10 @@ namespace scaler {
         return binCodeArr;
     }
 
+    /**
+     * todo: This function can be replaced by binary code. But writing this is easier for debugging.
+     * Since it's easier to modify.
+     */
     void *ExtFuncCallHook_Linux::writeAndCompileHookHanlder(std::vector<ExtSymInfo> symbolToHook) {
 
         FILE *fp = NULL;
