@@ -3,7 +3,7 @@ cmake_policy(SET CMP0079 NEW)
 # set the project name
 project(Scaler)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -ldl --verbose -znow -O1 -fPIE -fPIC -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -ldl --verbose -znow -O0 -fPIE -fPIC -std=c++11")
 
 include_directories(include)
 
@@ -15,8 +15,6 @@ add_subdirectory(unittests/googletest)
 # unit tests
 add_subdirectory(unittests/libscalerhook)
 
-# unit tests
-add_subdirectory(unittests/multithreadingtests/parsec)
 
 
 

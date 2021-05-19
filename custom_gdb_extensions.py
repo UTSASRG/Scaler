@@ -23,7 +23,7 @@ def event_handler(event):
     global asmHookHanlderRetAddr
     global prevRegValue
 
-    canContinue=True
+    canContinue = True
     if type(event) == gdb.BreakpointEvent:
         curFrame = gdb.newest_frame()
         regNames = getAllRegisterNames()
@@ -32,7 +32,7 @@ def event_handler(event):
         if asmHookHanlderAddr is None:
             asmHookHanlderAddr = curBreakpointLoc
             # Set breakpoint in the end
-            gdb.execute('break *' + str(hex((int(curBreakpointLoc) + 373))))
+            gdb.execute('break *' + str(hex((int(curBreakpointLoc) + 372))))
         elif asmHookHanlderRetAddr is None:
             asmHookHanlderRetAddr = curBreakpointLoc
 
@@ -41,14 +41,16 @@ def event_handler(event):
                 prevRegValue[regName] = curFrame.read_register(regName)
         elif curBreakpointLoc == asmHookHanlderRetAddr:
             for regName in regNames:
-                if prevRegValue[regName] != curFrame.read_register(regName) and regName!='rip':
-                    print('Register change', regName,prevRegValue[regName],curFrame.read_register(regName))
-                    canContinue=False
+                if prevRegValue[regName] != curFrame.read_register(regName) and regName not in ['rsp', 'rip', 'r11',
+                                                                                                'eflags']:
+                    print('Register change', regName, prevRegValue[regName], curFrame.read_register(regName))
+                    canContinue = False
             prevRegValue = {}
-            asmHookHanlderAddr=None
-            asmHookHanlderRetAddr=None
+            #asmHookHanlderAddr = None
+            asmHookHanlderRetAddr = None
 
-        if canContinue:
-             gdb.execute('c')
+        #if canContinue:
+        #   gdb.execute('continue')
+
 
 gdb.events.stop.connect(event_handler)
