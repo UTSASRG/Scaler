@@ -12,7 +12,7 @@
     fprintf(stderr, "Scalar Exception thrown @ %s:%d: %s\n", __FILE__, __LINE__,msg); \
     throw ScalerException(msg,0, __FILE__, __LINE__);
 
-#define throwScalerExceptionWithCode(msg,code) \
+#define throwScalerExceptionWithCode(msg, code) \
     fprintf(stderr, "Scalar Exception thrown @ %s:%d: %s\n", __FILE__, __LINE__,msg); \
     throw ScalerException(msg,code, __FILE__, __LINE__);
 
@@ -21,9 +21,11 @@ public:
     std::string info;
     int code;
 
-    ScalerException(const std::string &info,int code, const std::string &fileName, int lineNo) : runtime_error(info) {
+    ScalerException(const std::string &info, int code, const std::string &fileName, int lineNo) : runtime_error(info),
+                                                                                                  fileName(fileName),
+                                                                                                  lineNo(lineNo) {
         this->info = info;
-        this->code=code;
+        this->code = code;
         this->fileName = fileName;
         this->lineNo = lineNo;
 
