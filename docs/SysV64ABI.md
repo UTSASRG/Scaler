@@ -54,7 +54,37 @@ The 128-byte area beyond the location pointed to by %rsp is considered to be res
 
 In particular, leaf functions may use this area for their entire stack frame,rather than adjusting the stack pointer in the prologue and epilogue.
 
+[Why Red zone](https://softwareengineering.stackexchange.com/questions/230089/what-is-the-purpose-of-red-zone)
 
+The prologue and epilogue of each function call can save two instructions that would save and restore rbp:
+
+```
+pushq %rbp       # prologue [ two instructions not necessary ]
+movq %rsp,%rbp
+
+.... [code]
+
+movq %rbp,%rsp   # epilogue [ two instructions not necessary ]
+popq %rbp        
+```
+
+[Why Red zone won't corrupt?](https://stackoverflow.com/questions/57465132/how-system-v-abis-red-zone-is-implemented)
+
+[Why do we even need to define a red zone? Can’t I just use my stack for anything?](https://devblogs.microsoft.com/oldnewthing/?p=100685)
+
+The authors conclusion is, normal developers shouldn't use redzone in their code.
+
+[GDB and redzone](https://eklitzke.org/red-zone)
+
+The x86-64 ABI makes an interesting guarantee. It guarantees that at any time you can access up to 128 bytes past `%rsp`. This is called the [red zone](https://en.wikipedia.org/wiki/Red_zone_(computing)). (Which should be false)
+
+This is really useful for GDB scripting because it gives you 128 bytes that you can just use without calling `malloc()` or related routines.
+
+This article suggests, that rather than skip redzone, we should use redzone.
+
+[Understand Redzone with a concrete example](https://stackoverflow.com/questions/55271754/understanding-stack-and-red-zone-of-a-c-program)
+
+Stack protector
 
 ## Parameter parsing
 
@@ -212,7 +242,7 @@ Instruction pointer relative addressing can **not** be used directly for accessi
 
 It make no assumptions about the distance of symbols. The large PIC model implies the same limitation as the medium PIC model as addressing of static data. 
 
-### PIT prologue
+### PLT prologue
 
 #### Small code model
 
