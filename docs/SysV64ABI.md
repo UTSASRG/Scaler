@@ -1,0 +1,262 @@
+# System V Application Binary Interface
+
+Check the [documentation](https://uclibc.org/docs/psABI-x86_64.pdf) for details.
+
+## Function calling sequence
+
+The standard calling sequence requirements apply only to global functions. Local functions that are not reachable from other compilation units may use different  conventions. 
+
+### Registers
+
+**Hardware**
+
+AMD64 architecture has the following registers:
+
+- 16 64bit GPRs
+- 16 SSE registers each 128 bits wide. (Also known as vector registers)
+- 8 x87 float point registers, each 80 bits wide (Also known as MMX registers)
+- 16 256-bit AVX registers (Also known as vector registers)
+  - ymm0-ymm15
+    - xmm0-xmm15 are the lower 128bits of ymm*
+
+**Caller saved or callee saved?**
+
+- rbp, rpb and r12-r15 belongs to the calling function. The called function should preservee their values
+- Remaining registers belong to the called function.
+
+CPU shall be in x87 mode upon entry to a function. Every function  that  uses  the MMX registers  is  required  to  issue  an *emms* or *femms* instruction after using MMX registers, before returning or calling another function.
+
+*DF* flag in the %rFLAGS register must be clear (set to forward direction) on function entry and return.
+
+Other flags have no specified role in the standard calling sequence 
+
+Control bits of *MXCSR* register are callee-saved, status bits are caller saved. x87 status word register is caller-saved. x87 status word register in caller-saved, whereas the x87 control word is callee-saved.
+
+## Stack frame
+
+The end of the input argument area shall be aligned on a 16 (32, if__m256 is passed on stack) byte boundary.
+
+
+
+![image-20210519104820457](imgs/image-20210519104820457.png)
+
+**Finding values in the stack**
+
+**rsp** points to the end of the latest frame.
+
+**rbp** is called frame pointer. And arguments is referenced by **rbp**. The stack frame may be avoided by using **rsp** to save two instructions in the epilogue and makes one additional GPR (rbp) available.
+
+
+
+**Red zone**
+
+The 128-byte area beyond the location pointed to by %rsp is considered to be reserved and shall not be modified by signal or signal handlers.
+
+In particular, leaf functions may use this area for their entire stack frame,rather than adjusting the stack pointer in the prologue and epilogue.
+
+
+
+## Parameter parsing
+
+Parameters are placed either in stack or in register.
+
+### Type of arguments
+
+- **Integer**
+
+  Integral types that fit into one of the GPR
+
+  - _Bool, char, short, int, long, long long, pointers
+  - \_\_int128 uses two GPRs to store low and high bits, and must be aligned to 16-byte boundary
+  - If  a  C++  object  has  either  a  non-trivial  copy  constructor  or  a  non-trivial destructor, it is passed by invisible reference (the object is replaced in the parameter list by a pointer that has class INTEGER)
+
+- **SSE**
+
+  Types that fit into a vector register
+
+  - float, double, _Decimal32, _Decimal64 and __m64
+  - \_\_float128, _Decimal128 and \_\_m128 least significant 8 bytes
+  - \_\_m256 least significant 8 bytes 
+
+- **SSEUP**
+
+  The class consists of types that fit into vector register and can be passed and returned in the upper bytes of vector register.
+
+  - \_\_float128, _Decimal128 and \_\_m128 most significant 8 bytes
+  - \_\_m256 most significant 24 bytes 
+
+- **X87**
+
+  Types that will be returned via x87 FPU.
+
+  - 64-bit mantissa of long double
+
+- **X87UP**
+
+  Types that will be returned via x87 FPU.
+
+  - 16-bit exponent + 6 bytes of padding for long double
+
+- **Complex x87**
+
+  Types that will be returned via x87 FPU.
+
+  - complexT has two parts real and imag. Each part is a double or float
+  - complex long double
+
+
+- **NO_CLASS**
+
+  Used as padding, empty structures and unions.
+
+  - If the size of the aggregate exceeds a single eightbyte,  each is classified separately. Each eightbyte gets initialized to class NO_CLASS.
+  - 
+
+- **MEMORY**
+
+  Types that will be passed and returned in memory via stack
+  
+  - An object larger than four 8 bytes (32bytes ,256 bits) or it contains unaligned fields
+  - For the processors that do not support the \_\_m256 type, if the size of an object is larger than two eight bytes and the first eight byte is not SSE or any other eight byte is not SSEUP, it still has class MEMORY.
+  - A C++ object has either a non-trivial copy constructor or a non-trivial destructor, it is passed by invisible reference. (The object is replaced in the parameter list by a pointer that has class INTEGER)
+
+For objects:
+
+![image-20210519131243809](imgs/image-20210519131243809.png)
+
+![image-20210519131349764](imgs/image-20210519131349764.png)
+
+### Arguments passing
+
+- If the class is **MEMORY**, pass the argument on the stack.
+- If the class is **INTEGER**, the next available register is used in sequence **%rdi**, **%rsi**, **%rdx**, **%rcx**, **%r8** and **%r9**.
+- If the class is **SSE**, vector register is used, the registers are taken in the order from **%xmm0** to **%xmm7**.
+- If the class is **SSEUP**, the eightbyte is passed in the next available eightbyte chunk of the last used vector register.
+- If the class is **X87**,**X87UP** or **COMPLEX_X87**, it is passed in memory.
+
+If there are no registers available for any eightbyte of an argument, the whole argument is passed on the stack. If registers have already been assigned for some eightbytes of such an argument, the assignments get reverted.
+
+Once registers are assigned, the arguments passed in memory are pushed on the stack in **right to left** order.
+
+When passing \_\_m256 arguments to functions that use varargs or stdarg, function prototypes must be provided.
+
+### Return values
+
+- Classify the return type with the classification algorithm
+- If the type has class **MEMORY**, then the caller provides space the the return value and passes the address in **%rdi**. **%rax** will contain the address that has been passed by the caller in %rdi
+- If the class is **INTEGER**, the next available register of the sequence **%rax, %rdi** is used.
+- If the class is **SSE**, the next available vector register of the sequence **%xmm0, xmm1** is used.
+- If the class is **SSEUP**, the eight byte is returned in the next available eightbyte chunk of the last used **vector register.**
+- If the class is **X87**, the value is returned on the X87 stack in **%st0** as 80-bit x87 number.
+- If the class is **X87UP**, the value is returned together with the previous X87 value in **%st0**.
+- If the class is **COMPLEX_X87**, the real part of the value is returned in **%st0** and the imaginary part in **%st1**.
+
+Parameter passing example:
+
+```
+typedef struct {
+    int a, b;
+    double d;
+} structparm;
+structparm s;
+int e, f, g, h, i, j, k;
+long double ld;
+double m, n;
+__m256 y;
+
+extern void func (int e, int f,
+                  structparm s, int g, int h,
+                  long double ld, double m,
+                  __m256 y,
+                  double n, int i, int j, int k);
+                  
+func (e, f, s, g, h, ld, m, y, n, i, j, k);
+```
+
+![image-20210519135500282](imgs/image-20210519135500282.png)
+
+## Code models
+
+In order to improve performance and reduce code size, it is desirable to use different code models depending on the requirements.  
+
+> There are more differences between each model than introduced. I only included things that scaler should pay attention to.
+>
+> Currently, I didn't find where it documents large/medium/small model. The rule of thumb is: If something doesn't work, try another way. The important part is the example code.
+>
+
+#### Small code model
+
+Virtual address is known at link time. All symbols are known to be located in the virtual address within a certain range. 
+
+#### Kernel code model
+
+It has minor difference with the small model in the range of signed/unsigned address encoding.
+
+#### Medium code model
+
+The model requires the compiler to use movabs instructions to access large static data and to load addresses into registers. Data section is split into two larts: normal and large. Data larger than 65535 is placed in the large data section.
+
+#### Large code model
+
+The compiler is required to use movabs instruction. Indirect branches are needed when branching to address whose offset from the current instruction pointer is unknown.
+
+#### Small code model with PIC
+
+Virtual addr of instructions and data are not known until dynamic link time. Addresses are relative to instruction pointer.
+
+#### Medium code model with PIC
+
+Instruction pointer relative addressing can **not** be used directly for accessing large static data, since the offset can exceed the limitations on the size of the displacement field in the instruction. Instead an unwind sequence consisting of **movabs**, **lea** and **add** needs to be used.
+
+#### Large code model with PIC
+
+It make no assumptions about the distance of symbols. The large PIC model implies the same limitation as the medium PIC model as addressing of static data. 
+
+### PIT prologue
+
+#### Small code model
+
+Since all references for symbol is resolved by the linker at runtime in this model. There's no PLT required
+
+#### Medium code model
+
+A medium model can reference GOT directly.
+
+```
+leaq     _GLOBAL_OFFSET_TABLE_(%rip),%r15 # GOTPC32 reloc
+```
+
+#### Large code model
+
+```
+   pushq    %r15                          # save %r15
+   leaq     1f(%rip),%r11                 # absolute %rip
+1: movabs   $_GLOBAL_OFFSET_TABLE_,%r15   # offset to the GOT (R_X86_64_GOTPC64)
+   leaq     (%r11,%r15),%r15              # absolute address of the GOT
+```
+
+
+### Function Calls
+
+#### Small and Medium Models
+
+Position independent direct function call:
+
+![image-20210519162325167](imgs/image-20210519162325167.png)
+
+Position independent indirect function call:
+
+![image-20210519162417666](imgs/image-20210519162417666.png)
+
+#### Large Models
+
+Absolute Direct and Indirect function call
+
+> movabs moves an absolute immediate rather than rip-relative LEA to registers.
+
+![image-20210519163307467](imgs/image-20210519163307467.png)
+
+Position-independent direct and indirect function call
+
+![image-20210519163441828](imgs/image-20210519163441828.png)
+
