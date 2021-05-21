@@ -2,8 +2,6 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/tests/googletest" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/tests/plthook" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/unittests/googletest" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/unittests/multithreadingtests" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/unittests/plthook" vcs="Git" />

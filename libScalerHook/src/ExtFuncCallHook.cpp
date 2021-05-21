@@ -97,6 +97,10 @@ namespace scaler {
             auto &curELFImgInfo = elfImgInfoMap[curFileiD];
             curELFImgInfo.filePath = curFileName;
 
+            if(curFileName==""){
+                continue;
+            }
+
             try {
                 /**
                  * Open corresponding c file
@@ -726,6 +730,8 @@ namespace scaler {
     /**
      * todo: This function can be replaced by binary code. But writing this is easier for debugging.
      * Since it's easier to modify.
+     *
+     * oldrsp-0        caller(return) address
      */
     void *ExtFuncCallHook_Linux::writeAndCompilePseudoPlt(std::vector<ExtSymInfo> &symbolToHook) {
         FILE *fp = NULL;
@@ -745,7 +751,6 @@ namespace scaler {
 
             fprintf(fp, "void  __attribute__((naked)) pseudoPlt_%zu_%zu(){\n", curSymbol.fileId, curSymbol.funcId);
             fprintf(fp, "__asm__ __volatile__ (\n");
-
 
             fprintf(fp, "\"movq  $%p,%%r11\\n\\t\"\n", asmHookHandlerSec);
             fprintf(fp, "\"jmp *%%r11\\n\\t\"\n");
@@ -998,6 +1003,7 @@ namespace scaler {
         "push %r13\n\t" // currsp=oldrsp-632
         "push %r14\n\t" // currsp=oldrsp-640
         "push %r15\n\t" // currsp=oldrsp-648
+        "push %rax\n\t" // currsp=oldrsp-656
 
         /**
          * Getting PLT entry address and caller address from stack
@@ -1023,6 +1029,7 @@ namespace scaler {
         /**
         * Restore Registers
         */
+        "pop %rax\n\t" // currsp=oldrsp-656
         "pop %r15\n\t" // currsp=oldrsp-640
         "pop %r14\n\t" // currsp=oldrsp-632
         "pop %r13\n\t" // currsp=oldrsp-624
@@ -1058,13 +1065,15 @@ namespace scaler {
 
         //Restore rsp to original value
         "addq $152,%rsp\n\t"
+
+//        "addq $24,%rsp\n\t"
         "jmp *%r11\n\t"
 
 
         /**
          * Call actual function
          */
-        "addq $152,%rsp\n\t" //138=128+8+8+8 -8 (Return addr no need)
+        "addq $152,%rsp\n\t"
         "call *%r11\n\t"
 
 
