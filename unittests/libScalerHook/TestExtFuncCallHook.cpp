@@ -14,8 +14,9 @@ extern char __startplt, __endplt, __startpltgot, __endpltgot, __startpltsec, __e
 TEST(ExtFuncCallHook, locSecAndSegInMem) {
 
     plthook_t *myPltHook;
-    //Find plthook
-    plthook_open(&myPltHook, NULL);
+//Find plthook
+    plthook_open(&myPltHook,
+                 NULL);
 
 
     vector<string> funcNameArr;
@@ -25,14 +26,21 @@ TEST(ExtFuncCallHook, locSecAndSegInMem) {
     const char *name;
     void **addr;
     int i;
-    while (plthook_enum(myPltHook, &pos, &name, &addr) == 0) {
-        //printf("   %s\n", name);
-        funcNameArr.emplace_back(std::string(name));
-        addrArr.emplace_back(addr);
+    while (
+            plthook_enum(myPltHook, &pos, &name, &addr
+            ) == 0) {
+//printf("   %s\n", name);
+        funcNameArr.
+                emplace_back(std::string(name)
+        );
+        addrArr.
+                emplace_back(addr);
     }
 
     ExtFuncCallHook_Linux *hook = ExtFuncCallHook_Linux::getInst();
-    hook->locateRequiredSecAndSeg();
+    hook->
+
+            locateRequiredSecAndSeg();
 
 
     auto &curElfImgInfo = hook->elfImgInfoMap[hook->pmParser.fileIDMap[hook->pmParser.curExecAbsolutePath]];
@@ -54,7 +62,7 @@ TEST(ExtFuncCallHook, locSecAndSegInMem) {
 }
 
 TEST(ExtFuncCallHook, install) {
-    //ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
+//ExtFuncCallHook *hook = ExtFuncCallHook::getInst();
 //    hook->install();
 
 }
@@ -62,11 +70,10 @@ TEST(ExtFuncCallHook, install) {
 void *addr1;
 
 
-
 #include <FuncWithDiffParms.h>
 #include <TenThousandFunc.h>
 
-TEST(ExtFuncCallHook, compareAddressAndFuncName){
+TEST(ExtFuncCallHook, compareAddressAndFuncName) {
     resolveSystemFunc();
 
     plthook_t *myPltHook;
@@ -103,18 +110,19 @@ TEST(ExtFuncCallHook, compareAddressAndFuncName){
     for (int i = 0; i < curElfImgInfo.idFuncMap.size(); ++i) {
         EXPECT_EQ(curElfImgInfo.allExtSymbol[i].symbolName, funcNameArr[i]);
         EXPECT_EQ(curElfImgInfo.allExtSymbol[i].gotEntry, addrArr[i]);
-        //printf("%s:%p:%p\n", curElfImgInfo.allExtSymbol[i].symbolName.c_str(),
-        //       *curElfImgInfo.allExtSymbol[i].gotTableAddr, addrArr[i]);
+//printf("%s:%p:%p\n", curElfImgInfo.allExtSymbol[i].symbolName.c_str(),
+//       *curElfImgInfo.allExtSymbol[i].gotTableAddr, addrArr[i]);
     }
-    //printf("FuncA: %p\n", getFuncAddr("funcA"));
-    //todo: relative path
+//printf("FuncA: %p\n", getFuncAddr("funcA"));
+//todo: relative path
 
     auto &libTestELFInfo = hook->elfImgInfoMap[hook->pmParser.fileIDMap.at(
             "/home/st/Projects/Scaler/cmake-build-debug/tests/libFuncCallTest.so")];
     auto systemFuncId = libTestELFInfo.funcIdMap.at("system");
     void **gotTableAddr = libTestELFInfo.allExtSymbol.at(systemFuncId).gotEntry;
 
-    EXPECT_EQ(*gotTableAddr, (void *) system);
+    EXPECT_EQ(*gotTableAddr,
+              (void *) system);
 
 }
 
@@ -147,6 +155,6 @@ int nativeFunc() {
     a1 += A::asdf;
     a1 += EXTVAR_VAR2;
     a1 += SELF_EXTERN;
-
+    return 0;
 }
 

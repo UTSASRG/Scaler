@@ -1,6 +1,8 @@
 # This cmake file builds
 project(Tests)
 
+message("Including gtest ${gtest_SOURCE_DIR}")
+
 include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-access-control")
@@ -11,8 +13,8 @@ add_library(FuncCallTest SHARED libtest/src/installTest.cpp
 target_include_directories(FuncCallTest PUBLIC ./libtest/header)
 
 # PltHook is used to compare results
-add_library(KuBoPltHook ../plthook/plthook_elf.c)
-target_include_directories(KuBoPltHook PUBLIC ../plthook)
+add_library(KuBoPltHook ../libs/plthook/plthook_elf.c)
+target_include_directories(KuBoPltHook PUBLIC ../libs/plthook)
 
 # Build unittest examples for libhook
 add_executable(TestLibHook
@@ -23,7 +25,7 @@ add_executable(TestLibHook
         TestELFParser.cpp)
 target_include_directories(TestLibHook PUBLIC ../libScalerHook/headers ./libtest/header)
 target_link_libraries(TestLibHook scalerhook KuBoPltHook FuncCallTest gtest gtest_main dl)
-target_link_options(TestLibHook PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/mylinker.ld")
+target_link_options(TestLibHook PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/unittests/libScalerHook/oldexperiments/mylinker.ld")
 
 
 add_executable(TestExtSymbol TestFuncCall.cpp)
@@ -38,7 +40,7 @@ target_link_libraries(InstallTest PUBLIC FuncCallTest)
 add_executable(TestInstall TestInstall.cpp)
 target_include_directories(TestInstall PUBLIC ./libtest/header)
 target_link_libraries(TestInstall scalerhook FuncCallTest InstallTest dl)
-target_link_options(TestInstall PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/mylinker.ld")
+target_link_options(TestInstall PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/unittests/libScalerHook/oldexperiments/mylinker.ld")
 
 add_executable(TestMultiThreadFuncCall TestMultiThreadFuncCall.cpp)
 target_include_directories(TestMultiThreadFuncCall PUBLIC ./libtest/header)

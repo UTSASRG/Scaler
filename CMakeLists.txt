@@ -11,9 +11,9 @@ include_directories(include)
 add_subdirectory(libScalerHook)
 
 # Improt google test
-add_subdirectory(unittests/googletest)
+add_subdirectory(unittests/libs/googletest)
 # unit tests
-add_subdirectory(unittests/libscalerhook)
+add_subdirectory(unittests/libScalerHook)
 
 
 
