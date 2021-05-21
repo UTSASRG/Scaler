@@ -21,7 +21,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
         } else if (funcName.length() >= 26 &&
                    funcName.substr(funcName.length() - 26, 26) != "libscalerhook_installer.so") {
             return false;
-        } else {
+        }  else {
             return true;
         }
     });

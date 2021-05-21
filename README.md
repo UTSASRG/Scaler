@@ -1,4 +1,7 @@
 # Scaler: Holistically Pinpoint Scalability Bottleneck In Whole System Stack
+
+## Idea
+
 A tool to identify scalability issues in C/C++ programs. Then we will consider to extend to identify issues for machine learning programs. 
 
 About Scaler, we may verify it on Firefox application (with multiple tabs to store, see Shan Lu's paper-2012), or other applications used in wPerf. 
@@ -24,3 +27,11 @@ Latency-critical Services
 
 2. Providing a full-stack diagnosis. 
 An example will be "firefox's multi-tab issue", or the synchronization issue of Jin Guoliang's PLDI paper. 
+
+## Dev
+
+libAnalyzer will develop under dev-libAnalyzer
+
+libScalerHook will develop under dev-libScalerHook
+
+Notes and documentation should be placed in wiki page.
