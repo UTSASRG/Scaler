@@ -53,3 +53,16 @@ Init submodules
 ```
 git submodule update --init --recursive --depth=1
 ```
+
+When a upstream branch updates, and you haven't pushed your updates. Always try the following command first rather than using merge directly.
+
+```
+git rebase
+```
+
+**Don't** use the following command unless you clearly know the impact and is certain that others won't be affected.
+
+```
+git push -f 
+```
+
