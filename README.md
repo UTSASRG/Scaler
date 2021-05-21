@@ -30,8 +30,39 @@ An example will be "firefox's multi-tab issue", or the synchronization issue of 
 
 ## Dev
 
-libAnalyzer will develop under dev-libAnalyzer
+libAnalyzer will develop under **dev-libAnalyzer**
 
-libScalerHook will develop under dev-libScalerHook
+libScalerHook will develop under **dev-libScalerHook**
 
-Notes and documentation should be placed in wiki page.
+Notes and documentation should be placed in **docs**, and **ReadMe.md**. These documentations will develop under **master** branch.
+
+All unit tests are placed in ./unittests/library name/*. Preferably, all tests should use **gtest**.
+
+**Master branch should contain the latest, working version of Scaler.**
+
+## Contribution
+
+Clone this repo
+
+```
+git clone git@github.com:UTSASRG/Scaler.git
+```
+
+Init submodules
+
+```
+git submodule update --init --recursive --depth=1
+```
+
+When a upstream branch updates, and you haven't pushed your updates. Always try the following command first rather than using merge directly.
+
+```
+git rebase
+```
+
+**Don't** use the following command unless you clearly know the impact and is certain that others won't be affected.
+
+```
+git push -f 
+```
+

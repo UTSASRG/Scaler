@@ -7,3 +7,12 @@
 [submodule "unittests/multithreadingtests"]
 	path = unittests/multithreadingtests
 	url = git@github.com:UTSASRG/multithreadingtests.git
+[submodule "unittests/libs/multithreadingtests"]
+	path = unittests/libs/multithreadingtests
+	url = git@github.com:UTSASRG/multithreadingtests.git
+[submodule "unittests/libs/plthook"]
+	path = unittests/libs/plthook
+	url = https://github.com/kubo/plthook.git
+[submodule "unittests/libs/googletest"]
+	path = unittests/libs/googletest
+	url = https://github.com/google/googletest.git
