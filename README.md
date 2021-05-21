@@ -30,8 +30,10 @@ An example will be "firefox's multi-tab issue", or the synchronization issue of 
 
 ## Dev
 
-libAnalyzer will develop under dev-libAnalyzer
+libAnalyzer will develop under **dev-libAnalyzer**
 
-libScalerHook will develop under dev-libScalerHook
+libScalerHook will develop under **dev-libScalerHook**
 
-Notes and documentation should be placed in wiki page.
+Notes and documentation should be placed in docs, and ReadMe.md. These documentations will develop under **master** branch.
+
+All unit tests are placed in ./unittests/library name/*. Preferably using gtest.
