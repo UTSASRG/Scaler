@@ -34,6 +34,22 @@ libAnalyzer will develop under **dev-libAnalyzer**
 
 libScalerHook will develop under **dev-libScalerHook**
 
-Notes and documentation should be placed in docs, and ReadMe.md. These documentations will develop under **master** branch.
+Notes and documentation should be placed in **docs**, and **ReadMe.md**. These documentations will develop under **master** branch.
 
-All unit tests are placed in ./unittests/library name/*. Preferably using gtest.
+All unit tests are placed in ./unittests/library name/*. Preferably, all tests should use **gtest**.
+
+**Master branch should contain the latest, working version of Scaler.**
+
+## Contribution
+
+Clone this repo
+
+```
+git clone git@github.com:UTSASRG/Scaler.git
+```
+
+Init submodules
+
+```
+git submodule update --init --recursive --depth=1
+```
