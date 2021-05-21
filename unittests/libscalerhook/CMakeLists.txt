@@ -10,11 +10,9 @@ add_library(FuncCallTest SHARED libtest/src/installTest.cpp
         ./libtest/src/TenThousandFunc.cpp)
 target_include_directories(FuncCallTest PUBLIC ./libtest/header)
 
-# PltHook is used to comapre results
+# PltHook is used to compare results
 add_library(KuBoPltHook ../plthook/plthook_elf.c)
 target_include_directories(KuBoPltHook PUBLIC ../plthook)
-
-
 
 # Build unittest examples for libhook
 add_executable(TestLibHook
@@ -34,7 +32,7 @@ target_link_libraries(TestExtSymbol scalerhook KuBoPltHook FuncCallTest dl)
 
 
 add_library(InstallTest SHARED ./libInstalltest/src/installTest.cpp)
-target_include_directories(InstallTest PUBLIC  ./libInstalltest/header)
+target_include_directories(InstallTest PUBLIC ./libInstalltest/header)
 target_link_libraries(InstallTest PUBLIC FuncCallTest)
 
 add_executable(TestInstall TestInstall.cpp)
