@@ -1,11 +1,52 @@
+# Clarifications for CPU architecture naming
+
+There are various names for different architectures which may leads to confusion for beginners. This section provides a clear view for different names and the architecture they are referring to.
+
+To see a complete list of CPU architectures Linux support check [Wikipedia](https://en.wikipedia.org/wiki/Comparison_of_Linux_stributions#Instruction_set_architecture_support).
+
+### x86-32
+
+**x86** is a term used to describe a CPU instruction set **compatible with the Intel 8086 and its successors**. The term "x86" came into being because the names of several successors to Intel's 8086 processor end in "86", including the 80186, 80286, 80386 and 80486 processors. Scaler currently targets on x86 architecture CPUs that are widely used in desktop computers.
+
+Synonyms:
+
+- x86
+- x86-32
+- X32 (Often people)
+- IA-32
+- i386
+
+### x86-64
+
+**x86-64** is a 64-bit version of the x86 instruction set, first released in 1999. It introduced two new modes of operation, 64-bit mode and compatibility mode (compatible with x86-32), along with a new 4-level paging mode. 
+
+Synonyms:
+
+- x86-64
+- AMD64
+- X64
+- Intel EM64T
+- Intel 64
+
+### IA-64
+
+**IA-64** is the instruction set architecture (ISA) of the Itanium family of 64-bit Intel microprocessors. It's not compatible with x86-64.
+
+Synonyms:
+
+- Itanium
+
+## 
+
 # System V Application Binary Interface
+
+The System V Application Binary Interface is a set of specifications that detail calling conventions, object file formats, executable file formats, dynamic linking semantics, and much more for systems that complies with the X/Open Common Application Environment Specification and the System V Interface Definition. It is today the standard ABI used by the major Unix operating systems such as Linux, the BSD systems, and many others. 
 
 Check the [documentation](https://uclibc.org/docs/psABI-x86_64.pdf) for details.
 
 Other links:
 
 -  [OSDev](https://wiki.osdev.org/System_V_ABI)
-- 
 
 ## Function calling sequence
 
