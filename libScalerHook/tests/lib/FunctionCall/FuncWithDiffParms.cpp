@@ -2,8 +2,6 @@
 #include <FuncWithDiffParms.h>
 #include <string>
 #include <link.h>
-#include "../../libInstalltest/header/installTest.h"
-
 
 extern "C" {
 

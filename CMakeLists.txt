@@ -4,7 +4,3 @@ project(Scaler)
 
 # Adding scalerhook to this project
 add_subdirectory(libScalerHook)
-
-
-
-

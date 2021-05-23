@@ -1,5 +1,5 @@
-#ifndef INSTALL_TEST_H
-#define INSTALL_TEST_H
+#ifndef CALL_FUNCTION_CALL_H
+#define CALL_FUNCTION_CALL_H
 
 #include "immintrin.h"
 #include <string>
