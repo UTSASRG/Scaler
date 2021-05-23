@@ -90,10 +90,7 @@ static int callback(struct dl_phdr_info *info, size_t size, void *data) {
     return 0;
 }
 
-void *findBaseAddrInALibrary() {
 
-    dl_iterate_phdr(callback, NULL);
-}
 
 float funcF(float a, float b, float c) {
     return a + b + c;

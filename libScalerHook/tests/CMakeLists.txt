@@ -22,7 +22,7 @@ target_include_directories(libScalerHook-testlib-CallFuncCall PUBLIC lib/CallFun
 target_link_libraries(libScalerHook-testlib-CallFuncCall libScalerHook-testlib-FuncCall)
 
 ## PltHook is used to compare results
-add_library(KuBoPltHook lib/plthook/plthook_elf.c)
+add_library(KuBoPltHook lib/plthook/plthook_elf.c src/proofconcept/test/testPltHookEnum.cpp)
 target_include_directories(KuBoPltHook PUBLIC lib/plthook)
 
 # ============================================================

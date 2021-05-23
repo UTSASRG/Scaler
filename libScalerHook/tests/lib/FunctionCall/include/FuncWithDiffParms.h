@@ -41,8 +41,6 @@ void *findRdbg();
 
 void *findDYNAMIC();
 
-void *findBaseAddrInALibrary();
-
 class A {
 public:
     static int asdf;
