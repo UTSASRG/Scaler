@@ -1,2 +1,0 @@
-/usr/bin/ar qc libscalerhook.a  CMakeFiles/scalerhook.dir/src/ExtFuncCallHook.cpp.o CMakeFiles/scalerhook.dir/src/ProcInfoParser.cpp.o CMakeFiles/scalerhook.dir/src/ElfParser.cpp.o CMakeFiles/scalerhook.dir/src/MemTool.cpp.o CMakeFiles/scalerhook.dir/src/FileTool.cpp.o CMakeFiles/scalerhook.dir/src/install.cpp.o
-/usr/bin/ranlib libscalerhook.a
