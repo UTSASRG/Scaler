@@ -26,8 +26,6 @@ int doubletake_main(int argc, char **argv, char **envp) {
         }
     });
 
-
-
     // Call the program's main function
     int ret = real_main(argc, argv, envp);
 

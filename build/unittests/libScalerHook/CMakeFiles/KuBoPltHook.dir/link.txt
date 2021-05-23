@@ -1,0 +1,2 @@
+/usr/bin/ar qc libKuBoPltHook.a  CMakeFiles/KuBoPltHook.dir/__/libs/plthook/plthook_elf.c.o
+/usr/bin/ranlib libKuBoPltHook.a

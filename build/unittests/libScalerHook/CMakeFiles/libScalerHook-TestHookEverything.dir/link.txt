@@ -1,0 +1,1 @@
+/usr/bin/c++   -pthread -ldl --verbose -znow -O0 -fPIE -fPIC -std=c++11 -fno-access-control   CMakeFiles/libScalerHook-TestHookEverything.dir/TestHookEverything.cpp.o  -o libScalerHook-TestHookEverything  -Wl,-rpath,/home/st/Projects/Scaler/build/unittests/libScalerHook ../../libScalerHook/libscalerhook.a liblibScalerHook-InstallTest.so -ldl libFuncCallTest.so 

@@ -1,18 +1,6 @@
-[submodule "tests/googletest"]
-	path = tests/googletest
-	url = https://github.com/google/googletest.git
-[submodule "tests/plthook"]
-	path = tests/plthook
-	url = git@github.com:GammaPi/plthook.git
-[submodule "unittests/multithreadingtests"]
-	path = unittests/multithreadingtests
-	url = git@github.com:UTSASRG/multithreadingtests.git
-[submodule "unittests/libs/multithreadingtests"]
-	path = unittests/libs/multithreadingtests
-	url = git@github.com:UTSASRG/multithreadingtests.git
-[submodule "unittests/libs/plthook"]
-	path = unittests/libs/plthook
+[submodule "libScalerHook/tests/lib/plthook"]
+	path = libScalerHook/tests/lib/plthook
 	url = https://github.com/kubo/plthook.git
-[submodule "unittests/libs/googletest"]
-	path = unittests/libs/googletest
-	url = https://github.com/google/googletest.git
+[submodule "libScalerHook/tests/lib/multithreadingtests"]
+	path = libScalerHook/tests/lib/multithreadingtests
+	url = https://github.com/UTSASRG/multithreadingtests.git

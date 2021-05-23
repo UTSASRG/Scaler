@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC  -pthread -ldl --verbose -znow -O0 -fPIE -fPIC -std=c++11 -fno-access-control  -shared -Wl,-soname,libFuncCallTest.so -o libFuncCallTest.so CMakeFiles/FuncCallTest.dir/libtest/src/installTest.cpp.o CMakeFiles/FuncCallTest.dir/libtest/src/TenThousandFunc.cpp.o 
