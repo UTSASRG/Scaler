@@ -1,9 +1,10 @@
 # Compile LibPltHook
 project(ScalerHook)
 
+# Set compiler options
+set(CMAKE_CXX_FLAGS "--verbose -O0 -pthread -ldl -znow -fPIE -fPIC -std=c++11")
 
-set(CMAKE_CXX_FLAGS "-pthread -ldl --verbose -znow -O0 -fPIE -fPIC -std=c++11")
-
+# Scaler hook library itself. Users need to manually install scalerhook through library functions.
 add_library(ScalerHook
         src/ExtFuncCallHook.cpp
         src/ProcInfoParser.cpp
@@ -11,6 +12,8 @@ add_library(ScalerHook
         src/MemTool.cpp
         src/FileTool.cpp
         src/install.cpp)
+target_include_directories(ScalerHook PUBLIC src/include)
 
-add_library(ScalerHook_Installer src/autoinstall.cpp)
-target_link_libraries(ScalerHook_Installer scalerhook)
+#ScalerHook with auto installation enabled. Scaler hook will run automatically before main.
+add_library(ScalerHookWithAutoInstall src/autoinstall.cpp)
+target_link_libraries(ScalerHookWithAutoInstall PUBLIC ScalerHook)

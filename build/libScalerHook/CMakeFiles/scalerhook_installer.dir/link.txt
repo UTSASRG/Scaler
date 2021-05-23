@@ -1,2 +1,0 @@
-/usr/bin/ar qc libscalerhook_installer.a  CMakeFiles/scalerhook_installer.dir/src/autoinstall.cpp.o
-/usr/bin/ranlib libscalerhook_installer.a

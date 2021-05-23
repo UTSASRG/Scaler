@@ -1,1 +1,0 @@
-/usr/bin/c++   -pthread -ldl --verbose -znow -O0 -fPIE -fPIC -std=c++11 -fno-access-control   CMakeFiles/libScalerHook-TestPICFunctionCall.dir/TestPICFunctionCall.cpp.o  -o libScalerHook-TestPICFunctionCall 

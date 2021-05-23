@@ -1,1 +1,0 @@
-/usr/bin/c++ -fPIC  -pthread -ldl --verbose -znow -O0 -fPIE -fPIC -std=c++11 -fno-access-control  -shared -Wl,-soname,liblibScalerHook-InstallTest.so -o liblibScalerHook-InstallTest.so CMakeFiles/libScalerHook-InstallTest.dir/libInstalltest/src/installTest.cpp.o  -Wl,-rpath,/home/st/Projects/Scaler/build/unittests/libScalerHook libFuncCallTest.so 
