@@ -1,7 +1,10 @@
 # Compile LibPltHook
-project(scalerhook)
+project(ScalerHook)
 
-add_library(scalerhook SHARED
+
+set(CMAKE_CXX_FLAGS "-pthread -ldl --verbose -znow -O0 -fPIE -fPIC -std=c++11")
+
+add_library(ScalerHook
         src/ExtFuncCallHook.cpp
         src/ProcInfoParser.cpp
         src/ElfParser.cpp
@@ -9,6 +12,5 @@ add_library(scalerhook SHARED
         src/FileTool.cpp
         src/install.cpp)
 
-add_library(scalerhook_installer SHARED
-        src/autoinstall.cpp)
-target_link_libraries(scalerhook_installer scalerhook)
+add_library(ScalerHook_Installer src/autoinstall.cpp)
+target_link_libraries(ScalerHook_Installer scalerhook)
