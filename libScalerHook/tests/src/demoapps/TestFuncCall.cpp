@@ -2,23 +2,26 @@
 #include <FuncWithDiffParms.h>
 #include <CallFunctionCall.h>
 #include <TenThousandFunc.h>
-#include <plthook.h>
+#include <util/hook/install.h>
+#include <util/tool/StringTool.h>
 
 using namespace std;
-
-void test_plthook_enum(plthook_t *plthook) {
-    unsigned int pos = 0;
-    const char *name;
-    void **addr;
-    int i;
-
-    while (plthook_enum(plthook, &pos, &name, &addr) == 0) {
-        printf("   %s\n", name);
-    }
-
-}
-
 int main() {
+    install([](std::string fileName, std::string funcName) -> bool {
+        //todo: User should be able to specify name here. Since they can change filename
+
+        if (scaler::strEndsWith(fileName,"libScalerHook-demoapps-FuncCall")) {
+            fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
+            return true;
+        } else if (scaler::strEndsWith(fileName,"liblibScalerHook-testlib-CallFuncCall.so"))  {
+            return true;
+        }else{
+            return false;
+        }
+
+    });
+
+
     printf("Calling funcA\n");
     funcA();
 

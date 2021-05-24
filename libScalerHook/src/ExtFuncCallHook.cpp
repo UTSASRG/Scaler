@@ -313,29 +313,6 @@ namespace scaler {
         //Step2: Change every plt table memory into writeable
         MemoryTool_Linux *memTool = MemoryTool_Linux::getInst();
 
-        //Loop through every linked file
-        for (auto iter = elfImgInfoMap.begin(); iter != elfImgInfoMap.end(); ++iter) {
-            auto &curELFImgInfo = iter->second;
-
-            //Now, I adjust memory permission only for selected symbol, rather than do it for all symbol at once,
-
-            //printf("AdjMemPerm from .plt\n");
-            //.plt
-            //memTool->adjustMemPerm(curELFImgInfo.pltStartAddr, curELFImgInfo.pltEndAddr,
-            //                       PROT_READ | PROT_WRITE | PROT_EXEC);
-
-            //printf("AdjMemPerm from .plt.sec\n");
-            ////.plt.sec
-            //if (curELFImgInfo.pltSecStartAddr)
-            //    memTool->adjustMemPerm(curELFImgInfo.pltSecStartAddr, curELFImgInfo.pltSecEndAddr,
-            //                           PROT_READ | PROT_WRITE | PROT_EXEC);
-
-            //printf("AdjMemPerm from .got\n");
-            ////.got
-            //memTool->adjustMemPerm(curELFImgInfo.pltSecStartAddr, curELFImgInfo.pltSecEndAddr,
-            //                       PROT_READ | PROT_WRITE | PROT_EXEC);
-        }
-
         //Step3: Use callback to determine which ID to hook
         std::vector<ExtSymInfo> symbolToHook;
         std::set<size_t> fileToHook;

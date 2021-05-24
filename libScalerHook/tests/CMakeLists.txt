@@ -44,16 +44,16 @@ target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHoo
 
 option(libScalerHook-demoapps_AUTO_INSTALL_HOOK "If ON, then libScalerHook-HookAuto will be linked. Otherwise libScalerHook-HookManual will be linked" ON)
 
-if(libScalerHook-demoapps_AUTO_INSTALL_HOOK)
-
-endif(libScalerHook-demoapps_AUTO_INSTALL_HOOK)
-
-
-    add_executable(libScalerHook-demoapps-FuncCall src/demoapps/TestFuncCall.cpp)
+add_executable(libScalerHook-demoapps-FuncCall src/demoapps/TestFuncCall.cpp)
 target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC libScalerHook-HookManual libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall KuBoPltHook dl)
-#
-#
+
+add_executable(libScalerHook-demoapps-HookEverything src/demoapps/TestHookEverything.cpp)
+target_include_directories(libScalerHook-demoapps-HookEverything PUBLIC libtest/header)
+target_link_libraries(libScalerHook-demoapps-HookEverything PUBLIC libScalerHook-HookManual libScalerHook-testlib-FuncCall
+        libScalerHook-testlib-CallFuncCall KuBoPltHook dl)
+
+
 #add_library(InstallTest SHARED libInstalltest/src/installTest.cpp)
 #target_include_directories(InstallTest PUBLIC libInstalltest/header)
 #target_link_libraries(InstallTest PUBLIC FuncCallTest)
@@ -72,9 +72,7 @@ target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC libScalerHook-HookM
 #target_include_directories(TestMultiThreadFuncCallPthread PUBLIC libtest/header)
 #target_link_libraries(TestMultiThreadFuncCallPthread scalerhook FuncCallTest InstallTest dl)
 #
-#add_executable(TestHookEverything TestHookEverything.cpp)
-#target_include_directories(TestHookEverything PUBLIC libtest/header)
-#target_link_libraries(TestHookEverything scalerhook FuncCallTest InstallTest dl)
+
 #
 #
 #add_executable(TestNestingCall TestNestingCall.cpp)
