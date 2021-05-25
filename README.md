@@ -20,6 +20,10 @@ What type of contributions:
 Possible shortcomings: 
 This is not able to detect cache-related issues. Therefore, can combine with cache-related tools to consist of a full set of tools for performance analysis. 
 
+We should do something (based on the communication with Yang Wang): 
+First, we will need to compare it with perf!
+Second, we may try to use Coz for this case, to see how much performance improvement that we could achieve. 
+
 Two examples: 
 1. We could quickly diagnose the tail latency issues. For instance, we could quickly diagnose the memory issue inside Hoard on Swaptions. 
    Or Rocksdb as the submission of HPDC submission: Memory at Your Service: Fast Memory Allocation for
@@ -27,6 +31,7 @@ Latency-critical Services
 
 2. Providing a full-stack diagnosis. 
 An example will be "firefox's multi-tab issue", or the synchronization issue of Jin Guoliang's PLDI paper. 
+
 
 ## Dev
 
