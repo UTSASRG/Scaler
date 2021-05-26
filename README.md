@@ -49,22 +49,19 @@ We will be able to tell the user the following info:
 
 
 
+We may use wPerf-like method to visualize the synchronization part.
+
+
+
 Open problems: 
 
 - If each thread has one figure, how to summarize these info? (Since we often have thousands of threads)
 - How to represent the wait-for relationship. So that user can get more details of why the synchronization happens.
+- Whether the graph is so complex that we need to simplify using wPerf.
 
 ### Predict potential speedup
 
 Tools like Coz predict potential speedup by slowing down other threads and profiling a second time. In Scaler, we may calculate the speedup by trying to shorten each function call time and calculate a theoretical speedup. 
-
-### Use wait-for graph to visualize synchronization
-
-We may use wPerf-like method to visualize the synchronization part.
-
-Open problems:
-
-- Whether the graph is so complex that we need to simplify using wPerf.
 
 ### Analyze parameters
 
@@ -74,7 +71,7 @@ We may not do this because:
 - May incur high overhead
 - Difficult to analyze
 - Need application to have debugging symbol, which may make people complain.
-- 
+
 
 ## Development
 
