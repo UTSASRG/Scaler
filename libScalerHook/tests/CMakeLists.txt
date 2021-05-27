@@ -1,0 +1,134 @@
+# Compile LibPltHook
+project(ScalerHook-Tests)
+
+enable_testing()
+find_package(GTest REQUIRED)
+
+add_compile_options("-fno-access-control")
+
+# ============================================================
+# Test libs
+# ============================================================
+
+## A library that does a range of function call
+add_library(libScalerHook-testlib-FuncCall SHARED lib/FunctionCall/FuncWithDiffParms.cpp
+        lib/FunctionCall/TenThousandFunc.cpp)
+target_include_directories(libScalerHook-testlib-FuncCall PUBLIC lib/FunctionCall/include)
+
+## A library that calls libScalerHook-testlib-FuncCall
+
+add_library(libScalerHook-testlib-CallFuncCall SHARED lib/CallFunctionCall/CallFunctionCall.cpp)
+target_include_directories(libScalerHook-testlib-CallFuncCall PUBLIC lib/CallFunctionCall/include)
+target_link_libraries(libScalerHook-testlib-CallFuncCall libScalerHook-testlib-FuncCall)
+
+## PltHook is used to compare results
+add_library(KuBoPltHook lib/plthook/plthook_elf.c src/proofconcept/test/testPltHookEnum.cpp)
+target_include_directories(KuBoPltHook PUBLIC lib/plthook)
+
+# ============================================================
+# Unit Test
+# ============================================================
+
+add_executable(libScalerHook-unittests
+        src/unittests/TestPMParser.cpp
+        src/unittests/TestExtFuncCallHook.cpp
+        src/unittests/TestFileTool.cpp
+        src/unittests/TestException.cpp
+        src/unittests/TestELFParser.cpp)
+target_link_libraries(libScalerHook-unittests PUBLIC libScalerHook-HookManual libScalerHook-testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread)
+target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHook-Tests_SOURCE_DIR}/linkerscripts/mylinker.ld")
+
+# ============================================================
+# Demo Application
+# ============================================================
+
+option(libScalerHook-demoapps_AUTO_INSTALL_HOOK "If ON, then libScalerHook-HookAuto will be linked. Otherwise libScalerHook-HookManual will be linked" ON)
+
+add_executable(libScalerHook-demoapps-FuncCall src/demoapps/TestFuncCall.cpp)
+target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC libScalerHook-HookManual libScalerHook-testlib-FuncCall
+        libScalerHook-testlib-CallFuncCall KuBoPltHook dl)
+
+add_executable(libScalerHook-demoapps-HookEverything src/demoapps/TestHookEverything.cpp)
+target_include_directories(libScalerHook-demoapps-HookEverything PUBLIC libtest/header)
+target_link_libraries(libScalerHook-demoapps-HookEverything PUBLIC libScalerHook-HookManual libScalerHook-testlib-FuncCall
+        libScalerHook-testlib-CallFuncCall KuBoPltHook dl)
+
+add_executable(libScalerHook-demoapps-FuncCallDelay src/demoapps/TestFuncCallDelay.cpp)
+target_link_libraries(libScalerHook-demoapps-FuncCallDelay PUBLIC libScalerHook-testlib-FuncCall
+        libScalerHook-testlib-CallFuncCall dl pthread)
+target_compile_options(libScalerHook-demoapps-FuncCallDelay PUBLIC -g -pg)
+
+#add_library(InstallTest SHARED libInstalltest/src/installTest.cpp)
+#target_include_directories(InstallTest PUBLIC libInstalltest/header)
+#target_link_libraries(InstallTest PUBLIC FuncCallTest)
+#
+#add_executable(TestInstall TestInstall.cpp)
+#target_include_directories(TestInstall PUBLIC libtest/header)
+#target_link_libraries(TestInstall scalerhook FuncCallTest InstallTest dl)
+#target_link_options(TestInstall PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/unittests/libScalerHook/oldexperiments/mylinker.ld")
+#
+#add_executable(TestMultiThreadFuncCall TestMultiThreadFuncCall.cpp)
+#target_include_directories(TestMultiThreadFuncCall PUBLIC libtest/header)
+#target_link_libraries(TestMultiThreadFuncCall scalerhook FuncCallTest InstallTest dl)
+#
+#
+#add_executable(TestMultiThreadFuncCallPthread TestMultiThreadFuncCallPthread.cpp)
+#target_include_directories(TestMultiThreadFuncCallPthread PUBLIC libtest/header)
+#target_link_libraries(TestMultiThreadFuncCallPthread scalerhook FuncCallTest InstallTest dl)
+#
+
+#
+#
+#add_executable(TestNestingCall TestNestingCall.cpp)
+#target_include_directories(TestNestingCall PUBLIC libtest/header)
+#target_link_libraries(TestNestingCall scalerhook FuncCallTest InstallTest dl)
+
+# ============================================================
+# Proof of concept
+# ============================================================
+
+#add_executable(libScalerHook-demoapps src/proofconcept/testprog.cpp)
+#target_link_libraries(DemoProg libTest PltHookLib dl)
+
+##target_link_libraries(test1 mylib dl PltHookLib)
+#
+#add_executable(TestFuncInvocation test/testFuncInvocation.cpp)
+#target_link_libraries(TestFuncInvocation dl)
+#
+#add_executable(TestASMCallC test/testASMCallFunc.cpp)
+#
+#add_executable(TestExtFunctionInvocation test/testExtFuncInvocation.cpp)
+#target_link_libraries(TestExtFunctionInvocation libTest dl)
+#
+#add_executable(TestJMPHandler test/testJmpHandler.cpp)
+#target_link_libraries(TestJMPHandler libTest PltHookLib dl)
+#
+#add_executable(TestJMPHandlerInlineHook test/testJmpHandlerInlineHook.cpp)
+#target_link_libraries(TestJMPHandlerInlineHook libTest PltHookLib dl)
+#target_link_options(TestJMPHandlerInlineHook PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/mylinker.ld")
+#
+#get_target_property(MAIN_CFLAGS TestJMPHandlerInlineHook LINKER_OPTOINS)
+## also see: COMPILE_DEFINITIONS INCLUDE_DIRECTORIES
+#message("-- Target compiler flags are: ${MAIN_CFLAGS}")
+#
+#add_executable(TestAddr2Relative test/testParsingAddr2Relative.cpp)
+#target_link_libraries(TestAddr2Relative libTest PltHookLib dl)
+#
+#
+#add_executable(SimpleProgPlt test/simeProgPLT.cpp)
+#target_link_libraries(SimpleProgPlt libTest)
+#
+#add_executable(TestFindSection test/testFindSection.cpp)
+#
+#add_executable(TestPLTInterception test/testPLTInterception.cpp)
+#target_link_options(TestPLTInterception PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/mylinker.ld")
+#
+#
+##add_executable(TestLocatingPLT test/testLocatingPLT.cpp)
+##target_link_libraries(TestLocatingPLT libTest PltHookLib libPMParser dl)
+##target_link_options(TestLocatingPLT PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/mylinker.ld")
+#
+#
+#add_executable(TestFindRdebug test/testFindRdebug.cpp)
+#target_link_libraries(TestFindRdebug libTest dl)
+

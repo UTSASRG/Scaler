@@ -1,9 +1,3 @@
-# Related work
-
-## wPerf
-
-
-
 ## Perf
 
 
