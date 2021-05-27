@@ -10,6 +10,10 @@ void callFuncA();
 
 void callFunc1000();
 
+void callSleepDelay(long long seconds);
+
+void callLoopDelay(long long times);
+
 
 }
 #endif

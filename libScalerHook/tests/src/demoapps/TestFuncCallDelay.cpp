@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include "FuncWithDiffParms.h"
-
+#include "CallFunctionCall.h"
 using namespace std;
 
 
@@ -17,7 +17,7 @@ void *testThread1(void *data) {
     for (int i = 0; i < 10000; ++i) {
         pthread_mutex_lock(&count_mutex);
 //        printf("thread1 executing\n");
-        loopDelay(100);
+        callLoopDelay(100);
         pthread_mutex_unlock(&count_mutex);
         pthread_yield();
     }
@@ -28,7 +28,7 @@ void *testThread2(void *data) {
     for (int i = 0; i < 50; ++i) {
         pthread_mutex_lock(&count_mutex);
 //        printf("thread2 executing\n");
-        sleepDelay(100);
+        callSleepDelay(100);
         pthread_mutex_unlock(&count_mutex);
         pthread_yield();
     }
