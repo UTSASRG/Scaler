@@ -19,6 +19,10 @@ int funcE(int a, int b, int c);
 
 float funcF(float a, float b, float c);
 
+void loopDelay(long long times);
+
+void sleepDelay(long long seconds);
+
 uint64_t funcTiming();
 
 void resolveSystemFunc();

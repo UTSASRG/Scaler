@@ -2,11 +2,25 @@
 #include <FuncWithDiffParms.h>
 #include <string>
 #include <link.h>
+#include <thread>
 
 extern "C" {
 
 void funcA() {
     printf("Inside Function A\n");
+}
+
+void loopDelay(long long times) {
+    printf("loopdelay\n");
+    long long sum = 0;
+    for (long long i = 0; i < times; ++i) {
+        ++sum;
+    }
+}
+
+void sleepDelay(long long millseconds) {
+    printf("Sleep delay\n");
+    std::this_thread::sleep_for(std::chrono::milliseconds(millseconds));
 }
 
 void funcB(int a) {
@@ -89,7 +103,6 @@ static int callback(struct dl_phdr_info *info, size_t size, void *data) {
                (void *) (info->dlpi_addr + info->dlpi_phdr[j].p_vaddr));
     return 0;
 }
-
 
 
 float funcF(float a, float b, float c) {
