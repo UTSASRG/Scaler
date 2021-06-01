@@ -97,7 +97,7 @@ namespace scaler {
             auto &curELFImgInfo = elfImgInfoMap[curFileiD];
             curELFImgInfo.filePath = curFileName;
 
-            if(curFileName==""){
+            if (curFileName == "") {
                 continue;
             }
 
@@ -310,6 +310,14 @@ namespace scaler {
         //Step1: Locating table in memory
         locateRequiredSecAndSeg();
 
+        //todo:log
+        for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
+            fprintf(stderr, "%s .plt:%p .plt.sec:%p\n", iterFile->second.filePath.c_str(),
+                    iterFile->second.pltStartAddr,
+                    iterFile->second.pltSecStartAddr);
+        }
+
+
         //Step2: Change every plt table memory into writeable
         MemoryTool_Linux *memTool = MemoryTool_Linux::getInst();
 
@@ -340,9 +348,14 @@ namespace scaler {
         //Allocate pseudo address
         for (auto &curFileID:fileToHook) {
             auto &curELFImgInfo = elfImgInfoMap.at(curFileID);
+
             //Malloc mem area for pseodo plt
             //todo: 18 is related to binary code. I should use a global config file to store it.
             curELFImgInfo.pseudoPlt = (uint8_t *) malloc(curELFImgInfo.allExtSymbol.size() * 18);
+
+            //todo: debug log
+            fprintf(stderr, "Pseudo PLT addr for %s is %p\n", curELFImgInfo.filePath.c_str(), curELFImgInfo.pseudoPlt);
+
             //printf("mmprotect Allocate pseudo address\n");
             try {
                 memTool->adjustMemPerm(curELFImgInfo.pseudoPlt,
@@ -361,6 +374,10 @@ namespace scaler {
 
         //Step5: Write plt handler code to file
         void *pltHookDl = writeAndCompileHookHanlder(symbolToHook);
+
+
+        //todo: debug here
+        writeAndCompilePseudoPlt(symbolToHook);
 
         //Step6: Replace PLT table, jmp to dll function
         for (auto &curSymbol:symbolToHook) {
@@ -385,6 +402,7 @@ namespace scaler {
             //Allocate plt table
             auto binCodeArrPseudoPLT = fillDestAddr2PseudoPltCode(curSymbol.funcId, curELFImgInfo.pltStartAddr);
             //Copy array todo:18 is machine specific
+
 
             memcpy(curELFImgInfo.pseudoPlt + 18 * curSymbol.funcId, binCodeArrPseudoPLT.data(), 18);
 
@@ -466,7 +484,6 @@ namespace scaler {
                 //todo: 16 is bin code dependent
                 void *dataPtr = binCodeArr.data();
 
-
                 if (curELFImgInfo.pltSecStartAddr != nullptr) {
                     //.plt.sec table exists
                     try {
@@ -486,10 +503,10 @@ namespace scaler {
 
 
                 try {
-                    memTool->adjustMemPerm((uint8_t *) curELFImgInfo.pltStartAddr + 16 * curSymbol.funcId,
-                                           (uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.funcId + 1),
+                    memTool->adjustMemPerm((uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.funcId + 1),
+                                           (uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.funcId + 1 + 1),
                                            PROT_READ | PROT_WRITE | PROT_EXEC);
-                    memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * curSymbol.funcId, dataPtr, 16);
+                    memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.funcId + 1), dataPtr, 16);
                 } catch (const ScalerException &e) {
                     std::stringstream ss;
                     ss << ".plt replacement Failed for \"" << pmParser.idFileMap.at(curSymbol.fileId) << ":"
@@ -806,7 +823,7 @@ namespace scaler {
                curElfImgInfo.idFuncMap.at(funcId).c_str());
 
         curContext.ctx->inHookHanlder = false;
-        return *curSymbol.gotEntry;
+        return retOriFuncAddr;
     }
 
     void *ExtFuncCallHook_Linux::cAfterHookHanlderLinux() {
@@ -1043,7 +1060,7 @@ namespace scaler {
         //Restore rsp to original value
         "addq $152,%rsp\n\t"
 
-//        "addq $24,%rsp\n\t"
+        //        "addq $24,%rsp\n\t"
         "jmp *%r11\n\t"
 
 

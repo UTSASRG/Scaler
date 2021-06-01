@@ -56,7 +56,12 @@ target_link_libraries(libScalerHook-demoapps-HookEverything PUBLIC libScalerHook
 add_executable(libScalerHook-demoapps-FuncCallDelay src/demoapps/TestFuncCallDelay.cpp)
 target_link_libraries(libScalerHook-demoapps-FuncCallDelay PUBLIC libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall dl pthread)
-target_compile_options(libScalerHook-demoapps-FuncCallDelay PUBLIC -g -pg)
+
+
+add_executable(libScalerHook-demoapps-FuncNestedCall src/demoapps/TestNextedFuncCall.cpp)
+target_link_libraries(libScalerHook-demoapps-FuncNestedCall PUBLIC libScalerHook-HookManual libScalerHook-testlib-FuncCall
+        libScalerHook-testlib-CallFuncCall dl pthread )
+
 
 #add_library(InstallTest SHARED libInstalltest/src/installTest.cpp)
 #target_include_directories(InstallTest PUBLIC libInstalltest/header)
