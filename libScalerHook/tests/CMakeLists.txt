@@ -72,6 +72,12 @@ add_executable(libScalerHook-demoapps-StdPthread  src/demoapps/TestStdThread.cpp
 target_include_directories(libScalerHook-demoapps-StdPthread PUBLIC libtest/header)
 target_link_libraries(libScalerHook-demoapps-StdPthread libScalerHook-HookManual  libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
 
+
+add_executable(libScalerHook-demoapps-ComplexThreadop  src/demoapps/TestComplexThreadOps.cpp)
+target_include_directories(libScalerHook-demoapps-ComplexThreadop PUBLIC libtest/header)
+target_link_libraries(libScalerHook-demoapps-ComplexThreadop libScalerHook-HookManual  libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
+
+
 #add_library(InstallTest SHARED libInstalltest/src/installTest.cpp)
 #target_include_directories(InstallTest PUBLIC libInstalltest/header)
 #target_link_libraries(InstallTest PUBLIC FuncCallTest)
