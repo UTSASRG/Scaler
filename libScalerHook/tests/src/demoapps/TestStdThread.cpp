@@ -1,8 +1,9 @@
 #include <iostream>
 #include <thread>
-#include <installTest.h>z
 #include <util/hook/install.h>
 #include <FuncWithDiffParms.h>
+#include <CallFunctionCall.h>
+#include <util/tool/StringTool.h>
 
 using namespace std;
 
@@ -18,10 +19,16 @@ void threadB() {
 int main() {
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
-        if (fileName == "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/libscalerhook.so") {
+        if (scaler::strEndsWith(fileName, "ld-2.31.so")) {
             return false;
-        }
-        else {
+        } else if (scaler::strEndsWith(fileName, "libScalerHook-HookManual.so")) {
+            return false;
+        } else if (scaler::strEndsWith(fileName, "libstdc++.so.6.0.28")) {
+            return false;
+        } else if (scaler::strEndsWith(fileName, "libdl-2.31.so")) {
+            return false;
+        } else {
+            //fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
             return true;
         }
     });

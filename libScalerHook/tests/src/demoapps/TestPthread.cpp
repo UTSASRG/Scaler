@@ -1,7 +1,8 @@
 #include <iostream>
 #include <pthread.h>
-#include <installTest.h>
-#include <util/hook/install.h>
+#include "../../../src/include/util/hook/install.h"
+#include "../../../src/include/util/tool/StringTool.h"
+
 using namespace std;
 
 void *print_message_function(void *ptr);
@@ -9,14 +10,16 @@ void *print_message_function(void *ptr);
 int main() {
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
-        if (funcName == "") {
+        if (scaler::strEndsWith(fileName, "ld-2.31.so")) {
             return false;
-        } else if (fileName.length() >= 16 && fileName.substr(fileName.length() - 16, 16) == "libscalerhook.so") {
+        } else if (scaler::strEndsWith(fileName, "libScalerHook-HookManual.so")) {
             return false;
-        } else if (funcName.length() >= 26 &&
-                   funcName.substr(funcName.length() - 26, 26) != "libscalerhook_installer.so") {
+        } else if (scaler::strEndsWith(fileName, "libstdc++.so.6.0.28")) {
+            return false;
+        } else if (scaler::strEndsWith(fileName, "libdl-2.31.so")) {
             return false;
         } else {
+            //fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
             return true;
         }
     });

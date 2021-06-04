@@ -58,10 +58,19 @@ target_link_libraries(libScalerHook-demoapps-FuncCallDelay PUBLIC libScalerHook-
         libScalerHook-testlib-CallFuncCall dl pthread)
 
 
-add_executable(libScalerHook-demoapps-FuncNestedCall src/demoapps/TestNextedFuncCall.cpp)
+add_executable(libScalerHook-demoapps-FuncNestedCall src/demoapps/TestNextedFuncCallPthread.cpp)
 target_link_libraries(libScalerHook-demoapps-FuncNestedCall PUBLIC libScalerHook-HookManual libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall dl pthread )
 
+
+add_executable(libScalerHook-demoapps-Pthread src/demoapps/TestPthread.cpp)
+target_include_directories(libScalerHook-demoapps-Pthread PUBLIC libtest/header)
+target_link_libraries(libScalerHook-demoapps-Pthread libScalerHook-HookManual libScalerHook-testlib-FuncCall pthread dl)
+
+
+add_executable(libScalerHook-demoapps-StdPthread  src/demoapps/TestStdThread.cpp)
+target_include_directories(libScalerHook-demoapps-StdPthread PUBLIC libtest/header)
+target_link_libraries(libScalerHook-demoapps-StdPthread libScalerHook-HookManual  libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
 
 #add_library(InstallTest SHARED libInstalltest/src/installTest.cpp)
 #target_include_directories(InstallTest PUBLIC libInstalltest/header)
@@ -71,18 +80,9 @@ target_link_libraries(libScalerHook-demoapps-FuncNestedCall PUBLIC libScalerHook
 #target_include_directories(TestInstall PUBLIC libtest/header)
 #target_link_libraries(TestInstall scalerhook FuncCallTest InstallTest dl)
 #target_link_options(TestInstall PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/unittests/libScalerHook/oldexperiments/mylinker.ld")
-#
-#add_executable(TestMultiThreadFuncCall TestMultiThreadFuncCall.cpp)
-#target_include_directories(TestMultiThreadFuncCall PUBLIC libtest/header)
-#target_link_libraries(TestMultiThreadFuncCall scalerhook FuncCallTest InstallTest dl)
-#
-#
-#add_executable(TestMultiThreadFuncCallPthread TestMultiThreadFuncCallPthread.cpp)
-#target_include_directories(TestMultiThreadFuncCallPthread PUBLIC libtest/header)
-#target_link_libraries(TestMultiThreadFuncCallPthread scalerhook FuncCallTest InstallTest dl)
-#
 
-#
+
+
 #
 #add_executable(TestNestingCall TestNestingCall.cpp)
 #target_include_directories(TestNestingCall PUBLIC libtest/header)
