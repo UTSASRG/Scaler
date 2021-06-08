@@ -11,23 +11,20 @@ int main() {
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
 
-        if (scaler::strEndsWith(fileName, "ld-2.31.so")) {
+        if (scaler::strContains(fileName, "/ld-")) {
             return false;
-        } else if (scaler::strEndsWith(fileName, "libScalerHook-HookManual.so")) {
+        } else if (scaler::strContains(fileName, "/liblibScalerHook-HookManual")) {
             return false;
-        }else if(scaler::strEndsWith(fileName, "libstdc++.so.6.0.28")){
+        } else if (scaler::strContains(fileName, "/libstdc++")) {
             return false;
-        }
-        else if(scaler::strEndsWith(fileName, "libdl-2.31.so")){
+        } else if (scaler::strContains(fileName, "/libdl-")) {
             return false;
-        }
-        else {
+        } else {
             fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
             return true;
         }
 
     });
-
 
     printf("Calling funcA\n");
     funcA();

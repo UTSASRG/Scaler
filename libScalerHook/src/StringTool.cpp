@@ -7,3 +7,8 @@ bool scaler::strEndsWith(const std::string &fullString, const std::string &endin
         return false;
     }
 }
+
+bool scaler::strContains(const std::string &fullString, const std::string &keyword) {
+    return fullString.find(keyword) != std::string::npos;
+}
+

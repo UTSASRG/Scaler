@@ -54,7 +54,7 @@ target_link_libraries(libScalerHook-demoapps-HookEverything PUBLIC libScalerHook
         libScalerHook-testlib-CallFuncCall KuBoPltHook dl)
 
 add_executable(libScalerHook-demoapps-FuncCallDelay src/demoapps/TestFuncCallDelay.cpp)
-target_link_libraries(libScalerHook-demoapps-FuncCallDelay PUBLIC libScalerHook-testlib-FuncCall
+target_link_libraries(libScalerHook-demoapps-FuncCallDelay PUBLIC libScalerHook-HookManual libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall dl pthread)
 
 
