@@ -20,6 +20,6 @@
 
 # Ideas for libScalerHook:
 
-
+We may come up with come ideas after it works.
 
 
