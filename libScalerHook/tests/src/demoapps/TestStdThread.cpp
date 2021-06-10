@@ -44,24 +44,25 @@ int main() {
             return false;
         } else if (scaler::strContains(fileName, "/libdl-")) {
             return false;
+        } else if (scaler::strContains(fileName, "/libpthread")) {
+            return false;
         } else {
             fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
             return true;
         }
-
     });
-
 
 
     printf("Hello\n");
     funcA();
     printf("ThreadA\n");
+
     std::thread thread1(callFuncA);
-//    std::thread thread2(callFuncA);
+    std::thread thread2(callFuncA);
 //    printf("Thread1.join()\n");
     thread1.join();
-//    thread2.join();
-    printf("Thread execution complete\n");
+    thread2.join();
+//    printf("Thread execution complete\n");
 
     return 0;
 }

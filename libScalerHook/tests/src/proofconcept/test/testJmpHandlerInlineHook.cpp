@@ -73,6 +73,9 @@ void *cHookHanlder(int index, void *funcAddr) {
 }
 
 void *cHookHanlderSec(int index, void *funcAddr) {
+    pthread_mutex_lock()
+
+
     funcAddr = reinterpret_cast<void *>(uint64_t(funcAddr) - 0xD);
     int funcId = ((uint64_t) funcAddr - (uint64_t) ptrPltSec) / 16;
 
