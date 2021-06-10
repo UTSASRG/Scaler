@@ -13,7 +13,7 @@
 9. Check perf's data format to see whether perf's cycles represent function duration.
 10. Pie charts can only show the symptom (some component is slow) rather than the root cause (why that component is slow). eg: 
 11. Categorize system call give user hints about what the an library API is doing. (Originally library functions are blackboxes). Thus, users can compare different API implementations.
-12. Casual profiling. For Coz, we can delay function calls in hook functions. To calculate the potential speedup.
+12. Casual profiling. For Coz, we can delay function calls in hook functions. To calculate the potential speedup. (Steven will check if this will work)
 13. Predict profiling data using ML rather than do the actual profiling. (Q: Which semantic data can we collect as features with current information?)
 14. For some known APIs eg: pthread library, system call. We already know their signature, so we can parse the parameters and do some analysis on them. Eg: Use them as ML features to predict latency .etc. 
 
@@ -22,4 +22,5 @@
 
 We may come up with come ideas after it works.
 
-1. Make libScalerHook work with libraries that compiles with stack protection. 
+1. Make libScalerHook work with libraries that compiles with stack protection. (Need to check how other tools bypass such limit. Maybe it's doable maybe it's not. For libraries that enables Intel CET, I think libScalerhook won't work at all. But intel CET seems to be disabled by default, so we may only need to worry about stackpointer protection.)
+3. We could load debugging symbols seperately with libScalerhook, so we don't require debugging symbol in target application, but we still have deubgging information.
