@@ -22,4 +22,4 @@
 
 We may come up with come ideas after it works.
 
-
+1. Make libScalerHook work with libraries that compiles with stack protection. 
