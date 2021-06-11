@@ -30,3 +30,11 @@ Perf can already report figures in ReadMe.md
 | ferret        | 427.02         | 412.11       | 1.036179661  | 3227772        | 120816       | 26.71642829  |
 | streamcluster | 844.8          | 796.2        | 1.06103994   | 7677152        | 112848       | 68.03090883  |
 | swaptions     | 355            | 358.83       | 0.989326422  | 2780888        | 8048         | 345.5377734  |
+
+# Weakness
+
+- Perf is sampling, so some thred sync will be missed.
+
+- Perf cannot collect accurate function duration. So it cannot understand how long synchronization takes (eg: lock contention)
+- Perf's data doesn't consider thread contention, so it cannot detect thread imbalance problem.
+
