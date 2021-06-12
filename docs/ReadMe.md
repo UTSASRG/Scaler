@@ -17,6 +17,7 @@ We may group similar threads by callstack and compare the overall latency of tha
 If we call the same API, we could combine callstack.  
 
 - Thought 3
+
 If we can retrieve signature of thread creation function (e.g. pthread_create()), maybe we can categorize threads based on their thread function. 
 Then to know the thread function, we would have to somehow retrieve that from the signature (Maybe something like a function id or address). 
 We don't have to know what the function is in specific, but perhaps we simply need to know that multiple threads are calling the same thread function. 
