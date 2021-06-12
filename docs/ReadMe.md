@@ -22,6 +22,8 @@ If we can retrieve signature of thread creation function (e.g. pthread_create())
 Then to know the thread function, we would have to somehow retrieve that from the signature (Maybe something like a function id or address). 
 We don't have to know what the function is in specific, but perhaps we simply need to know that multiple threads are calling the same thread function. 
 
+One problem with this is: Would have to have prior knowledge of thread creation function and search for them in particular. Or somehow have a systematic way of identifying thread creation functions. (Cannot simply assume that pthread_create() is the main function used to create threads, maybe there is some other thread creation function that was used like a proprietary or self made function, unless this is not a issue.)
+
 # Finding bottleneck
 
 ### How to identify abnormal threads (Thread imbalance) if we have thousands of threads?
