@@ -92,7 +92,7 @@ But we need a good example other than thread synchronization to convince people 
 
 - Thought 4
 
-A Tree map might be a better and more compact visualization of our data because means we can represent all of the threads as a portion of the total execution where the total execution if the entire tree map. Then we can have the function and library portions represented as nested in their respective threads. This provides a more wholistic view of the data as opposed to separate pi charts that require the user to click to view individual sections.
+A Tree map might be a better and more compact visualization of our data because it means we can represent all of the threads as a portion of the total execution where the total execution is the entire tree map. Then we can have the function and library portions represented as nested in their respective threads. This provides a more wholistic view of the data as opposed to separate pi charts that require the user to click to view individual sections.
 
 ### How to present the waiting time and normal execution time if there's synchronization inside.
 
