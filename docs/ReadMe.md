@@ -32,6 +32,18 @@ One problem with this is: Would have to have prior knowledge of thread creation 
 
 Maybe we could merge all thread's call stack and latency information into a single graph. Find subgraphs that overlaps with most callstacks. And find thread who has significantly more execution time than its counterparts.
 
+- Thought 2
+
+We need to be able to measure or identify the relevance of a thread to other threads. 
+Relevance is talking about the similarity of a thread's task is to the tasks of other threads. 
+For example: There may be threads designated to starting new threads whereas another thread is dedicated to performing some computation like matrix multiplication perhaps and another thread is dedicated to cleaning up memory.
+
+We may see that the first thread may not have very little impact on the overall execution, but if we do not count for relevance, in our final results we may falsely report that there is load imbalance because of how much execution the second thread takes up (since matrix multiplication is most likely more resource intensive than thread creation) where in reality, the "loads" of either thread have little relation to one another and thus changing the load of one thread does not directly affect the other. This is where relevance is important, by knowing how relevant a thread is to another, we may more accurately understand how the changing of loads will affect the performance of the relevant threads.
+
+How do we measure relevance?
+We may do this by grouping threads by their function (perhaps the best way) as described by my example in thought 3 of the data aggregation section above.
+If we can retrieve function parameters, we may compare inputs (This is most likely the worst method as it would be probably is not scalable when considering massive inputs) and grouping threads by similar inputs.
+
 ### Use machine learning to find performance bottleneck.
 
 - Thought 1 
