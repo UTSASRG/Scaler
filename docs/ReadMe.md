@@ -94,6 +94,22 @@ But we need a good example other than thread synchronization to convince people 
 
 A Tree map might be a better and more compact visualization of our data because it means we can represent all of the threads as a portion of the total execution where the total execution is the entire tree map. Then we can have the function and library portions represented as nested in their respective threads. This provides a more wholistic view of the data as opposed to separate pi charts that require the user to click to view individual sections.
 
+![image-20210615124128148](imgs/ReadMe/image-20210615124128148.png)
+
+- Thought 5
+
+Problem with pie-chat:
+
+The problem with pie-chart is that it provides averaged results, which limits it's capabilities in detecting problems of tail latency. Averaged chart like pie-chart can give people an overview, but it can't tell the whole story. 
+
+What I'm always thinking is how to present more detailed information without modifying the code? Detailed information require debugging info and even program instrumentation which at odds with our selling point "no code modification".
+
+Maybe we could use a teacher-student mechanism. Developers could marks functions and requests inside the develop machine and "teaches" profiler how to profile. And profilers use that information to find similar requests inside an application without debugging info. We then find similar requests inside a program in production.
+
+We could build some semantic information based on applications with debugging symbol. And populate data using the profiling data. This way, we may implement visualization based on threads, requests, developer defined sequences.
+
+In actual profiling process, we may even ignore requests that user doesn't want. So the data will be cleaner and more accurate.
+
 ### How to present the waiting time and normal execution time if there's synchronization inside.
 
 - Thought 1
