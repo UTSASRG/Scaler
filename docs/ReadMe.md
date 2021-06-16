@@ -2,39 +2,78 @@
 
 [toc]
 
-We already collect data through tracing based method. How to present these data?  We currently collect a tuple of 4 (timestamp, library name, thread id, function name) and the function invocation sequence. (Not call stack, but only external function invocation sequence).
+# Format
 
-The overall goal is to provide a visualization that tells users which component they should primarily focus on. Preferably, the tool should report relative importance of each functions. (eg: If the visualization tool shows libraryA is more important than libraryB, then it should mean fixing libraryA would get more benefits).
-
-To achieve this goal, we may meet challenges. For example, a component that takes more averaged execution time may not necessarily mean it is the most worthy component to fix. 
-
-Which factors may cause averaged time to not reflecting the most worthy component to fix? What's the potential solution to fix these problems? These two questions are what we should discuss here.
-
-
-
-> The format should be 
+> The format should be.
 >
-> Issue_Category_Number - Category
+> ```
+> # Section Name
+> # Subsection Name
+> 
+> ### Issue_Category_Number - Category
+> 
+> ### Issue_Category_Number - Issue_Number Breif_Description
+> 
+> - Thought 1
+> 	- Comment 1
+> 	- Comment 2 
+> - Thought 2
+> 	- Comment 1
+> 	- Comment 2
+> ```
+
+> To ensure most effective communication: 
 >
-> Issue_Category_Number - Issue_Number Breif_Description
+> 1. Always use **Topic sentence** + Details.  Set topic sentence to **bold typeface**.
+> 2. Change paragraph if you are talking about things not covered by topic sentence.
+> 3. Be brief is possible
+> 4. Use markers. bullet points
+> 5. Use figure to show what you mean
 
 
 
-## 1-Multi-threading
+# Background
 
-### 1-1 synchronization
+**We already collect data through tracing based method. How to present these data?**  We currently collect a tuple of 4 (timestamp, library name, thread id, function name) and the function invocation sequence. (Not call stack, but only external function invocation sequence).
+
+**The overall goal is to provide a visualization that tells users which component they should primarily focus on.** Preferably, the tool should report relative importance of each functions. (eg: If the visualization tool shows libraryA is more important than libraryB, then it should mean fixing libraryA would get more benefits).
+
+**To achieve this goal, we may meet challenges.** For example, a component that takes more averaged execution time may not necessarily mean it is the most worthy component to fix. 
+
+**We should think about two types of questions**: 
+
+1. Which factors may cause averaged time to not reflecting the most worthy component to fix? 
+2. What's the potential solutions to fix these problems?
+
+# B-Discussions after June 15th meeting
+
+## B1-Multi-threading
+
+### B1-1 thread synchronization can change the relative importance of a function
 
 
 
-# Data aggregation
 
-### How to present the percentage for application with thousands of threads?
+
+## B2-Multi-threading
+
+
+
+
+
+
+
+
+
+# A-Discussions before June 15th meeting
+
+# Earlier thoughts
+
+### A1-How to present the percentage for application with thousands of threads?
 
 - Thought 1
 
-Categorize thread types, group similar threads together
-
-We may group similar threads by callstack and compare the overall latency of that callstack. If we find edge case, we report it. It should be the tail latency problem?
+Categorize thread types, group similar threads together. We may group similar threads by callstack and compare the overall latency of that callstack. If we find edge case, we report it. It should be the tail latency problem?
 
 - Thought 2
 
