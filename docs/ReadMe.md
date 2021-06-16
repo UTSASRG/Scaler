@@ -2,9 +2,7 @@
 
 [toc]
 
-# Background
-
-We can already collect data through tracing based method. How to present these data?  We currently collect a tuple of 4 (timestamp, library name, thread id, function name) and the function invocation sequence. (Not call stack, but only external function invocation sequence).
+We already collect data through tracing based method. How to present these data?  We currently collect a tuple of 4 (timestamp, library name, thread id, function name) and the function invocation sequence. (Not call stack, but only external function invocation sequence).
 
 The overall goal is to provide a visualization that tells users which component they should primarily focus on. Preferably, the tool should report relative importance of each functions. (eg: If the visualization tool shows libraryA is more important than libraryB, then it should mean fixing libraryA would get more benefits).
 
