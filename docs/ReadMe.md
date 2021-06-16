@@ -79,8 +79,6 @@
 
 
 
-
-
 # A-Discussions before June 15th meeting
 
 **Before June 15th, we have two confusions.** 
@@ -89,7 +87,9 @@
  2. We only need to provide some statistical data.
   3. The format of data presentation is not that important. eg: Treemap and piechat doesn't make lots of improvements.
 
-**The followings are a record of previous discussions. Things closed related to our goal should be copied into section B**
+**The followings are a record of previous discussions. Things closed related to our goal should be copied into section B**.
+
+**Thoughts with :heavy_check_mark: will be moved to B.**​
 
 ## A1-How to present the percentage for application with thousands of threads?
 
@@ -133,10 +133,6 @@
   **Different thread may have different contributions.** We may see that the first thread may not have very little impact on the overall execution, but if we do not count for relevance, in our final results we may falsely report that there is load imbalance because of how much execution the second thread takes up (since matrix multiplication is most likely more resource intensive than thread creation) where in reality, the "loads" of either thread have little relation to one another and thus changing the load of one thread does not directly affect the other. This is where relevance is important, by knowing how relevant a thread is to another, we may more accurately understand how the changing of loads will affect the performance of the relevant threads.
 
   **How do we measure relevance?** We may do this by grouping threads by their function (perhaps the best way) as described by my example in A1, thought 2 of the data aggregation section above. If we can retrieve function parameters, we may compare inputs (This is most likely the worst method as it would be probably is not scalable when considering massive inputs) and grouping threads by similar inputs.
-
-  - Comment 1
-
-    **Thought2 has been moved to  section B, since they are relevant.**
 
 - :x: Thought 3
 
@@ -191,7 +187,7 @@
 
     **The goal of this tool is not finding the root cause.** We just need to report which component has the problem.
 
-- :x: Thought 4
+- :bulb: Thought 4
 
   **A Tree map might be a better and more compact visualization of our data.** Because it means we can represent all of the threads as a portion of the total execution where the total execution is the entire tree map. Then we can have the function and library portions representedx] as nested in their respective threads. This provides a more holistic view of the data as opposed to separate pi charts that require the user to click to view individual sections.
 
@@ -216,9 +212,57 @@
 
   Thus, we could give user hints about what the library function is doing. And thus, users can compare different API implementations.
 
-## A4 - Other issues
+## A4 - Parameter Analysis
 
-### A4-1 Check perf's data format to see whether perf's cycles represent function duration.
+- :x: ​Thought 1
+
+**We can further analyze function parameter and find the relationship between parameter and performance.** For some known APIs eg: pthread library, system call. We already know their signature, so we can parse the parameters and do some analysis on them. Eg: Use them as ML features to predict latency .etc. 
+
+- :heavy_check_mark:Comment 1
+
+  **This is not our goal.** We aim to provide a more systematical profiling.
+
+## A5 - Casual profiling
+
+- :question: ​Thought 1
+
+   Like coz,, we can also delay function calls in hook functions and re-run the application to calculate potential speedup.
+
+## A6 - Overcome stack protection
+
+- :heavy_check_mark: Thought 1
+
+  Make libScalerHook work with libraries that compiles with stack protection. (Need to check how other tools bypass such limit. Maybe it's doable maybe it's not. For libraries that enables Intel CET, I think libScalerhook won't work at all. But intel CET seems to be disabled by default, so we may only need to worry about stack pointer protection.)
+
+## A7 - Debugging symbol sideload
+
+- :bulb: Thought 1
+
+  We could load debugging symbols separately with libScalerhook, so we don't require debugging symbol in target application, but we still have debugging information.
+
+
+## A8 - Code injection
+
+- :question: ​Thought 1
+
+  Inject code into process rather than link it to reduce dependency requirement.
+
+  - Comment 1
+    Needs prototype
+
+## A9 - Dynamic profiling
+
+- :x: Thought 1
+  Uninstall hook for functions that doesn't change much.
+
+  - :heavy_check_mark: ​Comment 1
+
+    Good idea. But since we do not plan to further work on this. We won't implement in libScalerHook.
+
+
+## A10 - Other issues
+
+### A10-1 Check perf's data format to see whether perf's cycles represent function duration.
 
 - :question: ​Thought 1
 
@@ -247,41 +291,3 @@ libScalerHook-d 82415  7488.768829:       2489 cycles:
 **Steven and john have different opinions on what's the meaning of the cycles.** John thinks perf's cycle only report the longest duration in each sampling event, so there's no way to know how long each sub function actually executes. While steven thinks perf will report accurate sample count and just create a new output when it detects there's changes to call stack.
 
 **Let's use an example to illustrate the difference.** For example, john thinks in this example the output of perf can only tell us  **native_write_msr+0x6** took 97 cycles + 2489 cycles. **x86_pmu_enable+0x118** may take fewer cycles, but perf doesn't record it. While steven thinks the previous output means the first part of stack trace doesn't change for 97 cycles, and then switched to the stack trace on the bottom. So it can tell us  **native_write_msr+0x6** took 97 cycles + 2489 cycles, **x86_pmu_enable+0x118** also took  97 cycles + 2489 cycles.
-
-
-
-## A5 - Parameter Analysis
-
-- Thought 1
-
-For some known APIs eg: pthread library, system call. We already know their signature, so we can parse the parameters and do some analysis on them. Eg: Use them as ML features to predict latency .etc. 
-
-## A6 - Casual profiling
-
-- Thought 1
-
-Like coz,, we can also delay function calls in hook functions and re-run the application to calculate potential speedup. (Steven will check if this has the potential to work)
-
-## A7 - Overcome stack protection
-
-- Thought 1
-
-Make libScalerHook work with libraries that compiles with stack protection. (Need to check how other tools bypass such limit. Maybe it's doable maybe it's not. For libraries that enables Intel CET, I think libScalerhook won't work at all. But intel CET seems to be disabled by default, so we may only need to worry about stack pointer protection.)
-
-## A8 - Debugging symbol sideload
-
-- Thought 1
-
-We could load debugging symbols seperately with libScalerhook, so we don't require debugging symbol in target application, but we still have deubgging information.
-
-
-## A9 - Code injection
-
-- Thought 1
-
-Inject code into process rather than link it to reduce dependency requirement.
-
-## A10 - Dynamic profiling
-
-- Thought 1
-Untinstall hook for functions that doesn't change much.
