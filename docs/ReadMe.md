@@ -6,21 +6,39 @@
 
 > The format should be.
 >
+> Try to use markdown editor (eg: Typora, Github Web IDE to make sure the format is correct)
+>
+> Use emojis to distinguish
+>
+> - Things that haven't been discussed with anyone :mag_right:
+> - Things that discussed between steven and john but need to report to the professor: :bulb:
+> - Things valuable after discussion: :heavy_check_mark:
+> - Things invaluable after discussion: :x:
+> - Things that have been discussed, but need further investigation :question:
+>
 > ```
 > # Section Name
-> # Subsection Name
+> ## Subsection Name
 > 
 > ### Issue_Category_Number - Category
 > 
 > ### Issue_Category_Number - Issue_Number Breif_Description
 > 
-> - Thought 1
-> 	- Comment 1
-> 	- Comment 2 
-> - Thought 2
-> 	- Comment 1
-> 	- Comment 2
+> - :emoji: Thought 1
+> Descriptions about your idea
+> 	- :emoji: Comment 1
+> 	Some comments regarding thought 1
+> 	- :emoji: Comment 2 
+> 	Some comments regarding thought 1
+> - :emoji: Thought 2
+> Descriptions about your idea
+>     - :emoji: Comment 1
+>     Some comments regarding thought 2
+>     - :emoji: Comment 2
+>     Some comments regarding thought 2
 > ```
+>
+> 
 
 > To ensure most effective communication: 
 >
@@ -55,9 +73,7 @@
 
 
 
-## B2-Multi-threading
-
-
+## B2-Data changes with time
 
 
 
@@ -67,135 +83,144 @@
 
 # A-Discussions before June 15th meeting
 
-# Earlier thoughts
+**Before June 15th, we have two confusions.** 
 
-### A1-How to present the percentage for application with thousands of threads?
+ 1. Tail latency is not what we should focus on. 
+ 2. We only need to provide some statistical data.
+  3. The format of data presentation is not that important. eg: Treemap and piechat doesn't make lots of improvements.
 
-- Thought 1
+**The followings are a record of previous discussions. Things closed related to our goal should be copied into section B**
 
-Categorize thread types, group similar threads together. We may group similar threads by callstack and compare the overall latency of that callstack. If we find edge case, we report it. It should be the tail latency problem?
+## A1-How to present the percentage for application with thousands of threads?
 
-- Thought 2
+- :x: Thought 1
+  **Categorize thread types, group similar threads together.** We may group similar threads by callstack and compare the overall latency of that callstack. If we find edge case, we report it. It should be the tail latency problem?
 
-If we call the same API, we could combine callstack.  
+  - :heavy_check_mark: Comment 1
 
-- Thought 3
+    Tail latency problem is another project.
 
-If we can retrieve signature of thread creation function (e.g. pthread_create()), maybe we can categorize threads based on their thread function. 
-Then to know the thread function, we would have to somehow retrieve that from the signature (Maybe something like a function id or address). 
-We don't have to know what the function is in specific, but perhaps we simply need to know that multiple threads are calling the same thread function. 
+- :heavy_check_mark: Thought 2
+  **We can retrieve signature of thread creation functions to intercept thread synchronization.** eg: pthread_create(). 
 
-One problem with this is: Would have to have prior knowledge of thread creation function and search for them in particular. Or somehow have a systematic way of identifying thread creation functions. (Cannot simply assume that pthread_create() is the main function used to create threads, maybe there is some other thread creation function that was used like a proprietary or self made function, unless this is not a issue.)
+  - :heavy_check_mark: Comment 1
 
-# Finding bottleneck
+    **To know the thread function, we would have to somehow retrieve that from the signature** (Maybe something like a function id or address). 
+    **We don't have to know what the function is in specific.** Perhaps we simply need to know that multiple threads are calling the same thread function. 
 
-### How to identify abnormal threads (Thread imbalance) if we have thousands of threads?
+   - :x:  Comment 2
 
-- Thought 1
+     **This approach have two potential problems.** One problem with this is: Would have to have prior knowledge of thread creation function and search for them in particular. Or somehow have a systematic way of identifying thread creation functions. (Cannot simply assume that pthread_create() is the main function used to create threads, maybe there is some other thread creation function that was used like a proprietary or self made function, unless this is not a issue.)
 
-Maybe we could merge all thread's call stack and latency information into a single graph. Find subgraphs that overlaps with most callstacks. And find thread who has significantly more execution time than its counterparts.
+   - :heavy_check_mark: Comment 3
 
-- Thought 2
+     **Comment 2 is not a problem.** We can assume pthread_create would be the creation method**.** We don't have many APIs to intercept, so it would be enough to manually find these APIs. 
+     **Comment 1 is what we will do**, we need some prototypes.
 
-We need to be able to measure or identify the relevance of a thread to other threads. 
-Relevance is talking about the similarity of a thread's task is to the tasks of other threads. 
-For example: There may be threads designated to starting new threads whereas another thread is dedicated to performing some computation like matrix multiplication perhaps and another thread is dedicated to cleaning up memory.
+## A2-How to identify abnormal threads (Thread imbalance) if we have thousands of threads?
 
-We may see that the first thread may not have very little impact on the overall execution, but if we do not count for relevance, in our final results we may falsely report that there is load imbalance because of how much execution the second thread takes up (since matrix multiplication is most likely more resource intensive than thread creation) where in reality, the "loads" of either thread have little relation to one another and thus changing the load of one thread does not directly affect the other. This is where relevance is important, by knowing how relevant a thread is to another, we may more accurately understand how the changing of loads will affect the performance of the relevant threads.
+- :x: Thought 1
+  **I have an idea about how to find the bottleneck.** Maybe we could merge all thread's call stack and latency information into a single graph. Find subgraphs that overlaps with most call-stack. And find thread who has significantly more execution time than its counterparts.
 
-How do we measure relevance?
+  - :heavy_check_mark: Comment 1
 
-We may do this by grouping threads by their function (perhaps the best way) as described by my example in thought 3 of the data aggregation section above.
+    **This is not our goal.** Our goal is to report some statistic data rather than correlate data together. We only need to report which component is the most worthy to fix.
 
-If we can retrieve function parameters, we may compare inputs (This is most likely the worst method as it would be probably is not scalable when considering massive inputs) and grouping threads by similar inputs.
+- :heavy_check_mark: Thought 2
 
-### Use machine learning to find performance bottleneck.
+  **We need to be able to measure or identify the relevance of a thread to other threads.** Relevance is talking about the similarity of a thread's task is to the tasks of other threads. For example: There may be threads designated to starting new threads whereas another thread is dedicated to performing some computation like matrix multiplication perhaps and another thread is dedicated to cleaning up memory.
 
-- Thought 1 
+  **Different thread may have different contributions.** We may see that the first thread may not have very little impact on the overall execution, but if we do not count for relevance, in our final results we may falsely report that there is load imbalance because of how much execution the second thread takes up (since matrix multiplication is most likely more resource intensive than thread creation) where in reality, the "loads" of either thread have little relation to one another and thus changing the load of one thread does not directly affect the other. This is where relevance is important, by knowing how relevant a thread is to another, we may more accurately understand how the changing of loads will affect the performance of the relevant threads.
 
-Use unsupervised machine learning. Check Sage paper. (Steven will send out an email after he finalize his notes.)
+  **How do we measure relevance?** We may do this by grouping threads by their function (perhaps the best way) as described by my example in A1, thought 2 of the data aggregation section above. If we can retrieve function parameters, we may compare inputs (This is most likely the worst method as it would be probably is not scalable when considering massive inputs) and grouping threads by similar inputs.
 
-### Use machine learning to find tail latency
+  - Comment 1
 
-- Thought 1
+    **Thought2 has been moved to  section B, since they are relevant.**
 
-Check related work for details.
+- :x: Thought 3
 
+  **We could ask developers to mark requests that they care.** Developers could marks functions and requests inside the develop machine and "teaches" profiler how to profile. And profilers use that information to find similar requests inside an application without debugging info. We then find similar requests inside a program in production.
 
+  **In actual profiling process, we may even ignore requests that user doesn't want.** So the data will be cleaner and more accurate.
 
-# Better visualization
+  - :heavy_check_mark: Comment 1
 
-### Is pie-chart the optimal solution?
+    **The overall goal is to report statistical data. Detailed profiling is out of the scope.** 
 
-A problem with pie chart it that it merges detailed information. For tail latency problem, an averaged thread will submerge in its peers. This cannot be found from pie chart.
+    **User intervention is not preferred.**
 
-- Thought 1
+## A3 - Better visualization
 
-A pie chart in the following can show more information on a graph. 
+- :x: Thought 1
 
-<img src="imgs/ReadMe/image-20210610182556355.png" alt="image-20210610182556355" style="zoom:33%;" />
+  **Pie-chart is not the optimal solution for finding tail latency problem?** For tail latency problem, an averaged thread will submerge in its peers. This cannot be found from pie chart.
 
-<img src="imgs/ReadMe/image-20210610182608989.png" alt="image-20210610182608989" style="zoom:33%;" />
+  - :heavy_check_mark: Comment 1
 
+    **Tail latency is not our focus.**
 
+- :bulb: Thought 2
 
-- Thought 2 
+  A pie chart in the following can show more information on a graph. 
 
-Flame graph can show detailed call path. But it also hides threads with tail latency problem.
+  <img src="imgs/ReadMe/image-20210610182556355.png" alt="image-20210610182556355" style="zoom:33%;" />
 
-We may also have flame graph?
+  <img src="imgs/ReadMe/image-20210610182608989.png" alt="image-20210610182608989" style="zoom:33%;" />
 
-- Thought 3
+  - Comment 1
+    
+    **This graph will be mentioned in section B.**
+  
+- :x: Thought 3
 
-Pie charts can only show the symptom (some component is slow) rather than the root cause (why that component is slow). 
+  Flame graph can show detailed call path. But it also hides threads with tail latency problem.
 
-Maybe a slow component itself isn't problem, and the slow component is caused by other components which account for only a small fraction of time.
+  - Comment 1
+    **Tail latency is not our focus.** 
 
-But we need a good example other than thread synchronization to convince people this is true.
+    **This graph will be briefly mentioned in section B.**
 
-- Thought 4
+- :question: Thought 3
 
-A Tree map might be a better and more compact visualization of our data because it means we can represent all of the threads as a portion of the total execution where the total execution is the entire tree map. Then we can have the function and library portions represented as nested in their respective threads. This provides a more wholistic view of the data as opposed to separate pi charts that require the user to click to view individual sections.
+  **Pie charts can only show the symptom (some component is slow) rather than the root cause (why that component is slow).** Maybe a slow component itself isn't the problem, and the slow component is caused by other components which account for only a small fraction of time.
 
-![image-20210615124128148](imgs/ReadMe/image-20210615124128148.png)
+  But we need a good example other than thread synchronization to convince people this is true.
 
-- Thought 5
+  - :heavy_check_mark: Comment 1
 
-Problem with pie-chat:
+    **The goal of this tool is not finding the root cause.** We just need to report which component has the problem.
 
-The problem with pie-chart is that it provides averaged results, which limits it's capabilities in detecting problems of tail latency. Averaged chart like pie-chart can give people an overview, but it can't tell the whole story. 
+- :x: Thought 4
 
-What I'm always thinking is how to present more detailed information without modifying the code? Detailed information require debugging info and even program instrumentation which at odds with our selling point "no code modification".
+  **A Tree map might be a better and more compact visualization of our data.** Because it means we can represent all of the threads as a portion of the total execution where the total execution is the entire tree map. Then we can have the function and library portions representedx] as nested in their respective threads. This provides a more holistic view of the data as opposed to separate pi charts that require the user to click to view individual sections.
 
-Maybe we could use a teacher-student mechanism. Developers could marks functions and requests inside the develop machine and "teaches" profiler how to profile. And profilers use that information to find similar requests inside an application without debugging info. We then find similar requests inside a program in production.
+  ![image-20210615124128148](imgs/ReadMe/image-20210615124128148.png)
 
-We could build some semantic information based on applications with debugging symbol. And populate data using the profiling data. This way, we may implement visualization based on threads, requests, developer defined sequences.
+  - :heavy_check_mark: Comment 1
+    **This doesn't improve pie-chat by much.** 
 
-In actual profiling process, we may even ignore requests that user doesn't want. So the data will be cleaner and more accurate.
+    **This graph will be briefly mentioned in section B.**
 
-### How to present the waiting time and normal execution time if there's synchronization inside.
+- :heavy_check_mark: Thought 5
 
-- Thought 1
+  **To present synchronization cost, we could use a sub-section inside a bar-chart section.** But we cannot show the threading wait-for hierarchy in this way.
 
-We could use a sub-section inside a bar-chart section to show the synchronization overhead. But we cannot show the threading wait-for hierarchy in this way.
+- :heavy_check_mark: Thought 6
 
-### How to present thousands of function calls? 
+  **There may not be thousands of threads to show?** This may not be a big issue for scaler, since scaler doesn't care about the applications, but only library functions. For scaler, if there are many library calls, maybe we could integrate the library name.
 
-- Thought 1
+- :bulb: Thought 7
 
-This may not be a big issue for scaler, since scaler doesn't care about the applications, but only library functions. For scaler, if there are many library calls, maybe we could integrate the library name.
+  **We could categorize and show system call information**. Library functions are black-boxes. We could manually categorize system call. And report the corresponding type and amount of system call a library function is calling. 
 
-### Show the system call type invoked by library functions.
+  Thus, we could give user hints about what the library function is doing. And thus, users can compare different API implementations.
 
-- Thought 1
+## A4 - Other issues
 
-Originally, library functions are black-boxes. We could manually categorize system call. And report the corresponding type and amount of system call a library function is calling. 
+### A4-1 Check perf's data format to see whether perf's cycles represent function duration.
 
-Thus, we could give user hints about what the library function is doing. And thus, users can compare different API implementations.
-
-# Other issues
-
-### Check perf's data format to see whether perf's cycles represent function duration.
+- :question: ​Thought 1
 
 ```
 libScalerHook-d 82415  7488.768824:         97 cycles: 
@@ -219,44 +244,44 @@ libScalerHook-d 82415  7488.768829:       2489 cycles:
             7f21e2d47285 __GI___clone+0x35 (inlined)
 ```
 
-John thinks perf's cycle only report the longest duration in each sampling event, so there's no way to know how long each sub function actually executes. While steven thinks perf will report accurate sample count and just create a new output when it detects there's changes to call stack.
+**Steven and john have different opinions on what's the meaning of the cycles.** John thinks perf's cycle only report the longest duration in each sampling event, so there's no way to know how long each sub function actually executes. While steven thinks perf will report accurate sample count and just create a new output when it detects there's changes to call stack.
 
-For example, john thinks in this example the output of perf can only tell us  **native_write_msr+0x6** took 97 cycles + 2489 cycles. **x86_pmu_enable+0x118** may take fewer cycles, but perf doesn't record it. While steven thinks the previous output means the first part of stack trace doesn't change for 97 cycles, and then switched to the stack trace on the bottom. So it can tell us  **native_write_msr+0x6** took 97 cycles + 2489 cycles, **x86_pmu_enable+0x118** also took  97 cycles + 2489 cycles.
+**Let's use an example to illustrate the difference.** For example, john thinks in this example the output of perf can only tell us  **native_write_msr+0x6** took 97 cycles + 2489 cycles. **x86_pmu_enable+0x118** may take fewer cycles, but perf doesn't record it. While steven thinks the previous output means the first part of stack trace doesn't change for 97 cycles, and then switched to the stack trace on the bottom. So it can tell us  **native_write_msr+0x6** took 97 cycles + 2489 cycles, **x86_pmu_enable+0x118** also took  97 cycles + 2489 cycles.
 
 
 
-# Parameter Analysis
+## A5 - Parameter Analysis
 
 - Thought 1
 
 For some known APIs eg: pthread library, system call. We already know their signature, so we can parse the parameters and do some analysis on them. Eg: Use them as ML features to predict latency .etc. 
 
-# Casual profiling
+## A6 - Casual profiling
 
 - Thought 1
 
 Like coz,, we can also delay function calls in hook functions and re-run the application to calculate potential speedup. (Steven will check if this has the potential to work)
 
-# Overcome stack protection
+## A7 - Overcome stack protection
 
 - Thought 1
 
 Make libScalerHook work with libraries that compiles with stack protection. (Need to check how other tools bypass such limit. Maybe it's doable maybe it's not. For libraries that enables Intel CET, I think libScalerhook won't work at all. But intel CET seems to be disabled by default, so we may only need to worry about stack pointer protection.)
 
-# Debugging symbol sideload
+## A8 - Debugging symbol sideload
 
 - Thought 1
 
 We could load debugging symbols seperately with libScalerhook, so we don't require debugging symbol in target application, but we still have deubgging information.
 
 
-# Code injection
+## A9 - Code injection
 
 - Thought 1
 
 Inject code into process rather than link it to reduce dependency requirement.
 
-# Dynamic profiling
+## A10 - Dynamic profiling
 
 - Thought 1
 Untinstall hook for functions that doesn't change much.
