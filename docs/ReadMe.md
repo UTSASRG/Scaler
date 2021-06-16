@@ -183,11 +183,11 @@
 
   **Parameter analysis is only required for known functions.**
 
-### A4-2 Measure thread relevance based on parameter analysis
+### :mag: ​A4-2 Measure thread relevance based on parameter analysis
 
 -  Thought1 
 
-  See A2 thought3​
+  See A2,Thought 3​
 
 ## :heavy_check_mark:A6 - Overcome stack protection
 
@@ -206,49 +206,55 @@
 
 - :question: ​Thought 1
 
-  Inject code into process rather than link it to reduce dependency requirement.
+  Inject code into process rather than use dynamic link it to reduce dependency requirement.
 
   - Comment 1
-    Needs a prototype.
+    **Without this, we can also achieve our goal.**
     
-    May not be necessar
+    **Whether dynamic linking is a bing drawback? If not, why bother to implement this?**
 
 ## :x:A9 - Dynamic profiling
 
 - :x: Thought 1
-  Uninstall hook for functions that doesn't change much.
+  Uninstall hook for functions that doesn't change a lot in execution time, input data .etc
 
   - :heavy_check_mark: ​Comment 1
 
     Good idea. But since we do not plan to further work on this. We won't implement in libScalerHook.
-
-
+  
+  - :mag: ​Comment 2
+  
+    Whether parameter analysis is feasable.
 
 ## :heavy_check_mark: A11 - How to aggregate time? 
 
-### :heavy_check_mark:A11-1: Casual profiling
+### :heavy_check_mark:  A11-1: Examples that shows a naive, averaging approach isn't enough.
 
-- Thought 1
+-  :mag:Thought 1
 
+  **In multi-threaded applications, different functions may have different contributions to the overall execution time**
 
+  eg1: These two functions will have the same contribution. Functions in serial phase and parallel phase should have the same weights.
 
+  figure
 
+  eg2: These two functions will have different contribution. Functions in serial phase should have more weights.
 
+  figure
 
+  eg3: These two functions will have different contribution. Functions in parallel phase should have more weights.
 
-Functions may have different contributions.
+  figure
 
-**We need to be able to measure or identify the relevance of a thread to other threads.** Relevance is talking about the similarity of a thread's task is to the tasks of other threads. For example: There may be threads designated to starting new threads whereas another thread is dedicated to performing some computation like matrix multiplication perhaps and another thread is dedicated to cleaning up memory.
+### :heavy_check_mark:A11-2: Casual profiling
 
-  **How do we measure relevance?** We may do this by grouping threads by their function (perhaps the best way) as described by my example in A1, thought 2 of the data aggregation section above. If we can retrieve function parameters, we may compare inputs (This is most likely the worst method as it would be probably is not scalable when considering massive inputs) and grouping threads by similar inputs.
+- :question:Thought 1
 
-  
+  If it's possible calculate potential speedup? If so, functions that have more potential contribution should have more weights. 
 
+### :heavy_check_mark: A11-3: How to measure synchronization overhead?
 
-
-
-
-
+Work zone
 
 - :heavy_check_mark: Thought 2
   **We can retrieve signature of thread creation functions to intercept thread synchronization.** eg: pthread_create(). 
