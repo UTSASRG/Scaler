@@ -108,6 +108,7 @@
 
 ## :question:A3 - Better UI interface
 
+### :question: A3-1 About Pie Charts
 - :x: Thought 1
 
   **Pie-chart is not the optimal solution for finding tail latency problem?** For tail latency problem, an averaged thread will submerge in its peers. This cannot be found from pie chart.
@@ -126,15 +127,6 @@
 
 - :x: Thought 3
 
-  Flame graph can show detailed call path. But it also hides threads with tail latency problem.
-
-  - Comment 1
-    **Tail latency is not our focus.** 
-
-    **This graph will be briefly mentioned in section B.**
-
-- :x: Thought 3
-
   **Pie charts can only show the symptom (some component is slow) rather than the root cause (why that component is slow).** Maybe a slow component itself isn't the problem, and the slow component is caused by other components which account for only a small fraction of time.
 
   But we need a good example other than thread synchronization to convince people this is true.
@@ -143,7 +135,18 @@
 
     **The goal of this tool is not finding the root cause.** We just need to report which component has the problem.
 
-- :question: Thought 4
+### :question: A3-2 Other Visualization Techniques
+
+- :x: Thought 4
+
+  Flame graph can show detailed call path. But it also hides threads with tail latency problem.
+
+  - Comment 1
+    **Tail latency is not our focus.** 
+
+    **This graph will be briefly mentioned in section B.**
+
+- :question: Thought 5
 
   **A Tree map might be a better and more compact visualization of our data.** Because it means we can represent all of the threads as a portion of the total execution where the total execution is the entire tree map. Then we can have the function and library portions representedx] as nested in their respective threads. This provides a more holistic view of the data as opposed to separate pi charts that require the user to click to view individual sections.
 
@@ -154,7 +157,15 @@
 
     **This graph will be briefly mentioned in section B.**
 
-- :x: Thought-5
+- Thought 6
+
+  **Use Bar Chart to allow user to immediately compare threads.** 
+  
+  The reason I mention this is that it would be very difficult to represent every thread on a pie chart for comparison since we primarily use time as our metric. Threads can have true concurrency which means that the execution times of threads cannot be summed together to form a whole that is the total execution time otherwise we would be misrepresenting data. Thus Bar Charts are a good substitute as a user can immediately see a tall bar as important similar to seeing a large wedge on a pie chart. This bar could represent execution time or percentage of execution time for example.
+
+### :question: A3-3 Visualization Problems to Solve
+
+- :x: Thought-7
 
   **If we show profiling data by thread id, what if there are thousands of threads?**
   
@@ -168,6 +179,34 @@
   - :heavy_check_mark: Comment 3​
   
     **This may not be a problem.** Since our goal is to show which component the user should pay more attention. We may not explicitly show profiling data by thread id.
+  
+- :question: Thought-8
+
+   **What Metric to Use?**
+   - :mag: Comment-1
+     
+      **Execution time and Total Execution time**
+  
+      In terms of the pie chart, we can use total execution time to represent the whole of the pie chart and executions of perhaps threads or functions to represent the parts or wedges.
+    
+      **Threads would not work, this has been addressed above in thought 6, however we can do pie charts for specific threads like the initial pie chart examples we used** 
+  
+      In this case, we can use libraries or function call execution times to represent wedges while the whole is just the execution time of a specific thread
+  
+   - :mag: Comment-2
+      
+      In regards to comment-1 about function call or library execution times, we are not necessarily bound to just execution times. We can perhaps represent function calls or library calls as a portion of the thread's execution time (function duration/thread duration). 
+     
+      Or perhaps we could do a naive approach of averaging the execution times of a function call and just report that average. But this also requires adjustment of what the "whole pie" means as we are no longer reporting total execution time but instead the average execution time.
+
+   - :mag: Comment-3
+     
+     **Number of function calls**
+  
+     In this case, we know that there is some total number of function calls recorded. Then we can represent the number of times a specific function occurred as a wedge. This wedge would then represent the frequency of function calls. This may not be of use to us, but may be good to take note of.
+  
+  
+
 
 ## :x:A4 - Parameter Analysis
 
@@ -273,7 +312,24 @@ Work zone
      **Comment 2 is not a problem.** We can assume pthread_create would be the creation method**.** We don't have many APIs to intercept, so it would be enough to manually find these APIs. 
      **Comment 1 is what we will do**, we need some prototypes.
 
+### :mag: A11-4: How to measure total execution time?
 
+- :x: Thought 1
+
+   **Treat thread with longest execution time as the total execution time**
+   
+   - :heavy_check_mark: Comment 1
+     
+     **Threads do not necessarily start the same time** This means that a thread can start late and still have the longest execution time, but we lost information about the time before the thread's creation. As seen in the image.
+     
+     ![Thread_Execution_Issue](imgs/ReadMe/total_execution_example.png)
+     
+     In this example, we can see that T7 started earlier but T5 has a much longer execution time. If we were to report T5's execution time, we lost information about the time before T5's creation. Which would then mean when trying to perform calculations with the total execution time with threads like T7, we would be misrepresenting T7's time.
+  
+- :mag: Thought 2
+  
+   **Use the earliest timestamp and the latest timestamp recorded to calculate total execution time** This is to solve the problem posed in Thought 1 above. In the image above, this is indicated by the two circles, one at the start of T7's execution and one at the end of T5's execution. Then we can calculate the total execution time to be the difference from the first timestamp to the other timestamp. This we include every thread in the total execution time.
+     
 
 ## A11 - Other issues
 
