@@ -331,9 +331,9 @@ Work zone
    **Use the earliest timestamp and the latest timestamp recorded to calculate total execution time** This is to solve the problem posed in Thought 1 above. In the image above, this is indicated by the two circles, one at the start of T7's execution and one at the end of T5's execution. Then we can calculate the total execution time to be the difference from the first timestamp to the other timestamp. This we include every thread in the total execution time.
      
 
-## A11 - Other issues
+## A12 - Other issues
 
-### :question: ​A10-1 Check perf's data format to see whether perf's cycles represent function duration.
+### :question: ​A12-1 Check perf's data format to see whether perf's cycles represent function duration.
 
 - :question: ​Thought 1
 
@@ -362,3 +362,7 @@ libScalerHook-d 82415  7488.768829:       2489 cycles:
 **Steven and john have different opinions on what's the meaning of the cycles.** John thinks perf's cycle only report the longest duration in each sampling event, so there's no way to know how long each sub function actually executes. While steven thinks perf will report accurate sample count and just create a new output when it detects there's changes to call stack.
 
 **Let's use an example to illustrate the difference.** For example, john thinks in this example the output of perf can only tell us  **native_write_msr+0x6** took 97 cycles + 2489 cycles. **x86_pmu_enable+0x118** may take fewer cycles, but perf doesn't record it. While steven thinks the previous output means the first part of stack trace doesn't change for 97 cycles, and then switched to the stack trace on the bottom. So it can tell us  **native_write_msr+0x6** took 97 cycles + 2489 cycles, **x86_pmu_enable+0x118** also took  97 cycles + 2489 cycles.
+
+- :x: Comment 1
+
+   Cycles Value is not indicative of duration at all. It is just the value of that specific event counter when the sample was taken. The value of the event counter may or may not be indicative of duration because of 2 reasons, 1: is that the event is not strictly tied to just cpu cycles and 2: is that we don't know when the counter last reset or overflowed. Thus if the counter is cycles then it may indicate full duration (if the counter reset at the start of the function call) or it may underestimate duration (if the function call happened before the counter reset) or it may overestimate duration (if the function call happened after the counter reset). Thus trying to use this value for timing information is not useful at all and will generate exteremely weird charts
