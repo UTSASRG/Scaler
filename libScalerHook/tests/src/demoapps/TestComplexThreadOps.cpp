@@ -128,7 +128,7 @@ void test_continue() {
 }
 
 
-int main() {
+int main(int argc, char *argv[]) {
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
 
@@ -140,9 +140,11 @@ int main() {
             return false;
         } else if (scaler::strContains(fileName, "/libdl-")) {
             return false;
+        } else if (scaler::strContains(fileName, "/libScalerHook-demoapps-ComplexThreadop")) {
+            return true;
         } else {
             fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
-            return true;
+            return false;
         }
 
     });

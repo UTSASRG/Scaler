@@ -53,7 +53,7 @@ namespace scaler {
                 ss >> addr1 >> perm >> offset >> newEntry.dev >> newEntry.inode >> newEntry.pathName;
 
                 if (curExecAbsolutePath == "") {
-                    //The first filename wuold always be the executable file
+                    //The first filename would always be the executable file
                     curExecAbsolutePath = newEntry.pathName;
                     extractFileName_Linux(curExecAbsolutePath, curExecPath, curExecFileName);
                 }
@@ -166,6 +166,10 @@ namespace scaler {
 
     void PmParser_Linux::parseDLPhdr() {
         dl_iterate_phdr(dlCallback, this);
+    }
+
+    void PmParser_Linux::curExecName() {
+
     }
 
     PmParserC_Linux::PmParserC_Linux(int procID) : PmParser_Linux(procID) {

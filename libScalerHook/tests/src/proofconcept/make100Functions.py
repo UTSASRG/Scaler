@@ -1,4 +1,4 @@
-srcFile = open("test/milionFuncLibrary.cpp", "w")
+srcFile = open("milionFuncLibrary.cpp", "w")
 headerFile = open("includes/milionFuncLibrary.h", "w")
 invokeFile = open("invoke.cpp", "w")
 

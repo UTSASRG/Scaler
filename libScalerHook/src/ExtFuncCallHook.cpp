@@ -770,10 +770,10 @@ namespace scaler {
         return handle;
     }
 
-//    pthread_mutex_t lock0 = PTHREAD_MUTEX_INITIALIZER;
+    pthread_mutex_t lock0 = PTHREAD_MUTEX_INITIALIZER;
 
     void *ExtFuncCallHook_Linux::cPreHookHanlderLinuxSec(size_t fileId, size_t funcId, void *callerAddr) {
-//        pthread_mutex_lock(&lock0);
+        pthread_mutex_lock(&lock0);
         //Calculate fileID
         auto &_this = ExtFuncCallHook_Linux::instance;
 
@@ -797,7 +797,7 @@ namespace scaler {
         }
 
         if (curContext.ctx->inHookHanlder) {
-//            pthread_mutex_unlock(&lock0);
+            pthread_mutex_unlock(&lock0);
             return retOriFuncAddr;
         }
 
@@ -822,11 +822,11 @@ namespace scaler {
         //ss << 1;
         // uint64_t id = std::stoull(ss.str());
 
-        printf("[Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p\n", 0, _this->pmParser.idFileMap.at(fileId).c_str(),
-               curElfImgInfo.idFuncMap.at(funcId).c_str(),retOriFuncAddr);
+//        printf("[Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p\n", 0, _this->pmParser.idFileMap.at(fileId).c_str(),
+//               curElfImgInfo.idFuncMap.at(funcId).c_str(),retOriFuncAddr);
 
         curContext.ctx->inHookHanlder = false;
-//        pthread_mutex_unlock(&lock0);
+        pthread_mutex_unlock(&lock0);
         return retOriFuncAddr;
     }
 

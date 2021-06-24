@@ -22,7 +22,7 @@ target_include_directories(libScalerHook-testlib-CallFuncCall PUBLIC lib/CallFun
 target_link_libraries(libScalerHook-testlib-CallFuncCall libScalerHook-testlib-FuncCall)
 
 ## PltHook is used to compare results
-add_library(KuBoPltHook lib/plthook/plthook_elf.c src/proofconcept/test/testPltHookEnum.cpp)
+add_library(KuBoPltHook lib/plthook/plthook_elf.c src/proofconcept/testPltHookEnum.cpp)
 target_include_directories(KuBoPltHook PUBLIC lib/plthook)
 
 # ============================================================
@@ -42,7 +42,7 @@ target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHoo
 # Demo Application
 # ============================================================
 
-option(libScalerHook-demoapps_AUTO_INSTALL_HOOK "If ON, then libScalerHook-HookAuto will be linked. Otherwise libScalerHook-HookManual will be linked" ON)
+option(libScalerHook-demoapps_AUTO_INSTALL_HOOK "If ON, then libScalerHook-HookManual will be linked. Otherwise libScalerHook-HookManual will be linked" ON)
 
 add_executable(libScalerHook-demoapps-FuncCall src/demoapps/TestFuncCall.cpp)
 target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC libScalerHook-HookManual libScalerHook-testlib-FuncCall
@@ -60,7 +60,7 @@ target_link_libraries(libScalerHook-demoapps-FuncCallDelay PUBLIC libScalerHook-
 
 add_executable(libScalerHook-demoapps-FuncNestedCall src/demoapps/TestNextedFuncCallPthread.cpp)
 target_link_libraries(libScalerHook-demoapps-FuncNestedCall PUBLIC libScalerHook-HookManual libScalerHook-testlib-FuncCall
-        libScalerHook-testlib-CallFuncCall dl pthread )
+        libScalerHook-testlib-CallFuncCall dl pthread)
 
 
 add_executable(libScalerHook-demoapps-Pthread src/demoapps/TestPthread.cpp)
@@ -68,15 +68,14 @@ target_include_directories(libScalerHook-demoapps-Pthread PUBLIC libtest/header)
 target_link_libraries(libScalerHook-demoapps-Pthread libScalerHook-HookManual libScalerHook-testlib-FuncCall pthread dl)
 
 
-add_executable(libScalerHook-demoapps-StdPthread  src/demoapps/TestStdThread.cpp)
+add_executable(libScalerHook-demoapps-StdPthread src/demoapps/TestStdThread.cpp)
 target_include_directories(libScalerHook-demoapps-StdPthread PUBLIC libtest/header)
-target_link_libraries(libScalerHook-demoapps-StdPthread libScalerHook-HookManual  libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
+target_link_libraries(libScalerHook-demoapps-StdPthread libScalerHook-HookManual libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
 
 
-add_executable(libScalerHook-demoapps-ComplexThreadop  src/demoapps/TestComplexThreadOps.cpp)
+add_executable(libScalerHook-demoapps-ComplexThreadop src/demoapps/TestComplexThreadOps.cpp)
 target_include_directories(libScalerHook-demoapps-ComplexThreadop PUBLIC libtest/header)
-target_link_libraries(libScalerHook-demoapps-ComplexThreadop libScalerHook-HookManual  libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
-
+target_link_libraries(libScalerHook-demoapps-ComplexThreadop libScalerHook-HookManual libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
 
 #add_library(InstallTest SHARED libInstalltest/src/installTest.cpp)
 #target_include_directories(InstallTest PUBLIC libInstalltest/header)
@@ -88,7 +87,6 @@ target_link_libraries(libScalerHook-demoapps-ComplexThreadop libScalerHook-HookM
 #target_link_options(TestInstall PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/unittests/libScalerHook/oldexperiments/mylinker.ld")
 
 
-
 #
 #add_executable(TestNestingCall TestNestingCall.cpp)
 #target_include_directories(TestNestingCall PUBLIC libtest/header)
@@ -97,6 +95,17 @@ target_link_libraries(libScalerHook-demoapps-ComplexThreadop libScalerHook-HookM
 # ============================================================
 # Proof of concept
 # ============================================================
+
+add_executable(libScalerHook-proof-StackProtector src/proofconcept/TestStackOverflow.cpp)
+target_compile_options(libScalerHook-proof-StackProtector PRIVATE "-fstack-protector")
+
+
+add_executable(libScalerHook-proof-LTraceSimpleMain src/proofconcept/TestLtrace.cpp)
+target_link_options(libScalerHook-proof-LTraceSimpleMain PRIVATE "-z" "lazy")
+
+add_executable(libScalerHook-proof-HookEverything src/proofconcept/TestHookEverything.cpp)
+target_link_options(libScalerHook-proof-HookEverything PRIVATE "-z" "lazy")
+target_link_libraries(libScalerHook-proof-HookEverything libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall)
 
 #add_executable(libScalerHook-demoapps src/proofconcept/testprog.cpp)
 #target_link_libraries(DemoProg libTest PltHookLib dl)

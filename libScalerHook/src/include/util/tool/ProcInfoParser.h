@@ -164,6 +164,9 @@ namespace scaler {
          */
         virtual void parsePMMap();
 
+        virtual void curExecName();
+
+
         //todo: Build a library dependency graph
 
         /**

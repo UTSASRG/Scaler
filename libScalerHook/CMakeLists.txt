@@ -21,7 +21,7 @@ target_link_libraries(libScalerHook-HookManual PRIVATE pthread dl)
 #ScalerHook with auto installation enabled. Scaler hook will run automatically before main.
 add_library(libScalerHook-HookAuto SHARED src/autoinstall.cpp)
 target_compile_options(libScalerHook-HookAuto PRIVATE "--verbose;-znow;-fPIE;-fPIC;")
-target_link_libraries(libScalerHook-HookAuto PRIVATE libScalerHook-HookManual pthread dl)
+target_link_libraries(libScalerHook-HookAuto PUBLIC libScalerHook-HookManual pthread dl)
 
 #Add tests
 add_subdirectory(tests)

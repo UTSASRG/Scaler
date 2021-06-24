@@ -5,7 +5,9 @@
  * Manual Installation
  */
 void install(scaler::Hook::SYMBOL_FILTER filterCallB) {
-    scaler::ExtFuncCallHook_Linux *libPltHook = scaler::ExtFuncCallHook_Linux::getInst();
-    libPltHook->install(filterCallB);
+    if (!AUTO_INSTALL_ENABLED) {
+        scaler::ExtFuncCallHook_Linux *libPltHook = scaler::ExtFuncCallHook_Linux::getInst();
+        libPltHook->install(filterCallB);
+    }
 }
 
