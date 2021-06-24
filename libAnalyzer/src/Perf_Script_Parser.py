@@ -1,7 +1,7 @@
 # By: John Diep
 '''
 This is a helper script to convert perf script output into a input format for DataAggregator.py
-
+Sorts lines by TID in ascending order
 '''
 import sys
 def libraryStrip(lib):
@@ -24,22 +24,30 @@ def writeToFile(final,finalFile):
         # print(line)
         finalFile.write(' '.join((line[0], str(line[1]) + "\n")))
 
-#TODO Need to sort the final output by tid
 def parseScript():
     perfOut = open("C:/Users/John/PycharmProjects/Scaler/libAnalyzer/tests/PerfTests/perf1.txt")
     finalFile = open("C:/Users/John/PycharmProjects/Scaler/libAnalyzer/tests/PerfTests/final_with_time.folded", 'w')
     commBool = True
     finalDict = {}
     outLine = []
+    # Parse each line of perf script output
     for line in perfOut:
+        # When we are about to read a new sample, there will be an empty new line read first,
+        # When we detect this new line, we prepare for the new sample
         if line == "\n" or line == "\r\n":
-            #finalFile.write(";".join(outLine) + " 1\n")
+            # finalFile.write(";".join(outLine) + " 1\n")
+            # Join the processed lines from the sample by semi colon
             aLine = ';'.join(outLine)
+
+            # If the line is unique then we set the sample count as 1, otherwise if we see the line repeated,
+            # we will increment its current sample count by 1
             if aLine in finalDict.keys():
                 finalDict[aLine] += 1
             else:
                 finalDict[aLine] = 1
+            # Reset the output line list for the next sample
             outLine = []
+            # Reset this boolean because we are about to read a line with the command in it
             commBool = True
             continue
         else:
