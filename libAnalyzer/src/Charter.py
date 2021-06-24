@@ -11,13 +11,25 @@ def getFuncSampleCnts(aDict, TID, Lib):
     for libs in aDict[TID][0]:
         for library, val in libs.items():
             if library == Lib:
-                for func, sampleCnt in val[0].items():
+                for func, funcVals in val[0].items():
                     if func in funcDict.keys():
-                        funcDict[func] += sampleCnt
+                        funcDict[func] += funcVals[0]
                     else:
-                        funcDict[func] = sampleCnt
+                        funcDict[func] = funcVals[0]
     return funcDict
 
+def getFuncDuras(aDict, TID, Lib):
+    funcDict = {}
+    for libs in aDict[TID][0]:
+        for library, val in libs.items():
+            if library == Lib:
+                for func, funcVals in val[0].items():
+                    # print(funcVals)
+                    if func in funcDict.keys():
+                        funcDict[func] += funcVals[1][2]
+                    else:
+                        funcDict[func] = funcVals[1][2]
+    return funcDict
 
 def getLibSampleCnts(aDict, TID):
     libDict = {}
@@ -30,6 +42,17 @@ def getLibSampleCnts(aDict, TID):
                 libDict[library] = val[1]
     return libDict
 
+def getLibDuras(aDict, TID):
+    libDict = {}
+    for libs in aDict[TID][0]:
+        # print(libs)
+        for library, val in libs.items():
+            if library in libDict.keys():
+                libDict[library] += val[2]
+            else:
+                libDict[library] = val[2]
+    return libDict
+
 def getTIDSampleCnts(aDict):
     aList = []
     for val in aDict.values():
@@ -37,19 +60,48 @@ def getTIDSampleCnts(aDict):
         aList.append(val[1])
     return aList
 
+def getTIDDuras(aDict):
+    aList = []
+    for val in aDict.values():
+        #aList.insert(0, val[1])
+        aList.append(val[2])
+    return aList
+
+def overlapCalc():
+    pass
+    '''
+    Handles the problem of threads in parallel
+    
+    Need to weigh the impact of threads differently in comparison to other threads in parallel
+    
+    Things to consider:
+    Thread start and end time
+    Thread Duration
+    Thread relevance
+    '''
+
+
 class charter:
-    def __init__(self,tidDict):
+    def __init__(self,tidDict, timestamps=False):
+        self.timestamps = timestamps
         self.tidData = tidDict
         self.tid = list(self.tidData)[0]
-        self.librDict = getLibSampleCnts(self.tidData, self.tid)
-        self.library = list(self.librDict)[0]
-        self.funcDict = getFuncSampleCnts(self.tidData, self.tid, self.library)
+        if timestamps:
+            self.librDict = getLibDuras(self.tidData, self.tid)
+            self.library = list(self.librDict)[0]
+            self.funcDict = getFuncDuras(self.tidData, self.tid, self.library)
+        else:
+            self.librDict = getLibSampleCnts(self.tidData, self.tid)
+            self.library = list(self.librDict)[0]
+            self.funcDict = getFuncSampleCnts(self.tidData, self.tid, self.library)
         self.wedgeList = []
     #Sets up chart
     def setupChart(self):
         self.fig, self.axs = plt.subplots(3, figsize=(10, 10))
-
-        self.wedgeList.append(self.axs[0].pie(getTIDSampleCnts(self.tidData), labels=self.tidData.keys(), autopct='%1.1f%%'))
+        if self.timestamps:
+            self.wedgeList.append(self.axs[0].pie(getTIDDuras(self.tidData), labels=self.tidData.keys(), autopct='%1.1f%%'))
+        else:
+            self.wedgeList.append(self.axs[0].pie(getTIDSampleCnts(self.tidData), labels=self.tidData.keys(), autopct='%1.1f%%'))
         self.axs[0].set_title("Thread Pi Chart")
 
         self.wedgeList.append(self.axs[1].pie(self.librDict.values(), labels=self.librDict.keys(), autopct='%1.1f%%'))
@@ -72,9 +124,14 @@ class charter:
             self.axs[1].clear()
             self.axs[2].clear()
             self.tid = wedgeLabel
-            self.librDict = getLibSampleCnts(self.tidData, self.tid)
-            self.library = list(self.librDict)[0]
-            self.funcDict = getFuncSampleCnts(self.tidData, self.tid, self.library)
+            if self.timestamps:
+                self.librDict = getLibDuras(self.tidData, self.tid)
+                self.library = list(self.librDict)[0]
+                self.funcDict = getFuncDuras(self.tidData, self.tid, self.library)
+            else:
+                self.librDict = getLibSampleCnts(self.tidData, self.tid)
+                self.library = list(self.librDict)[0]
+                self.funcDict = getFuncSampleCnts(self.tidData, self.tid, self.library)
 
             self.wedgeList[1] = self.axs[1].pie(self.librDict.values(), labels=self.librDict.keys(), autopct='%1.1f%%')
             self.axs[1].set_title(self.tid + " Libraries Pi Chart")
@@ -90,7 +147,10 @@ class charter:
         elif figNum == 1:
             self.axs[2].clear()
             self.library = wedgeLabel
-            self.funcDict = getFuncSampleCnts(self.tidData, self.tid, self.library)
+            if self.timestamps:
+                self.funcDict = getFuncDuras(self.tidData, self.tid, self.library)
+            else:
+                self.funcDict = getFuncSampleCnts(self.tidData, self.tid, self.library)
             # print(self.library)
             # print(self.funcDict)
             self.wedgeList[2] = self.axs[2].pie(self.funcDict.values(), labels=self.funcDict.keys(), autopct='%1.1f%%')
@@ -98,6 +158,14 @@ class charter:
 
             self.axs[2].axis('equal')
             self.axs[2].legend()
+    def displayTotalSamples(self):
+        total = 0
+        for vals in self.tidData.values():
+            total += vals[1]
+        print("Total Samples: " + str(total) + "Total time: " + str(total * 1/997))
+    def threadExecution(self):
+        total = 0
+
 
 class wedgeHoverHandler:
     def __init__(self, chart, wedges, figNum):
@@ -150,15 +218,19 @@ class wedgeHoverHandler:
 
 def main():
     #Get the data from the json file
-    with open("perfMemcachedData.json", 'r') as j_file:
-        tidData = json.load(j_file)
+    # with open("perfMemcachedData.json", 'r') as j_file:
+    #    tidData = json.load(j_file)
+    with open("fakeData.json", 'r') as fake_file:
+        tidData = json.load(fake_file)
+    #    fakeData = json.load(fake_file)
+    # pprint.pprint(fakeData)
     # pprint.pprint(tidData)
     # print(type(tidData))
 
     # Initialize our pi charts
-    pichart = charter(tidData)
+    pichart = charter(tidData, False)
     pichart.setupChart()
-
+    pichart.displayTotalSamples()
     # Figure numbers for each event handler
     num1, num2, num3 = 0, 1, 2
     #Install Event handlers to allow for interactivity

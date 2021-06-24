@@ -31,7 +31,6 @@ def parseScript():
     commBool = True
     finalDict = {}
     outLine = []
-    # num = 1
     for line in perfOut:
         if line == "\n" or line == "\r\n":
             #finalFile.write(";".join(outLine) + " 1\n")
@@ -41,11 +40,6 @@ def parseScript():
             else:
                 finalDict[aLine] = 1
             outLine = []
-            '''
-            if num > 10:
-                break
-            num += 1
-            '''
             commBool = True
             continue
         else:
@@ -97,7 +91,7 @@ def parseScript():
                 if outList[1] == "[unknown]":
                     # If library is unknown then we will simply report unknown and in the data aggregator, it will be detected as an unknown library
                     if outList[-1] == "[unknown]":
-                        outLine.insert(1,"[Unknown]")
+                        outLine.insert(1,"[unknown]")
                     # If the library is known, then report the library by itself
                     else:
                         outLine.insert(1, outList[-1])
