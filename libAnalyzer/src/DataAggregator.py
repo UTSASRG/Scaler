@@ -18,12 +18,29 @@ sample count per function with respect to library (done)
 Total samples recorded (done)
 thread ids (done)
 
-Calculate Overhead as sample count / total samples
 Final data structure:
 { TID: [ [^ {library: [ { func: [(sampleCnt, callStackID, timestamps, duration)] }, sample cnt, duration ] } ]^, sample cnt, duration, max call stack ID] }
 {} = Dictionary
 [^]^ = Stack (Right end is the top of the stack)
 [] = list
+
+This final data structure maintains the call stack structure on a thread specific basis.
+One can traverse the data structure by first searching for a thread and the value associated with it is a list which contains a stack, thread total sample count, thread execution time and max # of unique call stacks recorded + 1
+The stack in this list maintains the call stack structure of a function call. The index of an element is associated with call stack depth via this formula: index + 1 = stack depth
+
+Thus to find the function and/or library that was called at the top of the stack one can traverse the stack from the right to the left end (in reverse) as long as they know a sample's specific call stack ID
+
+Within the stack, each index contains a dictionary with a key:value form of library:[]
+
+The values of this dictionary is a list containing another dictionary with the key:value form of function:[]
+
+The rest of the elements in this library value list are the library's total sample count, and total execution time
+
+Then for the function value list, it will contain an arbitrary # of tuples which contain a sample count, call stack ID, timestamp tuple = (start,end) and total execution time
+
+These sample counts, timestamps and durations are all associated with the call stack ID in the tuple, meaning that one can retrieve the information of a specific sample/trace
+
+One Caveat: In the case of passing in output from Bradon Gregg's stack collapse-perf script, instead of grabbing a specific sample/trace, one will grab the information of a unique call stack which will NOT have timing information
 
 CURRENT PROBLEMS:
 Timestamp Compatibility in data structure
