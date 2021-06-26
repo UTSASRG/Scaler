@@ -37,6 +37,7 @@ namespace scaler {
     }
 
     MemoryTool_Linux *scaler::MemoryTool_Linux::getInst() {
+        //MemoryTool_Linux::instance memory leak
         if (MemoryTool_Linux::instance == nullptr) {
             MemoryTool_Linux::instance = new MemoryTool_Linux();
         }

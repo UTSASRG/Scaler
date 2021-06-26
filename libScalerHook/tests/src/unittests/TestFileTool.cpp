@@ -29,7 +29,7 @@ TEST(FileTool, binCodeSearch) {
 
 TEST(FileTool, findStrSplit) {
     //Normal case
-    std::string str1 = "5560c7bd1000-5560c7bdd000 r--p 00000000 fd:01 8915156                    /home/st/Projects/Scaler/cmake-build-debug/tests/TestLibHook";
+    std::string str1 = "5560c7bd1000-5560c7bdd000 r--p 00000000 fd:01 8915156                    /home/st/Projects/scaler/cmake-build-debug/tests/TestLibHook";
     vector<size_t> splitIndexes = findStrSplit(str1, ' ');
     //for (int i = 0; i < splitIndexes.size(); i += 2) {
     //    printf("%s\n", str1.substr(splitIndexes[i], splitIndexes[i + 1]-splitIndexes[i]).c_str());

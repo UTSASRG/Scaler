@@ -14,6 +14,8 @@
 #include <set>
 #include <immintrin.h>
 #include <thread>
+#include <util/tool/Logging.h>
+#include <util/tool/Config.h>
 
 namespace scaler {
 
@@ -191,6 +193,8 @@ namespace scaler {
                 const ElfW(Dyn) *relaSizeDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_PLTRELSZ);
                 curELFImgInfo.relaPltCnt = relaSizeDyn->d_un.d_val / sizeof(ElfW(Rela));
 
+                std::stringstream ss;
+
                 for (size_t i = 0; i < curELFImgInfo.relaPltCnt; ++i) {
                     ElfW(Rela) *curRelaPlt = curELFImgInfo.relaPlt + i;
                     //assert(ELF64_R_TYPE(curRelaPlt->r_info) == R_X86_64_JUMP_SLOT);
@@ -205,16 +209,6 @@ namespace scaler {
                     try {
                         ExtSymInfo newSymbol;
                         newSymbol.symbolName = std::string(curELFImgInfo.dynStrTable + idx);
-                        if (newSymbol.symbolName == "") {
-                            throwScalerException("Failed to get symbol name.");
-                        }
-
-                        //printf("Find symbol %s:%s in.rela.plt. Base:%p WBase:%p WOBase:%p\n",
-                        //pmParser.idFileMap[curFileiD].c_str(),
-                        //newSymbol.symbolName.c_str(),
-                        //curELFImgInfo.baseAddr,
-                        //curELFImgInfo.baseAddr + curRelaPlt->r_offset,
-                        //curRelaPlt->r_offset);
 
                         curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, curRelaPlt->r_offset);
                         newSymbol.gotEntry = reinterpret_cast<void **>(curBaseAddr + curRelaPlt->r_offset);
@@ -225,6 +219,12 @@ namespace scaler {
 
                         newSymbol.fileId = curFileiD;
                         newSymbol.funcId = i;
+
+                        if (newSymbol.symbolName == "") {
+                            ss.str("");
+                            ss << "func" << i;
+                            newSymbol.symbolName = ss.str();
+                        }
 
                         curELFImgInfo.idFuncMap[i] = newSymbol.symbolName;
                         curELFImgInfo.funcIdMap[newSymbol.symbolName] = i;
@@ -303,7 +303,6 @@ namespace scaler {
     }
 
     void ExtFuncCallHook_Linux::install(Hook::SYMBOL_FILTER filterCallB) {
-        pmParser.printPM();
 
         curContext.ctx->inHookHanlder = true;
 
@@ -365,7 +364,7 @@ namespace scaler {
                 std::stringstream ss;
                 ss << "Hook Failed, cannot change heap pseudoPlt permission. Exception Info:\""
                    << e.info << "\"";
-                fprintf(stderr, "%s\n", ss.str().c_str());
+                //fprintf(stderr, "%s\n", ss.str().c_str());
                 continue;
             }
 
@@ -390,7 +389,7 @@ namespace scaler {
                 ss << "Hook Failed for \"" << pmParser.idFileMap.at(curSymbol.fileId) << ":"
                    << curSymbol.symbolName
                    << "\" because " << e.info;
-                fprintf(stderr, "%s\n", ss.str().c_str());
+                //fprintf(stderr, "%s\n", ss.str().c_str());
                 continue;
             }
 
@@ -705,13 +704,17 @@ namespace scaler {
         fprintf(fp, "}\n");
         fclose(fp);
         //compile it
-        int sysRet = system("gcc -shared -fPIC ./testHandler.cpp -o ./testHandler.so");
+
+        std::stringstream ss;
+        ss << Config::getInst()->get<std::string>("libScalerHook", "CppCompiler", "");
+        ss << " -shared -fPIC ./testHandler.cpp -o ./testHandler.so";
+        int sysRet = system(ss.str().c_str());
         if (sysRet < 0) {
             throwScalerExceptionWithCode("gcc compilation handler failed", sysRet)
         }
 
-
-        std::stringstream ss;
+        ss.str("");
+        ss.clear();
         ss << pmParser.curExecPath << "/testHandler.so";
         void *handle = dlopen(ss.str().c_str(),
                               RTLD_NOW);

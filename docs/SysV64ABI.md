@@ -6,7 +6,7 @@ To see a complete list of CPU architectures Linux support check [Wikipedia](http
 
 ### x86-32
 
-**x86** is a term used to describe a CPU instruction set **compatible with the Intel 8086 and its successors**. The term "x86" came into being because the names of several successors to Intel's 8086 processor end in "86", including the 80186, 80286, 80386 and 80486 processors. Scaler currently targets on x86 architecture CPUs that are widely used in desktop computers.
+**x86** is a term used to describe a CPU instruction set **compatible with the Intel 8086 and its successors**. The term "x86" came into being because the names of several successors to Intel's 8086 processor end in "86", including the 80186, 80286, 80386 and 80486 processors. scaler currently targets on x86 architecture CPUs that are widely used in desktop computers.
 
 Synonyms:
 
