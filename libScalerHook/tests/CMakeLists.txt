@@ -107,6 +107,11 @@ add_executable(libScalerHook-proof-HookEverything src/proofconcept/TestHookEvery
 target_link_options(libScalerHook-proof-HookEverything PRIVATE "-z" "lazy")
 target_link_libraries(libScalerHook-proof-HookEverything libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall)
 
+
+add_executable(libScalerHook-proof-SwBreakpoint src/proofconcept/testSwBreakpoint.cpp)
+
+add_executable(libScalerHook-proof-ManualBreakpoint src/proofconcept/testManualBreakpoint.cpp)
+
 #add_executable(libScalerHook-demoapps src/proofconcept/testprog.cpp)
 #target_link_libraries(DemoProg libTest PltHookLib dl)
 
