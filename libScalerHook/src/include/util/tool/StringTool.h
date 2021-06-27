@@ -15,6 +15,8 @@ namespace scaler {
 
     bool strEndsWith(std::string const &fullString, std::string const &ending);
 
+    bool strStartsWith(std::string const &fullString, std::string const &ending);
+
     bool strContains(std::string const &fullString, std::string const &ending);
 
 }

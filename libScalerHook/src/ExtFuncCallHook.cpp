@@ -529,8 +529,9 @@ namespace scaler {
     }
 
     ExtFuncCallHook_Linux *ExtFuncCallHook_Linux::getInst() {
-        if (!instance)
+        if (!instance) {
             instance = new ExtFuncCallHook_Linux();
+        }
         return instance;
     }
 
@@ -708,9 +709,10 @@ namespace scaler {
         std::stringstream ss;
         ss << Config::getInst()->get<std::string>("libScalerHook", "CppCompiler", "");
         ss << " -shared -fPIC ./testHandler.cpp -o ./testHandler.so";
+        DBG_LOG("Compile hook handler")
         int sysRet = system(ss.str().c_str());
         if (sysRet < 0) {
-            throwScalerExceptionWithCode("gcc compilation handler failed", sysRet)
+            throwScalerExceptionWithCode("Compile hookhandler failed", sysRet)
         }
 
         ss.str("");
@@ -757,13 +759,20 @@ namespace scaler {
         }
         fprintf(fp, "}\n");
         fclose(fp);
-        int sysRet = system("gcc -shared -fPIC ./testPseudoPlt.cpp -o ./testPseudoPlt.so");
-        if (sysRet < 0) {
-            throwScalerExceptionWithCode("gcc compilation handler failed", sysRet)
-        }
 
 
         std::stringstream ss;
+        ss << Config::getInst()->get<std::string>("libScalerHook", "CppCompiler", "");
+        ss << " -shared -fPIC ./testPseudoPlt.cpp -o ./testPseudoPlt.so";
+        DBG_LOG("Compile pseudoPlt handler")
+
+        int sysRet = system(ss.str().c_str());
+        if (sysRet < 0) {
+            throwScalerExceptionWithCode("Compile handler failed", sysRet)
+        }
+
+        ss.str("");
+        ss.clear();
         ss << pmParser.curExecPath << "/testHandler.so";
         void *handle = dlopen(ss.str().c_str(),
                               RTLD_NOW);
@@ -825,8 +834,8 @@ namespace scaler {
         //ss << 1;
         // uint64_t id = std::stoull(ss.str());
 
-//        printf("[Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p\n", 0, _this->pmParser.idFileMap.at(fileId).c_str(),
-//               curElfImgInfo.idFuncMap.at(funcId).c_str(),retOriFuncAddr);
+        DBG_LOGS("DBG: [Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p\n", 0, _this->pmParser.idFileMap.at(fileId).c_str(),
+               curElfImgInfo.idFuncMap.at(funcId).c_str(),retOriFuncAddr);
 
         curContext.ctx->inHookHanlder = false;
         pthread_mutex_unlock(&lock0);
@@ -949,7 +958,6 @@ namespace scaler {
         /**
          * Save environment
          */
-
 
         //The first six integer or pointer arguments are passed in registers RDI, RSI, RDX, RCX, R8, R9
         // (R10 is used as a static chain pointer in case of nested functions[25]:21),

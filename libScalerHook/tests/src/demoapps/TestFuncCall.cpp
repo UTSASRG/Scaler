@@ -4,22 +4,24 @@
 #include <TenThousandFunc.h>
 #include <util/hook/install.h>
 #include <util/tool/StringTool.h>
+#include <util/tool/Logging.h>
+#include <util/tool/ProcInfoParser.h>
 
 using namespace std;
+std::string execFileName;
 int main() {
+    scaler::PmParserC_Linux pmParser;
+    execFileName = pmParser.curExecAbsolutePath;
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
+        if(scaler::strStartsWith(funcName,"pthread")){
+            return false;
+        }
+        if(scaler::strContains(funcName,"lock")){
+            return false;
+        }
 
-        if (scaler::strContains(fileName, "/ld-")) {
-            return false;
-        } else if (scaler::strContains(fileName, "/liblibScalerHook-HookManual")) {
-            return false;
-        } else if (scaler::strContains(fileName, "/libstdc++")) {
-            return false;
-        } else if (scaler::strContains(fileName, "/libdl-")) {
-            return false;
-        } else {
-            fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
+        if (fileName == execFileName) {
             return true;
         }
 

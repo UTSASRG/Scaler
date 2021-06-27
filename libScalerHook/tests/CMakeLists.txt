@@ -4,7 +4,7 @@ project(ScalerHook-Tests)
 enable_testing()
 find_package(GTest REQUIRED)
 
-add_compile_options("-fno-access-control" "-fno-stack-protector")
+add_compile_options("-fno-access-control" "-fno-stack-protector" "-fPIC")
 
 # ============================================================
 # Test libs

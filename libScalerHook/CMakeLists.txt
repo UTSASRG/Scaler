@@ -5,7 +5,7 @@ project(ScalerHook)
 set(CMAKE_C_STANDARD 11)
 
 # scaler hook library itself. Users need to manually install scalerhook through library functions.
-add_library(libScalerHook-HookManual
+add_library(libScalerHook-HookManual SHARED
         src/ExtFuncCallHook.cpp
         src/ProcInfoParser.cpp
         src/ElfParser.cpp
@@ -14,14 +14,14 @@ add_library(libScalerHook-HookManual
         src/install.cpp
         src/Config.cpp
         src/StringTool.cpp)
-target_include_directories(libScalerHook-HookManual PUBLIC src/include lib/inireader)
-target_compile_options(libScalerHook-HookManual PRIVATE "--verbose;-znow;-fPIE;-fPIC;")
+target_include_directories(libScalerHook-HookManual  PUBLIC src/include lib/inireader)
+target_compile_options(libScalerHook-HookManual PRIVATE "--verbose" "-znow" "-fPIC")
 target_link_libraries(libScalerHook-HookManual PRIVATE pthread dl)
 
 
 #ScalerHook with auto installation enabled. scaler hook will run automatically before main.
-add_library(libScalerHook-HookAuto src/autoinstall.cpp)
-target_compile_options(libScalerHook-HookAuto PRIVATE "--verbose;-znow;-fPIE;-fPIC;")
+add_library(libScalerHook-HookAuto SHARED src/autoinstall.cpp)
+target_compile_options(libScalerHook-HookAuto PRIVATE "--verbose" "-znow" "-fPIC")
 target_link_libraries(libScalerHook-HookAuto PUBLIC libScalerHook-HookManual pthread dl)
 
 #Add tests

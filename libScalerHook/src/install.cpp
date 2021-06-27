@@ -1,6 +1,7 @@
 #include <util/hook/install.h>
 #include <util/hook/ExtFuncCallHook.hh>
 
+extern bool AUTO_INSTALL_ENABLED=false;
 /**
  * Manual Installation
  */
