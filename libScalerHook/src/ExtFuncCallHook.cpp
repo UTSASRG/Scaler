@@ -836,6 +836,7 @@ namespace scaler {
         pthread_mutex_lock(&lock1);
         if (curContext.ctx->inHookHanlder) {
             void *callerAddr = curContext.ctx->callerAddr.at(curContext.ctx->callerAddr.size() - 1);
+            curContext.ctx->callerAddr.pop_back();
             pthread_mutex_unlock(&lock1);
             return callerAddr;
         }
@@ -865,7 +866,7 @@ namespace scaler {
         printf("[After Hook] Thread:%lu  File:%s, Func: %s\n", 0, fileName.c_str(), funcName.c_str());
 
         void *callerAddr = curContext.ctx->callerAddr.at(curContext.ctx->callerAddr.size() - 1);
-        //curContext.callerAddr.pop_back();
+        curContext.ctx->callerAddr.pop_back();
 
 
         curContext.ctx->inHookHanlder = false;
@@ -1011,12 +1012,11 @@ namespace scaler {
         /**
          * Getting PLT entry address and caller address from stack
          */
+        "movq (%r11),%rdx\n\t" //R11 stores callerAddr
         "addq $8,%r11\n\t"
-        "movq (%r11),%rsi\n\t" //R11 stores callerAddr
+        "movq (%r11),%rsi\n\t" //R11 stores funcID
         "addq $8,%r11\n\t"
-        "movq (%r11),%rdi\n\t" //R11 stores funcID
-        "addq $8,%r11\n\t"
-        "movq (%r11),%rdx\n\t" //R11 stores fileID
+        "movq (%r11),%rdi\n\t" //R11 stores fileID
 
         //size_t fileId (rdx), size_t funcId (rdi), void *callerAddr (rsi)
 
@@ -1177,7 +1177,6 @@ namespace scaler {
         "pop %rax\n\t"
 
         //Retrun to caller
-        "subq $8,%rsp\n\t"
         "jmp *%r11\n\t"
         );
 
