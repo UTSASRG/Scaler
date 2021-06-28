@@ -1062,11 +1062,9 @@ namespace scaler {
         // currsp=oldrsp-152
 
         //Restore rsp to original value
-        "addq $152,%rsp\n\t"
-
+        //"addq $152,%rsp\n\t"
         //        "addq $24,%rsp\n\t"
-        "jmp *%r11\n\t"
-
+        //"jmp *%r11\n\t"
 
         /**
          * Call actual function
