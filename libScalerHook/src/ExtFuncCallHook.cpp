@@ -770,10 +770,10 @@ namespace scaler {
         return handle;
     }
 
-//    pthread_mutex_t lock0 = PTHREAD_MUTEX_INITIALIZER;
+    pthread_mutex_t lock0 = PTHREAD_MUTEX_INITIALIZER;
 
     void *ExtFuncCallHook_Linux::cPreHookHanlderLinuxSec(size_t fileId, size_t funcId, void *callerAddr) {
-//        pthread_mutex_lock(&lock0);
+        pthread_mutex_lock(&lock0);
         //Calculate fileID
         auto &_this = ExtFuncCallHook_Linux::instance;
 
@@ -797,7 +797,7 @@ namespace scaler {
         }
 
         if (curContext.ctx->inHookHanlder) {
-//            pthread_mutex_unlock(&lock0);
+            pthread_mutex_unlock(&lock0);
             return retOriFuncAddr;
         }
 
@@ -826,7 +826,7 @@ namespace scaler {
                curElfImgInfo.idFuncMap.at(funcId).c_str(),retOriFuncAddr);
 
         curContext.ctx->inHookHanlder = false;
-//        pthread_mutex_unlock(&lock0);
+        pthread_mutex_unlock(&lock0);
         return retOriFuncAddr;
     }
 
