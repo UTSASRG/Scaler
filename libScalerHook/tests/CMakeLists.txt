@@ -58,7 +58,7 @@ target_link_libraries(libScalerHook-demoapps-FuncCallDelay PUBLIC libScalerHook-
         libScalerHook-testlib-CallFuncCall dl pthread)
 
 
-add_executable(libScalerHook-demoapps-FuncNestedCall src/demoapps/TestNextedFuncCallPthread.cpp)
+add_executable(libScalerHook-demoapps-FuncNestedCall src/demoapps/TestNestedFuncCallPthread.cpp)
 target_link_libraries(libScalerHook-demoapps-FuncNestedCall PUBLIC libScalerHook-HookManual libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall dl pthread )
 

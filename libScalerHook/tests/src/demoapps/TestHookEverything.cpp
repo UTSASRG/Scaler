@@ -11,17 +11,12 @@ int main() {
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
 
-        if (scaler::strContains(fileName, "/ld-")) {
-            return false;
-        } else if (scaler::strContains(fileName, "/liblibScalerHook-HookManual")) {
-            return false;
-        } else if (scaler::strContains(fileName, "/libstdc++")) {
-            return false;
-        } else if (scaler::strContains(fileName, "/libdl-")) {
-            return false;
+        if (fileName ==
+            "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-HookEverything") {
+            return true;
         } else {
             fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
-            return true;
+            return false;
         }
 
     });
