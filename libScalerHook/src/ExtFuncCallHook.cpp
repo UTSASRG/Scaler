@@ -826,6 +826,7 @@ namespace scaler {
 
         if (curContext.ctx->inHookHanlder) {
             pthread_mutex_unlock(&lock0);
+            curContext.ctx->callerAddr.emplace_back(callerAddr);
             return retOriFuncAddr;
         }
 
