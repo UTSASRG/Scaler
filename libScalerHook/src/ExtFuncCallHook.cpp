@@ -823,7 +823,7 @@ namespace scaler {
         // uint64_t id = std::stoull(ss.str());
 
         printf("[Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p\n", 0, _this->pmParser.idFileMap.at(fileId).c_str(),
-               curElfImgInfo.idFuncMap.at(funcId).c_str(),retOriFuncAddr);
+               curElfImgInfo.idFuncMap.at(funcId).c_str(), retOriFuncAddr);
 
         curContext.ctx->inHookHanlder = false;
         pthread_mutex_unlock(&lock0);
@@ -1070,6 +1070,7 @@ namespace scaler {
          * Call actual function
          */
         "addq $152,%rsp\n\t"
+        "addq $8,%rsp\n\t"
         "call *%r11\n\t"
 
 
@@ -1085,39 +1086,40 @@ namespace scaler {
         /**
         * Save Environment
         */
-        "push %rdi\n\t"
-        "push %rsi\n\t"
-        "push %rdx\n\t"
-        "push %rcx\n\t"
-        "push %r8\n\t"
-        "push %r9\n\t"
-        "push %r10\n\t"
+        "push %rdi\n\t"  // currsp=oldrsp-160
+        "push %rsi\n\t"  // currsp=oldrsp-168
+        "push %rdx\n\t"  // currsp=oldrsp-176
+        "push %rcx\n\t"  // currsp=oldrsp-184
+        "push %r8\n\t"   // currsp=oldrsp-192
+        "push %r9\n\t"   // currsp=oldrsp-200
+        "push %r10\n\t"  // currsp=oldrsp-208
         //Save [XYZ]MM[0-7]
-        PUSHXMM(0)
-        PUSHXMM(1)
-        PUSHXMM(2)
-        PUSHXMM(3)
-        PUSHXMM(4)
-        PUSHXMM(5)
-        PUSHXMM(6)
-        PUSHXMM(7)
+        PUSHXMM(0) // currsp=oldrsp-224
+        PUSHXMM(1) // currsp=oldrsp-240
+        PUSHXMM(2) // currsp=oldrsp-256
+        PUSHXMM(3) // currsp=oldrsp-272
+        PUSHXMM(4) // currsp=oldrsp-288
+        PUSHXMM(5) // currsp=oldrsp-304
+        PUSHXMM(6) // currsp=oldrsp-320
+        PUSHXMM(7) // currsp=oldrsp-336
         //todo: Also save YMM0-7 and ZMM0-7
-        PUSHYMM(0)
-        PUSHYMM(1)
-        PUSHYMM(2)
-        PUSHYMM(3)
-        PUSHYMM(4)
-        PUSHYMM(5)
-        PUSHYMM(6)
-        PUSHYMM(7)
+        PUSHYMM(0) // currsp=oldrsp-368
+        PUSHYMM(1) // currsp=oldrsp-400
+        PUSHYMM(2) // currsp=oldrsp-432
+        PUSHYMM(3) // currsp=oldrsp-464
+        PUSHYMM(4) // currsp=oldrsp-496
+        PUSHYMM(5) // currsp=oldrsp-528
+        PUSHYMM(6) // currsp=oldrsp-560
+        PUSHYMM(7) // currsp=oldrsp-592
         //Save RBX, RSP, RBP, and R12–R15
-        "push %rbx\n\t"
-        "push %rsp\n\t"
-        "push %rbp\n\t"
-        "push %r12\n\t"
-        "push %r13\n\t"
-        "push %r14\n\t"
-        "push %r15\n\t"
+        "push %rbx\n\t" // currsp=oldrsp-600
+        "push %rsp\n\t" // currsp=oldrsp-608
+        "push %rbp\n\t" // currsp=oldrsp-616
+        "push %r12\n\t" // currsp=oldrsp-624
+        "push %r13\n\t" // currsp=oldrsp-632
+        "push %r14\n\t" // currsp=oldrsp-640
+        "push %r15\n\t" // currsp=oldrsp-648
+        "push %rax\n\t" // currsp=oldrsp-656
 
         /**
          * Call After Hook
@@ -1129,46 +1131,45 @@ namespace scaler {
         /**
         * Restore Environment
         */
-        "pop %r15\n\t"
-        "pop %r14\n\t"
-        "pop %r13\n\t"
-        "pop %r12\n\t"
-        "pop %rbp\n\t"
-        "pop %rsp\n\t"
-        "pop %rbx\n\t"
-        POPXMM(7)
-        POPXMM(6)
-        POPXMM(5)
-        POPXMM(4)
-        POPXMM(3)
-        POPXMM(2)
-        POPXMM(1)
-        POPXMM(0)
-        POPYMM(7)
-        POPYMM(6)
-        POPYMM(5)
-        POPYMM(4)
-        POPYMM(3)
-        POPYMM(2)
-        POPYMM(1)
-        POPYMM(0)
-        "pop %r10\n\t"
-        "pop %r9\n\t"
-        "pop %r8\n\t"
-        "pop %rcx\n\t"
-        "pop %rdx\n\t"
-        "pop %rsi\n\t"
-        "pop %rdi\n\t"
+        "pop %rax\n\t" // currsp=oldrsp-656
+        "pop %r15\n\t" // currsp=oldrsp-640
+        "pop %r14\n\t" // currsp=oldrsp-632
+        "pop %r13\n\t" // currsp=oldrsp-624
+        "pop %r12\n\t" // currsp=oldrsp-616
+        "pop %rbp\n\t" // currsp=oldrsp-608
+        "pop %rsp\n\t" // currsp=oldrsp-600
+        "pop %rbx\n\t" // currsp=oldrsp-592
+        POPYMM(7) // currsp=oldrsp-560
+        POPYMM(6) // currsp=oldrsp-528
+        POPYMM(5) // currsp=oldrsp-496
+        POPYMM(4) // currsp=oldrsp-464
+        POPYMM(3) // currsp=oldrsp-432
+        POPYMM(2) // currsp=oldrsp-400
+        POPYMM(1) // currsp=oldrsp-368
+        POPYMM(0) // currsp=oldrsp-336
+        POPXMM(7) // currsp=oldrsp-320
+        POPXMM(6) // currsp=oldrsp-304
+        POPXMM(5) // currsp=oldrsp-288
+        POPXMM(4) // currsp=oldrsp-272
+        POPXMM(3) // currsp=oldrsp-256
+        POPXMM(2) // currsp=oldrsp-240
+        POPXMM(1) // currsp=oldrsp-224
+        POPXMM(0) // currsp=oldrsp-208
+        "pop %r10\n\t" // currsp=oldrsp-200
+        "pop %r9\n\t" // currsp=oldrsp-192
+        "pop %r8\n\t" // currsp=oldrsp-184
+        "pop %rcx\n\t" // currsp=oldrsp-176
+        "pop %rdx\n\t" // currsp=oldrsp-168
+        "pop %rsi\n\t" // currsp=oldrsp-160
+        "pop %rdi\n\t" // currsp=oldrsp-152
 
-        //Restore return value of real function from stack
+
         POPYMM(1)
         POPYMM(0)
         POPXMM(1)
         POPXMM(0)
         "pop %rdx\n\t"
         "pop %rax\n\t"
-        //todo: Handle float return and XMM return
-
 
         //Retrun to caller
         "ret\n\t"
