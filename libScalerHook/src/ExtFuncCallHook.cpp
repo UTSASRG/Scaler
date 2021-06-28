@@ -807,16 +807,16 @@ namespace scaler {
 
 
         //Push callerAddr into stack
-        //curContext.ctx->callerAddr.emplace_back(callerAddr);
+        curContext.ctx->callerAddr.emplace_back(callerAddr);
 
         //Push calling info to afterhook
         curContext.ctx->fileId.emplace_back(fileId);
         curContext.ctx->funcId.emplace_back(funcId);
 
 
-//        for (int i = 0; i < curContext.ctx->fileId.size() * 4; ++i) {
-//            printf(" ");
-//        }
+        for (int i = 0; i < curContext.ctx->fileId.size() * 4; ++i) {
+            printf(" ");
+        }
 
         //std::stringstream ss;
         //ss << 1;
@@ -830,17 +830,22 @@ namespace scaler {
         return retOriFuncAddr;
     }
 
+    pthread_mutex_t lock1 = PTHREAD_MUTEX_INITIALIZER;
+
     void *ExtFuncCallHook_Linux::cAfterHookHanlderLinux() {
+        pthread_mutex_lock(&lock1);
         if (curContext.ctx->inHookHanlder) {
-            return nullptr;
+            void *callerAddr = curContext.ctx->callerAddr.at(curContext.ctx->callerAddr.size() - 1);
+            pthread_mutex_unlock(&lock1);
+            return callerAddr;
         }
         curContext.ctx->inHookHanlder = true;
 
         auto &_this = ExtFuncCallHook_Linux::instance;
 
-//        for (int i = 0; i < curContext.ctx->fileId.size() * 4; ++i) {
-//            printf(" ");
-//        }
+        for (int i = 0; i < curContext.ctx->fileId.size() * 4; ++i) {
+            printf(" ");
+        }
 
         size_t fileId = curContext.ctx->fileId.at(curContext.ctx->fileId.size() - 1);
         curContext.ctx->fileId.pop_back();
@@ -859,7 +864,7 @@ namespace scaler {
 
         printf("[After Hook] Thread:%lu  File:%s, Func: %s\n", 0, fileName.c_str(), funcName.c_str());
 
-        //void *callerAddr = curContext.callerAddr.at(curContext.callerAddr.size() - 1);
+        void *callerAddr = curContext.ctx->callerAddr.at(curContext.ctx->callerAddr.size() - 1);
         //curContext.callerAddr.pop_back();
 
 
@@ -867,8 +872,8 @@ namespace scaler {
 
 //        if (*curContext.released && curContext.ctx->funcId.size() == 0)
 //            curContext.realDeconstructor();
-
-        return nullptr;
+        pthread_mutex_unlock(&lock1);
+        return callerAddr;
     }
 
 
@@ -1126,7 +1131,7 @@ namespace scaler {
          */
         "call  _ZN6scaler21ExtFuncCallHook_Linux22cAfterHookHanlderLinuxEv\n\t"
         //Save return value to R11. R11 now has the address of caller.
-        //"movq %rax,%r11\n\t"
+        "movq %rax,%r11\n\t"
 
         /**
         * Restore Environment
@@ -1172,7 +1177,8 @@ namespace scaler {
         "pop %rax\n\t"
 
         //Retrun to caller
-        "ret\n\t"
+        "subq $8,%rsp\n\t"
+        "jmp *%r11\n\t"
         );
 
     }
