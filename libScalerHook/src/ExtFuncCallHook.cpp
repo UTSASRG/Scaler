@@ -165,30 +165,58 @@ namespace scaler {
                 auto dynamicHdr = elfParser.getProgHdrByType(PT_DYNAMIC);
                 assert(dynamicHdr.size() == 1); //There should be only one _DYNAMIC
                 void *dynamicAddrInFile = elfParser.getSegContent(dynamicHdr[0]);
-                curELFImgInfo._DYNAMICAddr = static_cast<ElfW(Dyn) *>(searchBinInMemory(dynamicAddrInFile,
-                                                                                        sizeof(ElfW(Dyn)),
-                                                                                        readableNonCodeSegments));
+                curELFImgInfo._DYNAMICAddr= static_cast<Elf64_Dyn *>(dynamicAddrInFile);
+                //curELFImgInfo._DYNAMICAddr = static_cast<ElfW(Dyn) *>(searchBinInMemory(dynamicAddrInFile,
+                //                                                                        sizeof(ElfW(Dyn)),
+                //                                                                        readableNonCodeSegments));
                 assert(curELFImgInfo._DYNAMICAddr);
 
                 uint8_t *curBaseAddr = pmParser.fileBaseAddrMap.at(curFileiD);
                 curELFImgInfo.baseAddr = curBaseAddr;
 
                 const ElfW(Dyn) *dynsymDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_SYMTAB);
+
+                if (dynsymDyn == nullptr) {
+                    std::stringstream ss;
+                    ss << "Cannot find symtab in \"" << curELFImgInfo.filePath << "\"";
+                    throwScalerException(ss.str().c_str());
+                }
+
                 curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, dynsymDyn->d_un.d_ptr);
                 curELFImgInfo.dynSymTable = (const ElfW(Sym) *) (curBaseAddr + dynsymDyn->d_un.d_ptr);
 
                 const ElfW(Dyn) *strTabDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRTAB);
+                if (strTabDyn == nullptr) {
+                    std::stringstream ss;
+                    ss << "Cannot find strtab in \"" << curELFImgInfo.filePath << "\"";
+                    throwScalerException(ss.str().c_str());
+                }
                 curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, strTabDyn->d_un.d_ptr);
                 curELFImgInfo.dynStrTable = (const char *) (curBaseAddr + strTabDyn->d_un.d_ptr);
 
                 const ElfW(Dyn) *strSizeDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRSZ);
+                if (strSizeDyn == nullptr) {
+                    std::stringstream ss;
+                    ss << "Cannot find strtab size in \"" << curELFImgInfo.filePath << "\"";
+                    throwScalerException(ss.str().c_str());
+                }
                 curELFImgInfo.dynStrSize = strSizeDyn->d_un.d_val;
 
                 ElfW(Dyn) *relaPltDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_JMPREL);
+                if (relaPltDyn == nullptr) {
+                    std::stringstream ss;
+                    ss << "Cannot find .plt.rela in \"" << curELFImgInfo.filePath << "\"";
+                    throwScalerException(ss.str().c_str());
+                }
                 curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, relaPltDyn->d_un.d_ptr);
                 curELFImgInfo.relaPlt = (ElfW(Rela) *) (curBaseAddr + relaPltDyn->d_un.d_ptr);
 
                 const ElfW(Dyn) *relaSizeDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_PLTRELSZ);
+                if (relaSizeDyn == nullptr) {
+                    std::stringstream ss;
+                    ss << "Cannot find .plt.rela size in \"" << curELFImgInfo.filePath << "\"";
+                    throwScalerException(ss.str().c_str());
+                }
                 curELFImgInfo.relaPltCnt = relaSizeDyn->d_un.d_val / sizeof(ElfW(Rela));
 
                 for (size_t i = 0; i < curELFImgInfo.relaPltCnt; ++i) {
