@@ -5,24 +5,24 @@
 typedef int (*main_fn_t)(int, char **, char **);
 
 main_fn_t real_main;
+std::string execFileName;
 
 int doubletake_main(int argc, char **argv, char **envp) {
     //Initialization
     scaler::ExtFuncCallHook_Linux *libPltHook = scaler::ExtFuncCallHook_Linux::getInst();
 
+    scaler::PmParserC_Linux pmParser;
+    execFileName = pmParser.curExecAbsolutePath;
+
     //Hook all symbols except certain files
 
     libPltHook->install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
-        if (funcName == "") {
-            return false;
-        } else if (fileName.length() >= 16 && fileName.substr(fileName.length() - 16, 16) == "libscalerhook.so") {
-            return false;
-        } else if (funcName.length() >= 26 &&
-                   funcName.substr(funcName.length() - 26, 26) != "libscalerhook_installer.so") {
-            return false;
-        }  else {
+        if (fileName == execFileName) {
+            fprintf(stderr, "Autoinstall %s:%s\n", fileName.c_str(), funcName.c_str());
             return true;
+        } else {
+            return false;
         }
     });
 
