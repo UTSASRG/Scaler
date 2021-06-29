@@ -165,7 +165,7 @@ namespace scaler {
                 auto dynamicHdr = elfParser.getProgHdrByType(PT_DYNAMIC);
                 assert(dynamicHdr.size() == 1); //There should be only one _DYNAMIC
                 void *dynamicAddrInFile = elfParser.getSegContent(dynamicHdr[0]);
-                curELFImgInfo._DYNAMICAddr= static_cast<Elf64_Dyn *>(dynamicAddrInFile);
+                curELFImgInfo._DYNAMICAddr = static_cast<Elf64_Dyn *>(dynamicAddrInFile);
                 //curELFImgInfo._DYNAMICAddr = static_cast<ElfW(Dyn) *>(searchBinInMemory(dynamicAddrInFile,
                 //                                                                        sizeof(ElfW(Dyn)),
                 //                                                                        readableNonCodeSegments));
@@ -851,7 +851,7 @@ namespace scaler {
         //ss << 1;
         // uint64_t id = std::stoull(ss.str());
 
-        printf("[Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p\n", 0, _this->pmParser.idFileMap.at(fileId).c_str(),
+        printf("[Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p\n", pthread_self(), _this->pmParser.idFileMap.at(fileId).c_str(),
                curElfImgInfo.idFuncMap.at(funcId).c_str(), retOriFuncAddr);
 
         curContext.ctx->inHookHanlder = false;
@@ -892,7 +892,7 @@ namespace scaler {
 //        ss << std::this_thread::get_id();
 //        uint64_t id = std::stoull(ss.str());
 
-        printf("[After Hook] Thread:%lu  File:%s, Func: %s\n", 0, fileName.c_str(), funcName.c_str());
+        printf("[After Hook] Thread:%lu  File:%s, Func: %s %zu\n", pthread_self(), fileName.c_str(), funcName.c_str(),curContext.ctx->fileId.size());
 
         void *callerAddr = curContext.ctx->callerAddr.at(curContext.ctx->callerAddr.size() - 1);
         curContext.ctx->callerAddr.pop_back();
