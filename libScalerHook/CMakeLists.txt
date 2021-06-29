@@ -12,7 +12,8 @@ add_library(libScalerHook-HookManual SHARED
         src/MemTool.cpp
         src/FileTool.cpp
         src/install.cpp
-        src/StringTool.cpp)
+        src/StringTool.cpp
+        src/timer.cpp)
 target_include_directories(libScalerHook-HookManual PUBLIC src/include)
 target_compile_options(libScalerHook-HookManual PRIVATE "--verbose;-znow;-fPIE;-fPIC;")
 target_link_libraries(libScalerHook-HookManual PRIVATE pthread dl)

@@ -11,6 +11,7 @@
 #include <cassert>
 #include <elf.h>
 #include <util/tool/MemTool.h>
+#include <util/tool/timer.h>
 #include <set>
 #include <immintrin.h>
 #include <thread>
@@ -43,6 +44,7 @@ namespace scaler {
         //Variables used to determine whether it's called by hook handler or not
         bool inHookHanlder = false;
         std::vector<void *> callerAddr;
+        std::vector<int64_t> timestamp;
     };
 
     class ContextProxy {
@@ -824,9 +826,12 @@ namespace scaler {
             }
         }
 
+
         if (curContext.ctx->inHookHanlder) {
-            pthread_mutex_unlock(&lock0);
+            curContext.ctx->timestamp.emplace_back(getunixtimestampms());
+            curContext.ctx->timestamp.emplace_back();
             curContext.ctx->callerAddr.emplace_back(callerAddr);
+            pthread_mutex_unlock(&lock0);
             return retOriFuncAddr;
         }
 
@@ -836,8 +841,8 @@ namespace scaler {
 
 
         //Push callerAddr into stack
+        curContext.ctx->timestamp.emplace_back(getunixtimestampms());
         curContext.ctx->callerAddr.emplace_back(callerAddr);
-
         //Push calling info to afterhook
         curContext.ctx->fileId.emplace_back(fileId);
         curContext.ctx->funcId.emplace_back(funcId);
@@ -851,8 +856,14 @@ namespace scaler {
         //ss << 1;
         // uint64_t id = std::stoull(ss.str());
 
-        printf("[Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p\n", pthread_self(), _this->pmParser.idFileMap.at(fileId).c_str(),
+        printf("[Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p\n", pthread_self(),
+               _this->pmParser.idFileMap.at(fileId).c_str(),
                curElfImgInfo.idFuncMap.at(funcId).c_str(), retOriFuncAddr);
+
+
+        FILE *fp = NULL;
+        fp = fopen("./testHandler.cpp", "w");
+        fclose(fp);
 
         curContext.ctx->inHookHanlder = false;
         pthread_mutex_unlock(&lock0);
@@ -888,11 +899,17 @@ namespace scaler {
         curContext.ctx->funcId.pop_back();
         auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
 
+
+        int64_t startTimestamp = curContext.ctx->timestamp.at(curContext.ctx->timestamp.size() - 1);
+        curContext.ctx->timestamp.pop_back();
+
+        int64_t endTimestamp = getunixtimestampms();
 //        std::stringstream ss;
 //        ss << std::this_thread::get_id();
 //        uint64_t id = std::stoull(ss.str());
 
-        printf("[After Hook] Thread:%lu  File:%s, Func: %s %zu\n", pthread_self(), fileName.c_str(), funcName.c_str(),curContext.ctx->fileId.size());
+        printf("[After Hook] Thread ID:%lu Library:%s, Func: %s Start: %ld End: %ld\n", pthread_self(), fileName.c_str(),
+               funcName.c_str(), startTimestamp, endTimestamp);
 
         void *callerAddr = curContext.ctx->callerAddr.at(curContext.ctx->callerAddr.size() - 1);
         curContext.ctx->callerAddr.pop_back();
