@@ -829,7 +829,6 @@ namespace scaler {
 
         if (curContext.ctx->inHookHanlder) {
             curContext.ctx->timestamp.emplace_back(getunixtimestampms());
-            curContext.ctx->timestamp.emplace_back();
             curContext.ctx->callerAddr.emplace_back(callerAddr);
             pthread_mutex_unlock(&lock0);
             return retOriFuncAddr;
@@ -904,18 +903,29 @@ namespace scaler {
         curContext.ctx->timestamp.pop_back();
 
         int64_t endTimestamp = getunixtimestampms();
-//        std::stringstream ss;
-//        ss << std::this_thread::get_id();
-//        uint64_t id = std::stoull(ss.str());
 
-        printf("[After Hook] Thread ID:%lu Library:%s, Func: %s Start: %ld End: %ld\n", pthread_self(), fileName.c_str(),
-               funcName.c_str(), startTimestamp, endTimestamp);
-
+        // When after hook is called. Library address is resolved. We use searching mechanism to find the file name.
+        // To improve efficiency, we could sotre this value
         void *callerAddr = curContext.ctx->callerAddr.at(curContext.ctx->callerAddr.size() - 1);
         curContext.ctx->callerAddr.pop_back();
-
-
+        auto &curSymbol = curELFImgInfo.hookedExtSymbolC[funcId];
+        auto libraryFileId=_this->pmParser.findExecNameByAddr(curSymbol.addr);
+        auto& libraryFileName= _this->pmParser.idFileMap.at(libraryFileId);
         curContext.ctx->inHookHanlder = false;
+
+        printf("[After Hook] Thread ID:%lu Library:%s, Func: %s Start: %ld End: %ld\n", pthread_self(), libraryFileName.c_str(),
+               funcName.c_str(), startTimestamp, endTimestamp);
+
+        FILE *fp = NULL;
+        fp = fopen("./libScalerhookOutput.csv", "a");
+        fprintf(fp, "%lu,%s,%s,%ld,%ld,\n",
+                pthread_self(),
+                libraryFileName.c_str(),
+                funcName.c_str(),
+                startTimestamp,
+                endTimestamp);
+        fclose(fp);
+
 
 //        if (*curContext.released && curContext.ctx->funcId.size() == 0)
 //            curContext.realDeconstructor();
