@@ -22,7 +22,7 @@ target_include_directories(libScalerHook-testlib-CallFuncCall PUBLIC lib/CallFun
 target_link_libraries(libScalerHook-testlib-CallFuncCall libScalerHook-testlib-FuncCall)
 
 ## PltHook is used to compare results
-add_library(KuBoPltHook lib/plthook/plthook_elf.c src/proofconcept/test/testPltHookEnum.cpp)
+add_library(KuBoPltHook lib/plthook/plthook_elf.c)
 target_include_directories(KuBoPltHook PUBLIC lib/plthook)
 
 # ============================================================
@@ -34,7 +34,8 @@ add_executable(libScalerHook-unittests
         src/unittests/TestExtFuncCallHook.cpp
         src/unittests/TestFileTool.cpp
         src/unittests/TestException.cpp
-        src/unittests/TestELFParser.cpp)
+        src/unittests/TestELFParser.cpp
+        src/unittests/TestTimer.cpp)
 target_link_libraries(libScalerHook-unittests PUBLIC libScalerHook-HookManual libScalerHook-testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread)
 target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHook-Tests_SOURCE_DIR}/linkerscripts/mylinker.ld")
 
