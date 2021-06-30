@@ -107,7 +107,12 @@ target_link_libraries(libScalerHook-parsecapps-dedup libScalerHook-HookAuto pthr
         libssl.a
         libz.a)
 
-find_package (BZip2 REQUIRED)
+add_executable(libScalerHook-parsecapps-blackscholes src/parsecapps/blackscholes/blackscholes-pthread.cpp)
+target_compile_options(libScalerHook-parsecapps-blackscholes PRIVATE "-DENABLE_THREADS" "-DPARALLEL" "-DNCO=2" "-DN=960")
+target_link_libraries(libScalerHook-parsecapps-blackscholes pthread libScalerHook-HookAuto)
+
+
+find_package(BZip2 REQUIRED)
 add_executable(libScalerHook-parsecapps-pbzip2
         src/parsecapps/pbzip2/BZ2StreamScanner.cpp
         src/parsecapps/pbzip2/ErrorContext.cpp
