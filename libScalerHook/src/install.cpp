@@ -1,5 +1,5 @@
 #include <util/hook/install.h>
-#include <util/hook/ExtFuncCallHook.hh>
+#include <util/hook/ExtFuncCallHookAsm.hh>
 
 extern bool AUTO_INSTALL_ENABLED=false;
 /**
@@ -7,7 +7,7 @@ extern bool AUTO_INSTALL_ENABLED=false;
  */
 void install(scaler::Hook::SYMBOL_FILTER filterCallB) {
     if (!AUTO_INSTALL_ENABLED) {
-        scaler::ExtFuncCallHook_Linux *libPltHook = scaler::ExtFuncCallHook_Linux::getInst();
+        scaler::ExtFuncCallHookAsm *libPltHook = scaler::ExtFuncCallHookAsm::getInst();
         libPltHook->install(filterCallB);
     }
 }

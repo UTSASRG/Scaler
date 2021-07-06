@@ -1,7 +1,7 @@
 #include <iostream>
 
 #include <gtest/gtest.h>
-#include <util/hook/ExtFuncCallHook.hh>
+#include <util/hook/ExtFuncCallHookAsm.hh>
 #include <plthook.h>
 #include <util/tool/ProcInfoParser.h>
 
@@ -37,7 +37,7 @@ TEST(ExtFuncCallHook, locSecAndSegInMem) {
                 emplace_back(addr);
     }
 
-    ExtFuncCallHook_Linux *hook = ExtFuncCallHook_Linux::getInst();
+    ExtFuncCallHookAsm *hook = ExtFuncCallHookAsm::getInst();
     hook->
 
             locateRequiredSecAndSeg();
@@ -94,7 +94,7 @@ TEST(ExtFuncCallHook, compareAddressAndFuncName) {
         addrArr.emplace_back(addr);
     }
 
-    ExtFuncCallHook_Linux *hook = ExtFuncCallHook_Linux::getInst();
+    ExtFuncCallHookAsm *hook = ExtFuncCallHookAsm::getInst();
     //todo:fix
     //hook->install();
 

@@ -6,7 +6,7 @@ set(CMAKE_C_STANDARD 11)
 
 # Scaler hook library itself. Users need to manually install scalerhook through library functions.
 add_library(libScalerHook-HookManual SHARED
-        src/ExtFuncCallHook.cpp
+        src/ExtFuncCallHookAsm.cpp
         src/ProcInfoParser.cpp
         src/ElfParser.cpp
         src/MemTool.cpp

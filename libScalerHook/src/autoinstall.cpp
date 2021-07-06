@@ -1,5 +1,5 @@
 #include <util/hook/install.h>
-#include <util/hook/ExtFuncCallHook.hh>
+#include <util/hook/ExtFuncCallHookAsm.hh>
 
 
 typedef int (*main_fn_t)(int, char **, char **);
@@ -10,7 +10,7 @@ std::string execFileName;
 
 int doubletake_main(int argc, char **argv, char **envp) {
     //Initialization
-    scaler::ExtFuncCallHook_Linux *libPltHook = scaler::ExtFuncCallHook_Linux::getInst();
+    scaler::ExtFuncCallHookAsm *libPltHook = scaler::ExtFuncCallHookAsm::getInst();
 
     scaler::PmParserC_Linux pmParser;
     execFileName = pmParser.curExecAbsolutePath;

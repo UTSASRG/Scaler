@@ -1,6 +1,6 @@
 #ifdef __linux
 
-#include <util/hook/ExtFuncCallHook.hh>
+#include <util/hook/ExtFuncCallHookAsm.hh>
 #include <util/tool/ProcInfoParser.h>
 #include <cstdint>
 #include <util/tool/ElfParser.h>
@@ -44,7 +44,7 @@ namespace scaler {
         std::vector<size_t> funcId;
         std::vector<size_t> fileId;
         //Variables used to determine whether it's called by hook handler or not
-        bool inHookHanlder = false;
+        bool inHookHandler = false;
         std::vector<void *> callerAddr;
         std::vector<int64_t> timestamp;
     };
@@ -89,10 +89,10 @@ namespace scaler {
     //todo: ElfW is not correct. Because types are determined by the type of ELF file
     //todo: rather than the type of the machine
     //Initialize instance variable to nullptr;
-    ExtFuncCallHook_Linux *ExtFuncCallHook_Linux::instance = nullptr;
+    ExtFuncCallHookAsm *ExtFuncCallHookAsm::instance = nullptr;
 
 
-    void ExtFuncCallHook_Linux::locateRequiredSecAndSeg() {
+    void ExtFuncCallHookAsm::locateRequiredSecAndSeg() {
         //Get segment info from /proc/self/maps
         for (auto iter = pmParser.procMap.begin(); iter != pmParser.procMap.end(); ++iter) {
             auto &curFileName = iter->first;
@@ -320,10 +320,10 @@ namespace scaler {
     }
 
 
-    void ExtFuncCallHook_Linux::install(Hook::SYMBOL_FILTER filterCallB) {
+    void ExtFuncCallHookAsm::install(Hook::SYMBOL_FILTER filterCallB) {
         memTool = MemoryTool_Linux::getInst();
 
-        curContext.ctx->inHookHanlder = true;
+        curContext.ctx->inHookHandler = true;
 
         //Step1: Locating table in memory
         locateRequiredSecAndSeg();
@@ -387,7 +387,7 @@ namespace scaler {
         }
 
         //Step5: Write plt handler code to file
-        void *pltHookDl = writeAndCompileHookHanlder(symbolToHook);
+        void *pltHookDl = writeAndCompileHookHandler(symbolToHook);
 
 
         //todo: debug here
@@ -535,27 +535,27 @@ namespace scaler {
             }
 
         }
-        curContext.ctx->inHookHanlder = false;
+        curContext.ctx->inHookHandler = false;
     }
 
 
-    ExtFuncCallHook_Linux::ExtFuncCallHook_Linux() {
+    ExtFuncCallHookAsm::ExtFuncCallHookAsm() {
 
     }
 
-    ExtFuncCallHook_Linux *ExtFuncCallHook_Linux::getInst() {
+    ExtFuncCallHookAsm *ExtFuncCallHookAsm::getInst() {
         if (!instance)
-            instance = new ExtFuncCallHook_Linux();
+            instance = new ExtFuncCallHookAsm();
         return instance;
     }
 
 
 
-    void ExtFuncCallHook_Linux::uninstall() {
+    void ExtFuncCallHookAsm::uninstall() {
         throwScalerException("Uninstall is not implemented.");
     }
 
-    std::vector<uint8_t> ExtFuncCallHook_Linux::fillDestAddr2HookCode(void *funcAddr) {
+    std::vector<uint8_t> ExtFuncCallHookAsm::fillDestAddr2HookCode(void *funcAddr) {
         //The following "magical" numbers are actually two instructions
         //"movq  $0xFFFFFFFF,%r11\n\t"   73, 187, 0, 0, 0, 0, 0, 0, 0, 0,
         //"call *%r11\n\t" 65, 255, 211
@@ -594,7 +594,7 @@ namespace scaler {
         return binCodeArr;
     }
 
-    std::vector<uint8_t> ExtFuncCallHook_Linux::fillDestAddr2PseudoPltCode(size_t funcId, void *funcAddr) {
+    std::vector<uint8_t> ExtFuncCallHookAsm::fillDestAddr2PseudoPltCode(size_t funcId, void *funcAddr) {
         //The following "magical" numbers are actually two instructions
         //push    0FFFFh   104, 00, 00, 00, 00,
         //mov     r11, 0FFFFFFFFh 73, 187, 00, 00, 00, 00, 00, 00, 00, 00,
@@ -666,7 +666,7 @@ namespace scaler {
      *
      * oldrsp-0        caller(return) address
      */
-    void *ExtFuncCallHook_Linux::writeAndCompileHookHanlder(std::vector<ExtSymInfo> &symbolToHook) {
+    void *ExtFuncCallHookAsm::writeAndCompileHookHandler(std::vector<ExtSymInfo> &symbolToHook) {
 
         FILE *fp = NULL;
 
@@ -732,7 +732,7 @@ namespace scaler {
      *
      * oldrsp-0        caller(return) address
      */
-    void *ExtFuncCallHook_Linux::writeAndCompilePseudoPlt(std::vector<ExtSymInfo> &symbolToHook) {
+    void *ExtFuncCallHookAsm::writeAndCompilePseudoPlt(std::vector<ExtSymInfo> &symbolToHook) {
         FILE *fp = NULL;
 
         fp = fopen("./testPseudoPlt.cpp", "w");
@@ -777,10 +777,10 @@ namespace scaler {
 
     pthread_mutex_t lock0 = PTHREAD_MUTEX_INITIALIZER;
 
-    void *ExtFuncCallHook_Linux::cPreHookHanlderLinuxSec(size_t fileId, size_t funcId, void *callerAddr) {
+    void *ExtFuncCallHookAsm::cPreHookHandlerLinuxSec(size_t fileId, size_t funcId, void *callerAddr) {
         pthread_mutex_lock(&lock0);
         //Calculate fileID
-        auto &_this = ExtFuncCallHook_Linux::instance;
+        auto &_this = ExtFuncCallHookAsm::instance;
 
         auto &curElfImgInfo = _this->elfImgInfoMapC[fileId];
 
@@ -802,7 +802,7 @@ namespace scaler {
         }
 
 
-        if (curContext.ctx->inHookHanlder) {
+        if (curContext.ctx->inHookHandler) {
             curContext.ctx->timestamp.emplace_back(getunixtimestampms());
             curContext.ctx->callerAddr.emplace_back(callerAddr);
             pthread_mutex_unlock(&lock0);
@@ -810,7 +810,7 @@ namespace scaler {
         }
 
         //Starting from here, we could call external symbols and it won't cause any problem
-        curContext.ctx->inHookHanlder = true;
+        curContext.ctx->inHookHandler = true;
 
 
 
@@ -839,24 +839,24 @@ namespace scaler {
 //        fp = fopen("./testHandler.cpp", "w");
 //        fclose(fp);
 
-        curContext.ctx->inHookHanlder = false;
+        curContext.ctx->inHookHandler = false;
         pthread_mutex_unlock(&lock0);
         return retOriFuncAddr;
     }
 
     pthread_mutex_t lock1 = PTHREAD_MUTEX_INITIALIZER;
 
-    void *ExtFuncCallHook_Linux::cAfterHookHanlderLinux() {
+    void *ExtFuncCallHookAsm::cAfterHookHandlerLinux() {
         pthread_mutex_lock(&lock1);
-        if (curContext.ctx->inHookHanlder) {
+        if (curContext.ctx->inHookHandler) {
             void *callerAddr = curContext.ctx->callerAddr.at(curContext.ctx->callerAddr.size() - 1);
             curContext.ctx->callerAddr.pop_back();
             pthread_mutex_unlock(&lock1);
             return callerAddr;
         }
-        curContext.ctx->inHookHanlder = true;
+        curContext.ctx->inHookHandler = true;
 
-        auto &_this = ExtFuncCallHook_Linux::instance;
+        auto &_this = ExtFuncCallHookAsm::instance;
 
 //        for (int i = 0; i < curContext.ctx->fileId.size() * 4; ++i) {
 //            printf(" ");
@@ -886,7 +886,7 @@ namespace scaler {
         auto &curSymbol = curELFImgInfo.hookedExtSymbolC[funcId];
         auto libraryFileId=_this->pmParser.findExecNameByAddr(curSymbol.addr);
         auto& libraryFileName= _this->pmParser.idFileMap.at(libraryFileId);
-        curContext.ctx->inHookHanlder = false;
+        curContext.ctx->inHookHandler = false;
 
         printf("[After Hook] Thread ID:%lu Library:%s, Func: %s Start: %ld End: %ld\n", pthread_self(), libraryFileName.c_str(),
                funcName.c_str(), startTimestamp, endTimestamp);
@@ -909,7 +909,7 @@ namespace scaler {
     }
 
 
-    ExtFuncCallHook_Linux::~ExtFuncCallHook_Linux() {
+    ExtFuncCallHookAsm::~ExtFuncCallHookAsm() {
         if (elfImgInfoMapC) {
             delete[] elfImgInfoMapC;
         }
@@ -922,9 +922,9 @@ namespace scaler {
 //If I use friend function, it cannot be called by Assembly code.
 //To make code more elegant, I finally put everything in scaler namespace.
 //The cost is I have to find compiled function name once
-//    IMPL_ASMHANDLER(, _ZN6scaler21ExtFuncCallHook_Linux20cPreHookHanlderLinuxEPvS1_)
+//    IMPL_ASMHANDLER(, _ZN6scaler21ExtFuncCallHookAsm20cPreHookHandlerLinuxEPvS1_)
 
-//    IMPL_ASMHANDLER(Sec, _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEPvS1_)
+//    IMPL_ASMHANDLER(Sec, _ZN6scaler21ExtFuncCallHookAsm23cPreHookHandlerLinuxSecEPvS1_)
 
     /**
      * Source code version for #define IMPL_ASMHANDLER
@@ -1030,7 +1030,7 @@ namespace scaler {
         /**
          * Pre-Hook
          */
-        "call  _ZN6scaler21ExtFuncCallHook_Linux23cPreHookHanlderLinuxSecEmmPv\n\t"
+        "call  _ZN6scaler18ExtFuncCallHookAsm23cPreHookHandlerLinuxSecEmmPv\n\t"
         //Save return value to R11. This is the address of real function parsed by handler.
         //The return address is maybe the real function address. Or a pointer to the pseodoPlt table
         "movq %rax,%r11\n\t"
@@ -1136,7 +1136,7 @@ namespace scaler {
         /**
          * Call After Hook
          */
-        "call  _ZN6scaler21ExtFuncCallHook_Linux22cAfterHookHanlderLinuxEv\n\t"
+        "call  _ZN6scaler18ExtFuncCallHookAsm22cAfterHookHandlerLinuxEv\n\t"
         //Save return value to R11. R11 now has the address of caller.
         "movq %rax,%r11\n\t"
 
@@ -1191,7 +1191,7 @@ namespace scaler {
 
     }
 
-    ExtFuncCallHook_Linux::ELFImgInfo::~ELFImgInfo() {
+    ExtFuncCallHookAsm::ELFImgInfo::~ELFImgInfo() {
         if (realAddrResolvedC)
             delete[] realAddrResolvedC;
 
@@ -1200,15 +1200,15 @@ namespace scaler {
     }
 
 
-    ExtFuncCallHook_Linux::ELFImgInfo::ELFImgInfo(const ELFImgInfo &rho) {
+    ExtFuncCallHookAsm::ELFImgInfo::ELFImgInfo(const ELFImgInfo &rho) {
         operator=(rho);
     }
 
-    ExtFuncCallHook_Linux::ELFImgInfo::ELFImgInfo() {
+    ExtFuncCallHookAsm::ELFImgInfo::ELFImgInfo() {
 
     }
 
-    void ExtFuncCallHook_Linux::ELFImgInfo::operator=(const ELFImgInfo &rho) {
+    void ExtFuncCallHookAsm::ELFImgInfo::operator=(const ELFImgInfo &rho) {
 
         filePath = rho.filePath;
         pltStartAddr = rho.pltStartAddr;

@@ -1,5 +1,5 @@
-#ifndef SCALER_EXTFUNCCALLHOOK_HH
-#define SCALER_EXTFUNCCALLHOOK_HH
+#ifndef SCALER_EXTFUNCCALLHOOKASM_HH
+#define SCALER_EXTFUNCCALLHOOKASM_HH
 
 #include <util/hook/hook.hh>
 
@@ -14,7 +14,7 @@
 namespace scaler {
 
 
-    class ExtFuncCallHook_Linux : public Hook {
+    class ExtFuncCallHookAsm : public Hook {
     public:
 
         void install(SYMBOL_FILTER filterCallB) override;
@@ -25,13 +25,13 @@ namespace scaler {
         /**
          * Singeleton
          */
-        static ExtFuncCallHook_Linux *getInst();
+        static ExtFuncCallHookAsm *getInst();
 
-        ExtFuncCallHook_Linux(ExtFuncCallHook_Linux &) = delete;
+        ExtFuncCallHookAsm(ExtFuncCallHookAsm &) = delete;
 
-        ExtFuncCallHook_Linux(ExtFuncCallHook_Linux &&) = delete;
+        ExtFuncCallHookAsm(ExtFuncCallHookAsm &&) = delete;
 
-        ~ExtFuncCallHook_Linux() override;
+        ~ExtFuncCallHookAsm() override;
 
     protected:
 
@@ -93,7 +93,7 @@ namespace scaler {
 
         MemoryTool_Linux *memTool;
 
-        static ExtFuncCallHook_Linux *instance; //Singleton
+        static ExtFuncCallHookAsm *instance; //Singleton
 
         /**
         * Locate the address of required sections in memory
@@ -103,7 +103,7 @@ namespace scaler {
         /**
          * Private constructor
          */
-        ExtFuncCallHook_Linux();
+        ExtFuncCallHookAsm();
 
 
         /**
@@ -127,13 +127,13 @@ namespace scaler {
          * @param callerFuncAddr The next caller
          * @return Original function pointer
          */
-        static void *cPreHookHanlderLinuxSec(size_t fileId, size_t funcId, void *callerAddr);
+        static void *cPreHookHandlerLinuxSec(size_t fileId, size_t funcId, void *callerAddr);
 
         //static __attribute__((optimize("O0"))) void *cPreHookHanlderLinux(void *pltEntryAddr, void *callerAddr);
 
-        static void *cAfterHookHanlderLinux();
+        static void *cAfterHookHandlerLinux();
 
-        void *writeAndCompileHookHanlder(std::vector<ExtSymInfo> &symbolToHook);
+        void *writeAndCompileHookHandler(std::vector<ExtSymInfo> &symbolToHook);
 
         void *writeAndCompilePseudoPlt(std::vector<ExtSymInfo> &symbolToHook);
 
