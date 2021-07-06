@@ -95,7 +95,7 @@ int main() {
 
         if (scaler::strContains(fileName, "/ld-")) {
             return false;
-        } else if (scaler::strContains(fileName, "/liblibScalerHook-HookManual")) {
+        } else if (scaler::strContains(fileName, "/libScalerHook-HookManualAsm")) {
             return false;
         } else if (scaler::strContains(fileName, "/libstdc++")) {
             return false;

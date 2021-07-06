@@ -21,7 +21,7 @@ int main() {
 //        //todo: User should be able to specify name here. Since they can change filename
 //        if (scaler::strContains(fileName, "/ld-")) {
 //            return false;
-//        } else if (scaler::strContains(fileName, "/liblibScalerHook-HookManual")) {
+//        } else if (scaler::strContains(fileName, "/libScalerHook-HookManualAsm")) {
 //            return false;
 //        } else if (scaler::strContains(fileName, "/libstdc++")) {
 //            return false;
