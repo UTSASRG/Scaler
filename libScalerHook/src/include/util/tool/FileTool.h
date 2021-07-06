@@ -35,14 +35,6 @@ namespace scaler {
      */
     std::vector<size_t> findStrSplit(std::string &srcStr, char splitChar);
 
-    /**
-     * Search for a binary keyword in another array
-     * @param target Target array to search
-     * @param keyword Keyword to search
-     * @return The pointer of the first starting address of keyword in target
-     */
-    void *binCodeSearch(void *target, size_t targetSize, void *keyword, size_t keywordSize);
-
     void extractFileName_Linux(std::string absolutePath, std::string &pathName, std::string &fileName);
 }
 

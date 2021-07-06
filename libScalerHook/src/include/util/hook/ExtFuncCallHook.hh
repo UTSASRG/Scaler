@@ -9,6 +9,7 @@
 #include <util/tool/ElfParser.h>
 #include <vector>
 #include <util/tool/ProcInfoParser.h>
+#include <util/tool/MemTool.h>
 
 namespace scaler {
 
@@ -90,6 +91,7 @@ namespace scaler {
         ELFImgInfo *elfImgInfoMapC = nullptr;
         size_t elfImgInfoMapCSize = 0;
 
+        MemoryTool_Linux *memTool;
 
         static ExtFuncCallHook_Linux *instance; //Singleton
 
@@ -102,16 +104,6 @@ namespace scaler {
          * Private constructor
          */
         ExtFuncCallHook_Linux();
-
-        /**
-         * Search the starting and ending address of a loaded section in ELF image
-         * @param segPtrInFile: The pointer to the starting address of a memory segment
-         * @param firstEntrySize: # of bytes to search. The size of the first entry would be ideal.
-         * because memory alignment typically happens after one entry
-         * @param segments Specify wich segment to search
-         */
-        void *searchBinInMemory(void *segPtrInFile, size_t firstEntrySize,
-                                const std::vector<PMEntry_Linux> &segments);
 
 
         /**

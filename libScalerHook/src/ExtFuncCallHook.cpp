@@ -129,8 +129,8 @@ namespace scaler {
                 auto pltHdr = elfParser.getSecHdrByName(".plt");
 
                 void *pltAddrInFile = elfParser.getSecContent(pltHdr);
-                curELFImgInfo.pltStartAddr = searchBinInMemory(pltAddrInFile, sizeof(pltHdr.secHdr.sh_entsize),
-                                                               codeSegments);
+                curELFImgInfo.pltStartAddr = memTool->searchBinInMemory(pltAddrInFile, sizeof(pltHdr.secHdr.sh_entsize),
+                                                                        codeSegments);
                 assert(curELFImgInfo.pltStartAddr);
 
                 //We already have the starting address, let's calculate the end address
@@ -145,8 +145,8 @@ namespace scaler {
                 try {
                     auto pltSecHdr = elfParser.getSecHdrByName(".plt.sec");
                     void *pltSecAddrInFile = elfParser.getSecContent(pltSecHdr);
-                    curELFImgInfo.pltSecStartAddr = searchBinInMemory(pltSecAddrInFile, 32,
-                                                                      codeSegments);
+                    curELFImgInfo.pltSecStartAddr = memTool->searchBinInMemory(pltSecAddrInFile, 32,
+                                                                               codeSegments);
 
                     //We already have the starting address, let's calculate the end address
                     curELFImgInfo.pltSecEndAddr = (uint8_t *) curELFImgInfo.pltSecStartAddr
@@ -320,19 +320,8 @@ namespace scaler {
     }
 
 
-    void *ExtFuncCallHook_Linux::searchBinInMemory(void *segPtrInFile, size_t firstEntrySize,
-                                                   const std::vector<PMEntry_Linux> &segments) {
-        void *rltAddr = nullptr;
-
-        for (int i = 0; i < segments.size(); ++i) {
-            rltAddr = binCodeSearch(segments[i].addrStart, segments[i].length, segPtrInFile, firstEntrySize);
-            if (rltAddr)
-                break;
-        }
-        return rltAddr;
-    }
-
     void ExtFuncCallHook_Linux::install(Hook::SYMBOL_FILTER filterCallB) {
+        memTool = MemoryTool_Linux::getInst();
 
         curContext.ctx->inHookHanlder = true;
 
@@ -345,10 +334,6 @@ namespace scaler {
                     iterFile->second.pltStartAddr,
                     iterFile->second.pltSecStartAddr);
         }
-
-
-        //Step2: Change every plt table memory into writeable
-        MemoryTool_Linux *memTool = MemoryTool_Linux::getInst();
 
         //Step3: Use callback to determine which ID to hook
         std::vector<ExtSymInfo> symbolToHook;
@@ -859,9 +844,9 @@ namespace scaler {
                curElfImgInfo.idFuncMap.at(funcId).c_str(), retOriFuncAddr);
 
 
-        FILE *fp = NULL;
-        fp = fopen("./testHandler.cpp", "w");
-        fclose(fp);
+//        FILE *fp = NULL;
+//        fp = fopen("./testHandler.cpp", "w");
+//        fclose(fp);
 
         curContext.ctx->inHookHanlder = false;
         pthread_mutex_unlock(&lock0);
@@ -1230,6 +1215,8 @@ namespace scaler {
         POPXMM(0)
         "pop %rdx\n\t"
         "pop %rax\n\t"
+        //todo: Handle float return and XMM return
+
 
         //Retrun to caller
         "jmp *%r11\n\t"

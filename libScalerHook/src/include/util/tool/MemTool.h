@@ -15,9 +15,45 @@
 //The following class is declared and defined only under linux.
 
 #include <sys/mman.h>
+#include "ProcInfoParser.h"
 
 namespace scaler {
-    class MemoryTool_Linux : public Object {
+    class MemoryTool: public Object {
+    public:
+        /**
+         * Singeleton
+         */
+        static MemoryTool *getInst();
+
+
+        ~MemoryTool() override;
+
+        /**
+         * Search for a binary keyword in another array
+         * @param target Target array to search
+         * @param keyword Keyword to search
+         * @return The pointer of the first starting address of keyword in target
+         */
+        virtual void *binCodeSearch(void *target, size_t targetSize, void *keyword, size_t keywordSize);
+
+        /**
+         * Search the starting and ending address of a loaded section in ELF image
+         * @param segPtrInFile: The pointer to the starting address of a memory segment
+         * @param firstEntrySize: # of bytes to search. The size of the first entry would be ideal.
+         * because memory alignment typically happens after one entry
+         * @param segments Specify wich segment to search
+         */
+        virtual void *searchBinInMemory(void *segPtrInFile, size_t firstEntrySize, const std::vector<PMEntry_Linux> &segments);
+
+    protected:
+        //Singeleton
+        MemoryTool();
+
+        static MemoryTool *instance;
+
+    };
+
+    class MemoryTool_Linux : public MemoryTool {
     public:
         /**
          * Singeleton
@@ -28,6 +64,7 @@ namespace scaler {
         void adjustMemPerm(void *startPtr, void *endPtr, int prem);
 
         ~MemoryTool_Linux() override;
+
 
     protected:
         //Singeleton

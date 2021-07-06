@@ -19,6 +19,18 @@ target_include_directories(libScalerHook-HookManual PUBLIC src/include lib/inire
 target_compile_options(libScalerHook-HookManual PRIVATE "--verbose;-znow;-fPIE;-fPIC;")
 target_link_libraries(libScalerHook-HookManual PRIVATE pthread dl)
 
+#add_library(libScalerHook-HookManualPtrace SHARED
+#        src/ExtFuncCallHookPtrace.cpp
+#        src/ProcInfoParser.cpp
+#        src/ElfParser.cpp
+#        src/MemTool.cpp
+#        src/FileTool.cpp
+#        src/install.cpp
+#        src/StringTool.cpp)
+#target_include_directories(libScalerHook-HookManualPtrace PUBLIC src/include)
+#target_compile_options(libScalerHook-HookManualPtrace PRIVATE "--verbose;-znow;-fPIE;-fPIC;")
+#target_link_libraries(libScalerHook-HookManualPtrace PRIVATE pthread dl)
+
 
 #ScalerHook with auto installation enabled. Scaler hook will run automatically before main.
 add_library(libScalerHook-HookAuto SHARED src/autoinstall.cpp)
