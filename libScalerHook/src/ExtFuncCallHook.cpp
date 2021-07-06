@@ -11,6 +11,7 @@
 #include <cassert>
 #include <elf.h>
 #include <util/tool/MemTool.h>
+#include <util/tool/Timer.h>
 #include <set>
 #include <immintrin.h>
 #include <thread>
@@ -45,6 +46,7 @@ namespace scaler {
         //Variables used to determine whether it's called by hook handler or not
         bool inHookHanlder = false;
         std::vector<void *> callerAddr;
+        std::vector<int64_t> timestamp;
     };
 
     class ContextProxy {
@@ -167,30 +169,58 @@ namespace scaler {
                 auto dynamicHdr = elfParser.getProgHdrByType(PT_DYNAMIC);
                 assert(dynamicHdr.size() == 1); //There should be only one _DYNAMIC
                 void *dynamicAddrInFile = elfParser.getSegContent(dynamicHdr[0]);
-                curELFImgInfo._DYNAMICAddr = static_cast<ElfW(Dyn) *>(searchBinInMemory(dynamicAddrInFile,
-                                                                                        sizeof(ElfW(Dyn)),
-                                                                                        readableNonCodeSegments));
+                curELFImgInfo._DYNAMICAddr = static_cast<Elf64_Dyn *>(dynamicAddrInFile);
+                //curELFImgInfo._DYNAMICAddr = static_cast<ElfW(Dyn) *>(searchBinInMemory(dynamicAddrInFile,
+                //                                                                        sizeof(ElfW(Dyn)),
+                //                                                                        readableNonCodeSegments));
                 assert(curELFImgInfo._DYNAMICAddr);
 
                 uint8_t *curBaseAddr = pmParser.fileBaseAddrMap.at(curFileiD);
                 curELFImgInfo.baseAddr = curBaseAddr;
 
                 const ElfW(Dyn) *dynsymDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_SYMTAB);
+
+                if (dynsymDyn == nullptr) {
+                    std::stringstream ss;
+                    ss << "Cannot find symtab in \"" << curELFImgInfo.filePath << "\"";
+                    throwScalerException(ss.str().c_str());
+                }
+
                 curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, dynsymDyn->d_un.d_ptr);
                 curELFImgInfo.dynSymTable = (const ElfW(Sym) *) (curBaseAddr + dynsymDyn->d_un.d_ptr);
 
                 const ElfW(Dyn) *strTabDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRTAB);
+                if (strTabDyn == nullptr) {
+                    std::stringstream ss;
+                    ss << "Cannot find strtab in \"" << curELFImgInfo.filePath << "\"";
+                    throwScalerException(ss.str().c_str());
+                }
                 curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, strTabDyn->d_un.d_ptr);
                 curELFImgInfo.dynStrTable = (const char *) (curBaseAddr + strTabDyn->d_un.d_ptr);
 
                 const ElfW(Dyn) *strSizeDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRSZ);
+                if (strSizeDyn == nullptr) {
+                    std::stringstream ss;
+                    ss << "Cannot find strtab size in \"" << curELFImgInfo.filePath << "\"";
+                    throwScalerException(ss.str().c_str());
+                }
                 curELFImgInfo.dynStrSize = strSizeDyn->d_un.d_val;
 
                 ElfW(Dyn) *relaPltDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_JMPREL);
+                if (relaPltDyn == nullptr) {
+                    std::stringstream ss;
+                    ss << "Cannot find .plt.rela in \"" << curELFImgInfo.filePath << "\"";
+                    throwScalerException(ss.str().c_str());
+                }
                 curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, relaPltDyn->d_un.d_ptr);
                 curELFImgInfo.relaPlt = (ElfW(Rela) *) (curBaseAddr + relaPltDyn->d_un.d_ptr);
 
                 const ElfW(Dyn) *relaSizeDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_PLTRELSZ);
+                if (relaSizeDyn == nullptr) {
+                    std::stringstream ss;
+                    ss << "Cannot find .plt.rela size in \"" << curELFImgInfo.filePath << "\"";
+                    throwScalerException(ss.str().c_str());
+                }
                 curELFImgInfo.relaPltCnt = relaSizeDyn->d_un.d_val / sizeof(ElfW(Rela));
 
                 std::stringstream ss;
@@ -364,7 +394,7 @@ namespace scaler {
                 std::stringstream ss;
                 ss << "Hook Failed, cannot change heap pseudoPlt permission. Exception Info:\""
                    << e.info << "\"";
-                //fprintf(stderr, "%s\n", ss.str().c_str());
+                fprintf(stderr, "%s\n", ss.str().c_str());
                 continue;
             }
 
@@ -389,7 +419,7 @@ namespace scaler {
                 ss << "Hook Failed for \"" << pmParser.idFileMap.at(curSymbol.fileId) << ":"
                    << curSymbol.symbolName
                    << "\" because " << e.info;
-                //fprintf(stderr, "%s\n", ss.str().c_str());
+                fprintf(stderr, "%s\n", ss.str().c_str());
                 continue;
             }
 
@@ -529,9 +559,8 @@ namespace scaler {
     }
 
     ExtFuncCallHook_Linux *ExtFuncCallHook_Linux::getInst() {
-        if (!instance) {
+        if (!instance)
             instance = new ExtFuncCallHook_Linux();
-        }
         return instance;
     }
 
@@ -705,18 +734,13 @@ namespace scaler {
         fprintf(fp, "}\n");
         fclose(fp);
         //compile it
-
-        std::stringstream ss;
-        ss << Config::getInst()->get<std::string>("libScalerHook", "CppCompiler", "");
-        ss << " -shared -fPIC ./testHandler.cpp -o ./testHandler.so";
-        DBG_LOG("Compile hook handler")
-        int sysRet = system(ss.str().c_str());
+        int sysRet = system("gcc -shared -fPIC ./testHandler.cpp -o ./testHandler.so");
         if (sysRet < 0) {
-            throwScalerExceptionWithCode("Compile hookhandler failed", sysRet)
+            throwScalerExceptionWithCode("gcc compilation handler failed", sysRet)
         }
 
-        ss.str("");
-        ss.clear();
+
+        std::stringstream ss;
         ss << pmParser.curExecPath << "/testHandler.so";
         void *handle = dlopen(ss.str().c_str(),
                               RTLD_NOW);
@@ -759,20 +783,13 @@ namespace scaler {
         }
         fprintf(fp, "}\n");
         fclose(fp);
+        int sysRet = system("gcc -shared -fPIC ./testPseudoPlt.cpp -o ./testPseudoPlt.so");
+        if (sysRet < 0) {
+            throwScalerExceptionWithCode("gcc compilation handler failed", sysRet)
+        }
 
 
         std::stringstream ss;
-        ss << Config::getInst()->get<std::string>("libScalerHook", "CppCompiler", "");
-        ss << " -shared -fPIC ./testPseudoPlt.cpp -o ./testPseudoPlt.so";
-        DBG_LOG("Compile pseudoPlt handler")
-
-        int sysRet = system(ss.str().c_str());
-        if (sysRet < 0) {
-            throwScalerExceptionWithCode("Compile handler failed", sysRet)
-        }
-
-        ss.str("");
-        ss.clear();
         ss << pmParser.curExecPath << "/testHandler.so";
         void *handle = dlopen(ss.str().c_str(),
                               RTLD_NOW);
@@ -808,7 +825,10 @@ namespace scaler {
             }
         }
 
+
         if (curContext.ctx->inHookHanlder) {
+            curContext.ctx->timestamp.emplace_back(getunixtimestampms());
+            curContext.ctx->callerAddr.emplace_back(callerAddr);
             pthread_mutex_unlock(&lock0);
             return retOriFuncAddr;
         }
@@ -819,8 +839,8 @@ namespace scaler {
 
 
         //Push callerAddr into stack
-        //curContext.ctx->callerAddr.emplace_back(callerAddr);
-
+        curContext.ctx->timestamp.emplace_back(getunixtimestampms());
+        curContext.ctx->callerAddr.emplace_back(callerAddr);
         //Push calling info to afterhook
         curContext.ctx->fileId.emplace_back(fileId);
         curContext.ctx->funcId.emplace_back(funcId);
@@ -834,17 +854,29 @@ namespace scaler {
         //ss << 1;
         // uint64_t id = std::stoull(ss.str());
 
-        DBG_LOGS("DBG: [Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p\n", 0, _this->pmParser.idFileMap.at(fileId).c_str(),
-               curElfImgInfo.idFuncMap.at(funcId).c_str(),retOriFuncAddr);
+        printf("[Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p\n", pthread_self(),
+               _this->pmParser.idFileMap.at(fileId).c_str(),
+               curElfImgInfo.idFuncMap.at(funcId).c_str(), retOriFuncAddr);
+
+
+        FILE *fp = NULL;
+        fp = fopen("./testHandler.cpp", "w");
+        fclose(fp);
 
         curContext.ctx->inHookHanlder = false;
         pthread_mutex_unlock(&lock0);
         return retOriFuncAddr;
     }
 
+    pthread_mutex_t lock1 = PTHREAD_MUTEX_INITIALIZER;
+
     void *ExtFuncCallHook_Linux::cAfterHookHanlderLinux() {
+        pthread_mutex_lock(&lock1);
         if (curContext.ctx->inHookHanlder) {
-            return nullptr;
+            void *callerAddr = curContext.ctx->callerAddr.at(curContext.ctx->callerAddr.size() - 1);
+            curContext.ctx->callerAddr.pop_back();
+            pthread_mutex_unlock(&lock1);
+            return callerAddr;
         }
         curContext.ctx->inHookHanlder = true;
 
@@ -865,22 +897,39 @@ namespace scaler {
         curContext.ctx->funcId.pop_back();
         auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
 
-//        std::stringstream ss;
-//        ss << std::this_thread::get_id();
-//        uint64_t id = std::stoull(ss.str());
 
-        printf("[After Hook] Thread:%lu  File:%s, Func: %s\n", 0, fileName.c_str(), funcName.c_str());
+        int64_t startTimestamp = curContext.ctx->timestamp.at(curContext.ctx->timestamp.size() - 1);
+        curContext.ctx->timestamp.pop_back();
 
-        //void *callerAddr = curContext.callerAddr.at(curContext.callerAddr.size() - 1);
-        //curContext.callerAddr.pop_back();
+        int64_t endTimestamp = getunixtimestampms();
 
-
+        // When after hook is called. Library address is resolved. We use searching mechanism to find the file name.
+        // To improve efficiency, we could sotre this value
+        void *callerAddr = curContext.ctx->callerAddr.at(curContext.ctx->callerAddr.size() - 1);
+        curContext.ctx->callerAddr.pop_back();
+        auto &curSymbol = curELFImgInfo.hookedExtSymbolC[funcId];
+        auto libraryFileId=_this->pmParser.findExecNameByAddr(curSymbol.addr);
+        auto& libraryFileName= _this->pmParser.idFileMap.at(libraryFileId);
         curContext.ctx->inHookHanlder = false;
+
+        printf("[After Hook] Thread ID:%lu Library:%s, Func: %s Start: %ld End: %ld\n", pthread_self(), libraryFileName.c_str(),
+               funcName.c_str(), startTimestamp, endTimestamp);
+
+//        FILE *fp = NULL;
+//        fp = fopen("./libScalerhookOutput.csv", "a");
+//        fprintf(fp, "%lu,%s,%s,%ld,%ld,\n",
+//                pthread_self(),
+//                libraryFileName.c_str(),
+//                funcName.c_str(),
+//                startTimestamp,
+//                endTimestamp);
+//        fclose(fp);
+
 
 //        if (*curContext.released && curContext.ctx->funcId.size() == 0)
 //            curContext.realDeconstructor();
-
-        return nullptr;
+        pthread_mutex_unlock(&lock1);
+        return callerAddr;
     }
 
 
@@ -959,6 +1008,7 @@ namespace scaler {
          * Save environment
          */
 
+
         //The first six integer or pointer arguments are passed in registers RDI, RSI, RDX, RCX, R8, R9
         // (R10 is used as a static chain pointer in case of nested functions[25]:21),
         //XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6 and XMM7  are used for the first floating point arguments
@@ -1017,12 +1067,11 @@ namespace scaler {
         /**
          * Getting PLT entry address and caller address from stack
          */
+        "movq (%r11),%rdx\n\t" //R11 stores callerAddr
         "addq $8,%r11\n\t"
-        "movq (%r11),%rsi\n\t" //R11 stores callerAddr
+        "movq (%r11),%rsi\n\t" //R11 stores funcID
         "addq $8,%r11\n\t"
-        "movq (%r11),%rdi\n\t" //R11 stores funcID
-        "addq $8,%r11\n\t"
-        "movq (%r11),%rdx\n\t" //R11 stores fileID
+        "movq (%r11),%rdi\n\t" //R11 stores fileID
 
         //size_t fileId (rdx), size_t funcId (rdi), void *callerAddr (rsi)
 
@@ -1073,16 +1122,15 @@ namespace scaler {
         // currsp=oldrsp-152
 
         //Restore rsp to original value
-        "addq $152,%rsp\n\t"
-
+        //"addq $152,%rsp\n\t"
         //        "addq $24,%rsp\n\t"
-        "jmp *%r11\n\t"
-
+        //"jmp *%r11\n\t"
 
         /**
          * Call actual function
          */
         "addq $152,%rsp\n\t"
+        "addq $8,%rsp\n\t"
         "call *%r11\n\t"
 
 
@@ -1098,93 +1146,93 @@ namespace scaler {
         /**
         * Save Environment
         */
-        "push %rdi\n\t"
-        "push %rsi\n\t"
-        "push %rdx\n\t"
-        "push %rcx\n\t"
-        "push %r8\n\t"
-        "push %r9\n\t"
-        "push %r10\n\t"
+        "push %rdi\n\t"  // currsp=oldrsp-160
+        "push %rsi\n\t"  // currsp=oldrsp-168
+        "push %rdx\n\t"  // currsp=oldrsp-176
+        "push %rcx\n\t"  // currsp=oldrsp-184
+        "push %r8\n\t"   // currsp=oldrsp-192
+        "push %r9\n\t"   // currsp=oldrsp-200
+        "push %r10\n\t"  // currsp=oldrsp-208
         //Save [XYZ]MM[0-7]
-        PUSHXMM(0)
-        PUSHXMM(1)
-        PUSHXMM(2)
-        PUSHXMM(3)
-        PUSHXMM(4)
-        PUSHXMM(5)
-        PUSHXMM(6)
-        PUSHXMM(7)
+        PUSHXMM(0) // currsp=oldrsp-224
+        PUSHXMM(1) // currsp=oldrsp-240
+        PUSHXMM(2) // currsp=oldrsp-256
+        PUSHXMM(3) // currsp=oldrsp-272
+        PUSHXMM(4) // currsp=oldrsp-288
+        PUSHXMM(5) // currsp=oldrsp-304
+        PUSHXMM(6) // currsp=oldrsp-320
+        PUSHXMM(7) // currsp=oldrsp-336
         //todo: Also save YMM0-7 and ZMM0-7
-        PUSHYMM(0)
-        PUSHYMM(1)
-        PUSHYMM(2)
-        PUSHYMM(3)
-        PUSHYMM(4)
-        PUSHYMM(5)
-        PUSHYMM(6)
-        PUSHYMM(7)
+        PUSHYMM(0) // currsp=oldrsp-368
+        PUSHYMM(1) // currsp=oldrsp-400
+        PUSHYMM(2) // currsp=oldrsp-432
+        PUSHYMM(3) // currsp=oldrsp-464
+        PUSHYMM(4) // currsp=oldrsp-496
+        PUSHYMM(5) // currsp=oldrsp-528
+        PUSHYMM(6) // currsp=oldrsp-560
+        PUSHYMM(7) // currsp=oldrsp-592
         //Save RBX, RSP, RBP, and R12–R15
-        "push %rbx\n\t"
-        "push %rsp\n\t"
-        "push %rbp\n\t"
-        "push %r12\n\t"
-        "push %r13\n\t"
-        "push %r14\n\t"
-        "push %r15\n\t"
+        "push %rbx\n\t" // currsp=oldrsp-600
+        "push %rsp\n\t" // currsp=oldrsp-608
+        "push %rbp\n\t" // currsp=oldrsp-616
+        "push %r12\n\t" // currsp=oldrsp-624
+        "push %r13\n\t" // currsp=oldrsp-632
+        "push %r14\n\t" // currsp=oldrsp-640
+        "push %r15\n\t" // currsp=oldrsp-648
+        "push %rax\n\t" // currsp=oldrsp-656
 
         /**
          * Call After Hook
          */
         "call  _ZN6scaler21ExtFuncCallHook_Linux22cAfterHookHanlderLinuxEv\n\t"
         //Save return value to R11. R11 now has the address of caller.
-        //"movq %rax,%r11\n\t"
+        "movq %rax,%r11\n\t"
 
         /**
         * Restore Environment
         */
-        "pop %r15\n\t"
-        "pop %r14\n\t"
-        "pop %r13\n\t"
-        "pop %r12\n\t"
-        "pop %rbp\n\t"
-        "pop %rsp\n\t"
-        "pop %rbx\n\t"
-        POPXMM(7)
-        POPXMM(6)
-        POPXMM(5)
-        POPXMM(4)
-        POPXMM(3)
-        POPXMM(2)
-        POPXMM(1)
-        POPXMM(0)
-        POPYMM(7)
-        POPYMM(6)
-        POPYMM(5)
-        POPYMM(4)
-        POPYMM(3)
-        POPYMM(2)
-        POPYMM(1)
-        POPYMM(0)
-        "pop %r10\n\t"
-        "pop %r9\n\t"
-        "pop %r8\n\t"
-        "pop %rcx\n\t"
-        "pop %rdx\n\t"
-        "pop %rsi\n\t"
-        "pop %rdi\n\t"
+        "pop %rax\n\t" // currsp=oldrsp-656
+        "pop %r15\n\t" // currsp=oldrsp-640
+        "pop %r14\n\t" // currsp=oldrsp-632
+        "pop %r13\n\t" // currsp=oldrsp-624
+        "pop %r12\n\t" // currsp=oldrsp-616
+        "pop %rbp\n\t" // currsp=oldrsp-608
+        "pop %rsp\n\t" // currsp=oldrsp-600
+        "pop %rbx\n\t" // currsp=oldrsp-592
+        POPYMM(7) // currsp=oldrsp-560
+        POPYMM(6) // currsp=oldrsp-528
+        POPYMM(5) // currsp=oldrsp-496
+        POPYMM(4) // currsp=oldrsp-464
+        POPYMM(3) // currsp=oldrsp-432
+        POPYMM(2) // currsp=oldrsp-400
+        POPYMM(1) // currsp=oldrsp-368
+        POPYMM(0) // currsp=oldrsp-336
+        POPXMM(7) // currsp=oldrsp-320
+        POPXMM(6) // currsp=oldrsp-304
+        POPXMM(5) // currsp=oldrsp-288
+        POPXMM(4) // currsp=oldrsp-272
+        POPXMM(3) // currsp=oldrsp-256
+        POPXMM(2) // currsp=oldrsp-240
+        POPXMM(1) // currsp=oldrsp-224
+        POPXMM(0) // currsp=oldrsp-208
+        "pop %r10\n\t" // currsp=oldrsp-200
+        "pop %r9\n\t" // currsp=oldrsp-192
+        "pop %r8\n\t" // currsp=oldrsp-184
+        "pop %rcx\n\t" // currsp=oldrsp-176
+        "pop %rdx\n\t" // currsp=oldrsp-168
+        "pop %rsi\n\t" // currsp=oldrsp-160
+        "pop %rdi\n\t" // currsp=oldrsp-152
 
-        //Restore return value of real function from stack
+
         POPYMM(1)
         POPYMM(0)
         POPXMM(1)
         POPXMM(0)
         "pop %rdx\n\t"
         "pop %rax\n\t"
-        //todo: Handle float return and XMM return
-
 
         //Retrun to caller
-        "ret\n\t"
+        "jmp *%r11\n\t"
         );
 
     }

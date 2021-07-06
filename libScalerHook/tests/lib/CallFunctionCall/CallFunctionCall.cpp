@@ -14,9 +14,9 @@ void callFunc1000() {
     func1000();
 }
 
-void callSleepDelay(long long seconds) {
+void callSleepDelay(long long milliseconds) {
     printf("callSleepDelay\n");
-    sleepDelay(seconds);
+    sleepDelay(milliseconds);
 }
 
 void callLoopDelay(long long times) {

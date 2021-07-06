@@ -1,5 +1,7 @@
 #include <iostream>
 #include <pthread.h>
+#include <thread>
+#include <chrono>
 #include "../../../src/include/util/hook/install.h"
 #include "../../../src/include/util/tool/StringTool.h"
 
@@ -11,17 +13,12 @@ int main() {
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
 
-        if (scaler::strContains(fileName, "/ld-")) {
-            return false;
-        } else if (scaler::strContains(fileName, "/liblibScalerHook-HookManual")) {
-            return false;
-        } else if (scaler::strContains(fileName, "/libstdc++")) {
-            return false;
-        } else if (scaler::strContains(fileName, "/libdl-")) {
-            return false;
-        } else {
+        if (fileName ==
+            "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-Pthread") {
             fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
             return true;
+        } else {
+            return false;
         }
 
     });
@@ -35,17 +32,17 @@ int main() {
     /* Create independent threads each of which will execute function */
 
     iret1 = pthread_create(&thread1, NULL, print_message_function, (void *) message1);
-    iret2 = pthread_create(&thread2, NULL, print_message_function, (void *) message2);
+//    iret2 = pthread_create(&thread2, NULL, print_message_function, (void *) message2);
 
     /* Wait till threads are complete before main continues. Unless we  */
     /* wait we run the risk of executing an exit which will terminate   */
     /* the process and all threads before the threads have completed.   */
 
     pthread_join(thread1, NULL);
-    pthread_join(thread2, NULL);
+//    pthread_join(thread2, NULL);
 
     printf("Thread 1 returns: %d\n", iret1);
-    printf("Thread 2 returns: %d\n", iret2);
+//    printf("Thread 2 returns: %d\n", iret2);
     exit(0);
 }
 
