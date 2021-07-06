@@ -9,17 +9,35 @@ main_fn_t real_main;
 std::string execFileName;
 
 int doubletake_main(int argc, char **argv, char **envp) {
-    AUTO_INSTALL_ENABLED = true;
     //Initialization
     scaler::ExtFuncCallHook_Linux *libPltHook = scaler::ExtFuncCallHook_Linux::getInst();
+
     scaler::PmParserC_Linux pmParser;
-    execFileName=pmParser.curExecAbsolutePath;
+    execFileName = pmParser.curExecAbsolutePath;
+
     //Hook all symbols except certain files
+    //todo:Merged from asmSimpleCase. Only hook current executable for testing
     libPltHook->install([](std::string fileName, std::string funcName) -> bool {
+        //todo: User should be able to specify name here. Since they can change filename
         if (fileName == execFileName) {
             fprintf(stderr, "Autoinstall %s:%s\n", fileName.c_str(), funcName.c_str());
             return true;
+        } else {
+            return false;
         }
+    });
+//    libPltHook->install([](std::string fileName, std::string funcName) -> bool {
+//        //todo: User should be able to specify name here. Since they can change filename
+//        if (funcName == "") {
+//            return false;
+//        } else if (fileName.length() >= 16 && fileName.substr(fileName.length() - 16, 16) == "libscalerhook.so") {
+//            return false;
+//        } else if (funcName.length() >= 26 &&
+//                   funcName.substr(funcName.length() - 26, 26) != "libscalerhook_installer.so") {
+//            return false;
+//        }  else {
+//            return true;
+//        }
         //todo: User should be able to specify name here. Since they can change filename
 //        if (funcName == "") {
 //            return false;
@@ -31,7 +49,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
 //        }  else {
 //            return true;
 //        }
-    });
+//    });
 
     // Call the program's main function
     int ret = real_main(argc, argv, envp);

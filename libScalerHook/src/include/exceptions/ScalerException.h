@@ -5,15 +5,13 @@
 #include <type/Object.hpp>
 #include <string>
 #include <iostream>
-
+#include <util/tool/Logging.h>
 //Please comment fprintf clause when not debugging
 
 #define throwScalerException(msg) \
-    fprintf(stderr, "Scalar Exception thrown @ %s:%d: %s\n", __FILE__, __LINE__,msg); \
     throw ScalerException(msg,0, __FILE__, __LINE__);
 
 #define throwScalerExceptionWithCode(msg, code) \
-    fprintf(stderr, "Scalar Exception thrown @ %s:%d: %s\n", __FILE__, __LINE__,msg); \
     throw ScalerException(msg,code, __FILE__, __LINE__);
 
 class ScalerException : std::runtime_error, Object {

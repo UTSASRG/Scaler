@@ -14,9 +14,9 @@ void test_plthook_enum(plthook_t *plthook) {
 }
 
 
-int main() {
-    plthook_t *myPltHook;
-    //Find plthook
-    plthook_open(&myPltHook, NULL);
-    test_plthook_enum(myPltHook);
-}
+//int main() {
+//    plthook_t *myPltHook;
+//    //Find plthook
+//    plthook_open(&myPltHook, NULL);
+//    test_plthook_enum(myPltHook);
+//}

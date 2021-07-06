@@ -117,7 +117,7 @@ TEST(ExtFuncCallHook, compareAddressAndFuncName) {
 //todo: relative path
 
     auto &libTestELFInfo = hook->elfImgInfoMap[hook->pmParser.fileIDMap.at(
-            "/home/st/Projects/Scaler/cmake-build-debug/tests/libFuncCallTest.so")];
+            "/home/st/Projects/scaler/cmake-build-debug/tests/libFuncCallTest.so")];
     auto systemFuncId = libTestELFInfo.funcIdMap.at("system");
     void **gotTableAddr = libTestELFInfo.allExtSymbol.at(systemFuncId).gotEntry;
 

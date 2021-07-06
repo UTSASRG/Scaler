@@ -22,7 +22,7 @@ target_include_directories(libScalerHook-testlib-CallFuncCall PUBLIC lib/CallFun
 target_link_libraries(libScalerHook-testlib-CallFuncCall libScalerHook-testlib-FuncCall)
 
 ## PltHook is used to compare results
-add_library(KuBoPltHook lib/plthook/plthook_elf.c src/proofconcept/testPltHookEnum.cpp)
+add_library(KuBoPltHook lib/plthook/plthook_elf.c)
 target_include_directories(KuBoPltHook PUBLIC lib/plthook)
 
 # ============================================================
@@ -34,7 +34,10 @@ add_executable(libScalerHook-unittests
         src/unittests/TestExtFuncCallHook.cpp
         src/unittests/TestFileTool.cpp
         src/unittests/TestException.cpp
-        src/unittests/TestELFParser.cpp)
+        src/unittests/TestELFParser.cpp
+        src/unittests/TestLog.cpp
+        src/unittests/TestConfig.cpp
+        src/unittests/TestTimer.cpp)
 target_link_libraries(libScalerHook-unittests PUBLIC libScalerHook-HookManual libScalerHook-testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread)
 target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHook-Tests_SOURCE_DIR}/linkerscripts/mylinker.ld")
 
@@ -42,7 +45,7 @@ target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHoo
 # Demo Application
 # ============================================================
 
-option(libScalerHook-demoapps_AUTO_INSTALL_HOOK "If ON, then libScalerHook-HookManual will be linked. Otherwise libScalerHook-HookManual will be linked" ON)
+option(libScalerHook-demoapps_AUTO_INSTALL_HOOK "If ON, then libScalerHook-HookAuto will be linked. Otherwise libScalerHook-HookManual will be linked" ON)
 
 add_executable(libScalerHook-demoapps-FuncCall src/demoapps/TestFuncCall.cpp)
 target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC libScalerHook-HookManual libScalerHook-testlib-FuncCall
@@ -58,7 +61,7 @@ target_link_libraries(libScalerHook-demoapps-FuncCallDelay PUBLIC libScalerHook-
         libScalerHook-testlib-CallFuncCall dl pthread)
 
 
-add_executable(libScalerHook-demoapps-FuncNestedCall src/demoapps/TestNextedFuncCallPthread.cpp)
+add_executable(libScalerHook-demoapps-FuncNestedCall src/demoapps/TestNestedFuncCallPthread.cpp)
 target_link_libraries(libScalerHook-demoapps-FuncNestedCall PUBLIC libScalerHook-HookManual libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall dl pthread)
 
@@ -77,6 +80,50 @@ add_executable(libScalerHook-demoapps-ComplexThreadop src/demoapps/TestComplexTh
 target_include_directories(libScalerHook-demoapps-ComplexThreadop PUBLIC libtest/header)
 target_link_libraries(libScalerHook-demoapps-ComplexThreadop libScalerHook-HookManual libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
 
+
+add_executable(libScalerHook-parsecapps-aget
+        src/parsecapps/aget/Aget.c
+        src/parsecapps/aget/Download.c
+        src/parsecapps/aget/Head.c
+        src/parsecapps/aget/main.c
+        src/parsecapps/aget/Misc.c
+        src/parsecapps/aget/Resume.c
+        src/parsecapps/aget/Signal.c)
+target_include_directories(libScalerHook-parsecapps-aget PUBLIC src/parsecapps/aget/include)
+target_link_libraries(libScalerHook-parsecapps-aget libScalerHook-HookAuto pthread dl)
+
+
+add_executable(libScalerHook-parsecapps-dedup
+        src/parsecapps/dedup/binheap.c
+        src/parsecapps/dedup/decoder.c
+        src/parsecapps/dedup/dedup.c
+        src/parsecapps/dedup/encoder.c
+        src/parsecapps/dedup/hashtable.c
+        src/parsecapps/dedup/queue.c
+        src/parsecapps/dedup/rabin.c
+        src/parsecapps/dedup/tree.c
+        src/parsecapps/dedup/util.c)
+target_include_directories(libScalerHook-parsecapps-dedup PUBLIC src/parsecapps/dedup/include)
+target_link_directories(libScalerHook-parsecapps-dedup PRIVATE src/parsecapps/dedup/lib)
+target_link_libraries(libScalerHook-parsecapps-dedup libScalerHook-HookAuto pthread dl
+        libcrypto.a
+        libssl.a
+        libz.a)
+
+add_executable(libScalerHook-parsecapps-blackscholes src/parsecapps/blackscholes/blackscholes-pthread.cpp)
+target_compile_options(libScalerHook-parsecapps-blackscholes PRIVATE "-DENABLE_THREADS" "-DPARALLEL" "-DNCO=2" "-DN=960")
+target_link_libraries(libScalerHook-parsecapps-blackscholes pthread libScalerHook-HookAuto)
+
+
+find_package(BZip2 REQUIRED)
+add_executable(libScalerHook-parsecapps-pbzip2
+        src/parsecapps/pbzip2/BZ2StreamScanner.cpp
+        src/parsecapps/pbzip2/ErrorContext.cpp
+        src/parsecapps/pbzip2/pbzip2.cpp)
+target_include_directories(libScalerHook-parsecapps-pbzip2 PUBLIC src/parsecapps/pbzip2/include)
+target_link_libraries(libScalerHook-parsecapps-pbzip2 libScalerHook-HookAuto pthread BZip2::BZip2)
+
+
 #add_library(InstallTest SHARED libInstalltest/src/installTest.cpp)
 #target_include_directories(InstallTest PUBLIC libInstalltest/header)
 #target_link_libraries(InstallTest PUBLIC FuncCallTest)
@@ -85,6 +132,7 @@ target_link_libraries(libScalerHook-demoapps-ComplexThreadop libScalerHook-HookM
 #target_include_directories(TestInstall PUBLIC libtest/header)
 #target_link_libraries(TestInstall scalerhook FuncCallTest InstallTest dl)
 #target_link_options(TestInstall PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/unittests/libScalerHook/oldexperiments/mylinker.ld")
+
 
 
 #
@@ -99,7 +147,6 @@ target_link_libraries(libScalerHook-demoapps-ComplexThreadop libScalerHook-HookM
 add_executable(libScalerHook-proof-StackProtector src/proofconcept/TestStackOverflow.cpp)
 target_compile_options(libScalerHook-proof-StackProtector PRIVATE "-fstack-protector")
 
-
 add_executable(libScalerHook-proof-LTraceSimpleMain src/proofconcept/TestLtrace.cpp)
 target_link_options(libScalerHook-proof-LTraceSimpleMain PRIVATE "-z" "lazy")
 
@@ -107,9 +154,7 @@ add_executable(libScalerHook-proof-HookEverything src/proofconcept/TestHookEvery
 target_link_options(libScalerHook-proof-HookEverything PRIVATE "-z" "lazy")
 target_link_libraries(libScalerHook-proof-HookEverything libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall)
 
-
 add_executable(libScalerHook-proof-SwBreakpoint src/proofconcept/testSwBreakpoint.cpp)
-
 add_executable(libScalerHook-proof-ManualBreakpoint src/proofconcept/testManualBreakpoint.cpp)
 
 #add_executable(libScalerHook-demoapps src/proofconcept/testprog.cpp)

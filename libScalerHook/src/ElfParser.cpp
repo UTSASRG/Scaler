@@ -132,7 +132,7 @@ namespace scaler {
     ELFParser_Linux::SecInfo ELFParser_Linux::getSecHdrByName(std::string targetSecName) {
         if (secNameIndexMap.count(targetSecName) == 0) {
             std::stringstream ss;
-            ss << "Cannot find section " << targetSecName;
+            ss << "Cannot find section " << targetSecName << " in " << elfPath;
             throwScalerExceptionWithCode(ss.str().c_str(), MyErrCode::SYMBOL_NOT_FOUND);
         }
         return secNameIndexMap.at(targetSecName);
