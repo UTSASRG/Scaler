@@ -133,9 +133,6 @@ namespace scaler {
 
         static void *cAfterHookHanlderLinux();
 
-
-        uint8_t *autoAddBaseAddr(uint8_t *addr, size_t fileiD, Elf64_Addr dPtr);
-
         void *writeAndCompileHookHanlder(std::vector<ExtSymInfo> &symbolToHook);
 
         void *writeAndCompilePseudoPlt(std::vector<ExtSymInfo> &symbolToHook);

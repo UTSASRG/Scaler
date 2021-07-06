@@ -186,7 +186,7 @@ namespace scaler {
                     throwScalerException(ss.str().c_str());
                 }
 
-                curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, dynsymDyn->d_un.d_ptr);
+                curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, dynsymDyn->d_un.d_ptr);
                 curELFImgInfo.dynSymTable = (const ElfW(Sym) *) (curBaseAddr + dynsymDyn->d_un.d_ptr);
 
                 const ElfW(Dyn) *strTabDyn = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRTAB);
@@ -195,7 +195,7 @@ namespace scaler {
                     ss << "Cannot find strtab in \"" << curELFImgInfo.filePath << "\"";
                     throwScalerException(ss.str().c_str());
                 }
-                curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, strTabDyn->d_un.d_ptr);
+                curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, strTabDyn->d_un.d_ptr);
                 curELFImgInfo.dynStrTable = (const char *) (curBaseAddr + strTabDyn->d_un.d_ptr);
 
                 const ElfW(Dyn) *strSizeDyn = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRSZ);
@@ -212,7 +212,7 @@ namespace scaler {
                     ss << "Cannot find .plt.rela in \"" << curELFImgInfo.filePath << "\"";
                     throwScalerException(ss.str().c_str());
                 }
-                curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, relaPltDyn->d_un.d_ptr);
+                curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, relaPltDyn->d_un.d_ptr);
                 curELFImgInfo.relaPlt = (ElfW(Rela) *) (curBaseAddr + relaPltDyn->d_un.d_ptr);
 
                 const ElfW(Dyn) *relaSizeDyn = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_PLTRELSZ);
@@ -240,7 +240,7 @@ namespace scaler {
                         ExtSymInfo newSymbol;
                         newSymbol.symbolName = std::string(curELFImgInfo.dynStrTable + idx);
 
-                        curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, curRelaPlt->r_offset);
+                        curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, curRelaPlt->r_offset);
                         newSymbol.gotEntry = reinterpret_cast<void **>(curBaseAddr + curRelaPlt->r_offset);
 
                         if (newSymbol.gotEntry == nullptr) {
@@ -915,30 +915,6 @@ namespace scaler {
         }
 
     }
-
-    /**
-     * Determine whether current elf file use relative address or absolute address
-     * @param curBaseAddr
-     * @param curFileiD
-     * @param targetAddr
-     * @return
-     */
-    uint8_t *ExtFuncCallHook_Linux::autoAddBaseAddr(uint8_t *curBaseAddr, size_t curFileiD, ElfW(Addr) targetAddr) {
-
-        size_t idWithBaseAddr = pmParser.findExecNameByAddr(curBaseAddr + targetAddr);
-        size_t idWithoutBaseAddr = pmParser.findExecNameByAddr((void *) targetAddr);
-        if (idWithBaseAddr == curFileiD) {
-            //Relative
-            return curBaseAddr;
-        } else if (idWithoutBaseAddr == curFileiD) {
-            //Absolute
-            return nullptr;
-        } else {
-            printf("Not found, id1=%d, id2=%d, curFileID=%d\n", idWithBaseAddr, idWithoutBaseAddr, curFileiD);
-            assert(false);
-        }
-    }
-
 
 
 //I used to put cHookHandler out of scaler namespace

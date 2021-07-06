@@ -172,6 +172,21 @@ namespace scaler {
 
     }
 
+    uint8_t *PmParser_Linux::autoAddBaseAddr(uint8_t *curBaseAddr, size_t curFileiD, ElfW(Addr) targetAddr) {
+        size_t idWithBaseAddr = findExecNameByAddr(curBaseAddr + targetAddr);
+        size_t idWithoutBaseAddr = findExecNameByAddr((void *) targetAddr);
+        if (idWithBaseAddr == curFileiD) {
+            //Relative
+            return curBaseAddr;
+        } else if (idWithoutBaseAddr == curFileiD) {
+            //Absolute
+            return nullptr;
+        } else {
+            printf("Not found, id1=%zu, id2=%zu, curFileID=%zu\n", idWithBaseAddr, idWithoutBaseAddr, curFileiD);
+            assert(false);
+        }
+    }
+
     PmParserC_Linux::PmParserC_Linux(int procID) : PmParser_Linux(procID) {
         //Now parsing is complete by super clalss. We need to convert the datastructure to C-compatible local variable.
         fillCDataStructure();

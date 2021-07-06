@@ -132,6 +132,14 @@ namespace scaler {
 
         PmParser_Linux(int procID = -1);
 
+        /**
+        * Determine whether current elf file use relative address or absolute address
+        * @param curBaseAddr
+        * @param curFileiD
+        * @param targetAddr
+        * @return
+        */
+        uint8_t *autoAddBaseAddr(uint8_t * curBaseAddr, size_t curFileiD, ElfW(Addr) targetAddr);
 
         /**
          * A convenient way to print /proc/{pid}/maps
