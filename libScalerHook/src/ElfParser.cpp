@@ -200,6 +200,16 @@ namespace scaler {
         return rltVec;
     }
 
+    ElfW(Dyn) *ELFParser_Linux::findDynEntryByTag(Elf64_Dyn *dyn, Elf64_Sxword tag) {
+        //In symbol table, the last entry is DT_NULL
+        while (dyn->d_tag != DT_NULL) {
+            if (dyn->d_tag == tag) {
+                return dyn;
+            }
+            dyn++;
+        }
+        return nullptr;
+    }
 
 }
 #endif

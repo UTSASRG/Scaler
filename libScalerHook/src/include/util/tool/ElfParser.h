@@ -41,6 +41,12 @@ namespace scaler {
         ELFParser_Linux(ELFParser_Linux &) = delete;
 
         /**
+        * Find entry in Dyn, compare it's tag with parameter "tag"
+        * @return Matched Dyn entry
+        */
+        ElfW(Dyn) *findDynEntryByTag(ElfW(Dyn) *dyn, ElfW(Sxword) tag);
+
+        /**
          * @return A list of program header whose type is specified by param "type".
          */
         std::vector<SegInfo> getProgHdrByType(ElfW(Word) type);

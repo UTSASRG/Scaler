@@ -178,7 +178,7 @@ namespace scaler {
                 uint8_t *curBaseAddr = pmParser.fileBaseAddrMap.at(curFileiD);
                 curELFImgInfo.baseAddr = curBaseAddr;
 
-                const ElfW(Dyn) *dynsymDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_SYMTAB);
+                const ElfW(Dyn) *dynsymDyn =  elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_SYMTAB);
 
                 if (dynsymDyn == nullptr) {
                     std::stringstream ss;
@@ -189,7 +189,7 @@ namespace scaler {
                 curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, dynsymDyn->d_un.d_ptr);
                 curELFImgInfo.dynSymTable = (const ElfW(Sym) *) (curBaseAddr + dynsymDyn->d_un.d_ptr);
 
-                const ElfW(Dyn) *strTabDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRTAB);
+                const ElfW(Dyn) *strTabDyn = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRTAB);
                 if (strTabDyn == nullptr) {
                     std::stringstream ss;
                     ss << "Cannot find strtab in \"" << curELFImgInfo.filePath << "\"";
@@ -198,7 +198,7 @@ namespace scaler {
                 curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, strTabDyn->d_un.d_ptr);
                 curELFImgInfo.dynStrTable = (const char *) (curBaseAddr + strTabDyn->d_un.d_ptr);
 
-                const ElfW(Dyn) *strSizeDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRSZ);
+                const ElfW(Dyn) *strSizeDyn = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRSZ);
                 if (strSizeDyn == nullptr) {
                     std::stringstream ss;
                     ss << "Cannot find strtab size in \"" << curELFImgInfo.filePath << "\"";
@@ -206,7 +206,7 @@ namespace scaler {
                 }
                 curELFImgInfo.dynStrSize = strSizeDyn->d_un.d_val;
 
-                ElfW(Dyn) *relaPltDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_JMPREL);
+                ElfW(Dyn) *relaPltDyn = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_JMPREL);
                 if (relaPltDyn == nullptr) {
                     std::stringstream ss;
                     ss << "Cannot find .plt.rela in \"" << curELFImgInfo.filePath << "\"";
@@ -215,7 +215,7 @@ namespace scaler {
                 curBaseAddr = autoAddBaseAddr(curELFImgInfo.baseAddr, curFileiD, relaPltDyn->d_un.d_ptr);
                 curELFImgInfo.relaPlt = (ElfW(Rela) *) (curBaseAddr + relaPltDyn->d_un.d_ptr);
 
-                const ElfW(Dyn) *relaSizeDyn = findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_PLTRELSZ);
+                const ElfW(Dyn) *relaSizeDyn = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_PLTRELSZ);
                 if (relaSizeDyn == nullptr) {
                     std::stringstream ss;
                     ss << "Cannot find .plt.rela size in \"" << curELFImgInfo.filePath << "\"";
@@ -549,16 +549,7 @@ namespace scaler {
         return instance;
     }
 
-    ElfW(Dyn) *ExtFuncCallHook_Linux::findDynEntryByTag(ElfW(Dyn) *dyn, ElfW(Sxword) tag) {
-        //In symbol table, the last entry is DT_NULL
-        while (dyn->d_tag != DT_NULL) {
-            if (dyn->d_tag == tag) {
-                return dyn;
-            }
-            dyn++;
-        }
-        return nullptr;
-    }
+
 
     void ExtFuncCallHook_Linux::uninstall() {
         throwScalerException("Uninstall is not implemented.");

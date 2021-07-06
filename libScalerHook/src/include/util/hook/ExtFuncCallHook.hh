@@ -121,12 +121,6 @@ namespace scaler {
         std::vector<uint8_t> fillDestAddr2PseudoPltCode(size_t funcId, void *funcAddr);
 
         /**
-        * Find entry in Dyn, compare it's tag with parameter "tag"
-        * @return Matched Dyn entry
-        */
-        ElfW(Dyn) *findDynEntryByTag(ElfW(Dyn) *dyn, ElfW(Sxword) tag);
-
-        /**
          * A handler written in C. It calls custom handler and calculates actual function address
          * In the new code, .plt and .plt.sec uses the same handler. Since we currently don't calculate
          * based on the first address.
