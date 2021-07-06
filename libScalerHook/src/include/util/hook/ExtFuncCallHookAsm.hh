@@ -36,7 +36,8 @@ namespace scaler {
 
     protected:
 
-
+        PmParserC_Linux pmParser;                            //A parser to /proc/self/maps
+        MemoryTool_Linux *memTool;
         ELFImgInfo *elfImgInfoMapC = nullptr;
         size_t elfImgInfoMapCSize = 0;
 

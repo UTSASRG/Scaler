@@ -311,7 +311,8 @@ namespace scaler {
     }
 
 
-    ExtFuncCallHookAsm::ExtFuncCallHookAsm() {
+    ExtFuncCallHookAsm::ExtFuncCallHookAsm() : ExtFuncCallHook_Linux(pmParser,
+                                                                     *MemoryTool_Linux::getInst()) {
 
     }
 
@@ -320,7 +321,6 @@ namespace scaler {
             instance = new ExtFuncCallHookAsm();
         return instance;
     }
-
 
 
     void ExtFuncCallHookAsm::uninstall() {
@@ -656,11 +656,12 @@ namespace scaler {
         void *callerAddr = curContext.ctx->callerAddr.at(curContext.ctx->callerAddr.size() - 1);
         curContext.ctx->callerAddr.pop_back();
         auto &curSymbol = curELFImgInfo.hookedExtSymbolC[funcId];
-        auto libraryFileId=_this->pmParser.findExecNameByAddr(curSymbol.addr);
-        auto& libraryFileName= _this->pmParser.idFileMap.at(libraryFileId);
+        auto libraryFileId = _this->pmParser.findExecNameByAddr(curSymbol.addr);
+        auto &libraryFileName = _this->pmParser.idFileMap.at(libraryFileId);
         curContext.ctx->inHookHandler = false;
 
-        printf("[After Hook] Thread ID:%lu Library:%s, Func: %s Start: %ld End: %ld\n", pthread_self(), libraryFileName.c_str(),
+        printf("[After Hook] Thread ID:%lu Library:%s, Func: %s Start: %ld End: %ld\n", pthread_self(),
+               libraryFileName.c_str(),
                funcName.c_str(), startTimestamp, endTimestamp);
 
 //        FILE *fp = NULL;

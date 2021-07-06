@@ -57,7 +57,7 @@ namespace scaler {
                 auto pltHdr = elfParser.getSecHdrByName(".plt");
 
                 void *pltAddrInFile = elfParser.getSecContent(pltHdr);
-                curELFImgInfo.pltStartAddr = memTool->searchBinInMemory(pltAddrInFile, sizeof(pltHdr.secHdr.sh_entsize),
+                curELFImgInfo.pltStartAddr = memTool.searchBinInMemory(pltAddrInFile, sizeof(pltHdr.secHdr.sh_entsize),
                                                                         codeSegments);
                 assert(curELFImgInfo.pltStartAddr);
 
@@ -73,7 +73,7 @@ namespace scaler {
                 try {
                     auto pltSecHdr = elfParser.getSecHdrByName(".plt.sec");
                     void *pltSecAddrInFile = elfParser.getSecContent(pltSecHdr);
-                    curELFImgInfo.pltSecStartAddr = memTool->searchBinInMemory(pltSecAddrInFile, 32,
+                    curELFImgInfo.pltSecStartAddr = memTool.searchBinInMemory(pltSecAddrInFile, 32,
                                                                                codeSegments);
 
                     //We already have the starting address, let's calculate the end address
@@ -248,11 +248,12 @@ namespace scaler {
     }
 
 
-    ExtFuncCallHook_Linux::ExtFuncCallHook_Linux() {
+    ExtFuncCallHook_Linux::~ExtFuncCallHook_Linux() {
 
     }
 
-    ExtFuncCallHook_Linux::~ExtFuncCallHook_Linux() {
+    ExtFuncCallHook_Linux::ExtFuncCallHook_Linux(PmParser_Linux &parser, MemoryTool_Linux &memTool) : pmParser(parser),
+                                                                                                      memTool(memTool) {
 
     }
 

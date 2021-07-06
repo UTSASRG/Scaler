@@ -79,10 +79,10 @@ namespace scaler {
 
         };
 
+        PmParser_Linux &pmParser;
+        MemoryTool_Linux &memTool;
 
-        PmParserC_Linux pmParser;                            //A parser to /proc/self/maps
         std::map<size_t, ELFImgInfo> elfImgInfoMap;         //Mapping fileID to ELFImgInfo
-        MemoryTool_Linux *memTool;
 
         /**
         * Locate the address of required sections in memory
@@ -92,9 +92,7 @@ namespace scaler {
         /**
          * Private constructor
          */
-        ExtFuncCallHook_Linux();
-
-
+        ExtFuncCallHook_Linux(PmParser_Linux &parser, MemoryTool_Linux &memTool);
     };
 
 }
