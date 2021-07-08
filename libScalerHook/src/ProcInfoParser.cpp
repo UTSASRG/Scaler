@@ -14,13 +14,53 @@
 namespace scaler {
 
     PmParser_Linux::PmParser_Linux(int pid) : procID(pid) {
-        openPMMap();
         parsePMMap();
         //todo: Parse used dll
         //parseDLPhdr();
     }
 
-    void PmParser_Linux::openPMMap() {
+    void PmParser_Linux::parsePMMap() {
+        std::ifstream file;
+        openPMMap(file);
+
+        std::string addr1, addr2, perm, offset;
+        if (file.is_open()) {
+            std::string line;
+            while (std::getline(file, line)) {
+                PMEntry_Linux newEntry;
+
+                std::stringstream ss;
+                //Parse current line
+                ss << line;
+                //Put all address into addr1. Seperate them afterward
+                ss >> addr1 >> perm >> offset >> newEntry.dev >> newEntry.inode >> newEntry.pathName;
+
+                if (curExecAbsolutePath == "") {
+                    //The first line would always be the executable file. Fill it in the data srtucture for future use
+                    curExecAbsolutePath = newEntry.pathName;
+                    extractFileName_Linux(curExecAbsolutePath, curExecPath, curExecFileName);
+                }
+
+                parseAddrStr(newEntry, addr1);
+
+                parseOffsetStr(newEntry, offset);
+
+                //Fill permission
+                parsePermStr(newEntry, perm);
+
+                //Fill idFileMap, startAddrFileMap, fileIDMap, fileBaseAddrMap, sortedSegments
+                indexFile(newEntry);
+            }
+            file.close();
+        }
+        //Sort sortedSegments by starting address
+        std::sort(sortedSegments.begin(), sortedSegments.end(),
+                  [](const std::pair<size_t, PMEntry_Linux> &lhs, const std::pair<size_t, PMEntry_Linux> &rhs) {
+                      return (ElfW(Addr)) lhs.second.addrStart < (ElfW(Addr)) rhs.second.addrStart;
+                  });
+    }
+
+    void PmParser_Linux::openPMMap(std::ifstream &file) {
         std::stringstream ss;
         ss << "/proc/";
         if (procID >= 0)
@@ -35,74 +75,6 @@ namespace scaler {
             ss1 << "Cannot open " << ss.str();
             throwScalerException(ss1.str().c_str());
         }
-    }
-
-    void PmParser_Linux::parsePMMap() {
-        assert(file.is_open());
-        std::string addr1, addr2, perm, offset;
-        if (file.is_open()) {
-            std::string line;
-            std::string lastPathname = "";
-            while (std::getline(file, line)) {
-                PMEntry_Linux newEntry;
-
-                std::stringstream ss;
-                //Parse current line
-                ss << line;
-                //Put all address into addr1. Seperate them afterward
-                ss >> addr1 >> perm >> offset >> newEntry.dev >> newEntry.inode >> newEntry.pathName;
-
-                if (curExecAbsolutePath == "") {
-                    //The first filename would always be the executable file
-                    curExecAbsolutePath = newEntry.pathName;
-                    extractFileName_Linux(curExecAbsolutePath, curExecPath, curExecFileName);
-                }
-
-
-                //Split address into starting address
-                auto splitPoint = addr1.find('-');
-                //Ending address
-                addr2 = addr1.substr(splitPoint + 1, addr1.length());
-                //Starting address
-                addr1 = addr1.substr(0, splitPoint);
-
-                //Convert addr1,addr2 to void* and put it into addrStart (They are hex value)
-                sscanf(addr1.c_str(), "%p", &newEntry.addrStart);
-                sscanf(addr2.c_str(), "%p", &newEntry.addrEnd);
-
-                //Put offset into offset (They are 8-bit hex without 0x prefix)
-                sscanf(offset.c_str(), "%08x", &newEntry.offset);
-
-                newEntry.length = ElfW(Addr)(newEntry.addrEnd) - ElfW(Addr)(newEntry.addrStart);
-
-                //Fill permission
-                newEntry.isR = (perm[0] == 'r');
-                newEntry.isW = (perm[1] == 'w');
-                newEntry.isE = (perm[2] == 'x');
-                newEntry.isP = (perm[3] == 'p');
-
-
-                if (fileIDMap.count(newEntry.pathName) == 0) {
-                    //New File, add it to fileId idFile map. Fill it's starting address as base address
-                    idFileMap.emplace_back(newEntry.pathName);
-                    startAddrFileMap[(uint8_t *) newEntry.addrStart] = idFileMap.size() - 1;
-                    fileIDMap[newEntry.pathName] = idFileMap.size() - 1;
-                    fileBaseAddrMap[idFileMap.size() - 1] = (uint8_t *) (newEntry.addrStart);
-                }
-
-                //Map pathname to PmEntry for easier lookup
-                procMap[newEntry.pathName].emplace_back(newEntry);
-
-                sortedSegments.emplace_back(std::make_pair(fileIDMap.at(newEntry.pathName), newEntry));
-            }
-            file.close();
-        }
-        //Sort sortedSegments by starting address
-        std::sort(sortedSegments.begin(), sortedSegments.end(),
-                  [](const std::pair<size_t, PMEntry_Linux> &lhs, const std::pair<size_t, PMEntry_Linux> &rhs) {
-                      return (ElfW(Addr)) lhs.second.addrStart < (ElfW(Addr)) rhs.second.addrStart;
-                  });
-
     }
 
     PmParser_Linux::~PmParser_Linux() {
@@ -226,6 +198,53 @@ namespace scaler {
         }
         return readRlt;
     }
+
+    void PmParser_Linux::parseAddrStr(PMEntry_Linux &curEntry, const std::string &addrStr) {
+        //Split address into starting address
+        auto splitPoint = addrStr.find('-');
+        //Starting address
+        std::string addr1 = addrStr.substr(0, splitPoint);
+        //Ending address
+        std::string addr2 = addrStr.substr(splitPoint + 1, addrStr.length());
+        //Convert addr1,addr2 to void* and put it into addrStart (They are hex value)
+        sscanf(addr1.c_str(), "%p", &curEntry.addrStart);
+        sscanf(addr2.c_str(), "%p", &curEntry.addrEnd);
+        curEntry.length = ElfW(Addr)(curEntry.addrEnd) - ElfW(Addr)(curEntry.addrStart);
+    }
+
+    void PmParser_Linux::parseOffsetStr(PMEntry_Linux &curEntry, const std::string &offsetStr) {
+        //Put offset into offset (They are 8-bit hex without 0x prefix)
+        sscanf(offsetStr.c_str(), "%08x", &curEntry.offset);
+    }
+
+    void PmParser_Linux::parsePermStr(PMEntry_Linux &curEntry, const std::string &permStr) {
+        curEntry.isR = (permStr[0] == 'r');
+        curEntry.isW = (permStr[1] == 'w');
+        curEntry.isE = (permStr[2] == 'x');
+        curEntry.isP = (permStr[3] == 'p');
+
+        //Create such index for faster lookup
+        if (curEntry.isE)
+            executableSegments.emplace_back(curEntry);
+        else if (curEntry.isR)
+            readableSegments.emplace_back(curEntry);
+    }
+
+
+    void PmParser_Linux::indexFile(PMEntry_Linux &curEntry) {
+        if (fileIDMap.count(curEntry.pathName) == 0) {
+            //Only add if it is a new file. New File, add it to fileId idFile map. Fill it's starting address as base address
+            idFileMap.emplace_back(curEntry.pathName);
+            startAddrFileMap[(uint8_t *) curEntry.addrStart] = idFileMap.size() - 1;
+            fileIDMap[curEntry.pathName] = idFileMap.size() - 1;
+            fileBaseAddrMap[idFileMap.size() - 1] = (uint8_t *) (curEntry.addrStart);
+        }
+        //Map pathname to PmEntry for easier lookup
+        procMap[curEntry.pathName].emplace_back(curEntry);
+
+        sortedSegments.emplace_back(std::make_pair(fileIDMap.at(curEntry.pathName), curEntry));
+    }
+
 
     PmParserC_Linux::PmParserC_Linux(int procID) : PmParser_Linux(procID) {
         //Now parsing is complete by super clalss. We need to convert the datastructure to C-compatible local variable.

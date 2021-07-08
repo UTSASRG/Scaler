@@ -103,8 +103,7 @@ namespace scaler {
     public:
         //Map executable name with it's PMEntry
         std::map<std::string, std::vector<PMEntry_Linux>> procMap;
-        // Used to find which fileID  floor(i/2) the corresponding fileID of pointer addrFileMap[i]
-        // This array should be sorted by starting address for fast lookup
+        // This array should be sorted by starting address for fast lookup (binary search in findExecNameByAddr)
         std::vector<std::pair<size_t, PMEntry_Linux>> sortedSegments;
 
 
@@ -129,6 +128,12 @@ namespace scaler {
         std::vector<std::string> idFileMap;
 
         std::vector<size_t> linkedFileID;
+
+        //For .plt, .plt.sec, we only need to search in segments with executable permission
+        std::vector<PMEntry_Linux> executableSegments;
+        //For _DYNAMIC, we only need to search in segments with readable but not executable permission
+        std::vector<PMEntry_Linux> readableSegments;
+
 
         PmParser_Linux(int procID = -1);
 
@@ -163,17 +168,27 @@ namespace scaler {
         int procID;
 
         //The filestream for process file
-        std::ifstream file;
 
-        /**
-         * Open /proc/{pid}/maps
-         */
-        virtual void openPMMap();
 
         /**
          * Parse /proc/{pid}/maps into procMap
          */
         virtual void parsePMMap();
+
+
+        /**
+         * Open /proc/{pid}/maps
+         */
+        virtual void openPMMap(std::ifstream &file);
+
+        virtual void parseAddrStr(PMEntry_Linux& curEntry, const std::string& addrStr);
+
+        virtual void parseOffsetStr(PMEntry_Linux& curEntry, const std::string& offsetStr);
+
+        virtual void parsePermStr(PMEntry_Linux& curEntry, const std::string& permStr);
+
+        virtual void indexFile(PMEntry_Linux& curEntry);
+
 
         virtual void curExecName();
 
