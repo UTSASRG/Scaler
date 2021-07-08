@@ -3,9 +3,6 @@
 #ifndef SCALER_PTHREADPARMEXTRACTOR_H
 #define SCALER_PTHREADPARMEXTRACTOR_H
 
-#endif //SCALER_PTHREADPARMEXTRACTOR_H
-
-
 namespace scaler {
 /**
  * WARNING: These functions are highly dependent on the assembly code inside ExtCallFuncHook
@@ -238,3 +235,5 @@ namespace scaler {
         *__barrier = (pthread_barrier_t **) ((char *) rdiLoc);
     }
 }
+
+#endif //SCALER_PTHREADPARMEXTRACTOR_H
