@@ -11,6 +11,30 @@ command-pid/tid;(bottom of stack) func1 [library] or [library] timestamp start t
 
 Output Data Structure:
 {tid: {root function name: Function Tree}}
+{} = dictionary
+Function Tree = an instance of the Function Tree Class
+root function name = the function and library associated with the root node of the function tree it keys to
+
+Function Tree is a generic tree data structure where a node represents a single function call on a call stack
+
+Each function tree node consists these basic pieces of information:
+    - Function name
+    - Library Name
+    - Total Samples recorded for this function
+    - Timestamps (If available)
+    - List of child nodes
+      - These child nodes represent the next function that was called in the call stack
+      - There may be an arbitrary amount of child nodes because we merge call stacks with the same call sequence and only
+      - diverge them once we detect a function that is different from known child functions
+      - An example of this is seen below above the Function Tree definition
+
+I use the root function name to key to a specific function tree 
+because one may know the first function that was called for a call stack
+And thus they can find any call stack that may have resulted from that first function call. 
+
+If I implemented just a list of function trees, the worst case search would be O(n) when trying to find the 
+root function given a function name and library
+With the dictionary, the worst case search is O(1) since keying a dictionary uses a hash map
 
 '''
 # This will be set to true if the user acknowledges the use of timing information
@@ -22,10 +46,10 @@ Output Data Structure:
 useTimestamps = False
 
 # TODO Consider samples with call stacks that are a "substring" of another call stack
-# EXAMPLE: [memcached];__libc_start_main [libc-2.31.so];[memcached];event_base_loop [libevent-2.1.so.7.0.0];[libevent-2.1.so.7.0.0]
+# EXAMPLE: [memcached];__libc_start_main [libc-2.31.so];[memcached];event_base_loop [libevent-2.1.so.7.0.0];[libevent-2.1.so.7.0.0] < - - will be lost in the final branch as it will be merged with the next line
 #          [memcached];__libc_start_main [libc-2.31.so];[memcached];event_base_loop [libevent-2.1.so.7.0.0];[libevent-2.1.so.7.0.0];epoll_wait [libc-2.31.so];entry_SYSCALL_64_after_hwframe_[k];do_syscall_64_[k];__x64_sys_epoll_wait_[k];do_epoll_wait_[k];ktime_get_ts64_[k]
 class FunctionTree:
-    __slots__ = ['root', 'func', 'lib', 'timestamps', 'sampleTotal', 'childFuncs']
+    __slots__ = ['func', 'lib', 'timestamps', 'sampleTotal', 'childFuncs']
     def __init__(self, sampleCnt, lib, func='Unknown', timestamps=()):
         # self.root = True
         self.func = func
@@ -66,14 +90,15 @@ class FunctionTree:
                         if not timestamps:
                             print("Error: No Timestamps Available, exiting...")
                             sys.exit()
-                        child.updateTimestamps(timestamps)
+                        child.__updateTimestamps(timestamps)
                     return child
         newNode = FunctionTree(sampleCnt, lib, func, timestamps)
         self.childFuncs.append(newNode)
         return newNode
             # cnt += 1
 
-    def updateTimestamps(self, timestamps):
+    # Private method for updating the timestamps of the node it was called for
+    def __updateTimestamps(self, timestamps):
         try:
             float(timestamps[0])
             float(timestamps[1])
@@ -102,16 +127,24 @@ class FunctionTree:
             self.timestamps[1] = timestamps[1]
         return
 
+    # Special method for when print is called on a node, simply prints all of the attributes except for the timestamps
     def __str__(self):
         # print("Noot")
         return f"Function: {self.func}; Lib: {self.lib}; Sample Total: {self.sampleTotal}; Child Functions: {self.childFuncs}"
 
+    # This is a private method to retrieve all of the attributes (aside from the child function list)
+    # and store them into a dictionary which is used for
+    # serialization
     def __retrieveAttrs(self):
         if useTimestamps:
             return {"func":self.func, "lib":self.lib, "sampleTotal":self.sampleTotal, "timestamps":self.timestamps, "childFuncs":[]}
         else:
             return {"func":self.func, "lib":self.lib, "sampleTotal":self.sampleTotal, "childFuncs":[]}
 
+    # This method will convert the current function tree into a serializable json format
+    # This method assumes that serialize was called from the root node of the function tree
+    # If called at any depth aside from root level, information will be lost about nodes prior the the node serialize
+    # was called from
     def serialize(self):
         tempList = []
         if len(self.childFuncs) <= 0:
@@ -121,6 +154,22 @@ class FunctionTree:
         aDict = self.__retrieveAttrs()
         aDict["childFuncs"] = tempList
         return aDict
+
+    @staticmethod
+    def reconstructNodefromDict(j_Dict, useTime=False):
+        if useTime:
+            node = FunctionTree(sampleCnt=j_Dict["sampleTotal"], lib=j_Dict["lib"], func=j_Dict["func"], timestamps=j_Dict["timestamps"])
+        else:
+            node = FunctionTree(sampleCnt=j_Dict["sampleTotal"], lib=j_Dict["lib"], func=j_Dict["func"])
+        if len(j_Dict["childFuncs"]) <= 0:
+            return node
+        for child in j_Dict["childFuncs"]:
+            node.childFuncs.append(FunctionTree.reconstructNodefromDict(child, useTime))
+        return node
+
+
+
+
 
 
 #If the stack collapsing script was called with additional annotation for kernel, inlined and jitted functions,
@@ -142,6 +191,8 @@ def checkSuffix(func):
             return [aList[0][:-4], moduleName]
     return 0
 
+# This will take a function string from the raw data and retrieve any information possible
+# The possible information is: function name, library name, timestamps and sample count
 def parseFunc(funcLine, index):
     #Check for _[k], _[i], and _[j]
     tempList = checkSuffix(funcLine[index])
@@ -185,6 +236,10 @@ def parseFunc(funcLine, index):
             return (4, tempList[0])
     # return "ERROR"
 
+# Each line from the data represents a single branch in our function trees (due to the call stack),
+# thus given a line from the data, we will construct this branch in our function tree
+# This is done recursively by traversing down our function tree creating new nodes as needed until we reach
+# the end of the call stack
 def constructFuncBranch(root, sampleNum, funcLine, index):
     # print(f"Poop {index}")
     # If our index exceeds the length of the line list, then we must end the recursion as we cannot make more nodes
@@ -232,6 +287,7 @@ def createNewFuncTree(tid, treeDict,  sampleNum, funcLine):
         rootNode = treeDict.setdefault(funcResult[1], FunctionTree(sampleNum, lib=funcResult[1]))
     return rootNode
 
+# Prints the branches of a node
 def printBranch(nodeList):
     if not nodeList:
         return
@@ -239,7 +295,7 @@ def printBranch(nodeList):
         print(node)
         return printBranch(node.childFuncs)
 
-
+# Prints all of the function trees in a given dictionary of function trees
 def printTree(treeList):
     num = 1
     for tree in treeList.values():
@@ -293,14 +349,17 @@ def main():
             rootNode = createNewFuncTree(tid, treeDict, sampleNum, lineList)
 
             constructFuncBranch(rootNode, sampleNum, lineList, 1)
+
             '''
             if currentTID != tid:
                 if currentTID == '':
                     currentTID = tid
                 else:
-                    printTree(tidData[currentTID])
+                    for treeDict in tidData.values():
+                        printTree(treeDict)
                     break
             '''
+
     with open("perfMemcachedData_V2.json", 'w') as j_file:
         j_file.write(json.dumps(tidData, default=lambda tree: tree.serialize(),indent=4))
 
