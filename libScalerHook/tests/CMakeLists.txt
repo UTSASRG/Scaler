@@ -135,7 +135,6 @@ target_link_libraries(libScalerHook-parsecapps-pbzip2 ScalerHook-HookAuto pthrea
 #target_link_options(TestInstall PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/unittests/libScalerHook/oldexperiments/mylinker.ld")
 
 
-
 #
 #add_executable(TestNestingCall TestNestingCall.cpp)
 #target_include_directories(TestNestingCall PUBLIC libtest/header)
@@ -155,10 +154,15 @@ add_executable(libScalerHook-proof-HookEverything src/proofconcept/TestHookEvery
 target_link_options(libScalerHook-proof-HookEverything PRIVATE "-z" "lazy")
 target_link_libraries(libScalerHook-proof-HookEverything libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall)
 
+add_executable(libScalerHook-proof-PthreadParam src/proofconcept/testPthreadParameter.cpp)
+target_link_options(libScalerHook-proof-PthreadParam PRIVATE "-z" "now" "-O0") #Avoid plt lookup code.
+target_link_libraries(libScalerHook-proof-PthreadParam pthread)
 
 #add_executable(libScalerHook-proof-SwBreakpoint src/proofconcept/testSwBreakpoint.cpp)
 
 add_executable(libScalerHook-proof-ManualBreakpoint src/proofconcept/testManualBreakpoint.cpp)
+
+add_executable(libScalerHook-proof-ObjCopy src/proofconcept/TestObjCopy.cpp)
 
 #add_executable(libScalerHook-demoapps src/proofconcept/testprog.cpp)
 #target_link_libraries(DemoProg libTest PltHookLib dl)

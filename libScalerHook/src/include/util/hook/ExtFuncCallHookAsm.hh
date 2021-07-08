@@ -14,7 +14,6 @@
 
 namespace scaler {
 
-
     class ExtFuncCallHookAsm : public ExtFuncCallHook_Linux {
     public:
 
@@ -40,7 +39,6 @@ namespace scaler {
         MemoryTool_Linux *memTool;
         ELFImgInfo *elfImgInfoMapC = nullptr;
         size_t elfImgInfoMapCSize = 0;
-
         static ExtFuncCallHookAsm *instance; //Singleton
 
         /**
@@ -68,11 +66,12 @@ namespace scaler {
          * In the new code, .plt and .plt.sec uses the same handler. Since we currently don't calculate
          * based on the first address.
          * @param callerFuncAddr The next caller
+         * @param oriRBPLoc The rsp location before saving all registers
          * @return Original function pointer
          */
-        static void *cPreHookHandlerLinuxSec(size_t fileId, size_t funcId, void *callerAddr);
+        static void *cPreHookHandlerLinuxSec(size_t fileId, size_t funcId, void *callerAddr, void *oriRBPLoc);
 
-        //static __attribute__((optimize("O0"))) void *cPreHookHanlderLinux(void *pltEntryAddr, void *callerAddr);
+        //static __attribute__ void *callerAddr);
 
         static void *cAfterHookHandlerLinux();
 

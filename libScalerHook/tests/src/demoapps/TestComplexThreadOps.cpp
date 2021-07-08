@@ -24,8 +24,10 @@ unsigned int turn = 0;
 
 void *testThread1(void *data) {
     while (true) {
+        printf("thread1 pthread_mutex_lock lID=%p\n",&lock0);
         pthread_mutex_lock(&lock0);
         while (turn % 3 != 0 && turn < 6) {
+            printf("thread1 pthread_cond_wait condID=%p lID=%p\n",&cond0,&lock0);
             pthread_cond_wait(&cond0, &lock0);
         }
 
@@ -34,19 +36,23 @@ void *testThread1(void *data) {
             void *memAddr = malloc(1024);
             fprintf(stderr, "A Rand:%d %p\n", randNum, memAddr);
             ++turn;
-
+            printf("thread1 pthread_mutex_lock lID=%p\n",&lock1);
             pthread_mutex_lock(&lock1);
+            printf("thread1 pthread_cond_signal condID=%p\n",&cond1);
             pthread_cond_signal(&cond1);
+            printf("thread1 pthread_mutex_unlock lID=%p\n",&lock1);
             pthread_mutex_unlock(&lock1);
-
+            printf("thread1 pthread_mutex_unlock lID=%p\n",&lock0);
             pthread_mutex_unlock(&lock0);
         } else {
             //Notify next thread to exit
-
+            printf("thread1 pthread_mutex_lock lID=%p\n",&lock1);
             pthread_mutex_lock(&lock1);
+            printf("thread1 pthread_cond_signal condID=%p\n",&cond1);
             pthread_cond_signal(&cond1);
+            printf("thread1 pthread_mutex_unlock lID=%p\n",&lock1);
             pthread_mutex_unlock(&lock1);
-
+            printf("thread1 pthread_mutex_unlock lID=%p\n",&lock0);
             pthread_mutex_unlock(&lock0);
             break;
         }
@@ -56,8 +62,10 @@ void *testThread1(void *data) {
 
 void *testThread2(void *data) {
     while (true) {
+        printf("thread2 pthread_mutex_lock lID=%p\n",&lock1);
         pthread_mutex_lock(&lock1);
         while (turn % 3 != 1 && turn < 6) {
+            printf("thread2 pthread_cond_wait condID=%p lID=%p\n",&cond1,&lock1);
             pthread_cond_wait(&cond1, &lock1);
         }
         if (turn < 6) {
@@ -67,18 +75,23 @@ void *testThread2(void *data) {
 
             ++turn;
 
+            printf("thread2 pthread_mutex_lock lID=%p\n",&lock2);
             pthread_mutex_lock(&lock2);
+            printf("thread2 pthread_cond_signal condID=%p\n",&cond2);
             pthread_cond_signal(&cond2);
+            printf("thread2 pthread_mutex_unlock lID=%p\n",&lock2);
             pthread_mutex_unlock(&lock2);
-
+            printf("thread2 pthread_mutex_unlock lID=%p\n",&lock1);
             pthread_mutex_unlock(&lock1);
         } else {
             //Notify next thread to exit
-
+            printf("thread2 pthread_mutex_lock lID=%p\n",&lock2);
             pthread_mutex_lock(&lock2);
+            printf("thread2 pthread_cond_signal condID=%p\n",&cond2);
             pthread_cond_signal(&cond2);
+            printf("thread2 pthread_mutex_unlock lID=%p\n",&lock2);
             pthread_mutex_unlock(&lock2);
-
+            printf("thread2 pthread_mutex_unlock lID=%p\n",&lock1);
             pthread_mutex_unlock(&lock1);
             break;
         }
@@ -88,8 +101,10 @@ void *testThread2(void *data) {
 
 void *testThread3(void *data) {
     while (true) {
+        printf("thread3 pthread_mutex_lock lID=%p\n",&lock2);
         pthread_mutex_lock(&lock2);
         while (turn % 3 != 2 && turn < 6) {
+            printf("thread3 pthread_cond_wait condID=%p lID=%p\n",&cond2,&lock2);
             pthread_cond_wait(&cond2, &lock2);
         }
         if (turn < 6) {
@@ -98,18 +113,23 @@ void *testThread3(void *data) {
             fprintf(stderr, "C Rand:%d %p\n", randNum, memAddr);
             ++turn;
 
+            printf("thread3 pthread_mutex_lock lID=%p\n",&lock0);
             pthread_mutex_lock(&lock0);
+            printf("thread3 pthread_cond_signal condID=%p\n",&cond0);
             pthread_cond_signal(&cond0);
+            printf("thread3 pthread_mutex_unlock lID=%p\n",&lock0);
             pthread_mutex_unlock(&lock0);
-
+            printf("thread3 pthread_mutex_unlock lID=%p\n",&lock2);
             pthread_mutex_unlock(&lock2);
         } else {
             //Notify next thread to exit
-
+            printf("thread3 pthread_mutex_lock lID=%p\n",&lock0);
             pthread_mutex_lock(&lock0);
+            printf("thread3 pthread_cond_signal condID=%p\n",&cond0);
             pthread_cond_signal(&cond0);
+            printf("thread3 pthread_mutex_unlock lID=%p\n",&lock0);
             pthread_mutex_unlock(&lock0);
-
+            printf("thread3 pthread_mutex_unlock lID=%p\n",&lock2);
             pthread_mutex_unlock(&lock2);
             break;
         }

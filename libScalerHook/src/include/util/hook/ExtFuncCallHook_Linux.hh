@@ -36,6 +36,38 @@ namespace scaler {
          */
         class ELFImgInfo {
         public:
+
+            struct PthreadFuncId {
+                int PTHREAD_CREATE = -1;
+                int PTHREAD_JOIN = -1;
+                int PTHREAD_TRYJOIN_NP = -1;
+                int PTHREAD_TIMEDJOIN_NP = -1;
+                int PTHREAD_CLOCKJOIN_NP = -1;
+                int PTHREAD_MUTEX_LOCK = -1;
+                int PTHREAD_MUTEX_TIMEDLOCK = -1;
+                int PTHREAD_MUTEX_CLOCKLOCK = -1;
+                int PTHREAD_MUTEX_UNLOCK = -1;
+                int PTHREAD_RWLOCK_RDLOCK = -1;
+                int PTHREAD_RWLOCK_TRYRDLOCK = -1;
+                int PTHREAD_RWLOCK_TIMEDRDLOCK = -1;
+                int PTHREAD_RWLOCK_CLOCKRDLOCK = -1;
+                int PTHREAD_RWLOCK_WRLOCK = -1;
+                int PTHREAD_RWLOCK_TRYWRLOCK = -1;
+                int PTHREAD_RWLOCK_TIMEDWRLOCK = -1;
+                int PTHREAD_RWLOCK_CLOCKWRLOCK = -1;
+                int PTHREAD_RWLOCK_UNLOCK = -1;
+                int PTHREAD_COND_SIGNAL = -1;
+                int PTHREAD_COND_BROADCAST = -1;
+                int PTHREAD_COND_WAIT = -1;
+                int PTHREAD_COND_TIMEDWAIT = -1;
+                int PTHREAD_COND_CLOCKWAIT = -1;
+                int PTHREAD_SPIN_LOCK = -1;
+                int PTHREAD_SPIN_TRYLOCK = -1;
+                int PTHREAD_SPIN_UNLOCK = -1;
+                int PTHREAD_BARRIER_WAIT = -1;
+            };
+
+
             std::string filePath = "";                           //The absolute path of an ELF image (It's consistent with /proc/{pid}/maps)
             void *pltStartAddr = nullptr;                   //The starting address of the PLT table
             void *pltEndAddr = nullptr;                     //The ending address of the PLT table
@@ -58,7 +90,6 @@ namespace scaler {
             std::map<size_t, ExtSymInfo> allExtSymbol;      //All external symbols in ELF image
             std::map<std::string, size_t> funcIdMap;        //Mapping function name to it's id
             std::map<size_t, std::string> idFuncMap;        //Mapping function id to it's name
-
             //todo: Check const for all variables
             ElfW(Rela) *relaPlt = nullptr;                            //The first .plt.rela entry in ELF iamge
             ElfW(Xword) relaPltCnt = 0;                         //The number of entries in relaPlt
@@ -67,6 +98,8 @@ namespace scaler {
             size_t dynStrSize = 0;                              //The size of dynamic string table
 
             uint8_t *baseAddr = nullptr;                              //The loading address of current elf image
+
+            PthreadFuncId pthreadFuncId;
 
             ~ELFImgInfo();
 
@@ -83,6 +116,7 @@ namespace scaler {
         MemoryTool_Linux &memTool;
 
         std::map<size_t, ELFImgInfo> elfImgInfoMap;         //Mapping fileID to ELFImgInfo
+
 
         /**
         * Locate the address of required sections in memory
