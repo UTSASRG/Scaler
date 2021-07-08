@@ -67,6 +67,14 @@ namespace scaler {
                 int PTHREAD_BARRIER_WAIT = -1;
             };
 
+            struct SemaphoreFuncId {
+                int SEM_WAIT = -1;
+                int SEM_TIMEDWAIT = -1;
+                int SEM_CLOCKWAIT = -1;
+                int SEM_TRYWAIT = -1;
+                int SEM_POST = -1;
+            };
+
 
             std::string filePath = "";                           //The absolute path of an ELF image (It's consistent with /proc/{pid}/maps)
             void *pltStartAddr = nullptr;                   //The starting address of the PLT table
@@ -100,6 +108,8 @@ namespace scaler {
             uint8_t *baseAddr = nullptr;                              //The loading address of current elf image
 
             PthreadFuncId pthreadFuncId;
+
+            SemaphoreFuncId semaphoreFuncId;
 
             ~ELFImgInfo();
 

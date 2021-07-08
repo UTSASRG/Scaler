@@ -82,6 +82,11 @@ target_include_directories(libScalerHook-demoapps-ComplexThreadop PUBLIC libtest
 target_link_libraries(libScalerHook-demoapps-ComplexThreadop ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
 
 
+add_executable(libScalerHook-demoapps-Semaphore src/demoapps/TestSemaphore.cpp)
+target_include_directories(libScalerHook-demoapps-Semaphore PUBLIC)
+target_link_libraries(libScalerHook-demoapps-Semaphore ScalerHook-HookManualAsm pthread dl)
+
+
 add_executable(libScalerHook-parsecapps-aget
         src/parsecapps/aget/Aget.c
         src/parsecapps/aget/Download.c

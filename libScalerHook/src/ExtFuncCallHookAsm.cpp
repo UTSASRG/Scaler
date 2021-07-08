@@ -18,6 +18,8 @@
 #include <util/tool/Logging.h>
 #include <util/tool/Config.h>
 #include <util/tool/PthreadParmExtractor.h>
+#include <semaphore.h>
+#include <util/tool/SemaphoreParmExtractor.h>
 
 //todo: many functions are too long
 
@@ -186,6 +188,18 @@ namespace scaler {
                     } else if (curSymbolName == "pthread_barrier_wait") {
                         curElfImgInfo.pthreadFuncId.PTHREAD_BARRIER_WAIT = curSymbolId;
                     }
+
+                    if (curSymbolName == "sem_wait") {
+                        curElfImgInfo.semaphoreFuncId.SEM_WAIT = curSymbolId;
+                    } else if (curSymbolName == "sem_timedwait") {
+                        curElfImgInfo.semaphoreFuncId.SEM_TIMEDWAIT = curSymbolId;
+                    } else if (curSymbolName == "sem_clockwait") {
+                        curElfImgInfo.semaphoreFuncId.SEM_CLOCKWAIT = curSymbolId;
+                    } else if (curSymbolName == "sem_trywait") {
+                        curElfImgInfo.semaphoreFuncId.SEM_TRYWAIT = curSymbolId;
+                    } else if (curSymbolName == "sem_post") {
+                        curElfImgInfo.semaphoreFuncId.SEM_POST = curSymbolId;
+                    }
                 }
             }
         }
@@ -302,6 +316,8 @@ namespace scaler {
             elfImgInfoMapC[iter->first] = iter->second;
             //todo: Unnecessary code. Investigate why the default copy constructor fail to do the job
             elfImgInfoMapC[iter->first].pthreadFuncId = iter->second.pthreadFuncId;
+            elfImgInfoMapC[iter->first].semaphoreFuncId = iter->second.semaphoreFuncId;
+
         }
 
 
@@ -615,8 +631,8 @@ namespace scaler {
     void *ExtFuncCallHookAsm::cPreHookHandlerLinuxSec(size_t fileId, size_t funcId, void *callerAddr, void *rspLoc) {
         pthread_mutex_lock(&lock0);
         //todo: The following two values are highly dependent on assembly code
-        void *rdiLoc = (uint8_t *) rspLoc-8;
-        void *rsiLoc = (uint8_t *) rspLoc-16;
+        void *rdiLoc = (uint8_t *) rspLoc - 8;
+        void *rsiLoc = (uint8_t *) rspLoc - 16;
 
         //Calculate fileID
         auto &_this = ExtFuncCallHookAsm::instance;
@@ -789,6 +805,28 @@ namespace scaler {
             pthread_barrier_t **barrier_t;
             parm_pthread_barrier_wait(&barrier_t, rdiLoc);
             DBG_LOGS("[Pre Hook Param Parser]    pthread_barrier_wait barrierId=%p\n", *barrier_t);
+        }
+
+        if (funcId == curElfImgInfo.semaphoreFuncId.SEM_WAIT) {
+            sem_t **__sem;
+            parm_sem_wait(&__sem, rdiLoc);
+            DBG_LOGS("[Pre Hook Param Parser]    sem_wait sID=%p\n", *__sem);
+        } else if (funcId == curElfImgInfo.semaphoreFuncId.SEM_TIMEDWAIT) {
+            sem_t **__sem;
+            parm_sem_timedwait(&__sem, rdiLoc);
+            DBG_LOGS("[Pre Hook Param Parser]    sem_timedwait sID=%p\n", *__sem);
+        } else if (funcId == curElfImgInfo.semaphoreFuncId.SEM_CLOCKWAIT) {
+            sem_t **__sem;
+            parm_sem_clockwait(&__sem, rdiLoc);
+            DBG_LOGS("[Pre Hook Param Parser]    sem_clockwait sID=%p\n", *__sem);
+        } else if (funcId == curElfImgInfo.semaphoreFuncId.SEM_TRYWAIT) {
+            sem_t **__sem;
+            parm_sem_trywait(&__sem, rdiLoc);
+            DBG_LOGS("[Pre Hook Param Parser]    sem_trywait sID=%p\n", *__sem);
+        } else if (funcId == curElfImgInfo.semaphoreFuncId.SEM_POST) {
+            sem_t **__sem;
+            parm_sem_post(&__sem, rdiLoc);
+            DBG_LOGS("[Pre Hook Param Parser]    sem_post sID=%p\n", *__sem);
         }
 
 
