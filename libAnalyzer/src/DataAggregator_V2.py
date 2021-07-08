@@ -167,9 +167,18 @@ class FunctionTree:
             node.childFuncs.append(FunctionTree.reconstructNodefromDict(child, useTime))
         return node
 
-
-
-
+    def __get_leaf_nodes(self, leaves):
+        if not self.childFuncs:
+            nodeDict = self.__retrieveAttrs()
+            del nodeDict['childFuncs']
+            leaves.append(nodeDict)
+            return
+        for child in self.childFuncs:
+            child.__get_leaf_nodes(leaves)
+    def retrieveLeaves(self):
+        leaves = []
+        self.__get_leaf_nodes(leaves)
+        return leaves
 
 
 #If the stack collapsing script was called with additional annotation for kernel, inlined and jitted functions,
