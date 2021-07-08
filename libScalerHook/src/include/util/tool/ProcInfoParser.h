@@ -139,7 +139,10 @@ namespace scaler {
         * @param targetAddr
         * @return
         */
-        uint8_t *autoAddBaseAddr(uint8_t * curBaseAddr, size_t curFileiD, ElfW(Addr) targetAddr);
+        uint8_t *autoAddBaseAddr(uint8_t *curBaseAddr, size_t curFileiD, ElfW(Addr) targetAddr);
+
+
+        void *readProcMem(void *startAddr, size_t bytes);
 
         /**
          * A convenient way to print /proc/{pid}/maps

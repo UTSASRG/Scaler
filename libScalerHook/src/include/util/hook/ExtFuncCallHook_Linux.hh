@@ -10,6 +10,7 @@
 #include <vector>
 #include <util/tool/ProcInfoParser.h>
 #include <util/tool/MemTool.h>
+#include <util/tool/MemoryTool_Linux.h>
 
 namespace scaler {
 
@@ -131,7 +132,7 @@ namespace scaler {
         /**
         * Locate the address of required sections in memory
         */
-        void locateRequiredSecAndSeg();
+        virtual void locateRequiredSecAndSeg();
 
         /**
          * Private constructor

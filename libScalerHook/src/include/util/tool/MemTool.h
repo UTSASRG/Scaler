@@ -53,26 +53,7 @@ namespace scaler {
 
     };
 
-    class MemoryTool_Linux : public MemoryTool {
-    public:
-        /**
-         * Singeleton
-         */
-        static MemoryTool_Linux *getInst();
 
-
-        void adjustMemPerm(void *startPtr, void *endPtr, int prem);
-
-        ~MemoryTool_Linux() override;
-
-
-    protected:
-        //Singeleton
-        MemoryTool_Linux();
-
-        static MemoryTool_Linux *instance;
-
-    };
 }
 #endif
 

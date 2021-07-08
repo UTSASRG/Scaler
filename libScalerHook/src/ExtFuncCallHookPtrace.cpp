@@ -1,19 +1,72 @@
 #ifdef __linux
 
-#include <util/hook/ExtFuncCallHook_Linux.hh>
-#include <util/tool/ProcInfoParser.h>
-#include <util/tool/ElfParser.h>
-#include <exceptions/ScalerException.h>
+#include <cstdint>
 #include <sys/mman.h>
+#include <algorithm>
 #include <cassert>
 #include <elf.h>
 #include <set>
-#include <util/tool/Config.h>
-#include <util/tool/MemoryTool_Linux.h>
+#include <immintrin.h>
+#include <thread>
+#include <utility>
+#include <util/hook/ExtFuncCallHookPtrace.h>
+#include <exceptions/ScalerException.h>
+#include <util/tool/MemToolPtrace.h>
 
 namespace scaler {
 
-    void ExtFuncCallHook_Linux::locateRequiredSecAndSeg() {
+    //todo: ElfW is not correct. Because types are determined by the type of ELF file
+    //todo: rather than the type of the machine
+    //Initialize instance variable to nullptr;
+    ExtFuncCallHookPtrace *ExtFuncCallHookPtrace::instance = nullptr;
+
+
+    void ExtFuncCallHookPtrace::install(Hook::SYMBOL_FILTER filterCallB) {
+        memTool = MemoryToolPtrace::getInst(pmParser);
+
+        //Step1: Locating table in memory
+        locateRequiredSecAndSeg();
+
+        //todo:log
+        for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
+            fprintf(stderr, "%s .plt:%p .plt.sec:%p\n", iterFile->second.filePath.c_str(),
+                    iterFile->second.pltStartAddr,
+                    iterFile->second.pltSecStartAddr);
+        }
+
+        //Step3: Use callback to determine which ID to hook
+        std::vector<ExtSymInfo> symbolToHook;
+        std::set<size_t> fileToHook;
+
+        for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
+            auto &curFileId = iterFile->first;
+            auto &curFileName = pmParser.idFileMap.at(curFileId);
+            auto &curElfImgInfo = iterFile->second;
+
+            //loop through external symbols, let user decide which symbol to hook through callback function
+            for (auto iterSymbol = curElfImgInfo.idFuncMap.begin();
+                 iterSymbol != curElfImgInfo.idFuncMap.end(); ++iterSymbol) {
+                auto &curSymbolId = iterSymbol->first;
+                auto &curSymbolName = iterSymbol->second;
+                if (filterCallB(curFileName, curSymbolName)) {
+                    //The user wants this symbol
+                    symbolToHook.emplace_back(curElfImgInfo.allExtSymbol.at(curSymbolId));
+                    fileToHook.emplace(curFileId);
+                }
+            }
+        }
+
+        //Step6: Replace PLT table, jmp to dll function
+        for (auto &curSymbol:symbolToHook) {
+
+
+        }
+
+
+    }
+
+    void ExtFuncCallHookPtrace::locateRequiredSecAndSeg() {
+
         //Get segment info from /proc/self/maps
         for (auto iter = pmParser.procMap.begin(); iter != pmParser.procMap.end(); ++iter) {
             auto &curFileName = iter->first;
@@ -50,8 +103,9 @@ namespace scaler {
                 auto pltHdr = elfParser.getSecHdrByName(".plt");
 
                 void *pltAddrInFile = elfParser.getSecContent(pltHdr);
-                curELFImgInfo.pltStartAddr = memTool.searchBinInMemory(pltAddrInFile, sizeof(pltHdr.secHdr.sh_entsize),
-                                                                       codeSegments);
+                //todo: Mem leak
+                curELFImgInfo.pltStartAddr = memTool->searchBinInMemory(pltAddrInFile, sizeof(pltHdr.secHdr.sh_entsize),
+                                                                        codeSegments);
                 assert(curELFImgInfo.pltStartAddr);
 
                 //We already have the starting address, let's calculate the end address
@@ -66,7 +120,7 @@ namespace scaler {
                 try {
                     auto pltSecHdr = elfParser.getSecHdrByName(".plt.sec");
                     void *pltSecAddrInFile = elfParser.getSecContent(pltSecHdr);
-                    curELFImgInfo.pltSecStartAddr = memTool.searchBinInMemory(pltSecAddrInFile, 32,
+                    curELFImgInfo.pltSecStartAddr = memTool->searchBinInMemory(pltSecAddrInFile, 32,
                                                                               codeSegments);
 
                     //We already have the starting address, let's calculate the end address
@@ -91,9 +145,6 @@ namespace scaler {
                 assert(dynamicHdr.size() == 1); //There should be only one _DYNAMIC
                 void *dynamicAddrInFile = elfParser.getSegContent(dynamicHdr[0]);
                 curELFImgInfo._DYNAMICAddr = static_cast<Elf64_Dyn *>(dynamicAddrInFile);
-                //curELFImgInfo._DYNAMICAddr = static_cast<ElfW(Dyn) *>(searchBinInMemory(dynamicAddrInFile,
-                //                                                                        sizeof(ElfW(Dyn)),
-                //                                                                        readableNonCodeSegments));
                 assert(curELFImgInfo._DYNAMICAddr);
 
                 uint8_t *curBaseAddr = pmParser.fileBaseAddrMap.at(curFileiD);
@@ -204,103 +255,61 @@ namespace scaler {
 
 
         /**
-            * We need to know the starting and ending address of sections in other parts of the hook library.
-            * Currently we devised three potential ways to do so:
-            *
-            * 1.Direct Address Calculation
-            * We may calculate its address directly. We could find corresponding sections in ELF file by reading section
-            * headers. There's an offset field indicating the location of that section in elf file. Program header table
-            * describes which part of the ELF file should be loaded into which virtual address. By comparing file offset
-            * in section header and file offset in program header. We could know the loading order of sections and which
-            * segment a section will be loaded into. By reading /proc/{pid}/maps, we could know the actual loading address
-            * of a segment. Thne we use the section order in a segment, section size, segment loading address to calculate
-            * the actual address.
-            *
-            * However, the memory size of a section is not exactly the same as its size in elf file (I have proof).
-            * Plus, if PIE is enabled, segments may be loaded randomly into memory. Making its loading address harder
-            * to find in /proc/{pid}/maps. These factors make it evem more complicated to implement. Even if we implement this,
-            * the code would be too machine-dependent
-            *
-            * https://uaf.io/exploitation/misc/2016/04/02/Finding-Functions.html
-            *
-            * 2.Relying on linker script
-            * It turns out we could modify linker script to ask linker to mark the starting/ending address of sections.
-            * And those marks will be assessable external variables in C/C++ code.
-            *
-            * This works, but has several drawbacks. First, we can't easily get such variables in other linked executables,
-            * making it hard to implement a multi-library plt hook. Second, we need to modify linker script, which will make
-            * our program linker-dependent.
-            *
-            * 3.Search memory.
-            * First, we could read elf file to get the binary code for sections. Then, we simply search the memory byte by byte
-            * to to find the starting address of such memory.
-            *
-            * This is implemented in this funciton. It's a more general way to handle this. Plus, it's also fast enough
-            * based on the fact that the table we care usually located in the front of a segment.
-            */
+        * We need to know the starting and ending address of sections in other parts of the hook library.
+        * Currently we devised three potential ways to do so:
+        *
+        * 1.Direct Address Calculation
+        * We may calculate its address directly. We could find corresponding sections in ELF file by reading section
+        * headers. There's an offset field indicating the location of that section in elf file. Program header table
+        * describes which part of the ELF file should be loaded into which virtual address. By comparing file offset
+        * in section header and file offset in program header. We could know the loading order of sections and which
+        * segment a section will be loaded into. By reading /proc/{pid}/maps, we could know the actual loading address
+        * of a segment. Thne we use the section order in a segment, section size, segment loading address to calculate
+        * the actual address.
+        *
+        * However, the memory size of a section is not exactly the same as its size in elf file (I have proof).
+        * Plus, if PIE is enabled, segments may be loaded randomly into memory. Making its loading address harder
+        * to find in /proc/{pid}/maps. These factors make it evem more complicated to implement. Even if we implement this,
+        * the code would be too machine-dependent
+        *
+        * https://uaf.io/exploitation/misc/2016/04/02/Finding-Functions.html
+        *
+        * 2.Relying on linker script
+        * It turns out we could modify linker script to ask linker to mark the starting/ending address of sections.
+        * And those marks will be assessable external variables in C/C++ code.
+        *
+        * This works, but has several drawbacks. First, we can't easily get such variables in other linked executables,
+        * making it hard to implement a multi-library plt hook. Second, we need to modify linker script, which will make
+        * our program linker-dependent.
+        *
+        * 3.Search memory.
+        * First, we could read elf file to get the binary code for sections. Then, we simply search the memory byte by byte
+        * to to find the starting address of such memory.
+        *
+        * This is implemented in this funciton. It's a more general way to handle this. Plus, it's also fast enough
+        * based on the fact that the table we care usually located in the front of a segment.
+        */
+    }
+
+    ExtFuncCallHookPtrace::ExtFuncCallHookPtrace(pid_t childPID)
+            : pmParser(childPID), ExtFuncCallHook_Linux(pmParser, *MemoryToolPtrace::getInst(pmParser)) {
+        this->childPID = childPID;
+    }
+
+    ExtFuncCallHookPtrace *ExtFuncCallHookPtrace::getInst(pid_t childPID) {
+        if (!instance)
+            instance = new ExtFuncCallHookPtrace(childPID);
+        return instance;
+    }
+
+    void ExtFuncCallHookPtrace::uninstall() {
+        throwScalerException("Uninstall is not implemented.");
     }
 
 
-    ExtFuncCallHook_Linux::~ExtFuncCallHook_Linux() {
+    ExtFuncCallHookPtrace::~ExtFuncCallHookPtrace() {
 
     }
-
-    ExtFuncCallHook_Linux::ExtFuncCallHook_Linux(PmParser_Linux &parser, MemoryTool_Linux &memTool) : pmParser(parser),
-                                                                                                      memTool(memTool) {
-
-    }
-
-
-    ExtFuncCallHook_Linux::ELFImgInfo::~ELFImgInfo() {
-        if (realAddrResolvedC)
-            delete[] realAddrResolvedC;
-
-        if (hookedExtSymbolC)
-            delete[] hookedExtSymbolC;
-    }
-
-
-    ExtFuncCallHook_Linux::ELFImgInfo::ELFImgInfo(const ELFImgInfo &rho) {
-        operator=(rho);
-    }
-
-    ExtFuncCallHook_Linux::ELFImgInfo::ELFImgInfo() {
-
-    }
-
-    void ExtFuncCallHook_Linux::ELFImgInfo::operator=(const ELFImgInfo &rho) {
-
-        filePath = rho.filePath;
-        pltStartAddr = rho.pltStartAddr;
-        pltEndAddr = rho.pltEndAddr;
-        pltSecStartAddr = rho.pltSecStartAddr;
-        pltSecEndAddr = rho.pltSecEndAddr;
-        _DYNAMICAddr = rho._DYNAMICAddr;
-        realAddrResolved = rho.realAddrResolved;
-
-        realAddrResolvedC = new bool[rho.realAddrResolved.size()];
-        memcpy(realAddrResolvedC, rho.realAddrResolvedC, rho.realAddrResolvedCSize * sizeof(bool));
-        realAddrResolvedCSize = rho.realAddrResolvedCSize;
-
-        hookedExtSymbolC = new ExtSymInfo[rho.relaPltCnt];
-        memcpy(hookedExtSymbolC, rho.hookedExtSymbolC, rho.hookedExtSymbolCSize * sizeof(ExtSymInfo));
-        hookedExtSymbolCSize = rho.hookedExtSymbolCSize;
-
-        pseudoPlt = rho.pseudoPlt;
-
-        hookedExtSymbol = rho.hookedExtSymbol;
-        allExtSymbol = rho.allExtSymbol;
-        funcIdMap = rho.funcIdMap;
-        idFuncMap = rho.idFuncMap;
-
-        relaPlt = rho.relaPlt;
-        relaPltCnt = rho.relaPltCnt;
-        dynSymTable = rho.dynSymTable;
-        dynStrTable = rho.dynStrTable;
-        dynStrSize = rho.dynStrSize;
-        baseAddr = rho.baseAddr;
-    }
-
 
 }
 

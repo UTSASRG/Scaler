@@ -2,6 +2,7 @@
 
 #include <gtest/gtest.h>
 #include <util/tool/MemTool.h>
+#include <util/tool/MemoryTool_Linux.h>
 
 using namespace std;
 using namespace scaler;

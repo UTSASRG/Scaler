@@ -187,6 +187,46 @@ namespace scaler {
         }
     }
 
+    /**
+     * Read the memory from another process. This function WON'T free the returned memory data. Use with great caution.
+     *
+     * @param startAddr Strating address to copy
+     * @param bytes How many bytes to copy starting from startAddr
+     * @return The copied memory (will not automatically free memory). In case there's a failure, nullptr will be returned (Permission not sufficient)
+     */
+    void *PmParser_Linux::readProcMem(void *startAddr, size_t bytes) {
+
+        //Since it's inter-process. We use ptrace to copy memory first.
+        int mem_fd;
+        std::stringstream ss;
+        ss << "/proc/";
+        if (procID >= 0)
+            ss << procID;
+        else
+            ss << "self";
+        ss << "/mem";
+        void *readRlt = malloc(bytes);
+        memset(readRlt, 0, bytes);
+        long long readErr, writeErr, seekErr;
+        // open the memory
+        try {
+            mem_fd = open(ss.str().c_str(), O_RDONLY);
+            if (mem_fd < 0) {
+                throwScalerException("Open process memory file failed");
+            }
+            if (lseek(mem_fd, (__off_t) startAddr, SEEK_SET) < 0) {
+                throwScalerException("Seek process memory file failed");
+            }
+            if (read(mem_fd, readRlt, bytes) < 0) {
+                throwScalerException("Read process memory file failed");
+            }
+        } catch (const ScalerException &e) {
+            perror(e.what());
+            return nullptr;
+        }
+        return readRlt;
+    }
+
     PmParserC_Linux::PmParserC_Linux(int procID) : PmParser_Linux(procID) {
         //Now parsing is complete by super clalss. We need to convert the datastructure to C-compatible local variable.
         fillCDataStructure();

@@ -169,6 +169,9 @@ add_executable(libScalerHook-proof-ManualBreakpoint src/proofconcept/testManualB
 
 add_executable(libScalerHook-proof-ObjCopy src/proofconcept/TestObjCopy.cpp)
 
+add_executable(libScalerHook-proof-PtraceReadProcMem src/proofconcept/testPtraceReadProcMemory.cpp)
+
+
 #add_executable(libScalerHook-demoapps src/proofconcept/testprog.cpp)
 #target_link_libraries(DemoProg libTest PltHookLib dl)
 

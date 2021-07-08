@@ -150,6 +150,7 @@ namespace scaler {
 
 
     void *ELFParser_Linux::getSecContent(const SecInfo &targetSecInfo) {
+        //todo: memory leak
         openELFFile();
 
         void *targetSecHdrContent;
