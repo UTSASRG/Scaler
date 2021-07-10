@@ -18,7 +18,7 @@
 #include <sys/prctl.h>
 
 void run_target(const char *programname) {
-    DBG_LOGS("target started. will run '%s'\n", programname);
+    DBG_LOGS("target started. will run '%s'", programname);
     prctl(PR_SET_DUMPABLE,1);
     /* Allow tracing of this process */
     if (ptrace(PTRACE_TRACEME, 0, 0, 0) < 0) {
@@ -33,12 +33,12 @@ void run_target(const char *programname) {
 void exitAfterChild(pid_t child_pid) {
     int wait_status;
     struct user_regs_struct regs;
-    DBG_LOG("debugger started\n");
+    DBG_LOG("debugger started");
 
     /* Wait for child to stop on its first instruction */
     wait(&wait_status);
     if (WIFSTOPPED(wait_status)) {
-        DBG_LOGS("Child got a signal: %s\n", strsignal(WSTOPSIG(wait_status)));
+        DBG_LOGS("Child got a signal: %s", strsignal(WSTOPSIG(wait_status)));
     } else {
         perror("wait Err");
     }
@@ -46,9 +46,9 @@ void exitAfterChild(pid_t child_pid) {
     wait(&wait_status);
 
     if (WIFEXITED(wait_status)) {
-        DBG_LOG("Child exited\n");
+        DBG_LOG("Child exited");
     } else {
-        DBG_LOG("Unexpected exit signal\n");
+        DBG_LOG("Unexpected exit signal");
     }
 }
 
@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
     if (childPid == 0)
         run_target(argv[1]);
     else if (childPid > 0) {
-        DBG_LOG("Debugger run")
+        DBG_LOG("Debugger run");
         std::this_thread::sleep_for (std::chrono::seconds(1));
         install([](std::string fileName, std::string funcName) -> bool {
             DBG_LOGS("%s:%s hooked", fileName.c_str(), funcName.c_str());

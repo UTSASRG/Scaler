@@ -1,5 +1,6 @@
 #include <util/tool/FileTool.h>
 #include <exceptions/ScalerException.h>
+#include <exceptions/ErrCode.h>
 
 
 std::vector<size_t> scaler::findStrSplit(std::string &srcStr, char splitChar) {
@@ -48,11 +49,11 @@ long int scaler::getFileSize(FILE *file) {
     return fileSize;
 }
 
-void scaler::extractFileName_Linux(std::string absolutePath,std::string &pathName, std::string &fileName) {
+void scaler::extractFileName_Linux(std::string absolutePath, std::string &pathName, std::string &fileName) {
     auto posi = absolutePath.find_last_of('/');
     if (posi == std::string::npos) {
         //Not found, return full string
-        throwScalerExceptionWithCode("Path incorrect", ErrCode::PATH_ERROR)
+        throwScalerException(ErrCode::PATH_FORMAT_INCORRECT, "Path incorrect");
     } else {
         pathName = absolutePath.substr(0, posi);
         fileName = absolutePath.substr(posi + 1, absolutePath.length() - posi);

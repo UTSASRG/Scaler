@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <util/hook/install.h>
 #include <util/tool/StringTool.h>
+#include <util/tool/Logging.h>
 #include "FuncWithDiffParms.h"
 #include "CallFunctionCall.h"
 
@@ -43,7 +44,7 @@ int main() {
         //todo: User should be able to specify name here. Since they can change filename
 
         if (fileName =="/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCallDelay") {
-            fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
+            DBG_LOGS("%s:%s\n", fileName.c_str(), funcName.c_str());
             return true;
         } else {
             return false;

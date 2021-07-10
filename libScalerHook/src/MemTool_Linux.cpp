@@ -28,11 +28,10 @@ namespace scaler {
         //todo:(uint8_t *) endPtrBound - (uint8_t  *) startPtrBound,
         size_t memoryLength =
                 (ceil(((uint8_t *) endPtrBound - (uint8_t *) startPtrBound) / (double) pageSize)) * pageSize;
-        //printf("mprotect %p-%p\n", startPtrBound, (uint8_t *) startPtrBound + memoryLength);
         if (mprotect(startPtrBound, memoryLength, prem) != 0) {
-            std::stringstream ss;
-            ss << "Could not change the process memory permission at " << startPtrBound << " - " << endPtrBound;
-            throwScalerException(ss.str().c_str());
+            throwScalerExceptionS(ErrCode::CANNOT_CHANGE_PERMISSION,
+                                  "Could not change the process memory permission at %p-%p",
+                                  startPtrBound, endPtrBound);
         }
 
     }

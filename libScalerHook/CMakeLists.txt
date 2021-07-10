@@ -44,7 +44,7 @@ target_link_libraries(ScalerHook-HookManualPtrace PRIVATE pthread dl)
 
 
 #ScalerHook with auto installation enabled. Scaler hook will run automatically before main.
-add_library(ScalerHook-HookAuto SHARED src/autoinstall.cpp src/include/util/tool/MemoryTool_Linux.h src/include/util/tool/MemToolPtrace.h)
+add_library(ScalerHook-HookAuto SHARED src/autoinstall.cpp src/include/util/tool/MemoryTool_Linux.h src/include/util/tool/MemToolPtrace.h src/include/exceptions/ErrCode.h)
 target_compile_options(ScalerHook-HookAuto PRIVATE "--verbose" "-znow" "-fPIC")
 target_link_libraries(ScalerHook-HookAuto PRIVATE ScalerHook-HookManualAsm pthread dl)
 

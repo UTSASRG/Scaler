@@ -20,7 +20,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
     libPltHook->install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
         if (fileName == execFileName) {
-            fprintf(stderr, "Autoinstall %s:%s\n", fileName.c_str(), funcName.c_str());
+            ERR_LOGS("Autoinstall %s:%s", fileName.c_str(), funcName.c_str());
             return true;
         } else {
             return false;

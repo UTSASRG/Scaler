@@ -21,9 +21,7 @@ namespace scaler {
         startAddr = memTool.searchBinInMemory(pltAddrInFile, sizeof(pltHdr.secHdr.sh_entsize),
                                               pmParser.executableSegments);
         if (startAddr == nullptr) {
-            std::stringstream ss;
-            ss << "Can't find section " << secName;
-            throwScalerException(ss.str().c_str());
+            throwScalerExceptionS(ErrCode::ELF_SECTION_NOT_FOUND_IN_MEM, "Can't find section %s", secName.c_str());
         } else {
             //We already have the starting address, let's calculate the end address
             endAddr = (uint8_t *) startAddr + pltHdr.secHdr.sh_size;
@@ -35,7 +33,7 @@ namespace scaler {
         for (auto iter = pmParser.procMap.begin(); iter != pmParser.procMap.end(); ++iter) {
             auto &curFileName = iter->first;
             auto &pmEntries = iter->second;
-            size_t curFileiD = pmParser.fileIDMap.at(curFileName);
+            auto curFileiD = pmParser.fileIDMap.at(curFileName);
             auto &curELFImgInfo = elfImgInfoMap[curFileiD];
             curELFImgInfo.filePath = curFileName;
 
@@ -56,53 +54,38 @@ namespace scaler {
 
                 //Get .plt.sec (may not exist)
                 try {
-                    findELFSecInMemory(elfParser, ".plt.sec", curELFImgInfo.pltSecStartAddr, curELFImgInfo.pltSecEndAddr);
+                    findELFSecInMemory(elfParser, ".plt.sec", curELFImgInfo.pltSecStartAddr,
+                                       curELFImgInfo.pltSecEndAddr);
                 } catch (const ScalerException &e) {
-                    if (e.code != ELFParser_Linux::ErrCode::SYMBOL_NOT_FOUND) {
-                        throw e;
-                    } else {
-                        //Clear addr because it has no .plt.sec
-                        curELFImgInfo.pltSecStartAddr = nullptr;
-                    }
+                    curELFImgInfo.pltSecStartAddr = nullptr;
+                    DBG_LOG("Cannot find .plt.sec");
                 }
 
                 curELFImgInfo._DYNAMICAddr = findDynamicSegment(elfParser);
 
                 curELFImgInfo.baseAddr = pmParser.fileBaseAddrMap.at(curFileiD);
 
-                curELFImgInfo.dynSymTable = findElemInDynamicSeg<ElfW(Sym) *>(elfParser, curELFImgInfo, curFileiD,
-                                                                              DT_SYMTAB);
+                curELFImgInfo.dynSymTable = findElemPtrInDynamicSeg<ElfW(Sym) *>(elfParser, curELFImgInfo, curFileiD,
+                                                                                 DT_SYMTAB);
 
-                curELFImgInfo.dynStrTable = findElemInDynamicSeg<char *>(elfParser, curELFImgInfo, curFileiD,
-                                                                         DT_STRTAB);
+                curELFImgInfo.dynStrTable = findElemPtrInDynamicSeg<char *>(elfParser, curELFImgInfo, curFileiD,
+                                                                            DT_STRTAB);
 
-                const ElfW(Dyn) *strSizeDyn = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_STRSZ);
-                if (strSizeDyn == nullptr) {
-                    std::stringstream ss;
-                    ss << "Cannot find strtab size in \"" << curELFImgInfo.filePath << "\"";
-                    throwScalerException(ss.str().c_str());
-                }
-                curELFImgInfo.dynStrSize = strSizeDyn->d_un.d_val;
+                curELFImgInfo.dynStrSize = findElemValInDynamicSeg<size_t>(elfParser, curELFImgInfo, curFileiD,
+                                                                           DT_STRSZ);
 
-                curELFImgInfo.relaPlt = findElemInDynamicSeg<ElfW(Rela) *>(elfParser, curELFImgInfo, curFileiD,
-                                                                           DT_JMPREL);
+                curELFImgInfo.relaPlt = findElemPtrInDynamicSeg<ElfW(Rela) *>(elfParser, curELFImgInfo, curFileiD,
+                                                                              DT_JMPREL);
 
-                const ElfW(Dyn) *relaSizeDyn = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, DT_PLTRELSZ);
-                if (relaSizeDyn == nullptr) {
-                    std::stringstream ss;
-                    ss << "Cannot find .plt.rela size in \"" << curELFImgInfo.filePath << "\"";
-                    throwScalerException(ss.str().c_str());
-                }
-                curELFImgInfo.relaPltCnt = relaSizeDyn->d_un.d_val / sizeof(ElfW(Rela));
+                curELFImgInfo.relaPltCnt = findElemValInDynamicSeg<size_t>(elfParser, curELFImgInfo, curFileiD,
+                                                                           DT_PLTRELSZ) / sizeof(ElfW(Rela));
 
-                parseRelaSymbol(curELFImgInfo,curFileiD);
+                parseRelaSymbol(curELFImgInfo, curFileiD);
 
             } catch (const ScalerException &e) {
                 //Remove current entry
                 elfImgInfoMap.erase(curFileiD);
-                std::stringstream ss;
-                ss << "Hook Failed for \"" << curFileName << "\" because " << e.info;
-                fprintf(stderr, "%s\n", ss.str().c_str());
+                ERR_LOGS("Hook Failed for \"%s\" because %s", curFileName.c_str(), e.info.c_str());
             }
         }
 
@@ -159,12 +142,12 @@ namespace scaler {
     * This is a very important structure to find symbol table and relocation table in memory
     * _DYNAMIC should always exist.
     */
-    Elf64_Dyn *ExtFuncCallHook_Linux::findDynamicSegment(ELFParser_Linux &elfParser) {
+    ElfW(Dyn) *ExtFuncCallHook_Linux::findDynamicSegment(ELFParser_Linux &elfParser) {
         auto dynamicHdr = elfParser.getProgHdrByType(PT_DYNAMIC);
         assert(dynamicHdr.size() == 1); //There should be only one _DYNAMIC
-        ElfW(Dyn) *rltAddr = static_cast<Elf64_Dyn *>( elfParser.getSegContent(dynamicHdr[0]));
+        ElfW(Dyn) *rltAddr = static_cast<ElfW(Dyn) *>( elfParser.getSegContent(dynamicHdr[0]));
         if (rltAddr == nullptr) {
-            throwScalerException("Cannot find PT_DYNAMIC in ELF file");
+            throwScalerException(ErrCode::ELF_SEGMENT_NOT_FOUND, "Cannot find PT_DYNAMIC in ELF file");
         }
         return rltAddr;
     }
@@ -174,12 +157,12 @@ namespace scaler {
         for (size_t i = 0; i < curELFImgInfo.relaPltCnt; ++i) {
             ElfW(Rela) *curRelaPlt = curELFImgInfo.relaPlt + i;
             //assert(ELF64_R_TYPE(curRelaPlt->r_info) == R_X86_64_JUMP_SLOT);
-            //todo: Used ELF64 here
-            size_t idx = ELF64_R_SYM(curRelaPlt->r_info);
+
+            size_t idx = ELFW(R_SYM)(curRelaPlt->r_info);
             idx = curELFImgInfo.dynSymTable[idx].st_name;
 
             if (idx + 1 > curELFImgInfo.dynStrSize) {
-                throwScalerException("Too big section header string table index");
+                throwScalerException(ErrCode::ELF_DYNAMIC_ENTRY_PARSE_ERR, "Too big section header string table index");
             }
 
             ExtSymInfo newSymbol;
@@ -191,7 +174,7 @@ namespace scaler {
                 newSymbol.gotEntry = reinterpret_cast<void **>(curBaseAddr + curRelaPlt->r_offset);
 
                 if (newSymbol.gotEntry == nullptr) {
-                    throwScalerException("Failed to get got address.");
+                    throwScalerException(ErrCode::ELF_DYNAMIC_ENTRY_PARSE_ERR, "Failed to get got address.");
                 }
 
                 newSymbol.fileId = curFileID;
@@ -208,10 +191,8 @@ namespace scaler {
             } catch (const ScalerException &e) {
                 //Remove current entry
                 elfImgInfoMap.erase(curFileID);
-                std::stringstream ss;
-                ss << "Hook Failed for " << newSymbol.symbolName << "in\"" << curELFImgInfo.filePath << "\" because "
-                   << e.info;
-                fprintf(stderr, "%s\n", ss.str().c_str());
+                ERR_LOGS("Hook Failed for \"%s\":\"%s\" because %s", curELFImgInfo.filePath.c_str(),
+                         newSymbol.symbolName.c_str(), e.info.c_str());
             }
         }
     }

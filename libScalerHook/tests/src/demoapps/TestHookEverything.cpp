@@ -4,6 +4,7 @@
 #include <TenThousandFunc.h>
 #include <util/hook/install.h>
 #include <util/tool/StringTool.h>
+#include <util/tool/Logging.h>
 
 using namespace std;
 
@@ -15,7 +16,7 @@ int main() {
             "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-HookEverything") {
             return true;
         } else {
-            fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
+            DBG_LOGS("%s:%s\n", fileName.c_str(), funcName.c_str());
             return false;
         }
 

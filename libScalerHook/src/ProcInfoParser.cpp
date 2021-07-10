@@ -8,6 +8,7 @@
 #include <exceptions/ScalerException.h>
 #include <algorithm>
 #include <util/tool/FileTool.h>
+#include <exceptions/ErrCode.h>
 
 
 #define PROCMAPS_LINE_MAX_LENGTH  (PATH_MAX + 100)
@@ -71,9 +72,7 @@ namespace scaler {
 
         file.open(ss.str(), std::ios_base::in);
         if (file.fail()) {
-            std::stringstream ss1;
-            ss1 << "Cannot open " << ss.str();
-            throwScalerException(ss1.str().c_str());
+            throwScalerExceptionS(ErrCode::CANNOT_OPEN_PROCMAP, "Cannot open %s", ss.str().c_str());
         }
     }
 
@@ -127,7 +126,7 @@ namespace scaler {
             size_t curFileId = _this->fileIDMap.at(std::string(info->dlpi_name));
             _this->linkedFileID.emplace_back(curFileId);
         } else {
-            printf("%s not found in /self/proc/maps\n", info->dlpi_name);
+            ERR_LOGS("%s not found in /self/proc/maps", info->dlpi_name);
         }
         return 0;
     }
@@ -180,13 +179,13 @@ namespace scaler {
         try {
             mem_fd = open(ss.str().c_str(), O_RDONLY);
             if (mem_fd < 0) {
-                throwScalerException("Open process memory file failed");
+                throwScalerException(ErrCode::CANNOT_READ_PROCESSMEMORY, "Open process memory file failed");
             }
             if (lseek(mem_fd, (__off_t) startAddr, SEEK_SET) < 0) {
-                throwScalerException("Seek process memory file failed");
+                throwScalerException(ErrCode::CANNOT_READ_PROCESSMEMORY, "Seek process memory file failed");
             }
             if (read(mem_fd, readRlt, bytes) < 0) {
-                throwScalerException("Read process memory file failed");
+                throwScalerException(ErrCode::CANNOT_READ_PROCESSMEMORY, "Read process memory file failed");
             }
         } catch (const ScalerException &e) {
             perror(e.what());

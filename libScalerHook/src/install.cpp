@@ -17,21 +17,22 @@ void install(scaler::Hook::SYMBOL_FILTER filterCallB, INSTALL_TYPE type) {
         scaler::ExtFuncCallHookAsm *libPltHook = scaler::ExtFuncCallHookAsm::getInst();
         libPltHook->install(filterCallB);
     } else if (type == INSTALL_TYPE::BRKPOINT_PTRACE) {
-        throwScalerException("Wrong interface, you have to pass executable full path for BRKPOINT_PTRACE")
+        throwScalerException(ErrCode::WRONG_INTERFACE,
+                             "Wrong interface, you have to pass executable full path for BRKPOINT_PTRACE");
     } else if (type == INSTALL_TYPE::BRKPOINT) {
-        throwScalerException("Breakpoint not implemented yet. Can't install.")
+        throwScalerException(ErrCode::FUNC_NOT_IMPLEMENTED, "Breakpoint not implemented yet. Can't install.");
     }
 }
 
 
 void install(scaler::Hook::SYMBOL_FILTER filterCallB, INSTALL_TYPE type, pid_t childPID) {
     if (type == INSTALL_TYPE::ASM) {
-        throwScalerException("Wrong interface, you don't need to specify childPID")
+        throwScalerException(ErrCode::WRONG_INTERFACE, "Wrong interface, you don't need to specify childPID");
     } else if (type == INSTALL_TYPE::BRKPOINT_PTRACE) {
         scaler::ExtFuncCallHookPtrace *libPltHook = scaler::ExtFuncCallHookPtrace::getInst(childPID);
         libPltHook->install(filterCallB);
     } else if (type == INSTALL_TYPE::BRKPOINT) {
-        throwScalerException("Breakpoint not implemented yet. Can't install.")
+        throwScalerException(ErrCode::FUNC_NOT_IMPLEMENTED, "Breakpoint not implemented yet. Can't install.");
     }
 }
 
