@@ -21,6 +21,8 @@ namespace scaler {
     }
 
     void PmParser_Linux::parsePMMap() {
+        printPM();
+
         std::ifstream file;
         openPMMap(file);
 
@@ -230,13 +232,12 @@ namespace scaler {
         if (fileIDMap.count(curEntry.pathName) == 0) {
             //Only add if it is a new file. New File, add it to fileId idFile map. Fill it's starting address as base address
             idFileMap.emplace_back(curEntry.pathName);
-            startAddrFileMap[(uint8_t *) curEntry.addrStart] = idFileMap.size() - 1;
             fileIDMap[curEntry.pathName] = idFileMap.size() - 1;
             fileBaseAddrMap[idFileMap.size() - 1] = (uint8_t *) (curEntry.addrStart);
         }
         //Map pathname to PmEntry for easier lookup
         procMap[curEntry.pathName].emplace_back(curEntry);
-
+        startAddrFileMap[(uint8_t *) curEntry.addrStart] = idFileMap.size() - 1;
         sortedSegments.emplace_back(std::make_pair(fileIDMap.at(curEntry.pathName), curEntry));
     }
 
