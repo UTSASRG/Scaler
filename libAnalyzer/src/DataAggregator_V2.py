@@ -49,14 +49,14 @@ useTimestamps = False
 # EXAMPLE: [memcached];__libc_start_main [libc-2.31.so];[memcached];event_base_loop [libevent-2.1.so.7.0.0];[libevent-2.1.so.7.0.0] < - - will be lost in the final branch as it will be merged with the next line
 #          [memcached];__libc_start_main [libc-2.31.so];[memcached];event_base_loop [libevent-2.1.so.7.0.0];[libevent-2.1.so.7.0.0];epoll_wait [libc-2.31.so];entry_SYSCALL_64_after_hwframe_[k];do_syscall_64_[k];__x64_sys_epoll_wait_[k];do_epoll_wait_[k];ktime_get_ts64_[k]
 class FunctionTree:
-    __slots__ = ['func', 'lib', 'timestamps', 'sampleTotal', 'childFuncs']
-    def __init__(self, sampleCnt, lib, func='Unknown', timestamps=()):
+    __slots__ = ['func', 'lib', 'timestamps', 'sampleTotal', 'childFuncs', 'execTime']
+    def __init__(self, sampleCnt, lib, func='Unknown', timestamps=(), useTime=False):
         # self.root = True
         self.func = func
         self.lib = lib
         # If the user requests to use timing information, then I will expect that every function
         # has appropriate timestamp information, if not then we will exit and report the error
-        if useTimestamps:
+        if useTimestamps or useTime:
             if not timestamps:
                 print("ERROR: No Timestamps available, exiting...")
                 sys.exit()
@@ -67,7 +67,10 @@ class FunctionTree:
                 except ValueError:
                     print("ERROR: Timestamps are not floats, exiting...")
                     sys.exit()
-            self.timestamps = timestamps
+            # I do not know the units of the timestamps before hand, so may need to specify time units afterwards
+            # or settle on one time unit to use
+            self.timestamps = [(float(timestamps[0]), float(timestamps[1]))]
+            self.execTime = float(timestamps[1]) - float(timestamps[0])
         self.sampleTotal = sampleCnt
         self.childFuncs = []
 
@@ -90,7 +93,7 @@ class FunctionTree:
                         if not timestamps:
                             print("Error: No Timestamps Available, exiting...")
                             sys.exit()
-                        child.__updateTimestamps(timestamps)
+                        child.updateTimestamps(timestamps)
                     return child
         newNode = FunctionTree(sampleCnt, lib, func, timestamps)
         self.childFuncs.append(newNode)
@@ -98,14 +101,14 @@ class FunctionTree:
             # cnt += 1
 
     # Private method for updating the timestamps of the node it was called for
-    def __updateTimestamps(self, timestamps):
+    def updateTimestamps(self, timestamps):
         try:
-            float(timestamps[0])
-            float(timestamps[1])
+            timestamps = (float(timestamps[0]), float(timestamps[1]))
         except ValueError:
             print("ERROR: Timestamps are not floats, exiting...")
             sys.exit()
-        if timestamps[0] < self.timestamps[0]:
+        if timestamps[0] < timestampTup[0][0]:
+            print(timestamps, self.timestamps)
             print("Error: Impossible data, Start timestamp happened earlier than child's start timestamp, exiting...")
             sys.exit()
         # If data passes the previous test, then we know that the timestamps always occur after the start of execution
@@ -122,22 +125,96 @@ class FunctionTree:
         # the current node's start timestamp, there is no need to update the start timestamp as the new timestamp
         # will never be earlier than the current function's timestamp
 
-        # Swap the current end timestamp with the new one if it is later than the current timestamp
+        '''
+        TODO HAVE TO CONSIDER MULTIPLE CASES:
+            ex: |---------|
+               start     end
+            |-------|   |-------|
+            
+            2 timestamps tuples, but they are not overlapping
+            
+            Current idea for solution: Store each timestamp tuple separately if they do not overlap
+            AND the new timestamp tuple occurs after the current first stored timestamp tuple
+            These tuples will be stored in a list in the self.timestamps attribute and it will be sorted by the
+            start timestamp of each tuple in ascending order.
+            Then whenever I need to update timestamps, I have to iterate through the timestamp list.
+            
+            The reason why I want to use a list is because I do not want to simply extend the first timestamp tuple
+            with the second tuple (by swapping the end timestamp with the second end timestamp). If I do this, then
+            this would result in including that break between the timestamp tuples (seen above). This break is not
+            a part of the true duration of the timestamps and would bloat the true execution time of the function call.
+            
+            Whenever I do operations on a function's execution time, I want to be working in the realm of the original 
+            execution time (from actual function start to function termination). 
+            The reason why I want to do it this way is because this allows me to accurately redistribute
+            execution times to obtain the true execution time of a function (The actual time spent in the function 
+            and not in other functions) since child functions run during the original execution time (meaning it starts 
+            after its parent) of its parent function. 
+            It would not make sense to include those breaks because the child functions never run in those 
+            breaks as I explained, they should run during the original execution times of the parent function
+            
+            or
+            
+            |-------|       or  |---------|--------|
+                |--------|    
+            
+            2 timestamps tuples, but they are overlapping or they appear right after another
+            
+            Current idea for solution: Simply extend the first tuple with by swapping the end timestamp of the
+            first tuple with the second end timestamp
+            
+            changing:
+            |-------|
+                |--------|
+            to:
+            |------------|
+            
+            If we have timestamps like this:
+            
+            |-----------|
+               |-----|
+               
+            Then do nothing as the second timestamps is already covered by the first timestamps
+            
+                |---------|
+            |-----|
+            
+            In this case, I declare these as impossible as my trees are stored on a thread-specific basis, so 
+            function calls must occur sequentially. 
+            Since these function calls are only associated with a specific thread.
+        '''
+        # WIP, not ready
         if timestamps[1] > self.timestamps[1]:
-            self.timestamps[1] = timestamps[1]
+            if timestamps[0] > self.timestamps[0]:
+                # Overlapping timestamps
+                if timestamps[0] <= self.timestamps[1]:
+                    self.execTime -= self.timestamps[1] - self.timestamps[0]
+                    self.timestamps = (self.timestamps[0],timestamps[1])
+                    self.execTime += self.timestamps[1] - self.timestamps[0]
+                # Not overlapping timestamps
+                else:
+                    pass
+            # timestamps[1] = self.timestamps[1]
+            else:
+                self.timestamps = (self.timestamps[0], timestamps[1])
+                self.execTime = timestamps[1] - self.timestamps[0]
         return
 
     # Special method for when print is called on a node, simply prints all of the attributes except for the timestamps
     def __str__(self):
         # print("Noot")
-        return f"Function: {self.func}; Lib: {self.lib}; Sample Total: {self.sampleTotal}; Child Functions: {self.childFuncs}"
+        retStr = ""
+        for att in dir(self):
+            if not att.startswith('__') and not callable(getattr(self,att)):
+                retStr = f"{att}: {getattr(self, att)} " + retStr
+        return retStr
 
     # This is a private method to retrieve all of the attributes (aside from the child function list)
     # and store them into a dictionary which is used for
     # serialization
     def __retrieveAttrs(self):
         if useTimestamps:
-            return {"func":self.func, "lib":self.lib, "sampleTotal":self.sampleTotal, "timestamps":self.timestamps, "childFuncs":[]}
+            return {"func":self.func, "lib":self.lib, "sampleTotal":self.sampleTotal, "timestamps":self.timestamps, "execTime":self.execTime, "childFuncs":[]}
         else:
             return {"func":self.func, "lib":self.lib, "sampleTotal":self.sampleTotal, "childFuncs":[]}
 
@@ -158,7 +235,7 @@ class FunctionTree:
     @staticmethod
     def reconstructNodefromDict(j_Dict, useTime=False):
         if useTime:
-            node = FunctionTree(sampleCnt=j_Dict["sampleTotal"], lib=j_Dict["lib"], func=j_Dict["func"], timestamps=j_Dict["timestamps"])
+            node = FunctionTree(sampleCnt=j_Dict["sampleTotal"], lib=j_Dict["lib"], func=j_Dict["func"], timestamps=j_Dict["timestamps"], useTime=useTime)
         else:
             node = FunctionTree(sampleCnt=j_Dict["sampleTotal"], lib=j_Dict["lib"], func=j_Dict["func"])
         if len(j_Dict["childFuncs"]) <= 0:
@@ -264,14 +341,14 @@ def constructFuncBranch(root, sampleNum, funcLine, index):
     # A branch in the function tree is one unique call stack seen in the samples/traces
 
     if funcResult[0] == 1:
-        # funcResult = (1, func, lib, time start, time end)
-        root = root.addNode(sampleNum, funcResult[2], func=funcResult[1], timestamps=(funcResult[3], funcResult[4]))
+        # funcResult = (1, func, lib, (time start, time end))
+        root = root.addNode(sampleNum, funcResult[2], func=funcResult[1], timestamps=funcResult[3])
     elif funcResult[0] == 2:
         # funcResult = (2, func, lib)
         root = root.addNode(sampleNum, funcResult[2], func=funcResult[1])
     elif funcResult[0] == 3:
-        # funcResult = (3, lib, time start, time end)
-        root = root.addNode(sampleNum, funcResult[1], timestamps=(funcResult[2], funcResult[3]))
+        # funcResult = (3, lib, (time start, time end))
+        root = root.addNode(sampleNum, funcResult[1], timestamps=funcResult[2])
     elif funcResult[0] == 4:
         # funcResult = (4, lib)
         root = root.addNode(sampleNum, funcResult[1])
@@ -280,36 +357,55 @@ def constructFuncBranch(root, sampleNum, funcLine, index):
 # This is a helper function to create a new function tree if one has not been created for the first function seen in the
 # current line. If the first function has had a function tree created for it then we will return that node, otherwise we
 # have created a new node and will return that new node
-def createNewFuncTree(tid, treeDict,  sampleNum, funcLine):
+def createNewFuncTree(treeDict, sampleNum, funcLine):
     funcResult = parseFunc(funcLine, 0)
     if funcResult[0] == 1:
         # funcResult = (1, func, lib, time start, time end)
-        rootNode = treeDict.setdefault(' '.join(funcResult[1:3]), FunctionTree(sampleNum, funcResult[2], funcResult[1], (funcResult[3], funcResult[4])))
+        # print(funcResult)
+        try:
+            time = (float(funcResult[3][0]), float(funcResult[3][1]))
+        except ValueError:
+            print("Error: Timestamps are not float, exiting...")
+            sys.exit()
+        rootNode = treeDict.setdefault(' '.join(funcResult[1:3]), FunctionTree(0, lib=funcResult[2], func=funcResult[1], timestamps=funcResult[3]))
+        if rootNode.timestamps != time:
+            rootNode.updateTimestamps(time)
     elif funcResult[0] == 2:
         # funcResult = (2, func, lib)
-        rootNode = treeDict.setdefault(' '.join(funcResult[1:]), FunctionTree(sampleNum, lib=funcResult[2], func=funcResult[1]))
+        rootNode = treeDict.setdefault(' '.join(funcResult[1:]), FunctionTree(0, lib=funcResult[2], func=funcResult[1]))
     elif funcResult[0] == 3:
         # funcResult = (3, lib, time start, time end)
-        rootNode = treeDict.setdefault(funcResult[1], FunctionTree(sampleNum, lib=funcResult[1], timestamps=(funcResult[2], funcResult[3])))
+        try:
+            time = (float(funcResult[2][0]), float(funcResult[2][1]))
+        except ValueError:
+            print("Error: Timestamps are not float, exiting...")
+            sys.exit()
+        rootNode = treeDict.setdefault(funcResult[1], FunctionTree(0, lib=funcResult[1], timestamps=funcResult[3]))
+        if rootNode.timestamps != time:
+            rootNode.updateTimestamps(time)
     else:
         # funcResult = (4, lib)
-        rootNode = treeDict.setdefault(funcResult[1], FunctionTree(sampleNum, lib=funcResult[1]))
+        rootNode = treeDict.setdefault(funcResult[1], FunctionTree(0, lib=funcResult[1]))
+    rootNode.sampleTotal += sampleNum
     return rootNode
 
 # Prints the branches of a node
-def printBranch(nodeList):
+def printBranch(nodeList, printrootchild):
     if not nodeList:
         return
     for node in nodeList:
+        if printrootchild:
+            print("ROOT BRANCH: ")
         print(node)
-        return printBranch(node.childFuncs)
+        printBranch(node.childFuncs, False)
+    return
 
 # Prints all of the function trees in a given dictionary of function trees
 def printTree(treeList):
     num = 1
     for tree in treeList.values():
-        print(f"TREE {num}:", tree)
-        printBranch(tree.childFuncs)
+        print(f"TREE {num}:\n", tree)
+        printBranch(tree.childFuncs, True)
         num += 1
     return
 
@@ -322,18 +418,33 @@ def main():
     root.withdraw()
     fileName = filedialog.askopenfilename()
 
+    if fileName == '':
+        # If no file name then just default to opening a file in the repo
+        # print(True)
+        fileName = "C:/Users/John/PycharmProjects/Scaler/libAnalyzer/tests/PerfTests/finalFold.folded"
+        outFileName = "perfMemcachedData_V2.json"
+    else:
+        stopBool = False
+        while True:
+            outFileName = filedialog.askopenfilename()
+            if outFileName == '':
+                # File dialog was closed, set stopBool to true. If file dialog is closed again, then we exit the program
+                if not stopBool:
+                    print("If you want to stop. Then close the file dialog again.")
+                    stopBool = True
+                else:
+                    return
+            else:
+                break
     timestampInput = input("Use Timestamps? y/n Default is n: ")
     if timestampInput == "y":
         global useTimestamps
         useTimestamps = True
 
-    if fileName == '':
-        # If no file name then just default to opening a file in the repo
-        # print(True)
-        fileName = "C:/Users/John/PycharmProjects/Scaler/libAnalyzer/tests/PerfTests/finalFold.folded"
-    currentTID = ''
+    # currentTID = ''
     # print("Wow")
     with open(fileName) as fold:
+        # a = 0
         for line in fold:
             lineList = line.split(';') # Line is semi-colon separated, thus we split using ;
 
@@ -352,13 +463,16 @@ def main():
             # The first element is the command-pid/tid format
             lastEleList = lineList[-1].split() # The last element split by white space
             sampleNum = int(lastEleList[-1]) # Retrieve the line's sample number
+            # sampleNum *= 1/997
+            # sampleNum /= len(lineList)
             lineList[-1] = ' '.join(lastEleList[:-1])  # Strip the last element of the line list of the sample number
 
             # Grab the function tree with the first function in the sample as the root
-            rootNode = createNewFuncTree(tid, treeDict, sampleNum, lineList)
+            rootNode = createNewFuncTree(treeDict, sampleNum, lineList)
 
             constructFuncBranch(rootNode, sampleNum, lineList, 1)
-
+            # if a > 20:
+            #    break
             '''
             if currentTID != tid:
                 if currentTID == '':
@@ -368,8 +482,10 @@ def main():
                         printTree(treeDict)
                     break
             '''
+            # a += 1
+            # print(lineList, sampleNum)
 
-    with open("perfMemcachedData_V2.json", 'w') as j_file:
+    with open(outFileName, 'w') as j_file:
         j_file.write(json.dumps(tidData, default=lambda tree: tree.serialize(),indent=4))
 
 if __name__ == "__main__":

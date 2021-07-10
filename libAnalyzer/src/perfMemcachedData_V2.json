@@ -3,7 +3,7 @@
         "[memcached]": {
             "func": "Unknown",
             "lib": "[memcached]",
-            "sampleTotal": 1,
+            "sampleTotal": 2,
             "childFuncs": [
                 {
                     "func": "__libc_start_main",
@@ -143,7 +143,7 @@
         "__GI___clone [inlined]": {
             "func": "__GI___clone",
             "lib": "[inlined]",
-            "sampleTotal": 1,
+            "sampleTotal": 3,
             "childFuncs": [
                 {
                     "func": "start_thread",
@@ -249,7 +249,7 @@
         "__GI___clone [inlined]": {
             "func": "__GI___clone",
             "lib": "[inlined]",
-            "sampleTotal": 8,
+            "sampleTotal": 4669,
             "childFuncs": [
                 {
                     "func": "start_thread",
@@ -4509,7 +4509,7 @@
         "__GI___clone [inlined]": {
             "func": "__GI___clone",
             "lib": "[inlined]",
-            "sampleTotal": 16,
+            "sampleTotal": 4558,
             "childFuncs": [
                 {
                     "func": "start_thread",
@@ -8739,7 +8739,7 @@
         "__GI___clone [inlined]": {
             "func": "__GI___clone",
             "lib": "[inlined]",
-            "sampleTotal": 6,
+            "sampleTotal": 4515,
             "childFuncs": [
                 {
                     "func": "start_thread",
@@ -12722,7 +12722,7 @@
         "__GI___clone [inlined]": {
             "func": "__GI___clone",
             "lib": "[inlined]",
-            "sampleTotal": 13,
+            "sampleTotal": 4542,
             "childFuncs": [
                 {
                     "func": "start_thread",
@@ -16839,7 +16839,7 @@
         "__GI___clone [inlined]": {
             "func": "__GI___clone",
             "lib": "[inlined]",
-            "sampleTotal": 3,
+            "sampleTotal": 23,
             "childFuncs": [
                 {
                     "func": "start_thread",
@@ -16894,7 +16894,7 @@
         "__GI___clone [inlined]": {
             "func": "__GI___clone",
             "lib": "[inlined]",
-            "sampleTotal": 5,
+            "sampleTotal": 454,
             "childFuncs": [
                 {
                     "func": "start_thread",
