@@ -346,7 +346,8 @@ namespace scaler {
                         memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.funcId, dataPtr, 16);
                     } catch (const ScalerException &e) {
                         ERR_LOGS(".plt.sec replacement Failed for \"%s\":\"%s\" because %s",
-                                 pmParser.idFileMap.at(curSymbol.fileId), curSymbol.symbolName.c_str(), e.info.c_str());
+                                 pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
+                                 e.info.c_str());
                         continue;
                     }
                 }
@@ -359,7 +360,8 @@ namespace scaler {
                     memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.funcId + 1), dataPtr, 16);
                 } catch (const ScalerException &e) {
                     ERR_LOGS(".plt replacement Failed for \"\":\"\" %s because %s",
-                             pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(), e.info.c_str());
+                             pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
+                             e.info.c_str());
                     continue;
                 }
 

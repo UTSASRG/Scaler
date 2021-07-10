@@ -161,6 +161,7 @@ namespace scaler {
             size_t idx = ELFW(R_SYM)(curRelaPlt->r_info);
             idx = curELFImgInfo.dynSymTable[idx].st_name;
 
+
             if (idx + 1 > curELFImgInfo.dynStrSize) {
                 throwScalerException(ErrCode::ELF_DYNAMIC_ENTRY_PARSE_ERR, "Too big section header string table index");
             }
@@ -168,6 +169,9 @@ namespace scaler {
             ExtSymInfo newSymbol;
             try {
                 newSymbol.symbolName = std::string(curELFImgInfo.dynStrTable + idx);
+
+                DBG_LOGS("idx=%d name=%s relaPLT=%d",idx,newSymbol.symbolName.c_str(),curRelaPlt->r_info);
+
 
                 uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddr, curFileID,
                                                                 curRelaPlt->r_offset);

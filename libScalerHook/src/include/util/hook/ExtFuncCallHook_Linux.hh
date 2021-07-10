@@ -146,7 +146,7 @@ namespace scaler {
         virtual void
         findELFSecInMemory(ELFParser_Linux &elfParser, std::string secName, void *&startAddr, void *endAddr);
 
-        Elf64_Dyn *findDynamicSegment(ELFParser_Linux &elfParser);
+        virtual Elf64_Dyn *findDynamicSegment(ELFParser_Linux &elfParser);
 
         template<typename SEGTYPE>
         SEGTYPE findElemPtrInDynamicSeg(ELFParser_Linux &elfParser,
@@ -156,7 +156,7 @@ namespace scaler {
 
             const ElfW(Dyn) *dynEntryPtr = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, elemType);
             if (dynEntryPtr == nullptr) {
-                throwScalerException(-1,"Cannot find a dyn entry");
+                throwScalerException(-1, "Cannot find a dyn entry");
             }
             uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddr, curFileID, dynEntryPtr->d_un.d_ptr);
             return (SEGTYPE) (curBaseAddr + dynEntryPtr->d_un.d_ptr);
@@ -170,13 +170,13 @@ namespace scaler {
 
             const ElfW(Dyn) *dynEntryPtr = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, elemType);
             if (dynEntryPtr == nullptr) {
-                throwScalerException(0,"Cannot find a dyn entry");
+                throwScalerException(0, "Cannot find a dyn entry");
             }
             return (SEGTYPE) (dynEntryPtr->d_un.d_val);
         }
 
 
-        void parseRelaSymbol(ELFImgInfo &curELFImgInfo, size_t curFileID);
+        virtual void parseRelaSymbol(ELFImgInfo &curELFImgInfo, size_t curFileID);
     };
 
 }

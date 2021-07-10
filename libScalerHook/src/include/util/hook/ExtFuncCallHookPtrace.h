@@ -44,13 +44,15 @@ namespace scaler {
         /**
          * Private constructor
          */
-        ExtFuncCallHookPtrace(pid_t childPID);
+        explicit ExtFuncCallHookPtrace(pid_t childPID);
 
-        void locateRequiredSecAndSeg() override;
+        void parseRelaSymbol(ELFImgInfo &curELFImgInfo, size_t curFileID) override;
+
 
         pid_t childPID;
 
 
+        size_t findDynSymTblSize(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo);
     };
 }
 
