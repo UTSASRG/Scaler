@@ -9,9 +9,6 @@
 #ifndef SCALER_EXTFUNCCALLHOOKPTRACE_H
 #define SCALER_EXTFUNCCALLHOOKPTRACE_H
 
-#endif //SCALER_EXTFUNCCALLHOOKPTRACE_H
-
-
 namespace scaler {
 
     /**
@@ -56,3 +53,5 @@ namespace scaler {
 
     };
 }
+
+#endif //SCALER_EXTFUNCCALLHOOKPTRACE_H

@@ -217,9 +217,6 @@ namespace scaler {
         int findExecNameByAddr(void *addr) override;
 
     protected:
-        void openPMMap() override;
-
-    protected:
 
         //C datastructure for PmParser_Linux::sortedSegments
         //Developers should fill these variable after sortedSegments is built

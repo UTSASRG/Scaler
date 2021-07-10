@@ -24,40 +24,40 @@ namespace scaler {
         openPMMap(file);
 
         std::string addr1, addr2, perm, offset;
-        if (file.is_open()) {
-            std::string line;
-            while (std::getline(file, line)) {
-                PMEntry_Linux newEntry;
+        std::string line;
+        while (std::getline(file, line)) {
+            PMEntry_Linux newEntry;
 
-                std::stringstream ss;
-                //Parse current line
-                ss << line;
-                //Put all address into addr1. Seperate them afterward
-                ss >> addr1 >> perm >> offset >> newEntry.dev >> newEntry.inode >> newEntry.pathName;
+            std::stringstream ss;
+            //Parse current line
+            ss << line;
+            //Put all address into addr1. Seperate them afterward
+            ss >> addr1 >> perm >> offset >> newEntry.dev >> newEntry.inode >> newEntry.pathName;
 
-                if (curExecAbsolutePath == "") {
-                    //The first line would always be the executable file. Fill it in the data srtucture for future use
-                    curExecAbsolutePath = newEntry.pathName;
-                    extractFileName_Linux(curExecAbsolutePath, curExecPath, curExecFileName);
-                }
-
-                parseAddrStr(newEntry, addr1);
-
-                parseOffsetStr(newEntry, offset);
-
-                //Fill permission
-                parsePermStr(newEntry, perm);
-
-                //Fill idFileMap, startAddrFileMap, fileIDMap, fileBaseAddrMap, sortedSegments
-                indexFile(newEntry);
+            if (curExecAbsolutePath == "") {
+                //The first line would always be the executable file. Fill it in the data srtucture for future use
+                curExecAbsolutePath = newEntry.pathName;
+                extractFileName_Linux(curExecAbsolutePath, curExecPath, curExecFileName);
             }
-            file.close();
+
+            parseAddrStr(newEntry, addr1);
+
+            parseOffsetStr(newEntry, offset);
+
+            //Fill permission
+            parsePermStr(newEntry, perm);
+
+            //Fill idFileMap, startAddrFileMap, fileIDMap, fileBaseAddrMap, sortedSegments
+            indexFile(newEntry);
         }
+        file.close();
+
         //Sort sortedSegments by starting address
         std::sort(sortedSegments.begin(), sortedSegments.end(),
                   [](const std::pair<size_t, PMEntry_Linux> &lhs, const std::pair<size_t, PMEntry_Linux> &rhs) {
                       return (ElfW(Addr)) lhs.second.addrStart < (ElfW(Addr)) rhs.second.addrStart;
                   });
+
     }
 
     void PmParser_Linux::openPMMap(std::ifstream &file) {
@@ -70,7 +70,7 @@ namespace scaler {
         ss << "/maps";
 
         file.open(ss.str(), std::ios_base::in);
-        if (!file) {
+        if (file.fail()) {
             std::stringstream ss1;
             ss1 << "Cannot open " << ss.str();
             throwScalerException(ss1.str().c_str());
@@ -78,10 +78,6 @@ namespace scaler {
     }
 
     PmParser_Linux::~PmParser_Linux() {
-        if (file.is_open()) {
-            file.close();
-        }
-
     }
 
     void PmParser_Linux::printPM() {
@@ -300,11 +296,6 @@ namespace scaler {
         }
 
     }
-
-    void PmParserC_Linux::openPMMap() {
-        PmParser_Linux::openPMMap();
-    }
-
 
 }
 

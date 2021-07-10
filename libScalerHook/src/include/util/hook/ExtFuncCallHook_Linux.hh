@@ -11,6 +11,7 @@
 #include <util/tool/ProcInfoParser.h>
 #include <util/tool/MemTool.h>
 #include <util/tool/MemoryTool_Linux.h>
+#include <exceptions/ScalerException.h>
 
 namespace scaler {
 
@@ -130,14 +131,38 @@ namespace scaler {
 
 
         /**
+         * Private constructor
+         */
+        ExtFuncCallHook_Linux(PmParser_Linux &parser, MemoryTool_Linux &memTool);
+
+        /**
         * Locate the address of required sections in memory
         */
         virtual void locateRequiredSecAndSeg();
 
         /**
-         * Private constructor
-         */
-        ExtFuncCallHook_Linux(PmParser_Linux &parser, MemoryTool_Linux &memTool);
+        * Find elf section in memory and return start and end address
+        */
+        virtual void
+        findELFSecInMemory(ELFParser_Linux &elfParser, std::string secName, void *&startAddr, void *endAddr);
+
+        Elf64_Dyn *findDynamicSegment(ELFParser_Linux &elfParser);
+
+        template<typename SEGTYPE>
+        SEGTYPE findElemInDynamicSeg(ELFParser_Linux &elfParser,
+                                     ELFImgInfo &curELFImgInfo,
+                                     size_t curFileID,
+                                     ElfW(Sxword) elemType) {
+
+            const ElfW(Dyn) *dynEntryPtr = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, elemType);
+            if (dynEntryPtr == nullptr) {
+                throwScalerException("Cannot find a dyn entry");
+            }
+            uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddr, curFileID, dynEntryPtr->d_un.d_ptr);
+            return (SEGTYPE) (curBaseAddr + dynEntryPtr->d_un.d_ptr);
+        }
+
+        void parseRelaSymbol(ELFImgInfo &curELFImgInfo, size_t curFileID);
     };
 
 }
