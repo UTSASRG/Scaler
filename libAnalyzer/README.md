@@ -42,8 +42,69 @@
         - Function Name and Library Name (Both seperate attributes)
         - Total recorded samples for the node's function
         - Timestamps if available, AND the user requested to use them
+             - Also execution time
         - A list of child functions (These are functions that were called after the current node's function. i.e. on the next call stack level)
 
   - Furthermore, the depth of a node is directly correlated to call stack height. i.e. node depth of 1 => call stack height of 2 (Since node depth starts from 0 and I will assume that call stack height starts at 1)
+    
+#### Time Information Attribution
    
+- Current idea for solution:
+
+            ex:|---------|
+              start     end
+  
+            |-------|   |-------|
+            
+            2 timestamps tuples, but they are not overlapping
+            
+            Current idea for solution: Store each timestamp tuple separately if they do not overlap
+            AND the new timestamp tuple occurs after the current first stored timestamp tuple
+            These tuples will be stored in a list in the self.timestamps attribute and it will be sorted by the
+            start timestamp of each tuple in ascending order.
+            Then whenever I need to update timestamps, I have to iterate through the timestamp list.
+            
+            The reason why I want to use a list is because I do not want to simply extend the first timestamp tuple
+            with the second tuple (by swapping the end timestamp with the second end timestamp). If I do this, then
+            this would result in including that break between the timestamp tuples (seen above). This break is not
+            a part of the true duration of the timestamps and would bloat the true execution time of the function call.
+            
+            Whenever I do operations on a function's execution time, I want to be working in the realm of the original 
+            execution time (from actual function start to function termination). 
+            The reason why I want to do it this way is because this allows me to accurately redistribute
+            execution times to obtain the true execution time of a function (The actual time spent in the function 
+            and not in other functions) since child functions run during the original execution time (meaning it starts 
+            after its parent) of its parent function. 
+            It would not make sense to include those breaks because the child functions never run in those 
+            breaks as I explained, they should run during the original execution times of the parent function
+            
+            or
+            
+            |-------|       or  |---------|--------|
+                |--------|    
+            
+            2 timestamps tuples, but they are overlapping or they appear right after another
+            
+            Current idea for solution: Simply extend the first tuple with by swapping the end timestamp of the
+            first tuple with the second end timestamp
+            
+            changing:
+            |-------|
+                |--------|
+            to:
+            |------------|
+            
+            If we have timestamps like this:
+            
+            |-----------|
+               |-----|
+               
+            Then do nothing as the second timestamps is already covered by the first timestamps
+            
+                |---------|
+            |-----|
+            
+            In this case, I declare these as impossible as my trees are stored on a thread-specific basis, so 
+            function calls must occur sequentially. 
+            Since these function calls are only associated with a specific thread.
 - Charter.py refactoring has not been completed, thus I do not yet know how I am going to create the pie chart from the data.
