@@ -11,8 +11,8 @@ class charter:
     def setupChart(self):
         # Draw the pi charts for threads, thread specific library calls, thread-specific and library-specific function calls
         self.fig, self.axs = plt.subplots(1, figsize=(10, 10))
-        if "Kernel" in self.chartData[1]:
-            del self.chartData[1]["Kernel"]
+        #if "Kernel" in self.chartData[1]:
+        #     del self.chartData[1]["Kernel"]
         self.wedgeList.append(self.axs.pie(self.chartData[1].values(), labels=self.chartData[1].keys(), autopct='%1.1f%%'))
         self.axs.set_title("Library Total Samples Pi Chart")
 

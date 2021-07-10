@@ -1,54 +1,47 @@
-[
-    {
-        "memcached-?/7937": {
-            "Kernel": 2
-        },
-        "memcached-?/7939": {
-            "Kernel": 2
-        },
-        "memcached-?/7940": {
-            "[libevent-2.1.so.7.0.0]": 15,
-            "[libc-2.31.so]": 46,
-            "Kernel": 2031,
-            "[inlined]": 117,
-            "[libpthread-2.31.so]": 11
-        },
-        "memcached-?/7941": {
-            "[libevent-2.1.so.7.0.0]": 11,
-            "Kernel": 3069,
-            "[inlined]": 70,
-            "[libc-2.31.so]": 23,
-            "[libpthread-2.31.so]": 6
-        },
-        "memcached-?/7942": {
-            "[libevent-2.1.so.7.0.0]": 12,
-            "[libc-2.31.so]": 43,
-            "Kernel": 3165,
-            "[inlined]": 58,
-            "[libpthread-2.31.so]": 11
-        },
-        "memcached-?/7943": {
-            "[libevent-2.1.so.7.0.0]": 10,
-            "Kernel": 3126,
-            "[inlined]": 44,
-            "[libc-2.31.so]": 14,
-            "[libpthread-2.31.so]": 15
-        },
-        "memcached-?/7945": {
-            "[inlined]": 9
-        },
-        "memcached-?/7946": {
-            "[memcached]": 17,
-            "[inlined]": 133,
-            "Kernel": 234
-        }
+{
+    "threads": {
+        "171": 1148.3310769999998,
+        "198": 3466.4385629999997,
+        "230": 1751.8209799999995,
+        "265": 2007.776256,
+        "898": 3674.8072570000004
     },
-    {
-        "Kernel": 11629,
-        "[libevent-2.1.so.7.0.0]": 48,
-        "[libc-2.31.so]": 126,
-        "[inlined]": 431,
-        "[libpthread-2.31.so]": 43,
-        "[memcached]": 17
+    "funcs": {
+        "funcF_libF": 0.2831709999990153,
+        "funcE_libA": 2.6085549999999103,
+        "funcD_libE": 3.698958999998524,
+        "funcE_libD": 1.9423200000005636,
+        "funcD_libB": 2.816067000001624,
+        "funcC_libE": 7.516316999998821,
+        "funcF_libE": 1.2193489999988287,
+        "funcE_libC": 1.9659609999951613,
+        "funcC_libB": 4.417616000004614,
+        "funcF_libD": 0.6480939999999578,
+        "funcD_libC": 2.400749000001042,
+        "funcC_libA": 6.639452999998241,
+        "funcB_libB": 22.384396999999694,
+        "funcF_libA": 0.6109539999989693,
+        "funcE_libE": 1.423870000004115,
+        "funcE_libB": 0.7541690000017525,
+        "funcD_libA": 3.2455009999958975,
+        "funcC_libF": 8.045290000002467,
+        "funcF_libC": 0.6170429999987732,
+        "funcD_libF": 4.005071000001436,
+        "funcF_libB": 0.46500100000099565,
+        "funcE_libF": 1.1956809999980464,
+        "funcC_libC": 12.59721999999681,
+        "funcC_libD": 6.251197000000985,
+        "funcB_libA": 14.117891000000668,
+        "funcD_libD": 3.7701910000022565,
+        "funcB_libF": 16.59719400000239,
+        "funcB_libC": 28.82544400000552,
+        "funcB_libE": 20.41896399999638,
+        "funcB_libD": 26.392723000000615,
+        "funcA_libB": 8.246181000001798,
+        "funcA_libC": 8.623790999998619,
+        "funcA_libE": 5.449958000001061,
+        "funcA_libA": 11.327632000000222,
+        "funcA_libD": 9.402563000002601,
+        "funcA_libF": 8.574230999999031
     }
-]
+}
