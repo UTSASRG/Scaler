@@ -61,14 +61,15 @@ namespace scaler {
         //Step6: Replace PLT table, jmp to dll function
         for (auto &curSymbol:symbolToHook) {
             //todo: we only use one of them. If ,plt.sec exists, hook .plt.sec rather than plt
-            recordOriCode(curSymbol.fileId, curSymbol.funcId, curSymbol.pltEntry);
+            recordOriCode(curSymbol.funcId, curSymbol.pltEntry, true);
 
-            recordOriCode(curSymbol.fileId, curSymbol.funcId, curSymbol.pltSecEntry);
+            recordOriCode(curSymbol.funcId, curSymbol.pltSecEntry, true);
 
             //todo: Add logic to determine whether hook .plt or .plt.sec. Currently only hook .plt.sec
-            DBG_LOGS("Instrumented pltsec code for symbol:%p at:%p", curSymbol.symbolName.c_str(),
+            DBG_LOGS("Instrumented pltsec code for symbol:%s at:%p", curSymbol.symbolName.c_str(),
                      curSymbol.pltSecEntry);
             insertBrkpointAt(curSymbol.pltSecEntry);
+
         }
 
         debuggerLoop();
@@ -137,10 +138,14 @@ namespace scaler {
 
 
     void ExtFuncCallHookPtrace::insertBrkpointAt(void *addr) {
-        //todo: only apply to 64bit
-        uint64_t pltSecEntryCodeWithTrap = 0xFFFFFFFFFFFFFFCC;
-        ptrace(PTRACE_POKETEXT, childPID, addr, (void *) pltSecEntryCodeWithTrap);
+        const unsigned long &oriCode = (uint64_t) brkPointInfo.brkpointCodeMap.at(addr);
+
+        unsigned long orig_data = ptrace(PTRACE_PEEKTEXT, childPID, addr, 0);
+        assert(oriCode==orig_data);
+
+        ptrace(PTRACE_POKETEXT, childPID, addr, (oriCode & ~(0xFF)) | 0xCC);
     }
+
 
     void ExtFuncCallHookPtrace::debuggerLoop() {
         DBG_LOG("debugger started");
@@ -148,69 +153,77 @@ namespace scaler {
         ptrace(PTRACE_CONT, childPID, 0, 0);
 
         int wait_status;
-        while (1) {
+        while (true) {
             DBG_LOGS("Wait for child", strsignal(WSTOPSIG(wait_status)));
             wait(&wait_status);
             if (WIFSTOPPED(wait_status)) {
                 DBG_LOGS("Child got a signal: %s", strsignal(WSTOPSIG(wait_status)));
-                preHookHandler();
-            }
-        }
-        while (true) {
-            if (WIFSTOPPED(wait_status)) {
-                DBG_LOGS("Child got a signal: %s", strsignal(WSTOPSIG(wait_status)));
-            } else {
-                perror("wait Err");
-            }
-            if (WIFEXITED(wait_status)) {
+
+                size_t curFileID = 0;
+                size_t curFuncID = 0;
+                void *callerAddr = nullptr;
+                void *oriBrkpointLoc = nullptr;
+                struct user_regs_struct regs{};
+                parseSymbolInfo(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs);
+
+                //Check if the breakpoint loc is a plt address
+                if (isBrkPointLocPlt(oriBrkpointLoc)) {
+                    preHookHandler(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs);
+                } else {
+                    afterHookHandler(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs);
+                }
+            } else if (WIFEXITED(wait_status)) {
                 DBG_LOG("Child exited");
+                break;
+            } else {
+                ERR_LOG("Unexpected signal");
                 break;
             }
         }
-
-
     }
 
-    void ExtFuncCallHookPtrace::preHookHandler() {
-        size_t curFileID = 0;
-        size_t curFuncID = 0;
-        void *callerAddr = nullptr;
-        void *oriBrkpointLoc = nullptr;
-        struct user_regs_struct regs{};
-        parseSymbolInfo(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs);
+    void
+    ExtFuncCallHookPtrace::preHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
+                                          user_regs_struct &regs) {
 
         ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(curFileID);
         DBG_LOGS("%s in %s is called in %s", curELFImgInfo.idFuncMap.at(curFuncID).c_str(), "unknownLib",
                  curELFImgInfo.filePath.c_str());
 
         //Check if a breakpoint is inserted at return address
-        if (!brkPointInstalledAt(curFileID, callerAddr)) {
+        if (!brkPointInstalledAt(callerAddr)) {
             //Breakpoint not installed
             DBG_LOGS("Afterhook breakpoint not installed for %s, install now",
                      curELFImgInfo.idFuncMap.at(curFuncID).c_str());
             //Mark it as installed
-            recordOriCode(curFileID, curFuncID, callerAddr);
-            insertBrkpointAt(callerAddr);
+            //recordOriCode(curFuncID, callerAddr);
+            //insertBrkpointAt(callerAddr);
         }
 
         /**
          * Resume execution
          */
-        auto &curBrkPointCodeMap = brkPointInfoMap.at(curFileID).brkpointCodeMap;
+        auto &curBrkPointCodeMap = brkPointInfo.brkpointCodeMap;
         // Remove the breakpoint by restoring the previous data at the target address, and unwind the EIP back by 1 to
-        ptrace(PTRACE_POKETEXT, childPID, (void *) oriBrkpointLoc, (void *) curBrkPointCodeMap.at(oriBrkpointLoc));
+        ptrace(PTRACE_POKETEXT, childPID, (void *) brkpointLoc, (void *) curBrkPointCodeMap.at(brkpointLoc));
         // Restore rip to orignal location rip-=1
-        regs.rip = reinterpret_cast<unsigned long long int>(oriBrkpointLoc);
+        regs.rip = reinterpret_cast<unsigned long long int>(brkpointLoc);
         ptrace(PTRACE_SETREGS, childPID, 0, &regs);
         //Execute one more instruction
         ptrace(PTRACE_SINGLESTEP, childPID, 0, 0);
+
+        user_regs_struct reg1;
+        ptrace(PTRACE_GETREGS, childPID, 0, &reg1);
+        DBG_LOGS("After a single step, rip=%p", (void *) reg1.rip);
+
+
         int wait_status;
         //Wait for child to stop on its first instruction
         wait(&wait_status);
         if (WIFSTOPPED(wait_status)) {
             DBG_LOG("Re-insert breakpoint");
-            insertBrkpointAt(oriBrkpointLoc);
-            //Continue execution
+            insertBrkpointAt(brkpointLoc);
+            DBG_LOG("Continue execution");
             ptrace(PTRACE_CONT, childPID, 0, 0);
         } else {
             //Should exit and report error
@@ -218,6 +231,13 @@ namespace scaler {
         }
 
     }
+
+    void
+    ExtFuncCallHookPtrace::afterHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
+                                            user_regs_struct &regs) {
+
+    }
+
 
     void
     ExtFuncCallHookPtrace::parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr, void *&brkpointLoc,
@@ -232,29 +252,35 @@ namespace scaler {
 
         curFileID = pmParser.findExecNameByAddr(brkpointLoc);
 
-        DBG_LOGS("Child stopped at RIP = %p offset=%llu", regs.rip);
+        DBG_LOGS("Child stopped at RIP = %p offset=%llu", regs.rip,
+                 regs.rip - (uint64_t) elfImgInfoMap.at(curFileID).baseAddr);
 
-        const auto &curPltCodeInfo = brkPointInfoMap.at(curFileID);
-        curFuncID = curPltCodeInfo.brkpointFuncMap.at(brkpointLoc);
+        curFuncID = brkPointInfo.brkpointFuncMap.at(brkpointLoc);
 
     }
 
-    bool ExtFuncCallHookPtrace::brkPointInstalledAt(const size_t &curFileID, void *addr) {
+    bool ExtFuncCallHookPtrace::brkPointInstalledAt(void *addr) {
         //If a breakpoint is installed, then it must be in pltCodeInfoMap::addrFuncMap
-        auto &curBrkpointCodeMap = brkPointInfoMap.at(curFileID).brkpointCodeMap;
+        auto &curBrkpointCodeMap = brkPointInfo.brkpointCodeMap;
         return curBrkpointCodeMap.find(addr) != curBrkpointCodeMap.end();
     }
 
-    void ExtFuncCallHookPtrace::recordOriCode(const size_t &fileID, const size_t &funcID, void *addr) {
+    void ExtFuncCallHookPtrace::recordOriCode(const size_t &funcID, void *addr, bool isPLT) {
         //Get the plt data of curSymbol
         //todo: .plt size is hard coded
         //Warning: this memory should be freed in ~PltCodeInfo
-        void *binCodeMem = pmParser.readProcMem(addr, 8);
+        void *binCodeMem = reinterpret_cast<void *>(ptrace(PTRACE_PEEKTEXT, childPID, addr, 0));
 
-        auto &curBrkpointInfo = brkPointInfoMap[fileID];
+        brkPointInfo.brkpointCodeMap[addr] = binCodeMem;
+        brkPointInfo.brkpointFuncMap[addr] = funcID;
 
-        curBrkpointInfo.brkpointCodeMap[addr] = binCodeMem;
-        curBrkpointInfo.brkpointFuncMap[addr] = funcID;
+        if (isPLT)
+            brkPointInfo.brkpointPltAddr.insert(addr);
+    }
+
+    bool ExtFuncCallHookPtrace::isBrkPointLocPlt(void *brkpointLoc) {
+        auto &curBreakpointPLTAddr = brkPointInfo.brkpointPltAddr;
+        return curBreakpointPLTAddr.find(brkpointLoc) != curBreakpointPLTAddr.end();
     }
 
 

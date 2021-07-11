@@ -5,6 +5,7 @@
 #include <elf.h>
 #include <vector>
 #include <map>
+#include <set>
 #include <sys/user.h>
 
 #ifndef SCALER_EXTFUNCCALLHOOKPTRACE_H
@@ -53,6 +54,8 @@ namespace scaler {
 
             std::map<void *, size_t> brkpointFuncMap; //Map plt/pltsec address to function id
 
+            std::set<void *> brkpointPltAddr;
+
             ~BrkPointInfo();
         };
 
@@ -76,19 +79,26 @@ namespace scaler {
         size_t findDynSymTblSize(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo);
 
 
-        std::map<size_t, BrkPointInfo> brkPointInfoMap;         //Mapping fileID to PltCodeInfo
+        BrkPointInfo brkPointInfo;         //Mapping fileID to PltCodeInfo
 
-        void recordOriCode(const size_t &fileID,const size_t& funcID, void *addr);
+        void recordOriCode(const size_t &funcID, void *addr, bool isPLT = false);
 
-        void insertBrkpointAt(void* addr);
+        void insertBrkpointAt(void *addr);
 
         void debuggerLoop();
 
-        void preHookHandler();
+        void preHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
+                            user_regs_struct &regs);
 
-        void parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr,void*& brkpointLoc,user_regs_struct& regs);
+        void afterHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
+                              user_regs_struct &regs);
 
-        bool brkPointInstalledAt(const size_t &curFileID, void *addr);
+        void parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr, void *&brkpointLoc,
+                             user_regs_struct &regs);
+
+        bool brkPointInstalledAt(void *addr);
+
+        bool isBrkPointLocPlt(void *brkpointLoc);
     };
 }
 
