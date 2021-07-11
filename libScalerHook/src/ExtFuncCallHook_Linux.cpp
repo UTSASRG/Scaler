@@ -158,20 +158,25 @@ namespace scaler {
             ElfW(Rela) *curRelaPlt = curELFImgInfo.relaPlt + i;
             //assert(ELF64_R_TYPE(curRelaPlt->r_info) == R_X86_64_JUMP_SLOT);
 
-            size_t idx = ELFW(R_SYM)(curRelaPlt->r_info);
-            idx = curELFImgInfo.dynSymTable[idx].st_name;
+            size_t relIdx = ELFW(R_SYM)(curRelaPlt->r_info);
+            size_t strIdx = curELFImgInfo.dynSymTable[relIdx].st_name;
 
 
-            if (idx + 1 > curELFImgInfo.dynStrSize) {
+            if (strIdx + 1 > curELFImgInfo.dynStrSize) {
                 throwScalerException(ErrCode::ELF_DYNAMIC_ENTRY_PARSE_ERR, "Too big section header string table index");
             }
 
             ExtSymInfo newSymbol;
             try {
-                newSymbol.symbolName = std::string(curELFImgInfo.dynStrTable + idx);
+                newSymbol.symbolName = std::string(curELFImgInfo.dynStrTable + strIdx);
 
-                DBG_LOGS("idx=%d name=%s relaPLT=%d",idx,newSymbol.symbolName.c_str(),curRelaPlt->r_info);
+                //todo: PLT stub is hard coded
+                newSymbol.pltEntry = (uint8_t *) curELFImgInfo.pltStartAddr + relIdx * 16;
 
+                newSymbol.pltSecEntry=(uint8_t *) curELFImgInfo.pltSecStartAddr + (relIdx-1) * 16;
+
+                //DBG_LOGS("pltEntryCheck: %s:%s entry is %p", curELFImgInfo.filePath.c_str(),
+                //         newSymbol.symbolName.c_str(), newSymbol.pltSecEntry);
 
                 uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddr, curFileID,
                                                                 curRelaPlt->r_offset);
