@@ -39,21 +39,20 @@ namespace scaler {
         /**
         * PltCode information
         */
-        class PltCodeInfo {
+        class BrkPointInfo {
         public:
-            PltCodeInfo() = default;
+            BrkPointInfo() = default;
 
-            PltCodeInfo(const PltCodeInfo &rho) = delete;
+            BrkPointInfo(const BrkPointInfo &rho) = delete;
 
-            void operator=(const PltCodeInfo &rho) = delete;
+            void operator=(const BrkPointInfo &rho) = delete;
 
-            std::map<size_t, void *> pltCodeMap;
 
-            std::map<size_t, void *> pltSecCodeMap;
+            std::map<void *, void *> brkpointCodeMap; //addr: original code
 
-            std::map<void *,size_t> addrFuncMap; //Map plt/pltsec address to function id
+            std::map<void *, size_t> brkpointFuncMap; //Map plt/pltsec address to function id
 
-            ~PltCodeInfo();
+            ~BrkPointInfo();
         };
 
 
@@ -76,19 +75,19 @@ namespace scaler {
         size_t findDynSymTblSize(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo);
 
 
-        std::map<size_t, PltCodeInfo> pltCodeInfoMap;         //Mapping fileID to PltCodeInfo
+        std::map<size_t, BrkPointInfo> brkPointInfoMap;         //Mapping fileID to PltCodeInfo
 
-        void recordPltCode(ExtSymInfo &curSymbol);
+        void recordOriCode(const size_t &fileID,const size_t& funcID, void *addr);
 
-        void recordPltSecCode(ExtSymInfo &curSymbol);
-
-        void instrumentPltSecCode(ExtSymInfo &curSymbol);
+        void insertBrkpointAt(void* addr);
 
         void debuggerLoop();
 
         void preHookHandler();
 
-        void parseSymbolInfo();
+        void parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr);
+
+        bool brkPointInstalledAt(const size_t &curFileID, void *addr);
     };
 }
 

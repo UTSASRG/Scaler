@@ -61,12 +61,14 @@ namespace scaler {
         //Step6: Replace PLT table, jmp to dll function
         for (auto &curSymbol:symbolToHook) {
             //todo: we only use one of them. If ,plt.sec exists, hook .plt.sec rather than plt
-            recordPltCode(curSymbol);
+            recordOriCode(curSymbol.fileId, curSymbol.funcId, curSymbol.pltEntry);
 
-            recordPltSecCode(curSymbol);
+            recordOriCode(curSymbol.fileId, curSymbol.funcId, curSymbol.pltSecEntry);
 
             //todo: Add logic to determine whether hook .plt or .plt.sec. Currently only hook .plt.sec
-            instrumentPltSecCode(curSymbol);
+            DBG_LOGS("Instrumented pltsec code for symbol:%p at:%p", curSymbol.symbolName.c_str(),
+                     curSymbol.pltSecEntry);
+            insertBrkpointAt(curSymbol.pltSecEntry);
         }
 
         debuggerLoop();
@@ -133,38 +135,11 @@ namespace scaler {
 
     }
 
-    void ExtFuncCallHookPtrace::recordPltCode(Hook::ExtSymInfo &curSymbol) {
-        //Get the plt data of curSymbol
-        //todo: .plt size is hard coded
-        //Warning: this memory should be freed in ~PltCodeInfo
-        void *pltEntry = pmParser.readProcMem(curSymbol.pltEntry, 16);
 
-        auto &curPltCodeINfo = pltCodeInfoMap[curSymbol.fileId];
-
-        curPltCodeINfo.pltCodeMap[curSymbol.funcId] = pltEntry;
-        curPltCodeINfo.addrFuncMap[curSymbol.pltEntry] = curSymbol.funcId;
-    }
-
-    void ExtFuncCallHookPtrace::recordPltSecCode(Hook::ExtSymInfo &curSymbol) {
-        //Get the plt data of curSymbol
-        //todo: .plt.sec size is hard coded
-        //Warning: this memory should be freed in ~PltCodeInfo
-        void *pltSecEntry = pmParser.readProcMem(curSymbol.pltSecEntry, 16);
-
-        auto &curPltCodeINfo = pltCodeInfoMap[curSymbol.fileId];
-
-        curPltCodeINfo.pltSecCodeMap[curSymbol.funcId] = pltSecEntry;
-        curPltCodeINfo.addrFuncMap[curSymbol.pltEntry] = curSymbol.funcId;
-        curPltCodeINfo.addrFuncMap[curSymbol.pltSecEntry] = curSymbol.funcId;
-    }
-
-    void ExtFuncCallHookPtrace::instrumentPltSecCode(Hook::ExtSymInfo &curSymbol) {
+    void ExtFuncCallHookPtrace::insertBrkpointAt(void *addr) {
         //todo: only apply to 64bit
-        DBG_LOGS("Instrumented pltsec code for symbol:%p at:%p",curSymbol.symbolName.c_str(),curSymbol.pltSecEntry);
-        const uint64_t &pltSecEntryCode = (uint64_t) pltCodeInfoMap.at(curSymbol.fileId).pltSecCodeMap.at(
-                curSymbol.funcId);
-        uint64_t pltSecEntryCodeWithTrap = (pltSecEntryCode & 0xFFFFFFFFFFFFFF00) | 0xCC;
-        ptrace(PTRACE_POKETEXT, childPID, curSymbol.pltSecEntry, (void *) pltSecEntryCodeWithTrap);
+        uint64_t pltSecEntryCodeWithTrap = 0xFFFFFFFFFFFFFFCC;
+        ptrace(PTRACE_POKETEXT, childPID, addr, (void *) pltSecEntryCodeWithTrap);
     }
 
     void ExtFuncCallHookPtrace::debuggerLoop() {
@@ -178,7 +153,6 @@ namespace scaler {
             wait(&wait_status);
             if (WIFSTOPPED(wait_status)) {
                 DBG_LOGS("Child got a signal: %s", strsignal(WSTOPSIG(wait_status)));
-                parseSymbolInfo();
                 preHookHandler();
             }
         }
@@ -198,41 +172,69 @@ namespace scaler {
     }
 
     void ExtFuncCallHookPtrace::preHookHandler() {
+        size_t curFileID = 0;
+        size_t curFuncID = 0;
+        void *callerAddr = nullptr;
+        parseSymbolInfo(curFileID, curFuncID, callerAddr);
 
-    }
-
-    void ExtFuncCallHookPtrace::parseSymbolInfo() {
-        //Parse symbol info based on EIP
-        struct user_regs_struct regs;
-        ptrace(PTRACE_GETREGS, childPID, 0, &regs);
-        //todo: we could also intercept a later instruction and parse function id from stack
-        //todo: We could also map addr directly to both func and file id
-        size_t fileID = pmParser.findExecNameByAddr(reinterpret_cast<void *>(regs.rip - 1));
-
-        const auto &curELFImgInfo = elfImgInfoMap.at(fileID);
-
-
-        DBG_LOGS("Child stopped at RIP = %p offset=%llu", regs.rip, regs.rip-1 - (uint64_t)curELFImgInfo.baseAddr);
-
-
-        const auto &curPltCodeInfo = pltCodeInfoMap.at(fileID);
-        auto curFuncID = curPltCodeInfo.addrFuncMap.at(reinterpret_cast<void *>(regs.rip-1));
+        ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(curFileID);
         DBG_LOGS("%s in %s is called in %s", curELFImgInfo.idFuncMap.at(curFuncID).c_str(), "unknownLib",
                  curELFImgInfo.filePath.c_str());
 
+        //Check if a breakpoint is inserted at return address
+        if (!brkPointInstalledAt(curFileID, callerAddr)) {
+            //Breakpoint not installed
+            DBG_LOGS("Afterhook breakpoint not installed for %s, install now",
+                     curELFImgInfo.idFuncMap.at(curFuncID).c_str());
+            //Mark it as installed
+            recordOriCode(curFileID, curFuncID, callerAddr);
+            insertBrkpointAt(callerAddr);
+        }
+
+
+    }
+
+    void ExtFuncCallHookPtrace::parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr) {
+        //Parse symbol info based on rip, rsp
+        //todo:only need rip
+        struct user_regs_struct regs{};
+        ptrace(PTRACE_GETREGS, childPID, 0, &regs);
+        //todo: we could also intercept a later instruction and parse function id from stack
+        //todo: We could also map addr directly to both func and file id
+        curFileID = pmParser.findExecNameByAddr(reinterpret_cast<void *>(regs.rip - 1));
+
+
+        callerAddr = reinterpret_cast<void *>(regs.rsp);
+
+        DBG_LOGS("Child stopped at RIP = %p offset=%llu", regs.rip);
+
+        const auto &curPltCodeInfo = brkPointInfoMap.at(curFileID);
+        curFuncID = curPltCodeInfo.brkpointFuncMap.at(reinterpret_cast<void *>(regs.rip - 1));
+
+    }
+
+    bool ExtFuncCallHookPtrace::brkPointInstalledAt(const size_t &curFileID, void *addr) {
+        //If a breakpoint is installed, then it must be in pltCodeInfoMap::addrFuncMap
+        auto &curBrkpointCodeMap = brkPointInfoMap.at(curFileID).brkpointCodeMap;
+        return curBrkpointCodeMap.find(addr) != curBrkpointCodeMap.end();
+    }
+
+    void ExtFuncCallHookPtrace::recordOriCode(const size_t &fileID, const size_t &funcID, void *addr) {
+        //Get the plt data of curSymbol
+        //todo: .plt size is hard coded
+        //Warning: this memory should be freed in ~PltCodeInfo
+        void *binCodeMem = pmParser.readProcMem(addr, 8);
+
+        auto &curBrkpointInfo = brkPointInfoMap[fileID];
+
+        curBrkpointInfo.brkpointCodeMap[addr] = binCodeMem;
+        curBrkpointInfo.brkpointFuncMap[addr] = funcID;
     }
 
 
-    ExtFuncCallHookPtrace::PltCodeInfo::~PltCodeInfo() {
+    ExtFuncCallHookPtrace::BrkPointInfo::~BrkPointInfo() {
         //Free plt code
-        for (auto iter = pltCodeMap.begin(); iter != pltCodeMap.end(); ++iter) {
-            if (iter->second != nullptr) {
-                free(iter->second);
-                iter->second = nullptr;
-            }
-        }
-        //Free pltsec code
-        for (auto iter = pltSecCodeMap.begin(); iter != pltSecCodeMap.end(); ++iter) {
+        for (auto iter = brkpointCodeMap.begin(); iter != brkpointCodeMap.end(); ++iter) {
             if (iter->second != nullptr) {
                 free(iter->second);
                 iter->second = nullptr;
