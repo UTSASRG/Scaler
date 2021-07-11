@@ -5,6 +5,7 @@
 #include <elf.h>
 #include <vector>
 #include <map>
+#include <sys/user.h>
 
 #ifndef SCALER_EXTFUNCCALLHOOKPTRACE_H
 #define SCALER_EXTFUNCCALLHOOKPTRACE_H
@@ -85,7 +86,7 @@ namespace scaler {
 
         void preHookHandler();
 
-        void parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr);
+        void parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr,void*& brkpointLoc,user_regs_struct& regs);
 
         bool brkPointInstalledAt(const size_t &curFileID, void *addr);
     };

@@ -175,7 +175,9 @@ namespace scaler {
         size_t curFileID = 0;
         size_t curFuncID = 0;
         void *callerAddr = nullptr;
-        parseSymbolInfo(curFileID, curFuncID, callerAddr);
+        void *oriBrkpointLoc = nullptr;
+        struct user_regs_struct regs{};
+        parseSymbolInfo(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs);
 
         ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(curFileID);
         DBG_LOGS("%s in %s is called in %s", curELFImgInfo.idFuncMap.at(curFuncID).c_str(), "unknownLib",
@@ -191,25 +193,49 @@ namespace scaler {
             insertBrkpointAt(callerAddr);
         }
 
+        /**
+         * Resume execution
+         */
+        auto &curBrkPointCodeMap = brkPointInfoMap.at(curFileID).brkpointCodeMap;
+        // Remove the breakpoint by restoring the previous data at the target address, and unwind the EIP back by 1 to
+        ptrace(PTRACE_POKETEXT, childPID, (void *) oriBrkpointLoc, (void *) curBrkPointCodeMap.at(oriBrkpointLoc));
+        // Restore rip to orignal location rip-=1
+        regs.rip = reinterpret_cast<unsigned long long int>(oriBrkpointLoc);
+        ptrace(PTRACE_SETREGS, childPID, 0, &regs);
+        //Execute one more instruction
+        ptrace(PTRACE_SINGLESTEP, childPID, 0, 0);
+        int wait_status;
+        //Wait for child to stop on its first instruction
+        wait(&wait_status);
+        if (WIFSTOPPED(wait_status)) {
+            DBG_LOG("Re-insert breakpoint");
+            insertBrkpointAt(oriBrkpointLoc);
+            //Continue execution
+            ptrace(PTRACE_CONT, childPID, 0, 0);
+        } else {
+            //Should exit and report error
+            assert(false);
+        }
 
     }
 
-    void ExtFuncCallHookPtrace::parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr) {
+    void
+    ExtFuncCallHookPtrace::parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr, void *&brkpointLoc,
+                                           user_regs_struct &regs) {
         //Parse symbol info based on rip, rsp
         //todo:only need rip
-        struct user_regs_struct regs{};
         ptrace(PTRACE_GETREGS, childPID, 0, &regs);
         //todo: we could also intercept a later instruction and parse function id from stack
         //todo: We could also map addr directly to both func and file id
-        curFileID = pmParser.findExecNameByAddr(reinterpret_cast<void *>(regs.rip - 1));
-
-
+        brkpointLoc = reinterpret_cast<void *>(regs.rip - 1);
         callerAddr = reinterpret_cast<void *>(regs.rsp);
+
+        curFileID = pmParser.findExecNameByAddr(brkpointLoc);
 
         DBG_LOGS("Child stopped at RIP = %p offset=%llu", regs.rip);
 
         const auto &curPltCodeInfo = brkPointInfoMap.at(curFileID);
-        curFuncID = curPltCodeInfo.brkpointFuncMap.at(reinterpret_cast<void *>(regs.rip - 1));
+        curFuncID = curPltCodeInfo.brkpointFuncMap.at(brkpointLoc);
 
     }
 
