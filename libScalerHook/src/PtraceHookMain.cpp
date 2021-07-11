@@ -30,29 +30,6 @@ void run_target(const char *programname) {
     execl(programname, programname, NULL);
 }
 
-void exitAfterChild(pid_t child_pid) {
-    int wait_status;
-    struct user_regs_struct regs;
-    DBG_LOG("debugger started");
-
-    /* Wait for child to stop on its first instruction */
-    wait(&wait_status);
-    if (WIFSTOPPED(wait_status)) {
-        DBG_LOGS("Child got a signal: %s", strsignal(WSTOPSIG(wait_status)));
-    } else {
-        perror("wait Err");
-    }
-
-    wait(&wait_status);
-
-    if (WIFEXITED(wait_status)) {
-        DBG_LOG("Child exited");
-    } else {
-        DBG_LOG("Unexpected exit signal");
-    }
-}
-
-
 int main(int argc, char **argv) {
     pid_t childPid;
 
@@ -65,7 +42,10 @@ int main(int argc, char **argv) {
         run_target(argv[1]);
     else if (childPid > 0) {
         DBG_LOG("Debugger run");
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+
+
+        std::this_thread::sleep_for (std::chrono::seconds(1));
+
         install([](std::string fileName, std::string funcName) -> bool {
             if (fileName ==
                 "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall") {
@@ -76,8 +56,6 @@ int main(int argc, char **argv) {
                 return false;
             }
         }, INSTALL_TYPE::BRKPOINT_PTRACE, childPid);
-
-        exitAfterChild(childPid);
     } else {
         perror("fork");
         return -1;

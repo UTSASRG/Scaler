@@ -51,6 +51,7 @@ namespace scaler {
 
             std::map<size_t, void *> pltSecCodeMap;
 
+            std::map<void *,size_t> addrFuncMap; //Map plt/pltsec address to function id
 
             ~PltCodeInfo();
         };
@@ -82,6 +83,12 @@ namespace scaler {
         void recordPltSecCode(ExtSymInfo &curSymbol);
 
         void instrumentPltSecCode(ExtSymInfo &curSymbol);
+
+        void debuggerLoop();
+
+        void preHookHandler();
+
+        void parseSymbolInfo();
     };
 }
 

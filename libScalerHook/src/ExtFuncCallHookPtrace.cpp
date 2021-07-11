@@ -13,6 +13,8 @@
 #include <exceptions/ScalerException.h>
 #include <util/tool/MemToolPtrace.h>
 #include <sys/ptrace.h>
+#include <sys/user.h>
+#include <wait.h>
 
 namespace scaler {
 
@@ -23,6 +25,12 @@ namespace scaler {
 
 
     void ExtFuncCallHookPtrace::install(Hook::SYMBOL_FILTER filterCallB) {
+        int wait_status;
+        //Wait for child to stop on its first instruction
+        wait(&wait_status);
+        //todo: use debuglog and exceptions
+        perror("first wait result");
+
         memTool = MemoryToolPtrace::getInst(pmParser);
 
         //Step1: Locating table in memory
@@ -61,7 +69,7 @@ namespace scaler {
             instrumentPltSecCode(curSymbol);
         }
 
-
+        debuggerLoop();
     }
 
     ExtFuncCallHookPtrace::ExtFuncCallHookPtrace(pid_t childPID)
@@ -130,7 +138,11 @@ namespace scaler {
         //todo: .plt size is hard coded
         //Warning: this memory should be freed in ~PltCodeInfo
         void *pltEntry = pmParser.readProcMem(curSymbol.pltEntry, 16);
-        pltCodeInfoMap[curSymbol.fileId].pltCodeMap[curSymbol.funcId] = pltEntry;
+
+        auto &curPltCodeINfo = pltCodeInfoMap[curSymbol.fileId];
+
+        curPltCodeINfo.pltCodeMap[curSymbol.funcId] = pltEntry;
+        curPltCodeINfo.addrFuncMap[curSymbol.pltEntry] = curSymbol.funcId;
     }
 
     void ExtFuncCallHookPtrace::recordPltSecCode(Hook::ExtSymInfo &curSymbol) {
@@ -138,15 +150,76 @@ namespace scaler {
         //todo: .plt.sec size is hard coded
         //Warning: this memory should be freed in ~PltCodeInfo
         void *pltSecEntry = pmParser.readProcMem(curSymbol.pltSecEntry, 16);
-        pltCodeInfoMap[curSymbol.fileId].pltSecCodeMap[curSymbol.funcId] = pltSecEntry;
+
+        auto &curPltCodeINfo = pltCodeInfoMap[curSymbol.fileId];
+
+        curPltCodeINfo.pltSecCodeMap[curSymbol.funcId] = pltSecEntry;
+        curPltCodeINfo.addrFuncMap[curSymbol.pltEntry] = curSymbol.funcId;
+        curPltCodeINfo.addrFuncMap[curSymbol.pltSecEntry] = curSymbol.funcId;
     }
 
     void ExtFuncCallHookPtrace::instrumentPltSecCode(Hook::ExtSymInfo &curSymbol) {
         //todo: only apply to 64bit
+        DBG_LOGS("Instrumented pltsec code for symbol:%p at:%p",curSymbol.symbolName.c_str(),curSymbol.pltSecEntry);
         const uint64_t &pltSecEntryCode = (uint64_t) pltCodeInfoMap.at(curSymbol.fileId).pltSecCodeMap.at(
                 curSymbol.funcId);
         uint64_t pltSecEntryCodeWithTrap = (pltSecEntryCode & 0xFFFFFFFFFFFFFF00) | 0xCC;
-        ptrace(PTRACE_POKETEXT, childPID, curSymbol.pltSecEntry, (void*)pltSecEntryCodeWithTrap);
+        ptrace(PTRACE_POKETEXT, childPID, curSymbol.pltSecEntry, (void *) pltSecEntryCodeWithTrap);
+    }
+
+    void ExtFuncCallHookPtrace::debuggerLoop() {
+        DBG_LOG("debugger started");
+        /* The child can continue running now */
+        ptrace(PTRACE_CONT, childPID, 0, 0);
+
+        int wait_status;
+        while (1) {
+            DBG_LOGS("Wait for child", strsignal(WSTOPSIG(wait_status)));
+            wait(&wait_status);
+            if (WIFSTOPPED(wait_status)) {
+                DBG_LOGS("Child got a signal: %s", strsignal(WSTOPSIG(wait_status)));
+                parseSymbolInfo();
+                preHookHandler();
+            }
+        }
+        while (true) {
+            if (WIFSTOPPED(wait_status)) {
+                DBG_LOGS("Child got a signal: %s", strsignal(WSTOPSIG(wait_status)));
+            } else {
+                perror("wait Err");
+            }
+            if (WIFEXITED(wait_status)) {
+                DBG_LOG("Child exited");
+                break;
+            }
+        }
+
+
+    }
+
+    void ExtFuncCallHookPtrace::preHookHandler() {
+
+    }
+
+    void ExtFuncCallHookPtrace::parseSymbolInfo() {
+        //Parse symbol info based on EIP
+        struct user_regs_struct regs;
+        ptrace(PTRACE_GETREGS, childPID, 0, &regs);
+        //todo: we could also intercept a later instruction and parse function id from stack
+        //todo: We could also map addr directly to both func and file id
+        size_t fileID = pmParser.findExecNameByAddr(reinterpret_cast<void *>(regs.rip - 1));
+
+        const auto &curELFImgInfo = elfImgInfoMap.at(fileID);
+
+
+        DBG_LOGS("Child stopped at RIP = %p offset=%llu", regs.rip, regs.rip-1 - (uint64_t)curELFImgInfo.baseAddr);
+
+
+        const auto &curPltCodeInfo = pltCodeInfoMap.at(fileID);
+        auto curFuncID = curPltCodeInfo.addrFuncMap.at(reinterpret_cast<void *>(regs.rip-1));
+        DBG_LOGS("%s in %s is called in %s", curELFImgInfo.idFuncMap.at(curFuncID).c_str(), "unknownLib",
+                 curELFImgInfo.filePath.c_str());
+
     }
 
 
