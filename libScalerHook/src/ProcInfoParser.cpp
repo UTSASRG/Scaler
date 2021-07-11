@@ -21,8 +21,6 @@ namespace scaler {
     }
 
     void PmParser_Linux::parsePMMap() {
-        printPM();
-
         std::ifstream file;
         openPMMap(file);
 

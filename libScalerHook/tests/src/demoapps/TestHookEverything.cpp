@@ -16,7 +16,6 @@ int main() {
             "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-HookEverything") {
             return true;
         } else {
-            DBG_LOGS("%s:%s\n", fileName.c_str(), funcName.c_str());
             return false;
         }
 

@@ -36,6 +36,26 @@ namespace scaler {
 
     protected:
 
+        /**
+        * PltCode information
+        */
+        class PltCodeInfo {
+        public:
+            PltCodeInfo() = default;
+
+            PltCodeInfo(const PltCodeInfo &rho) = delete;
+
+            void operator=(const PltCodeInfo &rho) = delete;
+
+            std::map<size_t, void *> pltCodeMap;
+
+            std::map<size_t, void *> pltSecCodeMap;
+
+
+            ~PltCodeInfo();
+        };
+
+
         PmParser_Linux pmParser;                            //A parser to /proc/self/maps
         MemoryTool_Linux *memTool;
 
@@ -53,6 +73,15 @@ namespace scaler {
 
 
         size_t findDynSymTblSize(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo);
+
+
+        std::map<size_t, PltCodeInfo> pltCodeInfoMap;         //Mapping fileID to PltCodeInfo
+
+        void recordPltCode(ExtSymInfo &curSymbol);
+
+        void recordPltSecCode(ExtSymInfo &curSymbol);
+
+        void instrumentPltSecCode(ExtSymInfo &curSymbol);
     };
 }
 

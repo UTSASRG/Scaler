@@ -12,6 +12,7 @@
 #include <util/hook/ExtFuncCallHookPtrace.h>
 #include <exceptions/ScalerException.h>
 #include <util/tool/MemToolPtrace.h>
+#include <sys/ptrace.h>
 
 namespace scaler {
 
@@ -51,8 +52,13 @@ namespace scaler {
 
         //Step6: Replace PLT table, jmp to dll function
         for (auto &curSymbol:symbolToHook) {
+            //todo: we only use one of them. If ,plt.sec exists, hook .plt.sec rather than plt
+            recordPltCode(curSymbol);
 
+            recordPltSecCode(curSymbol);
 
+            //todo: Add logic to determine whether hook .plt or .plt.sec. Currently only hook .plt.sec
+            instrumentPltSecCode(curSymbol);
         }
 
 
@@ -104,8 +110,6 @@ namespace scaler {
         free(curELFImgInfo.relaPlt);
         free((void *) curELFImgInfo.dynSymTable);
         free((void *) curELFImgInfo.dynStrTable);
-
-
     }
 
     size_t ExtFuncCallHookPtrace::findDynSymTblSize(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo) {
@@ -121,6 +125,47 @@ namespace scaler {
 
     }
 
+    void ExtFuncCallHookPtrace::recordPltCode(Hook::ExtSymInfo &curSymbol) {
+        //Get the plt data of curSymbol
+        //todo: .plt size is hard coded
+        //Warning: this memory should be freed in ~PltCodeInfo
+        void *pltEntry = pmParser.readProcMem(curSymbol.pltEntry, 16);
+        pltCodeInfoMap[curSymbol.fileId].pltCodeMap[curSymbol.funcId] = pltEntry;
+    }
+
+    void ExtFuncCallHookPtrace::recordPltSecCode(Hook::ExtSymInfo &curSymbol) {
+        //Get the plt data of curSymbol
+        //todo: .plt.sec size is hard coded
+        //Warning: this memory should be freed in ~PltCodeInfo
+        void *pltSecEntry = pmParser.readProcMem(curSymbol.pltSecEntry, 16);
+        pltCodeInfoMap[curSymbol.fileId].pltSecCodeMap[curSymbol.funcId] = pltSecEntry;
+    }
+
+    void ExtFuncCallHookPtrace::instrumentPltSecCode(Hook::ExtSymInfo &curSymbol) {
+        //todo: only apply to 64bit
+        const uint64_t &pltSecEntryCode = (uint64_t) pltCodeInfoMap.at(curSymbol.fileId).pltSecCodeMap.at(
+                curSymbol.funcId);
+        uint64_t pltSecEntryCodeWithTrap = (pltSecEntryCode & 0xFFFFFFFFFFFFFF00) | 0xCC;
+        ptrace(PTRACE_POKETEXT, childPID, curSymbol.pltSecEntry, (void*)pltSecEntryCodeWithTrap);
+    }
+
+
+    ExtFuncCallHookPtrace::PltCodeInfo::~PltCodeInfo() {
+        //Free plt code
+        for (auto iter = pltCodeMap.begin(); iter != pltCodeMap.end(); ++iter) {
+            if (iter->second != nullptr) {
+                free(iter->second);
+                iter->second = nullptr;
+            }
+        }
+        //Free pltsec code
+        for (auto iter = pltSecCodeMap.begin(); iter != pltSecCodeMap.end(); ++iter) {
+            if (iter->second != nullptr) {
+                free(iter->second);
+                iter->second = nullptr;
+            }
+        }
+    }
 }
 
 

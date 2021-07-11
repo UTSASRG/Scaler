@@ -20,7 +20,7 @@ add_library(ScalerHook-HookManualAsm SHARED
         src/Config.cpp
         src/StringTool.cpp)
 target_include_directories(ScalerHook-HookManualAsm PUBLIC src/include lib/inireader)
-target_compile_options(ScalerHook-HookManualAsm PRIVATE "--verbose;-znow;-fPIE;-fPIC;")
+target_compile_options(ScalerHook-HookManualAsm PRIVATE "--verbose;-lazy;-fPIE;-fPIC;")
 target_link_libraries(ScalerHook-HookManualAsm PRIVATE pthread dl)
 
 add_executable(ScalerHook-HookManualPtrace
