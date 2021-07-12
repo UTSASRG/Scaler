@@ -50,7 +50,7 @@ namespace scaler {
             void operator=(const BrkPointInfo &rho) = delete;
 
 
-            std::map<void *, void *> brkpointCodeMap; //addr: original code
+            std::map<void *, unsigned long *> brkpointCodeMap; //addr: original code
 
             std::map<void *, size_t> brkpointFuncMap; //Map plt/pltsec address to function id
 

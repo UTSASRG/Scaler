@@ -138,10 +138,10 @@ namespace scaler {
 
 
     void ExtFuncCallHookPtrace::insertBrkpointAt(void *addr) {
-        const unsigned long &oriCode = (uint64_t) brkPointInfo.brkpointCodeMap.at(addr);
+        unsigned long oriCode = *brkPointInfo.brkpointCodeMap.at(addr);
 
-        unsigned long orig_data = ptrace(PTRACE_PEEKTEXT, childPID, addr, 0);
-        assert(oriCode==orig_data);
+        //unsigned long orig_data = ptrace(PTRACE_PEEKTEXT, childPID, addr, 0);
+        //assert(oriCode==orig_data);
 
         ptrace(PTRACE_POKETEXT, childPID, addr, (oriCode & ~(0xFF)) | 0xCC);
     }
@@ -205,7 +205,9 @@ namespace scaler {
          */
         auto &curBrkPointCodeMap = brkPointInfo.brkpointCodeMap;
         // Remove the breakpoint by restoring the previous data at the target address, and unwind the EIP back by 1 to
-        ptrace(PTRACE_POKETEXT, childPID, (void *) brkpointLoc, (void *) curBrkPointCodeMap.at(brkpointLoc));
+
+        unsigned long oriCode = *curBrkPointCodeMap.at(brkpointLoc);
+        ptrace(PTRACE_POKETEXT, childPID, (void *) brkpointLoc, oriCode);
         // Restore rip to orignal location rip-=1
         regs.rip = reinterpret_cast<unsigned long long int>(brkpointLoc);
         ptrace(PTRACE_SETREGS, childPID, 0, &regs);
@@ -269,9 +271,9 @@ namespace scaler {
         //Get the plt data of curSymbol
         //todo: .plt size is hard coded
         //Warning: this memory should be freed in ~PltCodeInfo
-        void *binCodeMem = reinterpret_cast<void *>(ptrace(PTRACE_PEEKTEXT, childPID, addr, 0));
 
-        brkPointInfo.brkpointCodeMap[addr] = binCodeMem;
+        brkPointInfo.brkpointCodeMap[addr] = static_cast<unsigned long *>(pmParser.readProcMem(addr,
+                                                                                               sizeof(unsigned long)));
         brkPointInfo.brkpointFuncMap[addr] = funcID;
 
         if (isPLT)
