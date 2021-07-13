@@ -65,6 +65,20 @@ def getThreadSampTot(tidData):
                 tidDict[tid] = tree.sampleTotal
     return tidDict
 
+# Retrieves the execution times of the root functions
+# If retrieved before redistribution, these execution times do not represent total On-CPU execution time
+# This is because these root functions may include some off-cpu time in its total execution time
+# This makes sense since there may be some I/O operations and the function has to wait or something like lock contention
+def getThreadRootExe(tidData):
+    tidDict = dict.fromkeys(tidData.keys())
+    for tid, treeDict in tidData.items():
+        for tree in treeDict.values():
+            if tidDict[tid] != None:
+                tidDict[tid] += tree.execTime
+            else:
+                tidDict[tid] = tree.execTime
+    return tidDict
+
 # Will retrieve each thread's total execution time
 # The total execution time of the thread is determined by retrieving the earliest timestamp from all of the roots
 # And retrieving the latest timestamp from all of the roots
@@ -77,26 +91,83 @@ def getThreadTotalExecution(tidData):
             # print(tree.timestamps)
             # If there is nothing in the dictionary, then set the current tree's timestamps as the current thread's timestamp
             if tidDict[tid] == None:
-                tidDict[tid] = tree.timestamps
+                tidDict[tid] = (tree.timestamps[0][0], tree.timestamps[-1][1])
             # If the current root's timestamp starts earlier than the current thread timestamp
-            elif tree.timestamps[0] < tidDict[tid][0]:
+            elif tree.timestamps[0][0] < tidDict[tid][0]:
                 # If the start timestamp is earlier and the end timestamp is later, then set the thread's timestamp
                 # as the current root's timestamp
-                if tree.timestamps[1] > tidDict[tid][1]:
-                    tidDict[tid] = tree.timestamps
+                if tree.timestamps[-1][1] > tidDict[tid][1]:
+                    tidDict[tid] = (tree.timestamps[0][0], tree.timestamps[-1][1])
                 # If the current root's start timestamp is earlier, but the end timestamp is earlier or the same
                 # as the thread's end timestamp
                 # Then simply replace the thread's start timestamp
                 else:
-                    tidDict[tid] = (tree.timestamps[0], tidDict[tid][1])
+                    tidDict[tid] = (tree.timestamps[0][0], tidDict[tid][1])
             # If the current root's start timestamp is later or the same as the thread's start timestamp
             # But the root's end timestamp is later, then replace the end timestamp of the thread
-            elif tree.timestamps[1] > tidDict[tid][1]:
-                tidDict[tid] = (tidDict[tid][0], tree.timestamps[1])
+            elif tree.timestamps[-1][1] > tidDict[tid][1]:
+                tidDict[tid] = (tidDict[tid][0], tree.timestamps[-1][1])
     # After we get the timestamps, calculate the execution times
     for tid, time in tidDict.items():
         tidDict[tid] = time[1]-time[0]
     return tidDict
+
+# This function updates that timestamp list in the update exec time function
+# by adding the timestamp if no overlap occurs to the list
+# or by extending timestamps when overlaps occur
+def updateTimestampList(childTimeTup, childTimeList):
+    index = 0
+    for timestampTup in childTimeList:
+        if childTimeTup[0] < timestampTup[0]:
+            #   |----|
+            # |---------|
+            # In this case, we see that the new timestamp tuple encompasses the old one, thus we replace the old one
+            if childTimeTup[1] > timestampTup[1]:
+                childTimeList[index] = childTimeTup
+                return
+            #   |---|      |----|         |-------|
+            # |-----| or |----|    or  |--|
+            # In this case, we simply extend the old tuple to the left with the new tuple
+            elif childTimeTup[1] >= timestampTup[0]:
+                # print(f"What, {childTimeTup}, {timestampTup}, {childTimeList}")
+                childTimeList[index] = (childTimeTup[0], timestampTup[1])
+                return
+            #       |-----|
+            # |---|
+            # This is the case where we have a timestamp tuple that occurs before the current tuple we're checking
+            # while there is no overlap
+            # This may be due to the order in which we checked the child functions
+            # One child function may have timestamps like so: (1,2) (10,15) then the next child function will have a
+            # timestamp like so: (3,5)
+            # Due to the nature of this algorithm, it will appear as if a timestamp appears earlier
+            # However, we know there is no overlap, but the above cases assume overlap, thus we need to handle this case
+            else:
+                childTimeList.insert(index, childTimeTup)
+                return
+        #   |-----|
+        #         |---|
+        # In this case, we just need to extend the first tuple to the right with the second tuple
+        elif childTimeTup[0] == timestampTup[1]:
+            # print(f"Woah, {childTimeTup}, {timestampTup}")
+            childTimeList[index] = (timestampTup[0], childTimeTup[1])
+            return
+        # |-------| or  |------|   or |------|
+        #   |---|          |---|          |-----|
+        # The third case is what we handle by extending to the right,
+        # the other cases means we need to go further down the list
+        elif childTimeTup[0] < timestampTup[1]:
+            if childTimeTup[1] > timestampTup[1]:
+                # print(f"Woo, {childTimeTup}, {timestampTup}")
+                childTimeList[index] = (timestampTup[0], childTimeTup[1])
+                return
+            # Will continue to the next iteration if does not pass the above test
+        #   |-----| |----|
+        # This case will only mean we need to append to the list only if we have reached the end of the list
+        # meaning that there is no possible overlap for any of the other timestamps
+        elif timestampTup == childTimeList[-1]:
+            childTimeList.append(childTimeTup)
+            return
+        index += 1
 
 '''
 This function will update the execTime attribute of the tree nodes to be the node's actual execution time
@@ -114,11 +185,17 @@ within the parent function's execution time (<= parent function's end timestamp)
 is the difference between those two timestamps we found.
 
 ***
-My new solution may most likely be:
-N/A
+This function will perform the redistribution of the function execution times in order to obtain the true
+execution times of the function calls
+
+The basic idea is to sum up all of the execution times of child functions without including overlap and sections
+of time where execution does not occur for the function
+Then subtract this sum from the parent function's execution time thus resulting in the time that was spent only
+in the parent function.
 '''
 def updateExecTime(tree):
-    childTimestamps = ()
+    childTimestampList = []
+    old = tree.execTime
     # The case where we reach a leaf, then do nothing, the execution time of the leaf that's been calculated
     # is the true execution time of that function
     if not tree.childFuncs:
@@ -127,47 +204,54 @@ def updateExecTime(tree):
     # This will retrieve the earliest and latest timestamp seen in the child functions
     for child in tree.childFuncs:
         updateExecTime(child)
-        # If we have not yet set our child timestamps tuple, set it with the current child's timestamps
-        if not childTimestamps:
-            # We then will not use any timestamps that had a start timestamp
-            # that started before the current node's start timestamp
-            # As that would mean we are counting time that the current node never executed in
-            # This should not be possible as child functions should always run after the start of the parent function
-            if child.timestamps[0] < tree.timestamps[0]:
-                print("ERROR: Child Function somehow ran before the execution of the parent function, exiting...")
-                sys.exit()
-            else:
-                childTimestamps = child.timestamps
-        # If the child's start timestamp is earlier than the current earliest timestamp we have found
-        elif child.timestamps[0] < childTimestamps[0]:
-            if child.timestamps[0] < tree.timestamps[0]:
-                print("ERROR: Child Function somehow ran before the execution of the parent function, exiting...")
-                sys.exit()
-            else:
-                # If the child's end timestamp is later than the latest timestamp found, set the current timestamp tuple
-                # as the current child's timestamps
-                if child.timestamps[1] > childTimestamps[1]:
-                    childTimestamps = child.timestamps
-                # Otherwise, we know that the child's start timestamp is earlier than the current earliest timestamp
-                # and the end timestamp is earlier or equal to the current latest timestamp
-                # Thus set the earliest timestamp as the current child's start timestamp
+        for childTimestamps in child.timestamps:
+            for treeTimestamps in tree.timestamps:
+                # Check if there has been timestamps from the child functions added yet
+                if not childTimestampList:
+                    if childTimestamps[0] < treeTimestamps[0]:
+                        print("ERROR: Child function somehow executed earlier than parent function, exiting...")
+                        sys.exit()
+                    elif childTimestamps[1] > treeTimestamps[1] and treeTimestamps == tree.timestamps[-1]:
+                        print("Uhh", treeTimestamps, childTimestamps)
+                        print("ERROR: Child function somehow terminated after the parent function, exiting...")
+                        sys.exit()
+                    # If this point is reached, we know the current child timestamp tuple occurred
+                    # During the execution of the parent function
+                    # Thus we append the tuple to the timestamp list
+                    # There is no need to traverse the tree timestamp list since
+                    # That list is sorted in ascending order,
+                    # therefore the timestamps we appended will always trigger the above conditions
+                    # And we would waste time checking
+                    else:
+                        childTimestampList.append(childTimestamps)
+                        break
                 else:
-                    childTimestamps = (child.timestamps[0], childTimestamps[1])
-        # Otherwise, we know that the child's start timestamp occurs later than the current earliest timestamp
-        # Then we need to check if the current child's end timestamp occurs later than the latest timestamp
-        # If so then set the latest timestamp as the child's end timestamp
+                    if childTimestamps[0] < treeTimestamps[0]:
+                        print("ERROR: Child function somehow executed earlier than parent function, exiting...")
+                        sys.exit()
+                    elif childTimestamps[1] > treeTimestamps[1] and treeTimestamps == tree.timestamps[-1]:
+                        print("Uhh", treeTimestamps, childTimestamps)
+                        print(f"Tree:{tree} \n Child: {child}")
+                        print("ERROR: Child function somehow terminated after the parent function, exiting...")
+                        sys.exit()
+                    # If this point is reached, we know the current child timestamp tuple occurred
+                    # During the execution of the parent function
+                    # Thus we append the tuple to the timestamp list
+                    # There is no need to traverse the tree timestamp list since
+                    # That list is sorted in ascending order,
+                    # therefore the timestamps we appended will always trigger the above conditions
+                    # And we would waste time checking
+                    else:
+                        updateTimestampList(childTimestamps, childTimestampList)
+                        break
 
-        # If that is not the case, then we know that the child's start timestamp occurs later than the earliest
-        # timestamp and the end timestamp occurs earlier than the latest timestamp
-        # Thus we discard those timestamps
-        elif child.timestamps[1] > childTimestamps[1]:
-            childTimestamps = (childTimestamps[0], child.timestamps[1])
     # Check if the child timestamps tuple was set, if so, then we update the execution time of the current node
-    if childTimestamps:
-        tree.execTime -= childTimestamps[1] - childTimestamps[0]
+    for timeTup in childTimestampList:
+
+        tree.execTime -= timeTup[1] - timeTup[0]
     # Error check where somehow the execution time is changed to a negative value which makes no sense
     if tree.execTime < 0:
-        print("poop", tree, childTimestamps, old)
+        print(f"poop {tree} \n {childTimestampList} \n {old}")
         sys.exit()
     return
 # Redistributes Time info to have the execution time attribute of each node represent the true execution of the function
@@ -181,6 +265,7 @@ def redistributeExecTime(tidData):
             updateExecTime(tree)
     return
 
+# This is simply a helper function for retrieving the function information of nodes from a single function tree
 def getFuncsfromTree(tree):
     if not tree.childFuncs:
         return {tree.func: tree.execTime}
@@ -200,7 +285,7 @@ def retrieveFuncs(tidData):
         for tree in treeDict.values():
             if not funcTimeDict:
                 funcTimeDict = getFuncsfromTree(tree)
-                print(funcTimeDict)
+                # print(funcTimeDict)
                 # printTree(treeDict)
             else:
                 # This will merge the two dictionaries by summing any values of the same key and also adding keys that
@@ -223,28 +308,57 @@ def main():
     with open(fileName, 'r') as j_file:
         tidData = json.load(j_file)
 
+    # By default, samples are used, we let the user use timestamps if they want to
     timestampInput = input("Use Timestamps? y/n Default is n: ")
     if timestampInput == "y":
         global useTimestamps
         useTimestamps = True
 
+    # NOTE: Below the code currently is doing work on timestamps
+    # If useTimestamps is not set to True, then this will crash
+
     loadData(tidData)
     outDict = {}
+
+    # print the first tree
     for treeDict in tidData.values():
         printTree(treeDict)
         break
+
+    # Retrieve the root execution times before redistribution
+    # These execution times do not represent pure On-CPU execution.
+    # This is explained in comments above this function's definition
+    outDict["ThreadRoot"] = getThreadRootExe(tidData)
+    # Positional Debug print to let me know where we are in the code
     print("Wow")
+
     redistributeExecTime(tidData)
+
     # pprint.pprint(tidData)
     # print(tidData)
-    # for treeDict in tidData.values():
-    #    printTree(treeDict)
-    #    break
+
+    # Print the first tree again, but this time the tree has had its execution times redistributed
+    for treeDict in tidData.values():
+        printTree(treeDict)
+        break
+    # Retrieve the TOTAL time spent in each thread, this is a combination of On-CPU and Off-CPU execution times
     outDict["threads"] = getThreadTotalExecution(tidData)
     print(outDict["threads"])
+
+    # Retrieve the function execution times
+    # At this point, the execution times have been redistributed
+    # Therefore, the sum of these execution times should be the On-CPU execution times
     outDict["funcs"] = retrieveFuncs(tidData)
     print(outDict["funcs"])
     print("sum:", sum(outDict["funcs"].values()))
+
+    # As explained, these execution times simply represent the pre-redistribution
+    # root execution times, I wanted to know if the sum of the function redistributed execution times
+    # would be the same as the sum of these root times
+    # I discovered they are not, but it makes sense, This is explained in the get thread root execution time function
+    # comments
+    print(outDict["ThreadRoot"])
+    print("sum:", sum(outDict["ThreadRoot"].values()))
 
 
     # print(getThreadSampTot(tidData))
@@ -259,6 +373,7 @@ def main():
             libTotDict.setdefault(lib, 0)
             libTotDict[lib] += total
     '''
+    # Dump our output data into the chart data json so we can chart stuff
     with open("chart_data.json", 'w') as chart_file:
         json.dump(outDict, chart_file, indent=4)
 

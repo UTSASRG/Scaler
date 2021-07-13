@@ -13,12 +13,12 @@ class charter:
         self.fig, self.axs = plt.subplots(1, figsize=(10, 10))
         #if "Kernel" in self.chartData[1]:
         #     del self.chartData[1]["Kernel"]
-        self.wedgeList.append(self.axs.pie(self.chartData[1].values(), labels=self.chartData[1].keys(), autopct='%1.1f%%'))
-        self.axs.set_title("Library Total Samples Pi Chart")
+        self.wedgeList.append(self.axs.pie(self.chartData["funcs"].values(), labels=self.chartData["funcs"].keys(), autopct='%1.1f%%'))
+        self.axs.set_title("Function Total On-CPU Execution Pi Chart")
 
         self.axs.axis('equal')
 
-        self.axs.legend(self.chartData[1].keys())
+        self.axs.legend(self.chartData["funcs"].keys())
 
 # A wedge hover handler is made for each individual chart, so in the case of this charter,
 # I have a pi chart for showing the threads
