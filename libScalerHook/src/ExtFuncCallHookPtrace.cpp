@@ -255,14 +255,16 @@ namespace scaler {
             throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_POKETEXT failed because: %s", strerror(errno));
         }
 
+
+        //todo: we could also intercept a later instruction and parse function id from stack
+        //todo: We could also map addr directly to both func and file id
+        brkpointLoc = reinterpret_cast<void *>(regs.rip - 1);
+
         if (brkPointInfo.brkpointFuncMap.find(brkpointLoc) == brkPointInfo.brkpointFuncMap.end()) {
             ERR_LOGS("Unexpected stop because rip=%p doesn't seem to be caused by hook", brkpointLoc);
             return false;
         }
-        //todo: we could also intercept a later instruction and parse function id from stack
-        //todo: We could also map addr directly to both func and file id
-        brkpointLoc = reinterpret_cast<void *>(regs.rip - 1);
-        pthread_t selff = pthread_self();
+
         DBG_LOGS("RIP=%p RSP=%p TID=%d\n", regs.rip, regs.rsp, childTid);
         void **realCallAddr = (void **) pmParser.readProcMem(reinterpret_cast<void *>(regs.rsp), sizeof(void *));
         callerAddr = *realCallAddr;
