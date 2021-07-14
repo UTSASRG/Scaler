@@ -73,7 +73,7 @@ namespace scaler {
         void parseRelaSymbol(ELFImgInfo &curELFImgInfo, size_t curFileID) override;
 
 
-        pid_t childPID;
+        pid_t childMainThreadTID;
 
 
         size_t findDynSymTblSize(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo);
@@ -83,22 +83,34 @@ namespace scaler {
 
         void recordOriCode(const size_t &funcID, void *addr, bool isPLT = false);
 
-        void insertBrkpointAt(void *addr);
+        void insertBrkpointAt(void *addr, int childTid);
 
         void debuggerLoop();
 
         void preHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
-                            user_regs_struct &regs);
+                            user_regs_struct &regs, int childTid);
 
         void afterHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
-                              user_regs_struct &regs);
+                              user_regs_struct &regs, int childTid);
 
-        void parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr, void *&brkpointLoc,
-                             user_regs_struct &regs);
+        bool parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr, void *&brkpointLoc,
+                             user_regs_struct &regs, int childTid);
 
         bool brkPointInstalledAt(void *addr);
 
         bool isBrkPointLocPlt(void *brkpointLoc);
+
+        void skipBrkPoint(void *brkpointLoc, user_regs_struct &regs, int childTid);
+
+        std::set<int> tracedTID;
+
+        void brkpointEmitted(int childTid);
+
+        void newThreadCreated(int childTid);
+
+        void threadExited(int childTid);
+
+        int waitForAllChild(int &waitStatus);
     };
 }
 

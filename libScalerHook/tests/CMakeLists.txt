@@ -171,6 +171,9 @@ add_executable(libScalerHook-proof-ObjCopy src/proofconcept/TestObjCopy.cpp)
 
 add_executable(libScalerHook-proof-PtraceReadProcMem src/proofconcept/testPtraceReadProcMemory.cpp)
 
+add_executable(libScalerHook-proof-testMultithreadPrint src/proofconcept/testMultithreadPrint.cpp)
+target_link_libraries(libScalerHook-proof-testMultithreadPrint pthread)
+target_link_options(libScalerHook-proof-testMultithreadPrint PRIVATE "-z" "lazy" "-O0")
 
 #add_executable(libScalerHook-demoapps src/proofconcept/testprog.cpp)
 #target_link_libraries(DemoProg libTest PltHookLib dl)

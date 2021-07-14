@@ -16,23 +16,34 @@
 #include <util/hook/install.h>
 #include <thread>
 #include <sys/prctl.h>
+#include <exceptions/ScalerException.h>
+#include <exceptions/ErrCode.h>
+#include <string.h>
 
 void run_target(const char *programname) {
     DBG_LOGS("target started. will run '%s'", programname);
-    prctl(PR_SET_DUMPABLE, 1);
-    /* Allow tracing of this process */
+    //Set dumpable so that we can read child process memory
+    if(prctl(PR_SET_DUMPABLE, 1)<0){
+        throwScalerExceptionS(ErrCode::PTRCTL_FAIL, "PR_SET_DUMPABLE failed because: %s", strerror(errno));
+    }
+
+    //Allow tracing of this process
     if (ptrace(PTRACE_TRACEME, 0, 0, 0) < 0) {
-        ERR_LOG("ptrace\n");
-        return;
+        throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_TRACEME failed because: %s", strerror(errno));
     }
 
     /* Replace this process's image with the given program */
-    execl(programname, programname, NULL);
+    if(execl(programname, programname, NULL)<0) {
+        throwScalerExceptionS(ErrCode::TARGET_EXEC_FAIL, "execl target failed because: %s", strerror(errno));
+    }
 }
+
+std::string executableName;
 
 int main(int argc, char **argv) {
     pid_t childPid;
 
+    executableName = argv[1];
     if (argc < 2) {
         ERR_LOG("Expected <program absolute path>\n");
         return -1;
@@ -43,12 +54,10 @@ int main(int argc, char **argv) {
     else if (childPid > 0) {
         DBG_LOG("Debugger run");
 
-
-        std::this_thread::sleep_for (std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::seconds(1));
 
         install([](std::string fileName, std::string funcName) -> bool {
-            if (fileName ==
-                "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall") {
+            if (fileName == executableName) {
                 DBG_LOGS("%s:%s hooked", fileName.c_str(), funcName.c_str());
                 //todo: User should be able to specify name here. Since they can change filename
                 return true;

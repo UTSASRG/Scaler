@@ -8,6 +8,7 @@
 #include <set>
 #include <immintrin.h>
 #include <thread>
+#include <map>
 #include <utility>
 #include <util/hook/ExtFuncCallHookPtrace.h>
 #include <exceptions/ScalerException.h>
@@ -25,11 +26,27 @@ namespace scaler {
 
 
     void ExtFuncCallHookPtrace::install(Hook::SYMBOL_FILTER filterCallB) {
+        //Add mian thread tid to the list, mainthread tid=pid
+        tracedTID.insert(childMainThreadTID);
+
+
         int wait_status;
-        //Wait for child to stop on its first instruction
-        wait(&wait_status);
-        //todo: use debuglog and exceptions
-        perror("first wait result");
+        //Wait for the child to stop before execution so we can insert breakpoints
+        //This is where the child is first loaded into memory
+        if (waitpid(childMainThreadTID, &wait_status, 0) < 0) {
+            throwScalerExceptionS(ErrCode::WAIT_FAIL, "WAIT_FAIL failed because: %s", strerror(errno));
+        }
+
+        //Also trace newly created threads
+        if (ptrace(PTRACE_SETOPTIONS, childMainThreadTID, 0, PTRACE_O_TRACECLONE) < 0) {
+            throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_SETOPTIONS failed because: %s", strerror(errno));
+        }
+
+
+        if (!WIFSTOPPED(wait_status)) {
+            throwScalerExceptionS(ErrCode::WAIT_FAIL, "Child emit signal other than SIG_STOP, but is %s",
+                                  strsignal(WSTOPSIG(wait_status)));
+        }
 
         memTool = MemoryToolPtrace::getInst(pmParser);
 
@@ -68,8 +85,12 @@ namespace scaler {
             //todo: Add logic to determine whether hook .plt or .plt.sec. Currently only hook .plt.sec
             DBG_LOGS("Instrumented pltsec code for symbol:%s at:%p", curSymbol.symbolName.c_str(),
                      curSymbol.pltSecEntry);
-            insertBrkpointAt(curSymbol.pltSecEntry);
+            insertBrkpointAt(curSymbol.pltSecEntry, childMainThreadTID);
 
+        }
+        /* The child can continue running now */
+        if (ptrace(PTRACE_CONT, childMainThreadTID, 0, 0) < 0) {
+            throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_CONT failed because: %s", strerror(errno));
         }
 
         debuggerLoop();
@@ -77,7 +98,7 @@ namespace scaler {
 
     ExtFuncCallHookPtrace::ExtFuncCallHookPtrace(pid_t childPID)
             : pmParser(childPID), ExtFuncCallHook_Linux(pmParser, *MemoryToolPtrace::getInst(pmParser)) {
-        this->childPID = childPID;
+        this->childMainThreadTID = childPID;
     }
 
     ExtFuncCallHookPtrace *ExtFuncCallHookPtrace::getInst(pid_t childPID) {
@@ -137,127 +158,123 @@ namespace scaler {
     }
 
 
-    void ExtFuncCallHookPtrace::insertBrkpointAt(void *addr) {
+    void ExtFuncCallHookPtrace::insertBrkpointAt(void *addr, int childTid) {
         unsigned long oriCode = *brkPointInfo.brkpointCodeMap.at(addr);
 
         //unsigned long orig_data = ptrace(PTRACE_PEEKTEXT, childPID, addr, 0);
         //assert(oriCode==orig_data);
 
-        ptrace(PTRACE_POKETEXT, childPID, addr, (oriCode & ~(0xFF)) | 0xCC);
+        ptrace(PTRACE_POKETEXT, childTid, addr, (oriCode & ~(0xFF)) | 0xCC);
     }
 
 
     void ExtFuncCallHookPtrace::debuggerLoop() {
         DBG_LOG("debugger started");
-        /* The child can continue running now */
-        ptrace(PTRACE_CONT, childPID, 0, 0);
 
-        int wait_status;
+
+        int waitStatus;
         while (true) {
-            DBG_LOGS("Wait for child", strsignal(WSTOPSIG(wait_status)));
-            wait(&wait_status);
-            if (WIFSTOPPED(wait_status)) {
-                DBG_LOGS("Child got a signal: %s", strsignal(WSTOPSIG(wait_status)));
+            //DBG_LOGS("Wait for child", strsignal(WSTOPSIG(wait_status)));
+            int childTid = waitForAllChild(waitStatus);
 
-                size_t curFileID = 0;
-                size_t curFuncID = 0;
-                void *callerAddr = nullptr;
-                void *oriBrkpointLoc = nullptr;
-                struct user_regs_struct regs{};
-                parseSymbolInfo(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs);
-
-                //Check if the breakpoint loc is a plt address
-                if (isBrkPointLocPlt(oriBrkpointLoc)) {
-                    preHookHandler(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs);
-                } else {
-                    afterHookHandler(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs);
-                }
-            } else if (WIFEXITED(wait_status)) {
-                DBG_LOG("Child exited");
+            if (childTid == -1) {
+                DBG_LOG("No thread left, exit");
                 break;
+            }
+
+            if (waitStatus >> 8 == (SIGTRAP | (PTRACE_EVENT_CLONE << 8))) {
+                DBG_LOGS("Child %d created a new thread", childTid);
+                newThreadCreated(childTid);
+            } else if (WIFSTOPPED(waitStatus)) {
+                DBG_LOGS("Child %d got stop signal: %s", childTid, strsignal(WSTOPSIG(waitStatus)));
+                brkpointEmitted(childTid);
+            } else if (WIFEXITED(waitStatus)) {
+                DBG_LOGS("Child %d exited. remove it from list, exitStatus %d", childTid, WEXITSTATUS(waitStatus));
+                threadExited(childTid);
             } else {
-                ERR_LOG("Unexpected signal");
-                break;
+                throwScalerException(ErrCode::UNKNOWN_SIGNAL, "Unexpected signal");
             }
         }
     }
 
+    class Context {
+    public:
+        //todo: Initialize using maximum stack size
+        std::vector<size_t> funcId;
+        std::vector<size_t> fileId;
+        //Variables used to determine whether it's called by hook handler or not
+        bool inHookHandler = false;
+        std::vector<void *> callerAddr;
+        std::vector<int64_t> timestamp;
+        std::vector<pthread_t *> pthreadIdPtr;
+
+    };
+
+    //std::map<unsigned long long,int> curContext;
+
     void
     ExtFuncCallHookPtrace::preHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
-                                          user_regs_struct &regs) {
+                                          user_regs_struct &regs, int childTid) {
 
         ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(curFileID);
-        DBG_LOGS("%s in %s is called in %s", curELFImgInfo.idFuncMap.at(curFuncID).c_str(), "unknownLib",
+        DBG_LOGS("[Prehook] %s in %s is called in %s", curELFImgInfo.idFuncMap.at(curFuncID).c_str(), "unknownLib",
                  curELFImgInfo.filePath.c_str());
 
         //Check if a breakpoint is inserted at return address
         if (!brkPointInstalledAt(callerAddr)) {
             //Breakpoint not installed
-            DBG_LOGS("Afterhook breakpoint not installed for %s, install now",
+            DBG_LOGS("[Prehook] Afterhook breakpoint not installed for %s, install now",
                      curELFImgInfo.idFuncMap.at(curFuncID).c_str());
             //Mark it as installed
-            //recordOriCode(curFuncID, callerAddr);
-            //insertBrkpointAt(callerAddr);
+            recordOriCode(curFuncID, callerAddr);
+            insertBrkpointAt(callerAddr, childTid);
         }
 
-        /**
-         * Resume execution
-         */
-        auto &curBrkPointCodeMap = brkPointInfo.brkpointCodeMap;
-        // Remove the breakpoint by restoring the previous data at the target address, and unwind the EIP back by 1 to
-
-        unsigned long oriCode = *curBrkPointCodeMap.at(brkpointLoc);
-        ptrace(PTRACE_POKETEXT, childPID, (void *) brkpointLoc, oriCode);
-        // Restore rip to orignal location rip-=1
-        regs.rip = reinterpret_cast<unsigned long long int>(brkpointLoc);
-        ptrace(PTRACE_SETREGS, childPID, 0, &regs);
-        //Execute one more instruction
-        ptrace(PTRACE_SINGLESTEP, childPID, 0, 0);
-
-        user_regs_struct reg1;
-        ptrace(PTRACE_GETREGS, childPID, 0, &reg1);
-        DBG_LOGS("After a single step, rip=%p", (void *) reg1.rip);
-
-
-        int wait_status;
-        //Wait for child to stop on its first instruction
-        wait(&wait_status);
-        if (WIFSTOPPED(wait_status)) {
-            DBG_LOG("Re-insert breakpoint");
-            insertBrkpointAt(brkpointLoc);
-            DBG_LOG("Continue execution");
-            ptrace(PTRACE_CONT, childPID, 0, 0);
-        } else {
-            //Should exit and report error
-            assert(false);
-        }
-
+//        curContext.ctx->timestamp.emplace_back(getunixtimestampms());
+//        curContext.ctx->callerAddr.emplace_back(callerAddr);
+//        //Push calling info to afterhook
+//        curContext.ctx->fileId.emplace_back(fileId);
+//        curContext.ctx->funcId.emplace_back(funcId);
+//
     }
 
     void
     ExtFuncCallHookPtrace::afterHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
-                                            user_regs_struct &regs) {
+                                            user_regs_struct &regs, int childTid) {
 
+        DBG_LOG("[Afterhook]");
     }
 
 
-    void
+    bool
     ExtFuncCallHookPtrace::parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr, void *&brkpointLoc,
-                                           user_regs_struct &regs) {
+                                           user_regs_struct &regs, int childTid) {
         //Parse symbol info based on rip, rsp
         //todo:only need rip
-        ptrace(PTRACE_GETREGS, childPID, 0, &regs);
+        if (ptrace(PTRACE_GETREGS, childTid, 0, &regs) < 0) {
+            throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_POKETEXT failed because: %s", strerror(errno));
+        }
+
+        if (brkPointInfo.brkpointFuncMap.find(brkpointLoc) == brkPointInfo.brkpointFuncMap.end()) {
+            ERR_LOGS("Unexpected stop because rip=%p doesn't seem to be caused by hook", brkpointLoc);
+            return false;
+        }
         //todo: we could also intercept a later instruction and parse function id from stack
         //todo: We could also map addr directly to both func and file id
         brkpointLoc = reinterpret_cast<void *>(regs.rip - 1);
-        callerAddr = reinterpret_cast<void *>(regs.rsp);
+        pthread_t selff = pthread_self();
+        DBG_LOGS("RIP=%p RSP=%p TID=%d\n", regs.rip, regs.rsp, childTid);
+        void **realCallAddr = (void **) pmParser.readProcMem(reinterpret_cast<void *>(regs.rsp), sizeof(void *));
+        callerAddr = *realCallAddr;
+        free(realCallAddr);
 
-        curFileID = pmParser.findExecNameByAddr(brkpointLoc);
-
-        DBG_LOGS("Child stopped at RIP = %p offset=%llu", regs.rip,
-                 regs.rip - (uint64_t) elfImgInfoMap.at(curFileID).baseAddr);
+        //DBG_LOGS("Child stopped at RIP = %p offset=%llu", regs.rip,
+        //         regs.rip - (uint64_t) elfImgInfoMap.at(curFileID).baseAddr);
+        //DBG_LOGS("Calleraddr= %p offset=%llu", regs.rsp,
+        //         regs.rsp - (uint64_t) elfImgInfoMap.at(curFileID).baseAddr);
 
         curFuncID = brkPointInfo.brkpointFuncMap.at(brkpointLoc);
+        return true;
 
     }
 
@@ -283,6 +300,127 @@ namespace scaler {
     bool ExtFuncCallHookPtrace::isBrkPointLocPlt(void *brkpointLoc) {
         auto &curBreakpointPLTAddr = brkPointInfo.brkpointPltAddr;
         return curBreakpointPLTAddr.find(brkpointLoc) != curBreakpointPLTAddr.end();
+    }
+
+    void ExtFuncCallHookPtrace::skipBrkPoint(void *brkpointLoc, user_regs_struct &regs, int childTid) {
+        /**
+         * Resume execution
+         */
+        if (brkpointLoc != nullptr) {
+            auto &curBrkPointCodeMap = brkPointInfo.brkpointCodeMap;
+            // Remove the breakpoint by restoring the previous data at the target address, and unwind the EIP back by 1 to
+
+            unsigned long oriCode = *curBrkPointCodeMap.at(brkpointLoc);
+            if (ptrace(PTRACE_POKETEXT, childTid, (void *) brkpointLoc, oriCode) < 0) {
+                throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_POKETEXT failed because: %s", strerror(errno));
+            }
+            // Restore rip to orignal location rip-=1
+            regs.rip = reinterpret_cast<unsigned long long int>(brkpointLoc);
+            if (ptrace(PTRACE_SETREGS, childTid, 0, &regs) < 0) {
+                throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_SETREGS failed because: %s", strerror(errno));
+            }
+            //Execute one more instruction
+            if (ptrace(PTRACE_SINGLESTEP, childTid, 0, 0) < 0) {
+                throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_SINGLESTEP failed because: %s", strerror(errno));
+            }
+
+            int wait_status;
+            //Wait for child to stop on its first instruction
+            waitpid(childTid, &wait_status, 0);
+            if (WIFSTOPPED(wait_status)) {
+                //DBG_LOG("Re-insert breakpoint");
+                insertBrkpointAt(brkpointLoc, childTid);
+                //DBG_LOG("Continue execution");
+                if (ptrace(PTRACE_CONT, childTid, 0, 0) < 0) {
+                    throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_CONT failed because: %s", strerror(errno));
+                }
+            } else if (WIFEXITED(wait_status)) {
+                ERR_LOGS("Child thread %d has already exited, cannot restart it", childTid);
+                //remove childID from vector list
+                threadExited(childTid);
+            } else {
+                //Should exit and report error
+
+                DBG_LOGS("WIFSIGNALED: %d", WIFSIGNALED(wait_status));
+                DBG_LOGS("WTERMSIG: %d", WTERMSIG(wait_status));
+                DBG_LOGS("WSTOPSIG: %d", WSTOPSIG(wait_status));
+                DBG_LOGS("WIFCONTINUED: %d", WIFCONTINUED(wait_status));
+                DBG_LOGS("WSTOPSIG: %s", strsignal(WSTOPSIG(wait_status)));
+                DBG_LOGS("WTERMSIG: %s", strsignal(WTERMSIG(wait_status)));
+
+                DBG_LOGS("%d\n", wait_status >> 8);
+                DBG_LOGS("%d\n", (SIGTRAP | PTRACE_EVENT_EXEC << 8));
+
+                assert(false);
+            }
+        }
+    }
+
+    void ExtFuncCallHookPtrace::brkpointEmitted(int childTid) {
+        size_t curFileID = 0;
+        size_t curFuncID = 0;
+        void *callerAddr = nullptr;
+        void *oriBrkpointLoc = nullptr;
+        struct user_regs_struct regs{};
+        if(!parseSymbolInfo(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs, childTid)){
+            //Brakpoint failed, may cause by sigstop sent by other process, continue.
+            //todo: Maybe I should pass signal to target instead
+            if (ptrace(PTRACE_CONT, childTid, 0, 0) < 0) {
+                throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_CONT failed because: %s", strerror(errno));
+            }
+            return;
+        }
+
+        //Check if the breakpoint loc is a plt address
+        if (isBrkPointLocPlt(oriBrkpointLoc)) {
+            preHookHandler(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs, childTid);
+        } else {
+            afterHookHandler(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs, childTid);
+        }
+        skipBrkPoint(oriBrkpointLoc, regs, childTid);
+    }
+
+    void ExtFuncCallHookPtrace::newThreadCreated(int childTid) {
+        //Get newly created threadid
+        long newThreadTID = -1;
+        if (ptrace(PTRACE_GETEVENTMSG, childTid, 0, &newThreadTID) < 0) {
+            throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_GETEVENTMSG failed because: %s", strerror(errno));
+        }
+
+        //Add the new thread to
+        tracedTID.insert(newThreadTID);
+
+        //Attach to new thread
+        ptrace(PTRACE_SEIZE, newThreadTID, nullptr, nullptr);
+
+        DBG_LOGS("thread tid=%d created new thread tid=%d, new thread is attached", childTid, newThreadTID);
+
+        if (ptrace(PTRACE_CONT, childTid, 0, 0) < 0) {
+            throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_CONT failed because: %s", strerror(errno));
+        }
+    }
+
+    void ExtFuncCallHookPtrace::threadExited(int childTid) {
+        tracedTID.erase(childTid);
+    }
+
+    int ExtFuncCallHookPtrace::waitForAllChild(int &waitStatus) {
+        bool WAIT_SUCCESS = false;
+        while (!WAIT_SUCCESS) {
+            for (auto iter = tracedTID.begin(); iter != tracedTID.end(); ++iter) {
+                //todo:busywaiting
+                int waitRlt = waitpid(*iter, &waitStatus, WNOHANG);
+                if (waitRlt < 0) {
+                    throwScalerExceptionS(ErrCode::WAIT_FAIL, "WAIT_FAIL failed because: %s", strerror(errno));
+                } else if (waitRlt != 0) {
+                    WAIT_SUCCESS = true;
+                    return *iter;
+                }
+            }
+            if (tracedTID.size() == 0) {
+                return -1;
+            }
+        }
     }
 
 

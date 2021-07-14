@@ -23,26 +23,6 @@ scaler::MemoryToolPtrace::~MemoryToolPtrace() {
 
 }
 
-int attach(int start, int pid) {
-    long ret;
-
-    if (start == 1) {
-        ret = ptrace(PTRACE_ATTACH, pid, NULL, NULL);
-    } else {
-        ret = ptrace(PTRACE_DETACH, pid, NULL, NULL);
-    }
-
-    if (ret < 0) {
-        ERR_LOG("Could not attach to pid\n");
-        exit(-1);
-    }
-
-    waitpid(pid, NULL, WUNTRACED);
-
-
-    return (ret);
-}
-
 void *scaler::MemoryToolPtrace::binCodeSearch(void *target, size_t targetSize, void *keyword, size_t keywordSize) {
 
     void *cpyDataAddr = pmParser.readProcMem(target, targetSize);

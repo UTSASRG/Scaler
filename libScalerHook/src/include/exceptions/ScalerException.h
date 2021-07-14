@@ -10,12 +10,14 @@
 
 #define throwScalerExceptionS(code, errFmt, ...) \
     char errMsg[1024];                \
-    sprintf(errMsg,errFmt,__VA_ARGS__);        \
+    sprintf(errMsg,errFmt,__VA_ARGS__);          \
+    ERR_LOG(errMsg);                             \
     throw ScalerException(std::string(errMsg),0, __FILE__, __LINE__)
 
 #define throwScalerException(code, errFmt) \
     char errMsg[1024];                \
-    sprintf(errMsg,errFmt);        \
+    sprintf(errMsg,errFmt);                \
+    ERR_LOG(errMsg); \
     throw ScalerException(std::string(errMsg),0, __FILE__, __LINE__)
 
 class ScalerException : std::runtime_error, Object {
