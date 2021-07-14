@@ -171,9 +171,9 @@ namespace scaler {
                 newSymbol.symbolName = std::string(curELFImgInfo.dynStrTable + strIdx);
 
                 //todo: PLT stub is hard coded
-                newSymbol.pltEntry = (uint8_t *) curELFImgInfo.pltStartAddr + relIdx * 16;
+                newSymbol.pltEntry = (uint8_t *) curELFImgInfo.pltStartAddr + (i+1) * 16;
 
-                newSymbol.pltSecEntry=(uint8_t *) curELFImgInfo.pltSecStartAddr + (relIdx-1) * 16;
+                newSymbol.pltSecEntry=(uint8_t *) curELFImgInfo.pltSecStartAddr + i * 16;
 
                 //DBG_LOGS("pltEntryCheck: %s:%s entry is %p", curELFImgInfo.filePath.c_str(),
                 //         newSymbol.symbolName.c_str(), newSymbol.pltSecEntry);
