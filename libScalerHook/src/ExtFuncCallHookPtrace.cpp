@@ -218,7 +218,40 @@ namespace scaler {
         std::vector<void *> callerAddr;
         std::vector<int64_t> timestamp;
 
+        Context();
+
+        Context(Context &);
+        Context(Context &&) noexcept ;
+
+        Context& operator=(Context& other);
+
     };
+
+    Context::Context(Context & rho) {
+        funcId=rho.funcId;
+        fileId=rho.fileId;
+        callerAddr=rho.callerAddr;
+        timestamp=rho.timestamp;
+    }
+
+    Context::Context(Context && rho) noexcept {
+        funcId=rho.funcId;
+        fileId=rho.fileId;
+        callerAddr=rho.callerAddr;
+        timestamp=rho.timestamp;
+    }
+
+    Context &Context::operator=(Context &rho) {
+        funcId=rho.funcId;
+        fileId=rho.fileId;
+        callerAddr=rho.callerAddr;
+        timestamp=rho.timestamp;
+        return *this;
+    }
+
+    Context::Context() {
+
+    }
 
     std::map<unsigned long long, Context> ptraceCurContext;
 
@@ -266,7 +299,7 @@ namespace scaler {
             printf(" ");
         }
 
-        if (curContext.fileId.size() < 0) {
+        if (curContext.fileId.size() <= 0) {
             return;
         }
 
@@ -290,7 +323,7 @@ namespace scaler {
                      curELFImgInfo.hookedExtSymbol.size());
             for (auto iter = curELFImgInfo.hookedExtSymbol.begin();
                  iter != curELFImgInfo.hookedExtSymbol.end(); ++iter) {
-                DBG_LOGS("%ld:%s", iter->first,iter->second.symbolName.c_str());
+                DBG_LOGS("%ld:%s", iter->first, iter->second.symbolName.c_str());
             }
             assert(false);
         }
