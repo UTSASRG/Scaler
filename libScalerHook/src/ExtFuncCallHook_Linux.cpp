@@ -14,12 +14,13 @@
 
 namespace scaler {
     void ExtFuncCallHook_Linux::findELFSecInMemory(ELFParser_Linux &elfParser, std::string secName, void *&startAddr,
-                                                   void *endAddr) {
+                                                   void *endAddr, void *boundStartAddr, void *boundEndAddr) {
         auto pltHdr = elfParser.getSecHdrByName(std::move(secName));
+
 
         void *pltAddrInFile = elfParser.getSecContent(pltHdr);
         startAddr = memTool.searchBinInMemory(pltAddrInFile, sizeof(pltHdr.secHdr.sh_entsize),
-                                              pmParser.executableSegments);
+                                              pmParser.executableSegments, boundStartAddr, boundEndAddr);
         if (startAddr == nullptr) {
             throwScalerExceptionS(ErrCode::ELF_SECTION_NOT_FOUND_IN_MEM, "Can't find section %s", secName.c_str());
         } else {
@@ -29,6 +30,7 @@ namespace scaler {
     }
 
     void ExtFuncCallHook_Linux::locateRequiredSecAndSeg() {
+        pmParser.printPM();
         //Get segment info from /proc/self/maps
         for (auto iter = pmParser.procMap.begin(); iter != pmParser.procMap.end(); ++iter) {
             auto &curFileName = iter->first;
@@ -49,13 +51,20 @@ namespace scaler {
                  */
                 ELFParser_Linux elfParser(curFileName);
 
+                curELFImgInfo.baseAddrStart = pmParser.fileBaseAddrMap.at(curFileiD).first;
+                curELFImgInfo.baseAddrEnd = pmParser.fileBaseAddrMap.at(curFileiD).second;
+
                 //Get plt from ELF file
-                findELFSecInMemory(elfParser, ".plt", curELFImgInfo.pltStartAddr, curELFImgInfo.pltEndAddr);
+                findELFSecInMemory(elfParser, ".plt", curELFImgInfo.pltStartAddr, curELFImgInfo.pltEndAddr,
+                                   curELFImgInfo.baseAddrStart, curELFImgInfo.baseAddrEnd);
+
 
                 //Get .plt.sec (may not exist)
                 try {
                     findELFSecInMemory(elfParser, ".plt.sec", curELFImgInfo.pltSecStartAddr,
-                                       curELFImgInfo.pltSecEndAddr);
+                                       curELFImgInfo.pltSecEndAddr,curELFImgInfo.baseAddrStart, curELFImgInfo.baseAddrEnd);
+                    DBG_LOGS("%s .plt.sec = %p baseaddr=%p-%p", curELFImgInfo.filePath.c_str(),
+                             curELFImgInfo.pltSecStartAddr, curELFImgInfo.baseAddrStart, curELFImgInfo.baseAddrEnd);
                 } catch (const ScalerException &e) {
                     curELFImgInfo.pltSecStartAddr = nullptr;
                     DBG_LOG("Cannot find .plt.sec");
@@ -63,7 +72,6 @@ namespace scaler {
 
                 curELFImgInfo._DYNAMICAddr = findDynamicSegment(elfParser);
 
-                curELFImgInfo.baseAddr = pmParser.fileBaseAddrMap.at(curFileiD);
 
                 curELFImgInfo.dynSymTable = findElemPtrInDynamicSeg<ElfW(Sym) *>(elfParser, curELFImgInfo, curFileiD,
                                                                                  DT_SYMTAB);
@@ -171,14 +179,14 @@ namespace scaler {
                 newSymbol.symbolName = std::string(curELFImgInfo.dynStrTable + strIdx);
 
                 //todo: PLT stub is hard coded
-                newSymbol.pltEntry = (uint8_t *) curELFImgInfo.pltStartAddr + (i+1) * 16;
+                newSymbol.pltEntry = (uint8_t *) curELFImgInfo.pltStartAddr + (i + 1) * 16;
 
-                newSymbol.pltSecEntry=(uint8_t *) curELFImgInfo.pltSecStartAddr + i * 16;
+                newSymbol.pltSecEntry = (uint8_t *) curELFImgInfo.pltSecStartAddr + i * 16;
 
                 //DBG_LOGS("pltEntryCheck: %s:%s entry is %p", curELFImgInfo.filePath.c_str(),
                 //         newSymbol.symbolName.c_str(), newSymbol.pltSecEntry);
 
-                uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddr, curFileID,
+                uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddrStart, curFileID,
                                                                 curRelaPlt->r_offset);
                 newSymbol.gotEntry = reinterpret_cast<void **>(curBaseAddr + curRelaPlt->r_offset);
 
@@ -254,7 +262,7 @@ namespace scaler {
         dynSymTable = rho.dynSymTable;
         dynStrTable = rho.dynStrTable;
         dynStrSize = rho.dynStrSize;
-        baseAddr = rho.baseAddr;
+        baseAddrStart = rho.baseAddrStart;
     }
 
 

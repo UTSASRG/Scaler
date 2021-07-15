@@ -107,7 +107,8 @@ namespace scaler {
             const char *dynStrTable = nullptr;                        //The starting position of dynamic symbol name
             size_t dynStrSize = 0;                              //The size of dynamic string table
 
-            uint8_t *baseAddr = nullptr;                              //The loading address of current elf image
+            uint8_t *baseAddrStart = nullptr;                              //The loading address of current elf image
+            uint8_t *baseAddrEnd = nullptr;                              //The loading address of current elf image
 
             PthreadFuncId pthreadFuncId;
 
@@ -144,7 +145,8 @@ namespace scaler {
         * Find elf section in memory and return start and end address
         */
         virtual void
-        findELFSecInMemory(ELFParser_Linux &elfParser, std::string secName, void *&startAddr, void *endAddr);
+        findELFSecInMemory(ELFParser_Linux &elfParser, std::string secName, void *&startAddr, void *endAddr,
+                           void *boundStartAddr, void *boundEndAddr);
 
         virtual Elf64_Dyn *findDynamicSegment(ELFParser_Linux &elfParser);
 
@@ -158,7 +160,8 @@ namespace scaler {
             if (dynEntryPtr == nullptr) {
                 throwScalerException(-1, "Cannot find a dyn entry");
             }
-            uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddr, curFileID, dynEntryPtr->d_un.d_ptr);
+            uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddrStart, curFileID,
+                                                            dynEntryPtr->d_un.d_ptr);
             return (SEGTYPE) (curBaseAddr + dynEntryPtr->d_un.d_ptr);
         }
 

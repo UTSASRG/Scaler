@@ -188,13 +188,20 @@ namespace scaler {
         try {
             mem_fd = open(ss.str().c_str(), O_RDONLY);
             if (mem_fd < 0) {
-                throwScalerException(ErrCode::CANNOT_READ_PROCESSMEMORY, "Open process memory file failed");
+                free(readRlt);
+                close(mem_fd);
+                throwScalerExceptionS(ErrCode::CANNOT_READ_PROCESSMEMORY, "Open process memory file %s failed",
+                                      ss.str().c_str());
             }
             if (lseek(mem_fd, (__off_t) startAddr, SEEK_SET) < 0) {
-                throwScalerException(ErrCode::CANNOT_READ_PROCESSMEMORY, "Seek process memory file failed");
+                free(readRlt);
+                close(mem_fd);
+                throwScalerExceptionS(ErrCode::CANNOT_READ_PROCESSMEMORY, "Seek process memory file %s failed",ss.str().c_str());
             }
             if (read(mem_fd, readRlt, bytes) < 0) {
-                throwScalerException(ErrCode::CANNOT_READ_PROCESSMEMORY, "Read process memory file failed");
+                free(readRlt);
+                close(mem_fd);
+                throwScalerExceptionS(ErrCode::CANNOT_READ_PROCESSMEMORY, "Read process memory file %s at location %p failed",ss.str().c_str(),startAddr);
             }
         } catch (const ScalerException &e) {
             perror(e.what());
@@ -240,8 +247,13 @@ namespace scaler {
             //Only add if it is a new file. New File, add it to fileId idFile map. Fill it's starting address as base address
             idFileMap.emplace_back(curEntry.pathName);
             fileIDMap[curEntry.pathName] = idFileMap.size() - 1;
-            fileBaseAddrMap[idFileMap.size() - 1] = (uint8_t *) (curEntry.addrStart);
+            fileBaseAddrMap[idFileMap.size() - 1].first = (uint8_t *) (curEntry.addrStart);
+        }else{
+            size_t fileID=fileIDMap.at(curEntry.pathName);
+            //Assume address is incremental
+            fileBaseAddrMap[fileID].second = (uint8_t *) (curEntry.addrEnd);
         }
+
         //Map pathname to PmEntry for easier lookup
         procMap[curEntry.pathName].emplace_back(curEntry);
         startAddrFileMap[(uint8_t *) curEntry.addrStart] = idFileMap.size() - 1;

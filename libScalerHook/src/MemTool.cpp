@@ -14,13 +14,16 @@
 namespace scaler {
 
     void *MemoryTool::searchBinInMemory(void *segPtrInFile, size_t firstEntrySize,
-                                        const std::vector<PMEntry_Linux> &segments) {
+                                        const std::vector<PMEntry_Linux> &segments, void *boundStartAddr,
+                                        void *boundEndAddr) {
         void *rltAddr = nullptr;
 
         for (int i = 0; i < segments.size(); ++i) {
-            rltAddr = binCodeSearch(segments[i].addrStart, segments[i].length, segPtrInFile, firstEntrySize);
-            if (rltAddr)
-                break;
+            if (boundStartAddr <= segments[i].addrStart && segments[i].addrEnd <= boundEndAddr) {
+                rltAddr = binCodeSearch(segments[i].addrStart, segments[i].length, segPtrInFile, firstEntrySize);
+                if (rltAddr)
+                    break;
+            }
         }
         return rltAddr;
     }
@@ -61,7 +64,7 @@ namespace scaler {
     //Initialize instance
     MemoryTool *MemoryTool::instance = nullptr;
 
-    MemoryTool::~MemoryTool()= default;
+    MemoryTool::~MemoryTool() = default;
 
     MemoryTool::MemoryTool() {
 

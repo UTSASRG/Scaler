@@ -83,7 +83,9 @@ namespace scaler {
                     recordOriCode(curSymbol.funcId, curSymbol.pltSecEntry, true);
 
                     //todo: Add logic to determine whether hook .plt or .plt.sec. Currently only hook .plt.sec
-                    DBG_LOGS("Instrumented pltsec code for symbol:%s at:%p", curSymbol.symbolName.c_str(),
+                    assert(pmParser.fileBaseAddrMap.at(curFileId).first<=curSymbol.pltSecEntry && curSymbol.pltSecEntry<pmParser.fileBaseAddrMap.at(curFileId).second);
+                    DBG_LOGS("Instrumented pltsec code for symbol: %s:%s at:%p",
+                             pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
                              curSymbol.pltSecEntry);
                     insertBrkpointAt(curSymbol.pltSecEntry, childMainThreadTID);
 
@@ -218,7 +220,7 @@ namespace scaler {
 
     };
 
-    //std::map<unsigned long long,int> curContext;
+    std::map<unsigned long long, Context> ptraceCurContext;
 
     void
     ExtFuncCallHookPtrace::preHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
@@ -279,6 +281,8 @@ namespace scaler {
         //todo: we could also intercept a later instruction and parse function id from stack
         //todo: We could also map addr directly to both func and file id
         brkpointLoc = reinterpret_cast<void *>(regs.rip - 1);
+
+        curFileID=pmParser.findExecNameByAddr(brkpointLoc);
 
         if (brkPointInfo.brkpointFuncMap.find(brkpointLoc) == brkPointInfo.brkpointFuncMap.end()) {
             ERR_LOGS("Unexpected stop because rip=%p doesn't seem to be caused by hook", brkpointLoc);
@@ -460,13 +464,12 @@ namespace scaler {
         tracedTID.insert(childMainThreadTID);
         uint8_t *mainAddr = nullptr;
         for (int i = 0; i < symTblSize; ++i) {
-            printf("%s\n", strTbl + symTabContent[i].st_name);
             if (strcmp("main", strTbl + symTabContent[i].st_name) == 0) {
                 mainAddr = (uint8_t *) symTabContent[i].st_value;
                 break;
             }
         }
-        mainAddr += (ElfW(Addr)) pmParser.fileBaseAddrMap.at(0);
+        mainAddr += (ElfW(Addr)) pmParser.fileBaseAddrMap.at(0).first;
         return mainAddr;
     }
 
@@ -501,7 +504,7 @@ namespace scaler {
 
 
         //Resotre main
-        skipBrkPoint((void *) (regs.rip - 1), regs, childMainThreadTID,false);
+        skipBrkPoint((void *) (regs.rip - 1), regs, childMainThreadTID, false);
     }
 
 

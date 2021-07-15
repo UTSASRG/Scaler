@@ -57,12 +57,11 @@ int main(int argc, char **argv) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
 
         install([](std::string fileName, std::string funcName) -> bool {
-            if (fileName == executableName) {
-                DBG_LOGS("%s:%s hooked", fileName.c_str(), funcName.c_str());
+            if (fileName == "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28") {
                 //todo: User should be able to specify name here. Since they can change filename
-                return true;
-            } else {
                 return false;
+            } else {
+                return true;
             }
         }, INSTALL_TYPE::BRKPOINT_PTRACE, childPid);
     } else {
