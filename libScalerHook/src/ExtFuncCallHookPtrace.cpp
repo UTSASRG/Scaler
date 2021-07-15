@@ -183,10 +183,10 @@ namespace scaler {
             }
 
             if (waitStatus >> 8 == (SIGTRAP | (PTRACE_EVENT_CLONE << 8))) {
-                DBG_LOGS("Child %d created a new thread", childTid);
+                //DBG_LOGS("Child %d created a new thread", childTid);
                 newThreadCreated(childTid);
             } else if (WIFSTOPPED(waitStatus)) {
-                DBG_LOGS("Child %d got stop signal: %s", childTid, strsignal(WSTOPSIG(waitStatus)));
+               // DBG_LOGS("Child %d got stop signal: %s", childTid, strsignal(WSTOPSIG(waitStatus)));
                 brkpointEmitted(childTid);
             } else if (WIFEXITED(waitStatus)) {
                 DBG_LOGS("Child %d exited. remove it from list, exitStatus %d", childTid, WEXITSTATUS(waitStatus));
@@ -217,14 +217,15 @@ namespace scaler {
                                           user_regs_struct &regs, int childTid) {
 
         ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(curFileID);
-        DBG_LOGS("[Prehook] %s in %s is called in %s", curELFImgInfo.idFuncMap.at(curFuncID).c_str(), "unknownLib",
+        DBG_LOGS("[Prehook %d] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(curFuncID).c_str(),
+                 "unknownLib",
                  curELFImgInfo.filePath.c_str());
 
         //Check if a breakpoint is inserted at return address
         if (!brkPointInstalledAt(callerAddr)) {
             //Breakpoint not installed
-            DBG_LOGS("[Prehook] Afterhook breakpoint not installed for %s, install now",
-                     curELFImgInfo.idFuncMap.at(curFuncID).c_str());
+            //DBG_LOGS("[Prehook %d] Afterhook breakpoint not installed for %s, install now", childTid,
+            //         curELFImgInfo.idFuncMap.at(curFuncID).c_str());
             //Mark it as installed
             recordOriCode(curFuncID, callerAddr);
             insertBrkpointAt(callerAddr, childTid);
@@ -242,7 +243,7 @@ namespace scaler {
     ExtFuncCallHookPtrace::afterHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
                                             user_regs_struct &regs, int childTid) {
 
-        DBG_LOG("[Afterhook]");
+        DBG_LOGS("[Afterhook %d]", childTid);
     }
 
 
@@ -265,7 +266,7 @@ namespace scaler {
             return false;
         }
 
-        DBG_LOGS("RIP=%p RSP=%p TID=%d\n", regs.rip, regs.rsp, childTid);
+        //DBG_LOGS("RIP=%p RSP=%p TID=%d\n", regs.rip, regs.rsp, childTid);
         void **realCallAddr = (void **) pmParser.readProcMem(reinterpret_cast<void *>(regs.rsp), sizeof(void *));
         callerAddr = *realCallAddr;
         free(realCallAddr);
@@ -364,7 +365,7 @@ namespace scaler {
         void *callerAddr = nullptr;
         void *oriBrkpointLoc = nullptr;
         struct user_regs_struct regs{};
-        if(!parseSymbolInfo(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs, childTid)){
+        if (!parseSymbolInfo(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs, childTid)) {
             //Brakpoint failed, may cause by sigstop sent by other process, continue.
             //todo: Maybe I should pass signal to target instead
             if (ptrace(PTRACE_CONT, childTid, 0, 0) < 0) {
