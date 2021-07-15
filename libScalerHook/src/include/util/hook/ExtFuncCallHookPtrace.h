@@ -100,7 +100,7 @@ namespace scaler {
 
         bool isBrkPointLocPlt(void *brkpointLoc);
 
-        void skipBrkPoint(void *brkpointLoc, user_regs_struct &regs, int childTid);
+        void skipBrkPoint(void *brkpointLoc, user_regs_struct &regs, int childTid, bool continueAfterSkip = true);
 
         std::set<int> tracedTID;
 
@@ -111,6 +111,10 @@ namespace scaler {
         void threadExited(int childTid);
 
         int waitForAllChild(int &waitStatus);
+
+        void *findMainAddress();
+
+        void waitBeforeMainExecution();
     };
 }
 

@@ -165,17 +165,16 @@ namespace scaler {
         ~PmParser_Linux() override;
 
 
+        /**
+             * Parse /proc/{pid}/maps into procMap
+             */
+        virtual void parsePMMap();
+
     protected:
         //Process ID
         int procID;
 
         //The filestream for process file
-
-
-        /**
-         * Parse /proc/{pid}/maps into procMap
-         */
-        virtual void parsePMMap();
 
 
         /**

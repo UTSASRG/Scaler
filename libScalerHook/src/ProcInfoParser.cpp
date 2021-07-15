@@ -21,6 +21,15 @@ namespace scaler {
     }
 
     void PmParser_Linux::parsePMMap() {
+        fileIDMap.clear();
+        fileBaseAddrMap.clear();
+        startAddrFileMap.clear();
+        idFileMap.clear();
+        linkedFileID.clear();
+        executableSegments.clear();
+        readableSegments.clear();
+
+
         std::ifstream file;
         openPMMap(file);
 
@@ -149,7 +158,7 @@ namespace scaler {
             //Absolute
             return nullptr;
         } else {
-            printf("Not found, id1=%zu, id2=%zu, curFileID=%zu\n", idWithBaseAddr, idWithoutBaseAddr, curFileiD);
+            ERR_LOGS("Not found, id1=%zu, id2=%zu, curFileID=%zu\n", idWithBaseAddr, idWithoutBaseAddr, curFileiD);
             assert(false);
         }
     }

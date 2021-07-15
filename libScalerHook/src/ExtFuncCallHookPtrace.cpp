@@ -38,7 +38,7 @@ namespace scaler {
         }
 
         //Also trace newly created threads
-        if (ptrace(PTRACE_SETOPTIONS, childMainThreadTID, 0, PTRACE_O_TRACECLONE) < 0) {
+        if (ptrace(PTRACE_SETOPTIONS, childMainThreadTID, 0, PTRACE_O_TRACECLONE | PTRACE_O_EXITKILL) < 0) {
             throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_SETOPTIONS failed because: %s", strerror(errno));
         }
 
@@ -49,6 +49,10 @@ namespace scaler {
         }
 
         memTool = MemoryToolPtrace::getInst(pmParser);
+
+        waitBeforeMainExecution();
+
+        pmParser.parsePMMap();
 
         //Step1: Locating table in memory
         locateRequiredSecAndSeg();
@@ -320,7 +324,8 @@ namespace scaler {
         return curBreakpointPLTAddr.find(brkpointLoc) != curBreakpointPLTAddr.end();
     }
 
-    void ExtFuncCallHookPtrace::skipBrkPoint(void *brkpointLoc, user_regs_struct &regs, int childTid) {
+    void ExtFuncCallHookPtrace::skipBrkPoint(void *brkpointLoc, user_regs_struct &regs, int childTid,
+                                             bool continueAfterSkip) {
         /**
          * Resume execution
          */
@@ -349,8 +354,10 @@ namespace scaler {
                 //DBG_LOG("Re-insert breakpoint");
                 insertBrkpointAt(brkpointLoc, childTid);
                 //DBG_LOG("Continue execution");
-                if (ptrace(PTRACE_CONT, childTid, 0, 0) < 0) {
-                    throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_CONT failed because: %s", strerror(errno));
+                if (continueAfterSkip) {
+                    if (ptrace(PTRACE_CONT, childTid, 0, 0) < 0) {
+                        throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_CONT failed because: %s", strerror(errno));
+                    }
                 }
             } else if (WIFEXITED(wait_status)) {
                 ERR_LOGS("Child thread %d has already exited, cannot restart it", childTid);
@@ -439,6 +446,62 @@ namespace scaler {
                 return -1;
             }
         }
+    }
+
+    void *ExtFuncCallHookPtrace::findMainAddress() {
+        ELFParser_Linux elfParser(pmParser.curExecAbsolutePath);
+        auto strTblInfo = elfParser.getSecHdrByName(".strtab");
+        char *strTbl = (char *) elfParser.getSecContent(strTblInfo);
+        //todo: ELFParser should convert ELF image to its internal datastructure rather than providing raw functions for other classes to invoke
+        auto symTblInfo = elfParser.getSecHdrByName(".symtab");
+        ElfW(Sym) *symTabContent = (ElfW(Sym) *) elfParser.getSecContent(symTblInfo);
+        size_t symTblSize = symTblInfo.secHdr.sh_size / sizeof(Elf64_Sym);
+        //Add mian thread tid to the list, mainthread tid=pid
+        tracedTID.insert(childMainThreadTID);
+        uint8_t *mainAddr = nullptr;
+        for (int i = 0; i < symTblSize; ++i) {
+            printf("%s\n", strTbl + symTabContent[i].st_name);
+            if (strcmp("main", strTbl + symTabContent[i].st_name) == 0) {
+                mainAddr = (uint8_t *) symTabContent[i].st_value;
+                break;
+            }
+        }
+        mainAddr += (ElfW(Addr)) pmParser.fileBaseAddrMap.at(0);
+        return mainAddr;
+    }
+
+    void ExtFuncCallHookPtrace::waitBeforeMainExecution() {
+        //Insert breakpoint at main
+        void *mainAddr = findMainAddress();
+        auto *mainCode = static_cast<unsigned long *>(pmParser.readProcMem(mainAddr, sizeof(unsigned long)));
+        //brkPointInfo will free memory for mainCode
+        brkPointInfo.brkpointCodeMap[mainAddr] = mainCode;
+
+        insertBrkpointAt(mainAddr, childMainThreadTID);
+
+        if (ptrace(PTRACE_CONT, childMainThreadTID, 0, 0) < 0) {
+            throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_CONT failed because: %s", strerror(errno));
+        }
+        int wait_status;
+        //Wait for the child to stop before execution so we can insert breakpoints
+        //This is where the child is first loaded into memory
+        if (waitpid(childMainThreadTID, &wait_status, 0) < 0) {
+            throwScalerExceptionS(ErrCode::WAIT_FAIL, "WAIT_FAIL failed because: %s", strerror(errno));
+        }
+
+        if (!WIFSTOPPED(wait_status)) {
+            throwScalerExceptionS(ErrCode::WAIT_FAIL, "Child emit signal other than SIG_STOP, but is %s",
+                                  strsignal(WSTOPSIG(wait_status)));
+        }
+
+        user_regs_struct regs{};
+        if (ptrace(PTRACE_GETREGS, childMainThreadTID, 0, &regs) < 0) {
+            throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_POKETEXT failed because: %s", strerror(errno));
+        }
+
+
+        //Resotre main
+        skipBrkPoint((void *) (regs.rip - 1), regs, childMainThreadTID,false);
     }
 
 

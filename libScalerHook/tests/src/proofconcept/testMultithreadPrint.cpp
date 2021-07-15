@@ -8,7 +8,6 @@
 # include <asm/ldt.h>        /* Definition of struct user_desc */
 
 
-
 using namespace std;
 
 
@@ -53,7 +52,7 @@ int main() {
 
     printf("Testing application start\n");
 
-    std::this_thread::sleep_for (std::chrono::seconds(5));
+    std::this_thread::sleep_for(std::chrono::seconds(5));
 
     std::thread thread1(threadA);
     std::thread thread2(threadB);
