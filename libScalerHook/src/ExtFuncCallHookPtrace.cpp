@@ -54,7 +54,6 @@ namespace scaler {
         locateRequiredSecAndSeg();
 
         //Step3: Use callback to determine which ID to hook
-        std::vector<ExtSymInfo> symbolToHook;
         std::set<size_t> fileToHook;
 
         for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
@@ -69,25 +68,30 @@ namespace scaler {
                 auto &curSymbolName = iterSymbol->second;
                 if (filterCallB(curFileName, curSymbolName)) {
                     //The user wants this symbol
-                    symbolToHook.emplace_back(curElfImgInfo.allExtSymbol.at(curSymbolId));
                     fileToHook.emplace(curFileId);
+
+                    auto &curSymbol = curElfImgInfo.allExtSymbol.at(curSymbolId);
+
+                    //Step6: Insert breakpoint at .plt entry
+                    //todo: we only use one of them. If ,plt.sec exists, hook .plt.sec rather than plt
+                    recordOriCode(curSymbol.funcId, curSymbol.pltEntry, true);
+
+                    recordOriCode(curSymbol.funcId, curSymbol.pltSecEntry, true);
+
+                    //todo: Add logic to determine whether hook .plt or .plt.sec. Currently only hook .plt.sec
+                    DBG_LOGS("Instrumented pltsec code for symbol:%s at:%p", curSymbol.symbolName.c_str(),
+                             curSymbol.pltSecEntry);
+                    insertBrkpointAt(curSymbol.pltSecEntry, childMainThreadTID);
+
+                    curElfImgInfo.hookedExtSymbol[curSymbol.funcId] = curSymbol;
                 }
+
+
             }
         }
 
-        //Step6: Replace PLT table, jmp to dll function
-        for (auto &curSymbol:symbolToHook) {
-            //todo: we only use one of them. If ,plt.sec exists, hook .plt.sec rather than plt
-            recordOriCode(curSymbol.funcId, curSymbol.pltEntry, true);
 
-            recordOriCode(curSymbol.funcId, curSymbol.pltSecEntry, true);
 
-            //todo: Add logic to determine whether hook .plt or .plt.sec. Currently only hook .plt.sec
-            DBG_LOGS("Instrumented pltsec code for symbol:%s at:%p", curSymbol.symbolName.c_str(),
-                     curSymbol.pltSecEntry);
-            insertBrkpointAt(curSymbol.pltSecEntry, childMainThreadTID);
-
-        }
         /* The child can continue running now */
         if (ptrace(PTRACE_CONT, childMainThreadTID, 0, 0) < 0) {
             throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_CONT failed because: %s", strerror(errno));
@@ -186,7 +190,7 @@ namespace scaler {
                 //DBG_LOGS("Child %d created a new thread", childTid);
                 newThreadCreated(childTid);
             } else if (WIFSTOPPED(waitStatus)) {
-               // DBG_LOGS("Child %d got stop signal: %s", childTid, strsignal(WSTOPSIG(waitStatus)));
+                // DBG_LOGS("Child %d got stop signal: %s", childTid, strsignal(WSTOPSIG(waitStatus)));
                 brkpointEmitted(childTid);
             } else if (WIFEXITED(waitStatus)) {
                 DBG_LOGS("Child %d exited. remove it from list, exitStatus %d", childTid, WEXITSTATUS(waitStatus));
@@ -242,8 +246,19 @@ namespace scaler {
     void
     ExtFuncCallHookPtrace::afterHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
                                             user_regs_struct &regs, int childTid) {
-
-        DBG_LOGS("[Afterhook %d]", childTid);
+        ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(curFileID);
+        auto &curSymbol = curELFImgInfo.hookedExtSymbol.at(curFuncID);
+        if (curSymbol.addr == nullptr) {
+            //Fill addr with the resolved address from GOT
+            void **remoteData = static_cast<void **>(pmParser.readProcMem(curSymbol.gotEntry, sizeof(void *)));
+            curSymbol.addr = *remoteData;
+            free(remoteData);
+        }
+        auto libraryFileId = pmParser.findExecNameByAddr(curSymbol.addr);
+        auto &libraryFileName = pmParser.idFileMap.at(libraryFileId);
+        DBG_LOGS("[Afterhook %d] %s in %s is called in %s", childTid, curSymbol.symbolName.c_str(),
+                 libraryFileName.c_str(),
+                 curELFImgInfo.filePath.c_str());
     }
 
 
