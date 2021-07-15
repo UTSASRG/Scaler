@@ -84,7 +84,8 @@ namespace scaler {
                     recordOriCode(curSymbol.funcId, curSymbol.pltSecEntry, true);
 
                     //todo: Add logic to determine whether hook .plt or .plt.sec. Currently only hook .plt.sec
-                    assert(pmParser.fileBaseAddrMap.at(curFileId).first<=curSymbol.pltSecEntry && curSymbol.pltSecEntry<pmParser.fileBaseAddrMap.at(curFileId).second);
+                    assert(pmParser.fileBaseAddrMap.at(curFileId).first <= curSymbol.pltSecEntry &&
+                           curSymbol.pltSecEntry < pmParser.fileBaseAddrMap.at(curFileId).second);
                     DBG_LOGS("Instrumented pltsec code for symbol: %s:%s at:%p",
                              pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
                              curSymbol.pltSecEntry);
@@ -225,7 +226,7 @@ namespace scaler {
     ExtFuncCallHookPtrace::preHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
                                           user_regs_struct &regs, int childTid) {
 
-        auto& curContext=ptraceCurContext[childTid];
+        auto &curContext = ptraceCurContext[childTid];
 
         curContext.timestamp.push_back(getunixtimestampms());
         curContext.callerAddr.push_back(callerAddr);
@@ -259,11 +260,14 @@ namespace scaler {
     ExtFuncCallHookPtrace::afterHookHandler(int childTid) {
 
 
-
-        auto& curContext=ptraceCurContext[childTid];
+        auto &curContext = ptraceCurContext[childTid];
 
         for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
             printf(" ");
+        }
+
+        if (curContext.fileId.size() < 0) {
+            return;
         }
 
         int64_t startTimestamp = curContext.timestamp.at(curContext.timestamp.size() - 1);
@@ -281,6 +285,15 @@ namespace scaler {
         curContext.funcId.pop_back();
         auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
 
+        if (curELFImgInfo.hookedExtSymbol.find(funcId) == curELFImgInfo.hookedExtSymbol.end()) {
+            DBG_LOGS("%d %lu", curELFImgInfo.hookedExtSymbol.find(0) == curELFImgInfo.hookedExtSymbol.end(),
+                     curELFImgInfo.hookedExtSymbol.size());
+            for (auto iter = curELFImgInfo.hookedExtSymbol.begin();
+                 iter != curELFImgInfo.hookedExtSymbol.end(); ++iter) {
+                DBG_LOGS("%ld:%s", iter->first,iter->second.symbolName.c_str());
+            }
+            assert(false);
+        }
 
         auto &curSymbol = curELFImgInfo.hookedExtSymbol.at(funcId);
         if (curSymbol.addr == nullptr) {
@@ -311,7 +324,7 @@ namespace scaler {
         //todo: We could also map addr directly to both func and file id
         brkpointLoc = reinterpret_cast<void *>(regs.rip - 1);
 
-        curFileID=pmParser.findExecNameByAddr(brkpointLoc);
+        curFileID = pmParser.findExecNameByAddr(brkpointLoc);
 
         if (brkPointInfo.brkpointFuncMap.find(brkpointLoc) == brkPointInfo.brkpointFuncMap.end()) {
             ERR_LOGS("Unexpected stop because rip=%p doesn't seem to be caused by hook", brkpointLoc);
@@ -431,7 +444,7 @@ namespace scaler {
 
         //Check if the breakpoint loc is a plt address
         if (isBrkPointLocPlt(oriBrkpointLoc)) {
-            preHookHandler(curFileID,curFuncID,callerAddr,oriBrkpointLoc,regs,childTid);
+            preHookHandler(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs, childTid);
         } else {
             afterHookHandler(childTid);
         }

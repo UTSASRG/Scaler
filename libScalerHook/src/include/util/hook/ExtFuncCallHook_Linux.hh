@@ -92,7 +92,7 @@ namespace scaler {
 
             uint8_t *pseudoPlt = nullptr;                   //A pointer to pseudoPlt table
 
-            std::map<size_t, ExtSymInfo> hookedExtSymbol;   //External symbols that has already been hooked
+            std::map<ssize_t, ExtSymInfo> hookedExtSymbol;   //External symbols that has already been hooked
 
             ExtSymInfo *hookedExtSymbolC = nullptr;
             size_t hookedExtSymbolCSize = 0;
