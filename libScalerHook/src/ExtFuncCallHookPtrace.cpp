@@ -16,6 +16,7 @@
 #include <sys/ptrace.h>
 #include <sys/user.h>
 #include <wait.h>
+#include <util/tool/Timer.h>
 
 namespace scaler {
 
@@ -213,10 +214,8 @@ namespace scaler {
         std::vector<size_t> funcId;
         std::vector<size_t> fileId;
         //Variables used to determine whether it's called by hook handler or not
-        bool inHookHandler = false;
         std::vector<void *> callerAddr;
         std::vector<int64_t> timestamp;
-        std::vector<pthread_t *> pthreadIdPtr;
 
     };
 
@@ -226,7 +225,20 @@ namespace scaler {
     ExtFuncCallHookPtrace::preHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
                                           user_regs_struct &regs, int childTid) {
 
+        auto& curContext=ptraceCurContext[childTid];
+
+        curContext.timestamp.push_back(getunixtimestampms());
+        curContext.callerAddr.push_back(callerAddr);
+        curContext.fileId.push_back(curFileID);
+        curContext.funcId.push_back(curFuncID);
+
+
         ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(curFileID);
+
+        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
+            printf(" ");
+        }
+
         DBG_LOGS("[Prehook %d] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(curFuncID).c_str(),
                  "unknownLib",
                  curELFImgInfo.filePath.c_str());
@@ -241,19 +253,36 @@ namespace scaler {
             insertBrkpointAt(callerAddr, childTid);
         }
 
-//        curContext.ctx->timestamp.emplace_back(getunixtimestampms());
-//        curContext.ctx->callerAddr.emplace_back(callerAddr);
-//        //Push calling info to afterhook
-//        curContext.ctx->fileId.emplace_back(fileId);
-//        curContext.ctx->funcId.emplace_back(funcId);
-//
     }
 
     void
-    ExtFuncCallHookPtrace::afterHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
-                                            user_regs_struct &regs, int childTid) {
-        ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(curFileID);
-        auto &curSymbol = curELFImgInfo.hookedExtSymbol.at(curFuncID);
+    ExtFuncCallHookPtrace::afterHookHandler(int childTid) {
+
+
+
+        auto& curContext=ptraceCurContext[childTid];
+
+        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
+            printf(" ");
+        }
+
+        int64_t startTimestamp = curContext.timestamp.at(curContext.timestamp.size() - 1);
+        curContext.timestamp.pop_back();
+
+        void *callerAddr = curContext.callerAddr.at(curContext.callerAddr.size() - 1);
+        curContext.callerAddr.pop_back();
+
+        size_t fileId = curContext.fileId.at(curContext.fileId.size() - 1);
+        curContext.fileId.pop_back();
+
+        ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(fileId);
+
+        size_t funcId = curContext.funcId.at(curContext.funcId.size() - 1);
+        curContext.funcId.pop_back();
+        auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
+
+
+        auto &curSymbol = curELFImgInfo.hookedExtSymbol.at(funcId);
         if (curSymbol.addr == nullptr) {
             //Fill addr with the resolved address from GOT
             void **remoteData = static_cast<void **>(pmParser.readProcMem(curSymbol.gotEntry, sizeof(void *)));
@@ -402,9 +431,9 @@ namespace scaler {
 
         //Check if the breakpoint loc is a plt address
         if (isBrkPointLocPlt(oriBrkpointLoc)) {
-            preHookHandler(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs, childTid);
+            preHookHandler(curFileID,curFuncID,callerAddr,oriBrkpointLoc,regs,childTid);
         } else {
-            afterHookHandler(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs, childTid);
+            afterHookHandler(childTid);
         }
         skipBrkPoint(oriBrkpointLoc, regs, childTid);
     }

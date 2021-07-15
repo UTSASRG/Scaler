@@ -90,8 +90,7 @@ namespace scaler {
         void preHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
                             user_regs_struct &regs, int childTid);
 
-        void afterHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
-                              user_regs_struct &regs, int childTid);
+        void afterHookHandler(int childTid);
 
         bool parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr, void *&brkpointLoc,
                              user_regs_struct &regs, int childTid);
