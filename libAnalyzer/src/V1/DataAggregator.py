@@ -400,7 +400,7 @@ def parseFold():
     fold.close()
     # pprint.pprint(tidData.threadDict)
     # with open("perfMemcachedData.json", 'w') as j_file:
-    with open("fakeData.json", 'w') as j_file:
+    with open("../fakeData.json", 'w') as j_file:
        json.dump(tidData.threadDict, j_file)
     return
 if __name__ == "__main__":
