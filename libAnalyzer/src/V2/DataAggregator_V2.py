@@ -174,13 +174,15 @@ class FunctionTree:
             function calls must occur sequentially. 
             Since these function calls are only associated with a specific thread.
         '''
-        # WIP, not ready
+
+        # I created cases for overlap, but realistically, we should never enter the overlap code
+        # IF: we are doing work on data that is thread specific, thus we know they run sequentially
+        # As far as my test went, I never go into the overlap code, so that is works as far as I expect.
         index = 0
         for timestampTup in self.timestamps:
             if timestamps[0] < timestampTup[0]:
                 print(timestamps, self.timestamps)
-                print(
-                    "Error: Impossible data, Start timestamp happened earlier than child's start timestamp, exiting...")
+                print("Error: Impossible data, Start timestamp happened earlier than child's start timestamp, exiting...")
                 sys.exit()
             # If the new end timestamp occurs earlier than the current tuple's end timestamp, then
             # we know that the new timestamp tuple will not contribute new execution time to the current timestamp
@@ -192,6 +194,7 @@ class FunctionTree:
                     # I will offset the current execution time by the old timestamp tuple
                     # Then I replace the tuple with the extended version
                     # Then I will add the new tuple to the execution time
+                    print(timestamps, self.timestamps)
                     self.execTime -= timestampTup[1] - timestampTup[0]
                     self.timestamps[index] = (timestampTup[0], timestamps[1])
                     self.execTime += timestamps[1] - timestampTup[0]
@@ -204,18 +207,20 @@ class FunctionTree:
             index += 1
         return
 
-    # Special method for when print is called on a node, simply prints all of the attributes except for the timestamps
+    # Special method for when print is called on a node, simply prints all of the attributes
     def __str__(self):
         # print("Noot")
         retStr = ""
         for att in dir(self):
-            if not att.startswith('__') and not callable(getattr(self,att)):
-                retStr = f"{att}: {getattr(self, att)} " + retStr
+            try:
+                if not att.startswith('__') and not callable(getattr(self,att)):
+                    retStr = f"{att}: {getattr(self, att)} " + retStr
+            except AttributeError:
+                continue
         return retStr
 
     # This is a private method to retrieve all of the attributes (aside from the child function list)
-    # and store them into a dictionary which is used for
-    # serialization
+    # and store them into a dictionary which is used for serialization
     def __retrieveAttrs(self):
         if useTimestamps:
             return {"func":self.func, "lib":self.lib, "sampleTotal":self.sampleTotal, "timestamps":self.timestamps, "execTime":self.execTime, "childFuncs":[]}
@@ -256,15 +261,16 @@ class FunctionTree:
             return
         for child in self.childFuncs:
             child.__get_leaf_nodes(leaves)
+
     def retrieveLeaves(self):
         leaves = []
         self.__get_leaf_nodes(leaves)
         return leaves
 
 
-#If the stack collapsing script was called with additional annotation for kernel, inlined and jitted functions,
-#then I will declare the function's library as kernel, inlined, or jitted respectively and remove the suffix
-#If a normal input of function [library] or [library] was passed in then, simply return 0 to indicate nothing was done
+# If the stack collapsing script was called with additional annotation for kernel, inlined and jitted functions,
+# then I will declare the function's library as kernel, inlined, or jitted respectively and remove the suffix
+# If a normal input of function [library] or [library] was passed in then, simply return 0 to indicate nothing was done
 def checkSuffix(func):
     suffix = {"_[k]": "Kernel", "_[i]": "Inlined", "_[j]": "Jit"}
     if any(suf in func for suf in suffix.keys()):
@@ -415,7 +421,6 @@ def printTree(treeList):
         num += 1
     return
 
-# TODO NEED TO CONSIDER RECORDING TOTAL THREAD SAMPLES AND TOTAL LIBRARY SAMPLES
 def main():
     tidData = {}
     # tidTree = FunctionTree()
@@ -424,6 +429,17 @@ def main():
     root.withdraw()
     fileName = filedialog.askopenfilename()
 
+    # If an input file was selected, then we will ask them for an output file. They can opt to stop the program
+    # By directly closing the file dialog twice in a row.
+    # Otherwise if an input file is not selected, we will use some default files
+    '''
+    TO USE MY FAKE DATA:
+       Select tests/Test_Cases/aggregator_Test1.folded as input
+       Then select src/V2/fakeData.json as the output file
+       Then enter "y" for using timestamps
+       Then in Converter, just select fakeData.json as the input and say you want to use the timestamp data by entering
+       "y"
+    '''
     if fileName == '':
         # If no file name then just default to opening a file in the repo
         # print(True)
@@ -442,6 +458,8 @@ def main():
                     return
             else:
                 break
+    # We will handle the data differently depending on if the user wants to use the timing data
+    # If "y" is entered, then we will use the time stamp info and sample data, if not then we will use sample data by default
     timestampInput = input("Use Timestamps? y/n Default is n: ")
     if timestampInput == "y":
         global useTimestamps
