@@ -4,6 +4,9 @@ This is a helper script to convert perf script output into a input format for Da
 Sorts lines by TID in ascending order
 '''
 import sys
+import tkinter as tk
+from tkinter import filedialog
+
 def libraryStrip(lib):
     #Can be in the form of ([library name]) or (library file path) or ([unknown])
     libraryName = lib.strip('()')
@@ -24,12 +27,45 @@ def writeToFile(final,finalFile):
         # print(line)
         finalFile.write(' '.join((line[0], str(line[1]) + "\n")))
 
+def addTimestamps(oldLine, finalDict, timestampTuple):
+    if oldLine == "":
+        print("ERROR: No Line detected, exiting...")
+        sys.exit()
+    keyList = oldLine.split(';')
+    index = 1
+    for func in keyList[1:]:
+        keyList[index] = f"{func} {timestampTuple[0]} {timestampTuple[1]}"
+        index += 1
+    finalDict[";".join(keyList)] = finalDict.pop(oldLine)
+    return
+
 def parseScript():
-    perfOut = open("C:/Users/John/PycharmProjects/Scaler/libAnalyzer/tests/PerfTests/perf1.txt")
-    finalFile = open("C:/Users/John/PycharmProjects/Scaler/libAnalyzer/tests/PerfTests/final_with_time.folded", 'w')
+    root = tk.Tk()
+    root.withdraw()
+    fileName = filedialog.askopenfilename()
+    if fileName == "":
+        fileName = "C:/Users/John/PycharmProjects/Scaler/libAnalyzer/tests/PerfTests/perf1.txt"
+        outFileName = "C:/Users/John/PycharmProjects/Scaler/libAnalyzer/tests/PerfTests/final_with_time.folded"
+    else:
+        stopBool = False
+        while True:
+            outFileName = filedialog.askopenfilename()
+            if outFileName == '':
+                # File dialog was closed, set stopBool to true. If file dialog is closed again, then we exit the program
+                if not stopBool:
+                    print("If you want to stop. Then close the file dialog again.")
+                    stopBool = True
+                else:
+                    return
+            else:
+                break
+    perfOut = open(fileName)
+    finalFile = open(outFileName, 'w')
     commBool = True
     finalDict = {}
     outLine = []
+    timestampTuple = ()
+    oldLine = ""
     # Parse each line of perf script output
     for line in perfOut:
         # When we are about to read a new sample, there will be an empty new line read first,
@@ -39,6 +75,7 @@ def parseScript():
             # Join the processed lines from the sample by semi colon
             aLine = ';'.join(outLine)
 
+            oldLine = aLine
             # If the line is unique then we set the sample count as 1, otherwise if we see the line repeated,
             # we will increment its current sample count by 1
             if aLine in finalDict.keys():
@@ -71,16 +108,28 @@ def parseScript():
                         sys.exit()
                     #The cast was successful, thus we know the tid was reported, then we just join the command and tid together with a -?/ which would end up being command-?/tid
                     commpidtid = '-?/'.join(outList[:2])
-                # Save every item from the line except the event name, we will simply assume that the value before the event name is just cpu cycles
-                outList = outList[2:-1]
 
+                # Save every item from the line except the event name and event counter
+                outList = outList[2:-2]
                 # Insert the command-pid/tid string to the start of the output list
                 outList.insert(0, commpidtid)
 
+                # For simulating timing with perf script outputs
                 # Remove any : characters
                 for ind in range(0,len(outList)):
                     outList[ind] = outList[ind].replace(':','')
 
+                # Add timestamps to the previous call stack
+                if not timestampTuple:
+                    timestampTuple = (float(outList.pop(1)),)
+                    print(len(timestampTuple))
+                elif len(timestampTuple) < 2:
+                    timestampTuple = (timestampTuple[0], float(outList.pop(1)))
+                    print(timestampTuple)
+                    addTimestamps(oldLine, finalDict, timestampTuple)
+                else:
+                    timestampTuple = (timestampTuple[1], float(outList.pop(1)))
+                    addTimestamps(oldLine, finalDict, timestampTuple)
                 # Join all of the items into one string from outList and then append to the final list that will be written to a file
                 finalComm = " ".join(outList)
                 outLine.append(finalComm)
@@ -99,18 +148,22 @@ def parseScript():
                 if outList[1] == "[unknown]":
                     # If library is unknown then we will simply report unknown and in the data aggregator, it will be detected as an unknown library
                     if outList[-1] == "[unknown]":
-                        outLine.insert(1,"[unknown]")
+                        outLine.insert(1, "[unknown]")
                     # If the library is known, then report the library by itself
                     else:
                         outLine.insert(1, outList[-1])
                 # If function is known, run normally by joining the function name and library name together and reporting it
                 # Generally if the function is known then the library is also known as being able to resolve the function name makes resolving the library name trivial
                 else:
+                    if outList[1].startswith("_"):
+                        outList[1] = "!" + outList[1]
                     outLine.insert(1, " ".join(outList[1:]))
                 # print(outList)
                 # print(" ".join(outList[1:]))
         if commBool:
             commBool = False
+    # Throw away last line due to lack of timestamps
+    del finalDict[oldLine]
     writeToFile(finalDict.items(), finalFile)
     perfOut.close()
     finalFile.close()
