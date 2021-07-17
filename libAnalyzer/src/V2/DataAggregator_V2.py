@@ -52,6 +52,10 @@ class FunctionTree:
     __slots__ = ['func', 'lib', 'timestamps', 'sampleTotal', 'childFuncs', 'execTime']
     def __init__(self, sampleCnt, lib, func='Unknown', timestamps=[], useTime=False):
         # self.root = True
+        '''if func.startswith("_"):
+            self.func = "!" + func
+        else:
+            self.func = func'''
         self.func = func
         self.lib = lib
         # If the user requests to use timing information, then I will expect that every function
@@ -65,12 +69,9 @@ class FunctionTree:
                 self.execTime = 0
                 try:
                     for timeTup in timestamps:
-                        # print("poop",timeTup, timestamps)
-                        timeFloats = tuple(map(float, timeTup))
                         # I do not know the units of the timestamps before hand, so may need to specify time units afterwards
                         # or settle on one time unit to use
-                        self.timestamps.append(timeFloats)
-                        self.execTime += timeFloats[1] - timeFloats[0]
+                        self.addTimestamps(timeTup)
                 except ValueError:
                     print("ERROR: Timestamps are not floats, exiting...")
                     sys.exit()
@@ -96,20 +97,24 @@ class FunctionTree:
                         if not timestamps:
                             print("Error: No Timestamps Available, exiting...")
                             sys.exit()
-                        child.updateTimestamps(timestamps)
+                        child.addTimestamps(timestamps)
                     return child
         newNode = FunctionTree(sampleCnt, lib, func, [timestamps])
         self.childFuncs.append(newNode)
         return newNode
             # cnt += 1
 
-    # Private method for updating the timestamps of the node it was called for
-    def updateTimestamps(self, timestamps):
+    def addTimestamps(self, timestamps):
         try:
             timestamps = (float(timestamps[0]), float(timestamps[1]))
         except ValueError:
             print("ERROR: Timestamps are not floats, exiting...")
             sys.exit()
+        # print(timestamps)
+        self.timestamps.append(timestamps)
+
+    # Method for updating the timestamps of the node it was called by merging timestamps
+    def updateTimestamps(self):
         # If data passes the previous test, then we know that the timestamps always occur after the start of execution
         # of the current child function
         # This makes sense since data tends to happen sequentially or in parallel, but there is always a
@@ -174,37 +179,72 @@ class FunctionTree:
             function calls must occur sequentially. 
             Since these function calls are only associated with a specific thread.
         '''
+        # Below only handles the case where the end and start match up for now
 
-        # I created cases for overlap, but realistically, we should never enter the overlap code
-        # IF: we are doing work on data that is thread specific, thus we know they run sequentially
-        # As far as my test went, I never go into the overlap code, so that is works as far as I expect.
-        index = 0
+        '''
+        General idea for merging these tuples:
+        
+        Assumptions:
+           - List is sorted in ascending order by start timestamp
+        
+        As we find tuples that match this form:
+        |--------|-------|
+        
+        we will save the earliest start and the latest end timestamp
+        Then replace all of the tuples that were merged with the new merged tuple which contains the earliest start 
+        timestamp and the latest end timestamp
+        '''
+        sorted(self.timestamps)
+        # (currentStart, currentEnd) will be the new merged timestamp tuple
+        currentStart = 0
+        currentEnd = 0
+
+        # startInd will be the index of the first tuple we're merging from
+        # tupleCount will be the offset from the start index as well as the count of the number of tuples being merged
+        tupleCount = 0
+
+        # As we merge tuples we will append them to the list, any tuples that were not merged will simply be appended
+        # to the list as well.
+        newList = []
         for timestampTup in self.timestamps:
-            if timestamps[0] < timestampTup[0]:
-                print(timestamps, self.timestamps)
-                print("Error: Impossible data, Start timestamp happened earlier than child's start timestamp, exiting...")
-                sys.exit()
-            # If the new end timestamp occurs earlier than the current tuple's end timestamp, then
-            # we know that the new timestamp tuple will not contribute new execution time to the current timestamp
-            # Therefore we move to the next iteration
-            if timestamps[1] > timestampTup[1]:
-                # Overlapping timestamps
-                if timestamps[0] <= timestampTup[1]:
-                    # In order to accurately extend our timestamp tuple,
-                    # I will offset the current execution time by the old timestamp tuple
-                    # Then I replace the tuple with the extended version
-                    # Then I will add the new tuple to the execution time
-                    print(timestamps, self.timestamps)
-                    self.execTime -= timestampTup[1] - timestampTup[0]
-                    self.timestamps[index] = (timestampTup[0], timestamps[1])
-                    self.execTime += timestamps[1] - timestampTup[0]
-                # Not overlapping timestamps
-                elif timestampTup == self.timestamps[-1]:
-                    self.timestamps.append(timestamps)
-                    self.execTime += timestamps[1] - timestamps[0]
-                    sorted(self.timestamps)
-                    break
-            index += 1
+            # If currentEnd has been reset, then assign the current tuple.
+            if currentEnd == 0:
+                currentStart, currentEnd = timestampTup[0], timestampTup[1]
+                tupleCount += 1
+                continue
+
+            # If the next tuple's start timestamp = the previous tuple's end timestamp, then we will extend our current
+            # merged tuple with the end timestamp of the current tuple
+            if currentEnd == timestampTup[0]:
+                currentEnd = timestampTup[1]
+                if timestampTup == self.timestamps[-1]:
+                    newList.append((currentStart, currentEnd))
+            # Otherwise, we need to save the current merged tuple along with the indices of the tuples we will replace
+            else:
+                # Once we detect that the previous end timestamp does not match the current start timestamp
+                # We will add the merged timestamps to the new list then reassign the current start timestamp
+                # and end timestamp to the merging timestamp variables
+                newList.append((currentStart, currentEnd))
+                currentStart, currentEnd = timestampTup[0], timestampTup[1]
+                tupleCount = 0
+                if timestampTup == self.timestamps[-1]:
+                    newList.append((currentStart, currentEnd))
+
+            tupleCount += 1
+
+        if not newList and tupleCount == len(self.timestamps):
+            newList.append((currentStart, currentEnd))
+            self.execTime += currentEnd - currentStart
+        else:
+            for timeTup in newList:
+                self.execTime += timeTup[1] - timeTup[0]
+
+        if not newList and self.timestamps:
+            print("ERROR: newList is empty but timestamps list is not, exiting...")
+            sys.exit()
+        # The timestamp list will be replaced with the new list that contains the merged tuples
+        self.timestamps = newList
+
         return
 
     # Special method for when print is called on a node, simply prints all of the attributes
@@ -241,12 +281,20 @@ class FunctionTree:
         aDict["childFuncs"] = tempList
         return aDict
 
+    def __setExecTime(self):
+        for timeTup in self.timestamps:
+            self.execTime += timeTup[1] - timeTup[0]
+        return
+
     @staticmethod
     def reconstructNodefromDict(j_Dict, useTime=False):
         if useTime:
             node = FunctionTree(sampleCnt=j_Dict["sampleTotal"], lib=j_Dict["lib"], func=j_Dict["func"], timestamps=j_Dict["timestamps"], useTime=useTime)
         else:
             node = FunctionTree(sampleCnt=j_Dict["sampleTotal"], lib=j_Dict["lib"], func=j_Dict["func"])
+
+        node.__setExecTime()
+
         if len(j_Dict["childFuncs"]) <= 0:
             return node
         for child in j_Dict["childFuncs"]:
@@ -267,6 +315,7 @@ class FunctionTree:
         self.__get_leaf_nodes(leaves)
         return leaves
 
+# ============================================ Data Cleanup and Organization ===================================
 
 # If the stack collapsing script was called with additional annotation for kernel, inlined and jitted functions,
 # then I will declare the function's library as kernel, inlined, or jitted respectively and remove the suffix
@@ -313,6 +362,8 @@ def parseFunc(funcLine, index):
             except ValueError:
                 print("Error: Impossible input, exiting...")
                 sys.exit()
+            # if tempList[2] == "2130297.050642":
+            #    print("End of file")
             return (1, tempList[0], tempList[1], (tempList[2], tempList[3]))
         # Otherwise just function and library
         else:
@@ -331,6 +382,10 @@ def parseFunc(funcLine, index):
         else:
             return (4, tempList[0])
     # return "ERROR"
+
+# =================================================================================================
+
+# ======================================= Tree Construction Functions =============================
 
 # Each line from the data represents a single branch in our function trees (due to the call stack),
 # thus given a line from the data, we will construct this branch in our function tree
@@ -369,8 +424,9 @@ def constructFuncBranch(root, sampleNum, funcLine, index):
 # have created a new node and will return that new node
 def createNewFuncTree(treeDict, sampleNum, funcLine):
     funcResult = parseFunc(funcLine, 0)
-    if funcResult[0] == 1:
-        # funcResult = (1, func, lib, time start, time end)
+    timeEqual = False
+    if funcResult[0] == 1 and useTimestamps:
+        # funcResult = (1, func, lib, (time start, time end))
         # print(funcResult)
         try:
             time = (float(funcResult[3][0]), float(funcResult[3][1]))
@@ -378,26 +434,52 @@ def createNewFuncTree(treeDict, sampleNum, funcLine):
             print("Error: Timestamps are not float, exiting...")
             sys.exit()
         rootNode = treeDict.setdefault(' '.join(funcResult[1:3]), FunctionTree(0, lib=funcResult[2], func=funcResult[1], timestamps=[funcResult[3]]))
-        if rootNode.timestamps != time:
-            rootNode.updateTimestamps(time)
-    elif funcResult[0] == 2:
-        # funcResult = (2, func, lib)
+
+        if time not in rootNode.timestamps:
+            rootNode.addTimestamps(time)
+
+    elif funcResult[0] == 2 or (funcResult == 1 and not useTimestamps):
+        # funcResult = (2, func, lib) or funcResult = (1, func, lib, (time start, time end)) while useTimestamps is false
         rootNode = treeDict.setdefault(' '.join(funcResult[1:]), FunctionTree(0, lib=funcResult[2], func=funcResult[1]))
-    elif funcResult[0] == 3:
-        # funcResult = (3, lib, time start, time end)
+    elif funcResult[0] == 3 and useTimestamps:
+        # funcResult = (3, lib, (time start, time end))
         try:
             time = (float(funcResult[2][0]), float(funcResult[2][1]))
         except ValueError:
             print("Error: Timestamps are not float, exiting...")
             sys.exit()
-        rootNode = treeDict.setdefault(funcResult[1], FunctionTree(0, lib=funcResult[1], timestamps=[funcResult[3]]))
-        if rootNode.timestamps != time:
-            rootNode.updateTimestamps(time)
+        # print(funcResult)
+        rootNode = treeDict.setdefault(funcResult[1], FunctionTree(0, lib=funcResult[1], timestamps=[funcResult[2]]))
+        if time not in rootNode.timestamps:
+            rootNode.addTimestamps(time)
+
     else:
-        # funcResult = (4, lib)
+        # funcResult = (4, lib) or funcResult = (3, lib, (time start, time end)) while useTimestamps is false
         rootNode = treeDict.setdefault(funcResult[1], FunctionTree(0, lib=funcResult[1]))
     rootNode.sampleTotal += sampleNum
     return rootNode
+
+def traverseTreeandUpdate(node):
+    if not node.childFuncs:
+        node.updateTimestamps()
+        return
+
+    for child in node.childFuncs:
+        traverseTreeandUpdate(child)
+
+    node.updateTimestamps()
+    return
+
+
+def mergeTimestamps(tidData):
+    for treeDict in tidData.values():
+        for tree in treeDict.values():
+            traverseTreeandUpdate(tree)
+    return
+
+# =========================================================================================
+
+# ======================================= Debugging Functions =============================
 
 # Prints the branches of a node
 def printBranch(nodeList, printrootchild, branchNum=0):
@@ -420,6 +502,8 @@ def printTree(treeList):
         printBranch(tree.childFuncs, True)
         num += 1
     return
+
+# ============================================================================================
 
 def main():
     tidData = {}
@@ -469,7 +553,9 @@ def main():
     # print("Wow")
     with open(fileName) as fold:
         # a = 0
+        lineNum = 1
         for line in fold:
+            # print(lineNum)
             lineList = line.split(';') # Line is semi-colon separated, thus we split using ;
 
             '''
@@ -508,7 +594,23 @@ def main():
             '''
             # a += 1
             # print(lineList, sampleNum)
+            # if lineNum > 100:
+            #    break
+            #else:
+            #    print(lineNum)
+            lineNum += 1
+    if not tidData:
+        print("ERROR: Tid Data Dict empty, exiting...")
+        sys.exit()
 
+    # for treeDict in tidData.values():
+    #    printTree(treeDict)
+
+    mergeTimestamps(tidData)
+
+    # print("After Merging")
+    # for treeDict in tidData.values():
+    #    printTree(treeDict)
     with open(outFileName, 'w') as j_file:
         j_file.write(json.dumps(tidData, default=lambda tree: tree.serialize()))
 
