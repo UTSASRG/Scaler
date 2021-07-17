@@ -10,16 +10,16 @@ class charter:
         self.onThreadChart = True
 
     # Sets up chart
-    def setupChart(self):
+    def setupChart(self, key):
         # Draw the pi charts for threads, thread specific library calls, thread-specific and library-specific function calls
         self.fig, self.axs = plt.subplots(1, figsize=(10, 10))
 
-        self.wedgeList.append(self.axs.pie(self.chartData["ThreadSamps"].values(), labels=self.chartData["ThreadSamps"].keys(), autopct='%1.1f%%'))
-        self.axs.set_title("Thread Samples Pi Chart")
+        self.wedgeList.append(self.axs.pie(self.chartData[key]["inlined"].values(), labels=self.chartData[key]["inlined"].keys(), autopct='%1.1f%%', normalize=True))
+        self.axs.set_title(f"inlined total CPU execution time Pie Chart")
 
         self.axs.axis('equal')
 
-        self.axs.legend(self.chartData["ThreadSamps"].keys())
+        self.axs.legend(self.chartData[key]["inlined"].keys())
 
     def setupChartLibTotSamps(self):
         self.fig, self.axs = plt.subplots(1, figsize=(10,10))
@@ -134,9 +134,9 @@ def main():
 
     Chart = charter(chartData)
 
-    Chart.setupChartLibTotSamps()
+    # Chart.setupChartLibTotSamps()
 
-    #Chart.setupChart()
+    Chart.setupChart("libsFuncs")
 
     # back = plt.axes([0.7, 0.05, 0.1, 0.075])
     # bback = Button(back, "Back", color='0.5', hovercolor='1.0')
