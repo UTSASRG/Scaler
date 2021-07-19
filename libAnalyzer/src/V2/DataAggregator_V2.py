@@ -290,10 +290,9 @@ class FunctionTree:
     def reconstructNodefromDict(j_Dict, useTime=False):
         if useTime:
             node = FunctionTree(sampleCnt=j_Dict["sampleTotal"], lib=j_Dict["lib"], func=j_Dict["func"], timestamps=j_Dict["timestamps"], useTime=useTime)
+            node.__setExecTime()
         else:
             node = FunctionTree(sampleCnt=j_Dict["sampleTotal"], lib=j_Dict["lib"], func=j_Dict["func"])
-
-        node.__setExecTime()
 
         if len(j_Dict["childFuncs"]) <= 0:
             return node
