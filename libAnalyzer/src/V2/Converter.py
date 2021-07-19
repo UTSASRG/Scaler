@@ -40,6 +40,13 @@ Redistribution:
 '''
 
 useTimestamps = False
+
+'''def addThreshold(func):
+    def inner(*args, **kwargs):
+        retVal = func(*args, **kwargs)
+        pass
+        # return {key:val for (key,val) in retVal.items() if }'''
+
 # This takes in the dictionary stored in the json format and reconstructs the original output data structure
 # The original output data structure being: {tid: {root function name: function tree}}
 def loadData(tidDict):
@@ -47,7 +54,7 @@ def loadData(tidDict):
         for treeKey, tree in treeDict.items():
             tidDict[key][treeKey] = FunctionTree.reconstructNodefromDict(tree, useTimestamps)
 
-# ================================ REDISTRIBUTION FUNCTIONS ==========================================
+# ================================ DATA REDISTRIBUTION/PROCESSING FUNCTIONS ==========================================
 
 # This function updates that timestamp list in the update exec time function
 # by adding the timestamp if no overlap occurs to the list
@@ -91,74 +98,12 @@ def updateTimestampList(childTimeList):
 
         tupleCount += 1
 
+    # Edge case where there was one element in the time list, we simply append the currentStart and current end tuple
+    # to the new list.
     if not newList and tupleCount == len(childTimeList):
         newList.append((currentStart, currentEnd))
 
     return newList
-    '''
-    index = 0
-    for timestampTup in childTimeList:
-        if childTimeTup[0] < timestampTup[0]:
-            #   |----|
-            # |---------|
-            # Overlap
-            # In this case, we see that the new timestamp tuple encompasses the old one, thus we replace the old one
-            if childTimeTup[1] > timestampTup[1]:
-                print("wao")
-                childTimeList[index] = childTimeTup
-                return
-            #   |---|      |----|         |-------|
-            # |-----| or |----|    or  |--|
-            # Overlap
-            # In this case, we simply extend the old tuple to the left with the new tuple
-            elif childTimeTup[1] >= timestampTup[0]:
-                # print("Wooa")
-                # print(f"What, {childTimeTup}, {timestampTup}, {childTimeList}")
-                childTimeList[index] = (childTimeTup[0], timestampTup[1])
-                return
-            #       |-----|
-            # |---|
-            # No Overlap
-            # This is the case where we have a timestamp tuple that occurs before the current tuple we're checking
-            # while there is no overlap
-            # This may be due to the order in which we checked the child functions
-            # One child function may have timestamps like so: (1,2) (10,15) then the next child function will have a
-            # timestamp like so: (3,5)
-            # Due to the nature of this algorithm, it will appear as if a timestamp appears earlier
-            # However, we know there is no overlap, but the above cases assume overlap, thus we need to handle this case
-            else:
-                childTimeList.insert(index, childTimeTup)
-                return
-        #   |-----|
-        #         |---|
-        # Overlap
-        # In this case, we just need to extend the first tuple to the right with the second tuple
-        elif childTimeTup[0] == timestampTup[1]:
-            # print("Woah")
-            # print(f"Woah, {childTimeTup}, {timestampTup}")
-            childTimeList[index] = (timestampTup[0], childTimeTup[1])
-            return
-        # |-------| or  |------|   or |------|
-        #   |---|          |---|          |-----|
-        # Overlap
-        # The third case is what we handle by extending to the right,
-        # the other cases means we need to go further down the list
-        elif childTimeTup[0] < timestampTup[1]:
-            if childTimeTup[1] > timestampTup[1]:
-                # print(f"Woo, {childTimeTup}, {timestampTup}")
-                print("Woo")
-                childTimeList[index] = (timestampTup[0], childTimeTup[1])
-                return
-            # Will continue to the next iteration if does not pass the above test
-        #   |-----| |----|
-        # No Overlap
-        # This case will only mean we need to append to the list only if we have reached the end of the list
-        # meaning that there is no possible overlap for any of the other timestamps
-        elif timestampTup == childTimeList[-1]:
-            childTimeList.append(childTimeTup)
-            return
-        index += 1
-    '''
 
 '''
 This function will update the execTime attribute of the tree nodes to be the node's actual execution time
@@ -176,7 +121,7 @@ in the parent function.
 def updateExecTime(tree):
     # print(tree)
     childTimestampList = []
-    old = tree.execTime
+    # old = tree.execTime
     # The case where we reach a leaf, then do nothing, the execution time of the leaf that's been calculated
     # is the true execution time of that function
     if not tree.childFuncs:
@@ -187,58 +132,16 @@ def updateExecTime(tree):
         updateExecTime(child)
         for childTS in child.timestamps:
             childTimestampList.append(childTS)
-        '''
-        for childTimestamps in child.timestamps:
-            for treeTimestamps in tree.timestamps:
-                # Check if there has been timestamps from the child functions added yet
-                if not childTimestampList:
-                    if childTimestamps[0] < treeTimestamps[0]:
-                        print("ERROR: Child function somehow executed earlier than parent function, exiting...")
-                        sys.exit()
-                    elif childTimestamps[1] > treeTimestamps[1] and treeTimestamps == tree.timestamps[-1]:
-                        # print("Uhh", treeTimestamps, childTimestamps)
-                        print(f"Tree:{tree} \n Child: {child} \n child timestamps: {childTimestamps}, tree timestamps: {treeTimestamps}")
-                        print("ERROR: Child function somehow terminated after the parent function, exiting...")
-                        sys.exit()
-                    # If this point is reached, we know the current child timestamp tuple occurred
-                    # During the execution of the parent function
-                    # Thus we append the tuple to the timestamp list
-                    # There is no need to traverse the tree timestamp list since
-                    # That list is sorted in ascending order,
-                    # therefore the timestamps we appended will always trigger the above conditions
-                    # And we would waste time checking
-                    else:
-                        childTimestampList.append(childTimestamps)
-                        break
-                else:
-                    if childTimestamps[0] < treeTimestamps[0]:
-                        print("ERROR: Child function somehow executed earlier than parent function, exiting...")
-                        sys.exit()
-                    elif childTimestamps[1] > treeTimestamps[1] and treeTimestamps == tree.timestamps[-1]:
-                        # print("Uhh", treeTimestamps, childTimestamps)
-                        print(f"Tree:{tree} \n Child: {child}")
-                        print("ERROR: Child function somehow terminated after the parent function, exiting...")
-                        sys.exit()
-                    # If this point is reached, we know the current child timestamp tuple occurred
-                    # During the execution of the parent function
-                    # Thus we append the tuple to the timestamp list
-                    # There is no need to traverse the tree timestamp list since
-                    # That list is sorted in ascending order,
-                    # therefore the timestamps we appended will always trigger the above conditions
-                    # And we would waste time checking
-                    else:
-                        updateTimestampList(childTimestamps, childTimestampList)
-                        break
-        '''
+
     childTimestampList = updateTimestampList(childTimestampList)
     # Check if the child timestamps tuple was set, if so, then we update the execution time of the current node
-    a = 0
+    # a = 0
     for timeTup in childTimestampList:
         tree.execTime -= timeTup[1] - timeTup[0]
-        a += timeTup[1] - timeTup[0]
+        # a += timeTup[1] - timeTup[0]
     # Error check where somehow the execution time is changed to a negative value which makes no sense
     if tree.execTime < 0:
-        print(f"original exec time: {old}\nchild total exec time: {a}\ntree: {tree}\nchild timestamps: {childTimestampList} ")
+        # print(f"original exec time: {old}\nchild total exec time: {a}\ntree: {tree}\nchild timestamps: {childTimestampList} ")
         print("ERROR: Execution time is negative, exiting...")
         sys.exit()
     return
@@ -373,14 +276,8 @@ def getLibsFuncsfromTree(node):
         # This nested for loop will merge function sample totals by summing them together
         for lib in set(tempDict := getFuncsSampsfromTree(child)) | set(funcDict):
             # Tests for if the library exists as a key yet in the dictionaries
-            try:
-                tempDict[lib]
-            except KeyError:
-                tempDict[lib] = {}
-            try:
-                funcDict[lib]
-            except KeyError:
-                funcDict[lib] = {}
+            tempDict.setdefault(lib, {})
+            funcDict.setdefault(lib, {})
             for func in set(tempDict[lib]) | set(funcDict[lib]):
                 funcDict[lib][func] = tempDict[lib].get(func, 0.0) + funcDict[lib].get(func, 0.0)
     # Another test for if the library exists yet in the dictionary
@@ -403,16 +300,8 @@ def retrieveLibsFuncs(tidData):
                 # This nested for loop is for merging the dictionaries by summing together sample totals for a function
                 for lib in set(tempDict := getLibsFuncsfromTree(tree)) | set(libfuncDict[tid]):
                     # Tests for if the library is in the dictionary
-                    try:
-                        tempDict[lib]
-                        # print("what", )
-                    except KeyError:
-                        # print(f"lib: {lib}")
-                        tempDict[lib] = {}
-                    try:
-                        libfuncDict[tid][lib]
-                    except KeyError:
-                        libfuncDict[tid][lib] = {}
+                    tempDict.setdefault(lib, {})
+                    libfuncDict[tid].setdefault(lib, {})
                     # print(f"temp dict: {tempDict}")
                     # print(f"func sample Dict: {funcSampDict}")
                     for func in set(tempDict[lib]) | set(libfuncDict[tid][lib]):
@@ -420,61 +309,55 @@ def retrieveLibsFuncs(tidData):
                         libfuncDict[tid][lib][func] = tempDict[lib].get(func, 0.0) + libfuncDict[tid][lib].get(func, 0.0)
     return libfuncDict
 
-# This is simply a helper function for retrieving the function information of nodes from a single function tree
-def getFuncsfromTree(tree):
-    if not tree.childFuncs:
-        return {tree.func: tree.execTime}
-    funcDict = {}
-    for child in tree.childFuncs:
-        for func in set(tempDict := getFuncsfromTree(child)) | set(funcDict):
-            funcDict[func] = tempDict.get(func, 0.0) + funcDict.get(func, 0.0)
-    funcDict[tree.func] = funcDict.get(tree.func, 0.0) + tree.execTime
-    return funcDict
-
-# This function will return a dictionary of all of the functions and their execution times
-# If the execution times have been redistributed then the sum of all of the execution times in this dictionary
-# will represent the total ON-CPU execution time
-# We have no idea about Off-cpu execution time just from this information
-def retrieveFuncs(tidData):
-    funcTimeDict = {}
-    for treeDict in tidData.values():
-        for tree in treeDict.values():
-            if not funcTimeDict:
-                funcTimeDict = getFuncsfromTree(tree)
-                # print(funcTimeDict)
-                # printTree(treeDict)
-            else:
-                # This will merge the two dictionaries by summing any values of the same key and also adding keys that
-                # do not yet exist along with their associated values from their respective dictionary
-                # print(tempDict)
-                for func in set(tempDict := getFuncsfromTree(tree)) | set(funcTimeDict):
-                    funcTimeDict[func] = tempDict.get(func, 0.0) + funcTimeDict.get(func, 0.0)
-    return funcTimeDict
-
-#Does the same thing as the helper function for retrieve funcs, but does it for libraries
-def getLibsfromTree(node):
+# This is a helper function to retrieve a dictionary of the same form as described for
+# retrieveAttrs from a tree structure
+def getAttrsfromTree(node, attrKey, attrVal):
     if not node.childFuncs:
-        return {node.lib: node.execTime}
-    libDict = {}
-    for child in node.childFuncs:
-        for lib in set(tempDict := getLibsfromTree(child)) | set(libDict):
-            libDict[lib] = tempDict.get(lib, 0.0) + libDict.get(lib, 0.0)
-    libDict[node.lib] = libDict.get(node.lib, 0.0) + node.execTime
-    return libDict
+        return {getattr(node, attrKey): getattr(node, attrVal)}
+    attrDict = {}
 
-# Does the same thing as retrieveFuncs, but for libraries
-def retrieveLibs(tidData):
-    libTimeDict = {}
-    for treeDict in tidData.values():
-        for tree in treeDict.values():
-            if not libTimeDict:
-                libTimeDict = getLibsfromTree(tree)
-            else:
-                for lib in set(tempDict := getLibsfromTree(tree)) | set(libTimeDict):
-                    libTimeDict[lib] = tempDict.get(lib, 0.0) + libTimeDict.get(lib, 0.0)
-    return libTimeDict
+    # Iterate through each child and merge the current node's dictionary and the child's dictionary
+    # The current node's dictionary is attrDict,
+    # and the child's dictionary is from the recursive call of getAttrsfromTree()
+    for child in node.childFuncs:
+        for key in set(tempDict := getAttrsfromTree(child, attrKey, attrVal)) | set(attrDict):
+            attrDict[key] = tempDict.get(key, 0.0) + attrDict.get(key, 0.0)
+
+    # We have yet to add in the current node's value, thus we add it in.
+    attrDict[getattr(node, attrKey)] = attrDict.get(getattr(node, attrKey), 0.0) + getattr(node, attrVal)
+
+    return attrDict
 
 # ==========================================================================================
+
+'''
+This function will construct a dictionary for attrKey with the sum of all attrVals associated with attrKey.
+For example, in FunctionTree, attrKey can be "func" and attrVal can be "execTime".
+This means that this function will retrieve the execution time and function name of each node in the function tree
+and set the function name as the key of a dictionary and the execution time as the value.
+
+We perform merging of dictionaries with this rule:
+Given 2 dictionaries, if there are identical keys between the two, sum their values together, otherwise just copy the
+key-value pair over to the newly merged dictionary
+
+After redistribution, the values in the resulting dictionaries represent the true total On-CPU Execution time
+for their respective keys (If "execTime" was passed for attrVal)
+
+If "sampleTotal" is passed to attrVal, then it simply means that any attrKeys that have a non-zero positive 
+value, were the end of a unique call stack that was sampled.
+'''
+def retrieveAttrs(tidData, attrKey, attrVal):
+    retDict = {}
+    for treeDict in tidData.values():
+        for tree in treeDict.values():
+            if not retDict:
+                retDict = getAttrsfromTree(tree, attrKey, attrVal)
+            else:
+                for key in set(tempDict := getAttrsfromTree(tree, attrKey, attrVal)) | set(retDict):
+                    retDict[key] = tempDict.get(key, 0.0) + retDict.get(key, 0.0)
+    return retDict
+
+
 
 # ===================== SUB SECTION: Sample data retrieval =================================
 # Helper function for retrieving function samples while also maintaining library specificity
@@ -486,14 +369,8 @@ def getFuncsSampsfromTree(tree):
         # This nested for loop will merge function sample totals by summing them together
         for lib in set(tempDict := getFuncsSampsfromTree(child)) | set(funcDict):
             # Tests for if the library exists as a key yet in the dictionaries
-            try:
-                tempDict[lib]
-            except KeyError:
-                tempDict[lib] = {}
-            try:
-                funcDict[lib]
-            except KeyError:
-                funcDict[lib] = {}
+            tempDict.setdefault(lib, {})
+            funcDict.setdefault(lib, {})
             for func in set(tempDict[lib]) | set(funcDict[lib]):
                 funcDict[lib][func] = tempDict[lib].get(func, 0.0) + funcDict[lib].get(func, 0.0)
     # Another test for if the library exists yet in the dictionary
@@ -517,16 +394,8 @@ def retrieveFuncSamples(tidData):
                 # This nested for loop is for merging the dictionaries by summing together sample totals for a function
                 for lib in set(tempDict := getFuncsSampsfromTree(tree)) | set(funcSampDict[tid]):
                     # Tests for if the library is in the dictionary
-                    try:
-                        tempDict[lib]
-                        # print("what", )
-                    except KeyError:
-                        # print(f"lib: {lib}")
-                        tempDict[lib] = {}
-                    try:
-                        funcSampDict[tid][lib]
-                    except KeyError:
-                        funcSampDict[tid][lib] = {}
+                    tempDict.setdefault(lib, {})
+                    funcSampDict[tid].setdefault(lib, {})
                     # print(f"temp dict: {tempDict}")
                     # print(f"func sample Dict: {funcSampDict}")
                     for func in set(tempDict[lib]) | set(funcSampDict[tid][lib]):
@@ -546,7 +415,7 @@ def getLibsSampsfromTree(tree):
     return libDict
 
 # This function will return a dictionary of all of the libraries and their samples
-def retrieveLibSamples(tidData):
+def retrieveTIDLibSamples(tidData):
     libSampDict = dict.fromkeys(tidData.keys())
     for tid, treeDict in tidData.items():
         for tree in treeDict.values():
@@ -565,21 +434,15 @@ def retrieveLibSamples(tidData):
 
 # This function will convert {TID:{Lib:{Func:sample/execution time}}} into {lib:{func:execution time/samples}}
 def groupLibsandFuncs(TIDLibFuncDict):
-    pprint.pprint(TIDLibFuncDict)
+    # pprint.pprint(TIDLibFuncDict)
     newLibFuncDict = {}
     for libFuncDict in TIDLibFuncDict.values():
         if not newLibFuncDict:
             newLibFuncDict = copy.deepcopy(libFuncDict)
         else:
             for lib, funcDict in libFuncDict.items():
-                try:
-                    newLibFuncDict[lib]
-                except KeyError:
-                    newLibFuncDict[lib] = {}
-                try:
-                    libFuncDict[lib]
-                except KeyError:
-                    libFuncDict[lib] = {}
+                newLibFuncDict.setdefault(lib, {})
+                libFuncDict.setdefault(lib, {})
                 for func in set(libFuncDict) | set(newLibFuncDict):
                     newLibFuncDict[lib][func] = libFuncDict[lib].get(func, 0.0) + newLibFuncDict[lib].get(func, 0.0)
     pprint.pprint(TIDLibFuncDict)
@@ -643,9 +506,14 @@ def main():
         # Retrieve the function execution times
         # At this point, the execution times have been redistributed
         # Therefore, the sum of these execution times should be the On-CPU execution times
-        outDict["funcs"] = retrieveFuncs(tidData)
+        # outDict["funcs"] = retrieveFuncs(tidData)
+        outDict["funcs"] = retrieveAttrs(tidData, "func", "execTime")
         print(outDict["funcs"])
         print("sum:", sum(outDict["funcs"].values()))
+
+        # print("Wow")
+
+        # print(outDict["funcs"] == retrieveAttr(tidData, "func", "execTime"))
 
         # As explained, these execution times simply represent the pre-redistribution
         # root execution times, I wanted to know if the sum of the function redistributed execution times
@@ -655,9 +523,15 @@ def main():
         print(outDict["ThreadRoot"])
         print("sum:", sum(outDict["ThreadRoot"].values()))
 
-        outDict["libs"] = retrieveLibs(tidData)
+
+        # outDict["libs"] = retrieveLibs(tidData)
+        outDict["libs"] = retrieveAttrs(tidData, "lib", "execTime")
         print(outDict["libs"])
         print("sum: ", sum(outDict["libs"].values()))
+
+        # print("Woo")
+
+        # print(outDict["libs"] == retrieveAttr(tidData, "lib", "execTime"))
 
         outDict["tidlibsFuncs"] = retrieveLibsFuncs(tidData)
 
@@ -674,18 +548,25 @@ def main():
         # outDict["FuncSamps"] =
 
         # Retrieving all library samples and store them with their respective libraries and in their respective threads
-        outDict["LibSamps"] = retrieveLibSamples(tidData)
-        print(outDict["LibSamps"])
+        outDict["TIDLibSamps"] = retrieveTIDLibSamples(tidData)
+        # print("wow")
+        print(outDict["TIDLibSamps"])
 
+        # print(retrieveAttrs(tidData, "lib", "sampleTotal"))
+        # print(outDict["TIDLibSamps"] == retrieveAttrs(tidData, "lib", "sampleTotal"))
         # Just to sum all of the library samples to see if they sum as expected
         # Should sum to the same amounts that is stored in outDict["ThreadSamps"]
-        for tid in outDict["LibSamps"].keys():
-            libSums = sum(outDict["LibSamps"][tid].values())
-            print(f"Tid: {tid}, sum: {libSums}")
+        libSums = []
+        index = 0
+        for tid in outDict["TIDLibSamps"].keys():
+            libSums.append(sum(outDict["TIDLibSamps"][tid].values()))
+            print(f"Tid: {tid}, sum: {libSums[index]}")
+            index += 1
 
+        # print(sum(libSums) == sum(retrieveAttrs(tidData, "lib", "sampleTotal").values()))
         # This will sum all of the values in each thread of outDict["LibSamps"] and report the sample totals for each
         # library irrespective of threads
-        for libDict in outDict["LibSamps"].values():
+        for libDict in outDict["TIDLibSamps"].values():
             try:
                 for lib in set(outDict["LibTotSamps"]) | set(libDict):
                     outDict["LibTotSamps"][lib] = outDict["LibTotSamps"].get(lib, 0.0) + libDict.get(lib, 0.0)
@@ -693,24 +574,12 @@ def main():
                 outDict["LibTotSamps"] = libDict.copy()
 
         print(outDict["LibTotSamps"])
-        print(outDict["LibSamps"])
+        print(outDict["TIDLibSamps"])
 
         # This will grab the sample totals of all functions and store them with their respective threads and libraries
         outDict["FuncLibSamps"] = retrieveFuncSamples(tidData)
         # printFirstTreeDict(tidData)
 
-
-    '''
-    leafDict = getLeaves(tidData)
-    #pprint.pprint(leafDict)
-    libDict = getLibSampTot(leafDict)
-    #pprint.pprint(libDict)
-    libTotDict = {}
-    for libraryDict in libDict.values():
-        for lib, total in libraryDict.items():
-            libTotDict.setdefault(lib, 0)
-            libTotDict[lib] += total
-    '''
     # Dump our output data into the chart data json so we can chart stuff
     with open("chart_data.json", 'w') as chart_file:
         json.dump(outDict, chart_file, indent=4)
