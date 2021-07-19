@@ -87,6 +87,11 @@ target_include_directories(libScalerHook-demoapps-Semaphore PUBLIC)
 target_link_libraries(libScalerHook-demoapps-Semaphore ScalerHook-HookManualAsm pthread dl)
 
 
+add_executable(libScalerHook-demoapps-Signal src/demoapps/TestSingalHandler.cpp)
+target_include_directories(libScalerHook-demoapps-Signal PUBLIC)
+target_link_libraries(libScalerHook-demoapps-Signal pthread dl)
+
+
 add_executable(libScalerHook-parsecapps-aget
         src/parsecapps/aget/Aget.c
         src/parsecapps/aget/Download.c
