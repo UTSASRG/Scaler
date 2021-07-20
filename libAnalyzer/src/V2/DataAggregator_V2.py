@@ -199,7 +199,6 @@ class FunctionTree:
         currentStart = 0
         currentEnd = 0
 
-        # startInd will be the index of the first tuple we're merging from
         # tupleCount will be the offset from the start index as well as the count of the number of tuples being merged
         tupleCount = 0
 
@@ -290,7 +289,8 @@ class FunctionTree:
     def reconstructNodefromDict(j_Dict, useTime=False):
         if useTime:
             node = FunctionTree(sampleCnt=j_Dict["sampleTotal"], lib=j_Dict["lib"], func=j_Dict["func"], timestamps=j_Dict["timestamps"], useTime=useTime)
-            node.__setExecTime()
+            # node.__setExecTime()
+            node.execTime = j_Dict["execTime"]
         else:
             node = FunctionTree(sampleCnt=j_Dict["sampleTotal"], lib=j_Dict["lib"], func=j_Dict["func"])
 
