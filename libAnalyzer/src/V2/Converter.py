@@ -175,6 +175,7 @@ def loadData(tidDict):
 # by adding the timestamp if no overlap occurs to the list
 # or by extending timestamps when overlaps occur
 def updateTimestampList(childTimeList):
+    # TODO: Shouldn't be required
     sorted(childTimeList)
     # (currentStart, currentEnd) will be the new merged timestamp tuple
     currentStart = 0
@@ -198,6 +199,7 @@ def updateTimestampList(childTimeList):
         # merged tuple with the end timestamp of the current tuple
         if currentEnd == timestampTup[0]:
             currentEnd = timestampTup[1]
+            # TODO: Review: This should not happen since aggregator already merged such case
             if timestampTup == childTimeList[-1]:
                 newList.append((currentStart, currentEnd))
         # Otherwise, we need to save the current merged tuple along with the indices of the tuples we will replace
@@ -205,6 +207,7 @@ def updateTimestampList(childTimeList):
             # Once we detect that the previous end timestamp does not match the current start timestamp
             # We will add the merged timestamps to the new list then reassign the current start timestamp
             # and end timestamp to the merging timestamp variables
+            # TODO: Review: Shouldn't this be in the data aggregator script?
             newList.append((currentStart, currentEnd))
             currentStart, currentEnd = timestampTup[0], timestampTup[1]
             tupleCount = 0
@@ -248,6 +251,7 @@ def updateExecTime(tree):
         for childTS in child.timestamps:
             childTimestampList.append(childTS)
 
+    # TODO: Review: I don't think it's necessary
     childTimestampList = updateTimestampList(childTimestampList)
     # Check if the child timestamps tuple was set, if so, then we update the execution time of the current node
     # a = 0
@@ -256,6 +260,7 @@ def updateExecTime(tree):
         # a += timeTup[1] - timeTup[0]
     # Error check where somehow the execution time is changed to a negative value which makes no sense
     if tree.execTime < 0:
+        # TODO: Review: Why should this be possible
         # print(f"original exec time: {old}\nchild total exec time: {a}\ntree: {tree}\nchild timestamps: {childTimestampList} ")
         print("ERROR: Execution time is negative, exiting...")
         sys.exit()
@@ -328,6 +333,7 @@ def getThreadSampTot(tidData):
     for tid, treeDict in tidData.items():
         for tree in treeDict.values():
             if tidDict[tid] is not None:
+
                 tidDict[tid] += tree.sampleTotal
             else:
                 tidDict[tid] = tree.sampleTotal
@@ -348,6 +354,7 @@ def getThreadRootExe(tidData):
     return tidDict
 
 # Will retrieve each thread's total execution time
+# TODO: Review: Why not just read root node?
 # The total execution time of the thread is determined by retrieving the earliest timestamp from all of the roots
 # And retrieving the latest timestamp from all of the roots
 # to calculate thread execution time
@@ -591,10 +598,11 @@ def main():
     root = tk.Tk()
     root.withdraw()
     fileName = filedialog.askopenfilename()
-    if fileName == '':
+    # TODO: Review: Maybe version problem
+    if fileName == ():
         # If no file name then just default to opening a file in the repo
         # print(True)
-        fileName = "perfMemcachedData_V2.json"
+        fileName = "/home/st/Projects/Scaler/libAnalyzer/src/V2/perfMemcachedData_V2.json"
     with open(fileName, 'r') as j_file:
         tidData = json.load(j_file)
 

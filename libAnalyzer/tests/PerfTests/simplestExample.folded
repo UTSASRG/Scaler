@@ -1,0 +1,16 @@
+dummyApp-?/1;funcA [libA] 1 2 1
+dummyApp-?/1;funcA [libA] 2 3;funcB [libB] 2 3 1
+dummyApp-?/1;funcA [libA] 3 4;funcB [libB] 3 4;funcC [libC] 3 4 1
+dummyApp-?/1;funcA [libA] 4 5;funcB [libB] 4 5;funcC [libC] 4 5 1
+dummyApp-?/1;funcA [libA] 5 6;funcB [libB] 5 6;funcC [libC] 5 6 1
+dummyApp-?/1;funcA [libA] 6 7;funcB [libB] 6 7;funcD [libD] 6 7;funcE [libE] 6 7;funcD [libD] 6 7 1
+dummyApp-?/1;funcA [libA] 7 8;funcB [libB] 7 8;funcD [libD] 7 8;funcF [libF] 7 8 1
+dummyApp-?/1;funcA [libA] 8 9;funcB [libB] 8 9;funcC [libC] 8 9 1
+dummyApp-?/1;funcA [libA] 9 10;funcB [libB] 9 10;funcC [libC] 9 10 1
+dummyApp-?/1;funcA [libA] 10 11;funcB [libB] 10 11;funcC [libC] 10 11 1
+dummyApp-?/1;funcA [libA] 11 12;funcB [libB] 11 12 1
+dummyApp-?/1;funcA [libA] 12 13;funcB [libB] 12 13 1
+dummyApp-?/1;funcA [libA] 13 14 1
+dummyApp-?/1;funcA [libA] 14 15 1
+dummyApp-?/1;funcA [libA] 15 16 1
+dummyApp-?/1;funcA [libA] 16 17 1
