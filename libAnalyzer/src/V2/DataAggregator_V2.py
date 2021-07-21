@@ -177,6 +177,8 @@ class FunctionTree:
             Then whenever I need to update timestamps, I have to iterate through the timestamp list.
 
             # TODO: REVIEW: I have doubts about this
+
+            # TODO: REVIEW: Some parts of the description is irrelevant with this function, which may cause confusion for readers
             The reason why I want to use a list is because I do not want to simply extend the first timestamp tuple
             with the second tuple (by swapping the end timestamp with the second end timestamp). If I do this, then
             this would result in including that break between the timestamp tuples (seen above). This break is not
@@ -237,6 +239,7 @@ class FunctionTree:
         timestamp and the latest end timestamp
         '''
         # TODO: REVIEW: This should be unnecessary, since timestamp is always incremental
+        # TODO: REVIEW: Change this to checking whether timestamps are sorted. Because if not there should be an error.
         sorted(self.timestamps)
         # TODO: REVIEW: I think this should be renamed to prevStart and prevEnd
         # (currentStart, currentEnd) will be the new merged timestamp tuple
@@ -453,7 +456,6 @@ def parseFunc(funcLine, index):
             except ValueError:
                 print("Error: Impossible Input, exiting...")
                 sys.exit()
-            # todo: REVIEW, Why the second term needs to be in a tuple?
             return (3, tempList[0], (tempList[1], tempList[2]))
         # If we just have the library
         else:
