@@ -15,20 +15,21 @@
 3. If only using samples, then one can use the stackcollapse-perf.pl perl script to convert the perf script output file into a semicolon seperated format that my Data Aggregator script will accept. 
    
    - Note: I edited the stackcollapse-perf.pl script from the original version in Brandon Gregg's Flame Graph repo to always report library/shared object names. Just using the original code would result in the loss of library names and mess up the data aggregator.
+   - 2nd Note: I created a separate python script called Perf_Script_Parser.py which does the same thing as stackcollapse-perf.pl
+  
+      - The sole difference is that given a perf script sample, we will attribute to each function in the sample's call stack the current sample's timestamp as the start timestamp and the timestamp of the next sample as the end timestamp.
+      - This leads to the necessity to throw away the last sample as there is no way to attribute an end timestamp.
+      - This method is not necessarily accurate in getting the execution time of the data, however we used it to get some idea of the execution time of functions recorded.
 4. After this, go to the main Lib-analyzer instructions
 
 ### Running Lib-Analyzer
 1. Run DataAggregator_V2.py on your data, if it succeeds, then a json file should have been created with aggregated forms of your data. The data structure stored in the json file is explained in detail in DataAggregator.py.
    
-   - Note: Currently assumes a semicolon seperated format, explained in detail in the code itself.
-  
-   #### Have not yet implemented:
-   
-   - May need to create a separate script to convert data into the semicolon separated format that DataAggregator.py needs
+   - Note: Currently assumes a semicolon separated format, explained in detail in the code itself.
    
 2. Run Charter.py with the json file. This script will generate a pie chart based on the data in the json file.
-   - NOTE: Charter.py is undergoing refactoring, it is not yet compatible with the output data structure of DataAggregator_V2.py
-   
+   - Needs to undergo some code clean up and refactoring to allow for more flexible charting. Currently the code needs to be directly edited to retrieve the desired data to chart form chart_data.json
+
 ### About Lib-Analyzer
 
 #### This section will summarize Lib-Analyzer's Implementation.
@@ -39,9 +40,9 @@
   - Each node will contain simple aggregated data associated with a specific function and library
    
       - Information stored:
-        - Function Name and Library Name (Both seperate attributes)
+        - Function Name and Library Name (Both separate attributes)
         - Total recorded samples for the node's function
-        - Timestamps if available, AND the user requested to use them
+        - List of Timestamps if available, AND the user requested to use them
              - Also execution time
         - A list of child functions (These are functions that were called after the current node's function. i.e. on the next call stack level)
 
@@ -49,62 +50,55 @@
     
 #### Time Information Attribution
    
-- Current idea for solution:
+##### The various cases of timestamps
 
-            ex:|---------|
+            Example tuple of timestamps:
+               |---------|
               start     end
+  
+            GIVEN: 2 tuples of timestamps, comprised of a start and end timestamp, each associated with the
+            same function
+            Left to right represents forward time
   
             |-------|   |-------|
             
-            2 timestamps tuples, but they are not overlapping
+            Case 1: 2 timestamps tuples, but they are not overlapping
+  
             
-            Current idea for solution: Store each timestamp tuple separately if they do not overlap
-            AND the new timestamp tuple occurs after the current first stored timestamp tuple
-            These tuples will be stored in a list in the self.timestamps attribute and it will be sorted by the
-            start timestamp of each tuple in ascending order.
-            Then whenever I need to update timestamps, I have to iterate through the timestamp list.
+            Case 2: |-------|        
+                        |--------|    
             
-            The reason why I want to use a list is because I do not want to simply extend the first timestamp tuple
-            with the second tuple (by swapping the end timestamp with the second end timestamp). If I do this, then
-            this would result in including that break between the timestamp tuples (seen above). This break is not
-            a part of the true duration of the timestamps and would bloat the true execution time of the function call.
+            2 timestamps tuples, but they are overlapping
+  
+            Case 3: |---------|--------|
+            The timestamp tuples occur right after another
+            (end timestamp of first tuple == start timestamp of second tuple)
+  
+            Case 4: |-----------|
+                       |-----|
+            Second timestamp tuple only shares time with first tuple.
             
-            Whenever I do operations on a function's execution time, I want to be working in the realm of the original 
-            execution time (from actual function start to function termination). 
-            The reason why I want to do it this way is because this allows me to accurately redistribute
-            execution times to obtain the true execution time of a function (The actual time spent in the function 
-            and not in other functions) since child functions run during the original execution time (meaning it starts 
-            after its parent) of its parent function. 
-            It would not make sense to include those breaks because the child functions never run in those 
-            breaks as I explained, they should run during the original execution times of the parent function
-            
-            or
-            
-            |-------|       or  |---------|--------|
-                |--------|    
-            
-            2 timestamps tuples, but they are overlapping or they appear right after another
-            
-            Current idea for solution: Simply extend the first tuple with by swapping the end timestamp of the
-            first tuple with the second end timestamp
-            
-            changing:
-            |-------|
-                |--------|
-            to:
-            |------------|
-            
-            If we have timestamps like this:
-            
-            |-----------|
-               |-----|
-               
-            Then do nothing as the second timestamps is already covered by the first timestamps
-            
-                |---------|
-            |-----|
-            
-            In this case, I declare these as impossible as my trees are stored on a thread-specific basis, so 
-            function calls must occur sequentially. 
-            Since these function calls are only associated with a specific thread.
-- Charter.py refactoring has not been completed, thus I do not yet know how I am going to create the pie chart from the data.
+            Case 5:    |---------|
+                    |-----|
+            Second timestamp tuple overlaps, but executes earlier than first timestamp tuple
+
+##### How timestamps/execution time are handled in converter and DataAggregator_V2.
+
+  - Caveat: We are not considering concurrency/multi-threading YET, only sequential time
+  - In DataAggregator:
+    - Save all of the timestamps recorded for a function in a list, sorted in ascending order based on the start timestamp
+    - Perform timestamp merging if the 3rd case above occurs by simply replacing the timestamps that fit Case 3 with a single timestamp tuple of the earliest timestamp and latest timestamp
+  
+      - This is not limited to just a pair of timestamps we can have an arbitrary amount of timestamps that lead to Case 3. Regardless the same operation applies.
+  - In Converter:
+    - We perform redistribution which is simply calculating the true execution time of each function
+      - The algorithm is simple:
+        - Since our data structure is a generic tree, with each node representing a function and direct childs representing a function that the parent called
+        - Then the execution times prior to redistribution of the direct childs represent the time that was not part of the true execution of the parent function. Therefore, we subtract the child execution times from parent's execution time which the result would then represent the true execution time of that node.
+    
+
+#### How perf samples counts are handled in converter
+    
+- We perform redistribution as well for the perf sample counts which in this case simply reveals the function that was at the end of a sample's call stack
+  
+    - We care about the function at the end of the call stack because regarding samples the end of the call stack was the executed function at the time. Furthermore, the resulting redistributed sample count represents a portion of the total recorded samples rather than counting the same sample number multiple times if we did not redistribute thus bloating our data.
