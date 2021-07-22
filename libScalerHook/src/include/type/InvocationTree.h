@@ -29,11 +29,11 @@ namespace scaler {
 
     class InvocationTreeNode : public SerializableMixIn {
     protected:
-        ssize_t fileID = -1;
-        ssize_t funcID = -1;
+        int64_t fileID = -1;
+        int64_t funcID = -1;
         int64_t startTimestamp = -1;
         int64_t endTimeStamp = -1;
-        ssize_t childrenSize = 0;
+        int64_t childrenSize = 0;
 
         InvocationTreeNode *parent = nullptr;
         InvocationTreeNode *firstChild = nullptr;
