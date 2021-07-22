@@ -87,6 +87,11 @@ target_include_directories(libScalerHook-demoapps-Semaphore PUBLIC)
 target_link_libraries(libScalerHook-demoapps-Semaphore ScalerHook-HookManualAsm pthread dl)
 
 
+add_executable(libScalerHook-demoapps-Signal src/demoapps/TestSingalHandler.cpp)
+target_include_directories(libScalerHook-demoapps-Signal PUBLIC)
+target_link_libraries(libScalerHook-demoapps-Signal pthread dl)
+
+
 add_executable(libScalerHook-parsecapps-aget
         src/parsecapps/aget/Aget.c
         src/parsecapps/aget/Download.c
@@ -168,6 +173,12 @@ target_link_libraries(libScalerHook-proof-PthreadParam pthread)
 add_executable(libScalerHook-proof-ManualBreakpoint src/proofconcept/testManualBreakpoint.cpp)
 
 add_executable(libScalerHook-proof-ObjCopy src/proofconcept/TestObjCopy.cpp)
+
+add_executable(libScalerHook-proof-PtraceReadProcMem src/proofconcept/testPtraceReadProcMemory.cpp)
+
+add_executable(libScalerHook-proof-testMultithreadPrint src/proofconcept/testMultithreadPrint.cpp)
+target_link_libraries(libScalerHook-proof-testMultithreadPrint pthread)
+target_link_options(libScalerHook-proof-testMultithreadPrint PRIVATE "-z" "lazy" "-O0")
 
 #add_executable(libScalerHook-demoapps src/proofconcept/testprog.cpp)
 #target_link_libraries(DemoProg libTest PltHookLib dl)

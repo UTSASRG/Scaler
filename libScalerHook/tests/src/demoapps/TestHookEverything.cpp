@@ -4,22 +4,22 @@
 #include <TenThousandFunc.h>
 #include <util/hook/install.h>
 #include <util/tool/StringTool.h>
+#include <util/tool/Logging.h>
 
 using namespace std;
 
 int main() {
-    install([](std::string fileName, std::string funcName) -> bool {
-        //todo: User should be able to specify name here. Since they can change filename
-
-        if (fileName ==
-            "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-HookEverything") {
-            return true;
-        } else {
-            fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
-            return false;
-        }
-
-    });
+//    install([](std::string fileName, std::string funcName) -> bool {
+//        //todo: User should be able to specify name here. Since they can change filename
+//
+//        if (fileName ==
+//            "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-HookEverything") {
+//            return true;
+//        } else {
+//            return false;
+//        }
+//
+//    });
 
     printf("Calling funcA\n");
     funcA();

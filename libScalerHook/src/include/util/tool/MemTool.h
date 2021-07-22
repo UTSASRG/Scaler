@@ -18,7 +18,7 @@
 #include "ProcInfoParser.h"
 
 namespace scaler {
-    class MemoryTool: public Object {
+    class MemoryTool : public Object {
     public:
         /**
          * Singeleton
@@ -43,7 +43,9 @@ namespace scaler {
          * because memory alignment typically happens after one entry
          * @param segments Specify wich segment to search
          */
-        virtual void *searchBinInMemory(void *segPtrInFile, size_t firstEntrySize, const std::vector<PMEntry_Linux> &segments);
+        virtual void *
+        searchBinInMemory(void *segPtrInFile, size_t firstEntrySize, const std::vector<PMEntry_Linux> &segments,
+                          void *boundStartAddr, void *boundEndAddr);
 
     protected:
         //Singeleton
@@ -53,26 +55,7 @@ namespace scaler {
 
     };
 
-    class MemoryTool_Linux : public MemoryTool {
-    public:
-        /**
-         * Singeleton
-         */
-        static MemoryTool_Linux *getInst();
 
-
-        void adjustMemPerm(void *startPtr, void *endPtr, int prem);
-
-        ~MemoryTool_Linux() override;
-
-
-    protected:
-        //Singeleton
-        MemoryTool_Linux();
-
-        static MemoryTool_Linux *instance;
-
-    };
 }
 #endif
 

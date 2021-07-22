@@ -8,10 +8,9 @@
 #include <cstring>
 #include <sstream>
 #include <exceptions/ScalerException.h>
+#include <exceptions/ErrCode.h>
 
 namespace scaler {
-    typedef ELFParser_Linux::ErrCode MyErrCode;
-
 
     ELFParser_Linux::ELFParser_Linux(const std::string elfPath) {
         this->elfPath = elfPath;
@@ -26,9 +25,7 @@ namespace scaler {
     void ELFParser_Linux::openELFFile() {
         file = fopen(elfPath.c_str(), "rb");
         if (file == NULL) {
-            std::stringstream ss;
-            ss << "Can't open ELF file \"" << elfPath.c_str() << "\"";
-            throwScalerException(ss.str().c_str());
+            throwScalerExceptionS(ErrCode::ELF_FILE_CANNOT_OPEN, "Can't open ELF file \"%s\"", elfPath.c_str());
         }
     }
 
@@ -36,7 +33,7 @@ namespace scaler {
         //Read ELF file to memory
         elfHdr = static_cast<ElfW(Ehdr) *>(malloc(sizeof(ElfW(Ehdr))));
         if (!elfHdr) {
-            throwScalerException("Faild to allocate memory for elfHdr");
+            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to allocate memory for elfHdr");
         }
         fread(elfHdr, 1, sizeof(ElfW(Ehdr)), file);
 
@@ -47,7 +44,8 @@ namespace scaler {
             (elfHdr->e_ident[EI_DATA] != ELFDATA2LSB) ||
             (elfHdr->e_machine != EM_X86_64) ||
             (elfHdr->e_version != 1)) {
-            throwScalerException("ELF type doesn't match. This ELF file maybe not compatible.");
+            throwScalerException(ErrCode::ELF_FILE_NOT_COMPATIBLE,
+                                 "ELF type doesn't match. This ELF file maybe not compatible.");
         }
     }
 
@@ -55,7 +53,7 @@ namespace scaler {
         //Read all section headers
         secHdr = static_cast<ElfW(Shdr) *>(calloc(elfHdr->e_shnum, sizeof(ElfW(Shdr))));
         if (!secHdr) {
-            throwScalerException("Faild to allocate memory for secHdr");
+            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to allocate memory for secHdr");
         }
         fseek(file, elfHdr->e_shoff, SEEK_SET);
         fread(secHdr, sizeof(ElfW(Shdr)), elfHdr->e_shnum, file);
@@ -64,7 +62,7 @@ namespace scaler {
         ElfW(Shdr) *strTblSecHdr = secHdr + elfHdr->e_shstrndx;
         secStrtbl = static_cast<const char *>(malloc(sizeof(char) * strTblSecHdr->sh_size));
         if (!secStrtbl) {
-            throwScalerException("Faild to allocate memory for secStrtbl");
+            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to allocate memory for secStrtbl");
         }
         fseek(file, strTblSecHdr->sh_offset, SEEK_SET);
         fread((void *) secStrtbl, 1, strTblSecHdr->sh_size, file);
@@ -73,7 +71,6 @@ namespace scaler {
         shnum = elfHdr->e_shnum;
         for (int i = 0; i < shnum; ++i) {
             ElfW(Shdr) &curShDr = secHdr[i];
-            //printf("%s\n", secStrtbl + curShDr.sh_name);
             SecInfo curSecInfo;
             curSecInfo.secHdr = curShDr;
             curSecInfo.secId = i;
@@ -86,7 +83,7 @@ namespace scaler {
         //Read all program headers
         progHdr = static_cast<ElfW(Phdr) *>(calloc(elfHdr->e_phnum, sizeof(ElfW(Phdr))));
         if (!progHdr) {
-            throwScalerException("Faild to allocate memory for progHdr");
+            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to allocate memory for progHdr");
         }
         fseek(file, elfHdr->e_phoff, SEEK_SET);
         fread(progHdr, sizeof(ElfW(Phdr)), elfHdr->e_phnum, file);
@@ -131,9 +128,8 @@ namespace scaler {
 
     ELFParser_Linux::SecInfo ELFParser_Linux::getSecHdrByName(std::string targetSecName) {
         if (secNameIndexMap.count(targetSecName) == 0) {
-            std::stringstream ss;
-            ss << "Cannot find section " << targetSecName << " in " << elfPath;
-            throwScalerExceptionWithCode(ss.str().c_str(), MyErrCode::SYMBOL_NOT_FOUND);
+            throwScalerExceptionS(ErrCode::ELF_SECTION_NOT_FOUND, "Cannot find section %s in %s",
+                                  targetSecName.c_str(), elfPath.c_str());
         }
         return secNameIndexMap.at(targetSecName);
     }
@@ -141,15 +137,14 @@ namespace scaler {
 
     std::vector<ELFParser_Linux::SegInfo> ELFParser_Linux::getProgHdrByType(ElfW(Word) type) {
         if (segTypeIndexMap.count(type) == 0) {
-            std::stringstream ss;
-            ss << "Cannot find segment of type " << type;
-            throwScalerExceptionWithCode(ss.str().c_str(), MyErrCode::SYMBOL_NOT_FOUND);
+            throwScalerExceptionS(ErrCode::ELF_SEGMENT_NOT_FOUND, "Cannot find segment of type %d", type);
         }
         return segTypeIndexMap.at(type);
     }
 
 
     void *ELFParser_Linux::getSecContent(const SecInfo &targetSecInfo) {
+        //todo: memory leak
         openELFFile();
 
         void *targetSecHdrContent;

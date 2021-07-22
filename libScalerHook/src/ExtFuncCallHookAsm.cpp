@@ -20,6 +20,7 @@
 #include <util/tool/PthreadParmExtractor.h>
 #include <semaphore.h>
 #include <util/tool/SemaphoreParmExtractor.h>
+#include <exceptions/ErrCode.h>
 
 //todo: many functions are too long
 
@@ -106,13 +107,6 @@ namespace scaler {
 
         //Step1: Locating table in memory
         locateRequiredSecAndSeg();
-
-        //todo:log
-        for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
-            fprintf(stderr, "%s .plt:%p .plt.sec:%p\n", iterFile->second.filePath.c_str(),
-                    iterFile->second.pltStartAddr,
-                    iterFile->second.pltSecStartAddr);
-        }
 
         //Step3: Use callback to determine which ID to hook
         std::vector<ExtSymInfo> symbolToHook;
@@ -215,18 +209,14 @@ namespace scaler {
             curELFImgInfo.pseudoPlt = (uint8_t *) malloc(curELFImgInfo.allExtSymbol.size() * 18);
 
             //todo: debug log
-            fprintf(stderr, "Pseudo PLT addr for %s is %p\n", curELFImgInfo.filePath.c_str(), curELFImgInfo.pseudoPlt);
+            ERR_LOGS("Pseudo PLT addr for %s is %p", curELFImgInfo.filePath.c_str(), curELFImgInfo.pseudoPlt);
 
-            //printf("mmprotect Allocate pseudo address\n");
             try {
                 memTool->adjustMemPerm(curELFImgInfo.pseudoPlt,
                                        curELFImgInfo.pseudoPlt + curELFImgInfo.allExtSymbol.size() * 18,
                                        PROT_READ | PROT_WRITE | PROT_EXEC);
             } catch (const ScalerException &e) {
-                std::stringstream ss;
-                ss << "Hook Failed, cannot change heap pseudoPlt permission. Exception Info:\""
-                   << e.info << "\"";
-                fprintf(stderr, "%s\n", ss.str().c_str());
+                ERR_LOGS("Hook Failed, cannot change heap pseudoPlt permission. Exception Info:\"%s\"", e.info.c_str());
                 continue;
             }
 
@@ -247,11 +237,8 @@ namespace scaler {
                 memTool->adjustMemPerm(curSymbol.gotEntry, curSymbol.gotEntry + 1,
                                        PROT_READ | PROT_WRITE | PROT_EXEC);
             } catch (const ScalerException &e) {
-                std::stringstream ss;
-                ss << "Hook Failed for \"" << pmParser.idFileMap.at(curSymbol.fileId) << ":"
-                   << curSymbol.symbolName
-                   << "\" because " << e.info;
-                fprintf(stderr, "%s\n", ss.str().c_str());
+                ERR_LOGS("Hook Failed for \"%s\":\"%s\" because %s", pmParser.idFileMap.at(curSymbol.fileId).c_str(),
+                         curSymbol.symbolName.c_str(), e.info.c_str());
                 continue;
             }
 
@@ -337,7 +324,8 @@ namespace scaler {
                 void *pltEntryAddr = dlsym(pltHookDl, output);
 
                 if (pltEntryAddr == NULL) {
-                    throwScalerExceptionWithCode("Failed to find pltEntry address from dll", -1);
+
+                    throwScalerException(ErrCode::NO_HANDLER_IN_DLL, "Failed to find pltEntry address from dll");
                 }
 
                 auto binCodeArr = fillDestAddr2HookCode(pltEntryAddr);
@@ -357,11 +345,9 @@ namespace scaler {
                                                PROT_READ | PROT_WRITE | PROT_EXEC);
                         memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.funcId, dataPtr, 16);
                     } catch (const ScalerException &e) {
-                        std::stringstream ss;
-                        ss << ".plt.sec replacement Failed for \"" << pmParser.idFileMap.at(curSymbol.fileId) << ":"
-                           << curSymbol.symbolName
-                           << "\" because " << e.info;
-                        fprintf(stderr, "%s\n", ss.str().c_str());
+                        ERR_LOGS(".plt.sec replacement Failed for \"%s\":\"%s\" because %s",
+                                 pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
+                                 e.info.c_str());
                         continue;
                     }
                 }
@@ -373,11 +359,9 @@ namespace scaler {
                                            PROT_READ | PROT_WRITE | PROT_EXEC);
                     memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.funcId + 1), dataPtr, 16);
                 } catch (const ScalerException &e) {
-                    std::stringstream ss;
-                    ss << ".plt replacement Failed for \"" << pmParser.idFileMap.at(curSymbol.fileId) << ":"
-                       << curSymbol.symbolName
-                       << "\" because " << e.info;
-                    fprintf(stderr, "%s\n", ss.str().c_str());
+                    ERR_LOGS(".plt replacement Failed for \"\":\"\" %s because %s",
+                             pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
+                             e.info.c_str());
                     continue;
                 }
 
@@ -403,7 +387,7 @@ namespace scaler {
 
 
     void ExtFuncCallHookAsm::uninstall() {
-        throwScalerException("Uninstall is not implemented.");
+        throwScalerException(ErrCode::FUNC_NOT_IMPLEMENTED, "Uninstall is not implemented.");
     }
 
     std::vector<uint8_t> ExtFuncCallHookAsm::fillDestAddr2HookCode(void *funcAddr) {
@@ -563,7 +547,7 @@ namespace scaler {
         //compile it
         int sysRet = system("gcc -shared -fPIC ./testHandler.cpp -o ./testHandler.so");
         if (sysRet < 0) {
-            throwScalerExceptionWithCode("gcc compilation handler failed", sysRet)
+            throwScalerException(ErrCode::COMPILATION_FAILED, "gcc compilation handler failed");
         }
 
 
@@ -572,7 +556,7 @@ namespace scaler {
         void *handle = dlopen(ss.str().c_str(),
                               RTLD_NOW);
         if (handle == NULL) {
-            throwScalerExceptionWithCode("dlOpen failed", sysRet)
+            throwScalerException(ErrCode::HANDLER_LOAD_FAILED, "dlOpen failed");
         }
         return handle;
     }
@@ -612,7 +596,7 @@ namespace scaler {
         fclose(fp);
         int sysRet = system("gcc -shared -fPIC ./testPseudoPlt.cpp -o ./testPseudoPlt.so");
         if (sysRet < 0) {
-            throwScalerExceptionWithCode("gcc compilation handler failed", sysRet)
+            throwScalerException(ErrCode::COMPILATION_FAILED, "gcc compilation handler failed");
         }
 
 
@@ -621,7 +605,7 @@ namespace scaler {
         void *handle = dlopen(ss.str().c_str(),
                               RTLD_NOW);
         if (handle == NULL) {
-            throwScalerExceptionWithCode("dlOpen failed", sysRet)
+            throwScalerException(ErrCode::HANDLER_LOAD_FAILED, "dlOpen failed");
         }
         return handle;
     }
@@ -692,7 +676,7 @@ namespace scaler {
         //ss << 1;
         // uint64_t id = std::stoull(ss.str());
 
-        DBG_LOGS("[Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p\n", pthread_self(),
+        DBG_LOGS("[Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p", pthread_self(),
                  _this->pmParser.idFileMap.at(fileId).c_str(),
                  curElfImgInfo.idFuncMap.at(funcId).c_str(), retOriFuncAddr);
 
@@ -701,132 +685,158 @@ namespace scaler {
         if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_JOIN) {
             pthread_t *joinThread;
             parm_pthread_join(&joinThread, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_join tid=%lu\n",pthread_self(), *joinThread);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_join tid=%lu", pthread_self(),
+                     *joinThread);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_TRYJOIN_NP) {
             pthread_t *joinThread;
             parm_pthread_tryjoin_np(&joinThread, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]   callingthread=%lu pthread_tryjoin_np tid=%lu\n",pthread_self(), *joinThread);
+            DBG_LOGS("[Pre Hook Param Parser]   callingthread=%lu pthread_tryjoin_np tid=%lu", pthread_self(),
+                     *joinThread);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_TIMEDJOIN_NP) {
             pthread_t *joinThread;
             parm_pthread_timedjoin_np(&joinThread, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_timedjoin_np tid=%lu\n",pthread_self(), *joinThread);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_timedjoin_np tid=%lu", pthread_self(),
+                     *joinThread);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_CLOCKJOIN_NP) {
             pthread_t *joinThread;
             parm_pthread_clockjoin_np(&joinThread, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_clockjoin_np tid=%lu\n",pthread_self(), *joinThread);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_clockjoin_np tid=%lu", pthread_self(),
+                     *joinThread);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_MUTEX_LOCK) {
             pthread_mutex_t **mutex_t;
             parm_pthread_mutex_lock(&mutex_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_mutex_lock lID=%p\n",pthread_self(), *mutex_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_mutex_lock lID=%p", pthread_self(),
+                     *mutex_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_MUTEX_TIMEDLOCK) {
             pthread_mutex_t **mutex_t;
             parm_pthread_mutex_timedlock(&mutex_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_mutex_timedlock lID=%p\n",pthread_self(), *mutex_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_mutex_timedlock lID=%p", pthread_self(),
+                     *mutex_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_MUTEX_CLOCKLOCK) {
             pthread_mutex_t **mutex_t;
             parm_pthread_mutex_clocklock(&mutex_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_mutex_clocklock lID=%p\n",pthread_self(), *mutex_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_mutex_clocklock lID=%p", pthread_self(),
+                     *mutex_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_MUTEX_UNLOCK) {
             pthread_mutex_t **mutex_t;
             parm_pthread_mutex_unlock(&mutex_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  parm_pthread_mutex_unlock lID=%p\n",pthread_self(), *mutex_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  parm_pthread_mutex_unlock lID=%p", pthread_self(),
+                     *mutex_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_RDLOCK) {
             pthread_rwlock_t **mutex_t;
             parm_pthread_rwlock_rdlock(&mutex_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_rdlock lID=%p\n",pthread_self(), *mutex_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_rdlock lID=%p", pthread_self(),
+                     *mutex_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_TRYRDLOCK) {
             pthread_rwlock_t **mutex_t;
             parm_pthread_rwlock_tryrdlock(&mutex_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_tryrdlock lID=%p\n",pthread_self(), *mutex_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_tryrdlock lID=%p", pthread_self(),
+                     *mutex_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_TIMEDRDLOCK) {
             pthread_rwlock_t **mutex_t;
             parm_pthread_rwlock_timedrdlock(&mutex_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_timedrdlock lID=%p\n",pthread_self(), *mutex_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_timedrdlock lID=%p",
+                     pthread_self(), *mutex_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_CLOCKRDLOCK) {
             pthread_rwlock_t **mutex_t;
             parm_pthread_rwlock_clockrdlock(&mutex_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_clockrdlock lID=%p\n",pthread_self(), *mutex_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_clockrdlock lID=%p",
+                     pthread_self(), *mutex_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_WRLOCK) {
             pthread_rwlock_t **mutex_t;
             parm_pthread_rwlock_wrlock(&mutex_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_wrlock lID=%p\n",pthread_self(), *mutex_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_wrlock lID=%p", pthread_self(),
+                     *mutex_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_TRYWRLOCK) {
             pthread_rwlock_t **mutex_t;
             parm_pthread_rwlock_trywrlock(&mutex_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_trywrlock lID=%p\n",pthread_self(), *mutex_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_trywrlock lID=%p", pthread_self(),
+                     *mutex_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_TIMEDWRLOCK) {
             pthread_rwlock_t **mutex_t;
             parm_pthread_rwlock_timedwrlock(&mutex_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_timedwrlock lID=%p\n",pthread_self(), *mutex_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_timedwrlock lID=%p",
+                     pthread_self(), *mutex_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_CLOCKWRLOCK) {
             pthread_rwlock_t **mutex_t;
             parm_pthread_rwlock_clockwrlock(&mutex_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_clockwrlock lID=%p\n",pthread_self(), *mutex_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_clockwrlock lID=%p",
+                     pthread_self(), *mutex_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_UNLOCK) {
             pthread_rwlock_t **mutex_t;
             parm_pthread_rwlock_unlock(&mutex_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_unlock lID=%p\n",pthread_self(), *mutex_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_unlock lID=%p", pthread_self(),
+                     *mutex_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_COND_SIGNAL) {
             pthread_cond_t **cond_t;
             parm_pthread_cond_signal(&cond_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_cond_signal condID=%p\n",pthread_self(), *cond_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_cond_signal condID=%p", pthread_self(),
+                     *cond_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_COND_BROADCAST) {
             pthread_cond_t **cond_t;
             parm_pthread_cond_broadcast(&cond_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_cond_broadcast condID=%p\n",pthread_self(), *cond_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_cond_broadcast condID=%p", pthread_self(),
+                     *cond_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_COND_WAIT) {
             pthread_cond_t **cond_t;
             pthread_mutex_t **mutex_t;
             parm_pthread_cond_wait(&cond_t, &mutex_t, rdiLoc, rsiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_cond_wait condID=%p\n",pthread_self(), *cond_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_cond_wait condID=%p", pthread_self(),
+                     *cond_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_COND_TIMEDWAIT) {
             pthread_cond_t **cond_t;
             pthread_mutex_t **mutex_t;
             parm_pthread_cond_timedwait(&cond_t, &mutex_t, rdiLoc, rsiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_cond_timedwait condID=%p\n",pthread_self(), *cond_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_cond_timedwait condID=%p", pthread_self(),
+                     *cond_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_COND_CLOCKWAIT) {
             pthread_cond_t **cond_t;
             pthread_mutex_t **mutex_t;
             parm_pthread_cond_clockwait(&cond_t, &mutex_t, rdiLoc, rsiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_cond_clockwait condId=%p\n",pthread_self(), *cond_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_cond_clockwait condId=%p", pthread_self(),
+                     *cond_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_SPIN_LOCK) {
             pthread_spinlock_t **spinlock_t;
             parm_pthread_spin_lock(&spinlock_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_spin_lock lID=%p\n",pthread_self(), *spinlock_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_spin_lock lID=%p", pthread_self(),
+                     *spinlock_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_SPIN_TRYLOCK) {
             pthread_spinlock_t **spinlock_t;
             parm_pthread_spin_trylock(&spinlock_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_spin_trylock lID=%p\n",pthread_self(), *spinlock_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_spin_trylock lID=%p", pthread_self(),
+                     *spinlock_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_SPIN_UNLOCK) {
             pthread_spinlock_t **spinlock_t;
             parm_pthread_spin_unlock(&spinlock_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_spin_unlock lID=%p\n",pthread_self(), *spinlock_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_spin_unlock lID=%p", pthread_self(),
+                     *spinlock_t);
         } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_BARRIER_WAIT) {
             pthread_barrier_t **barrier_t;
             parm_pthread_barrier_wait(&barrier_t, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_barrier_wait barrierId=%p\n",pthread_self(), *barrier_t);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_barrier_wait barrierId=%p",
+                     pthread_self(), *barrier_t);
         }
 
         if (funcId == curElfImgInfo.semaphoreFuncId.SEM_WAIT) {
             sem_t **__sem;
             parm_sem_wait(&__sem, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  sem_wait sID=%p\n",pthread_self(), *__sem);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  sem_wait sID=%p", pthread_self(), *__sem);
         } else if (funcId == curElfImgInfo.semaphoreFuncId.SEM_TIMEDWAIT) {
             sem_t **__sem;
             parm_sem_timedwait(&__sem, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  sem_timedwait sID=%p\n",pthread_self(), *__sem);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  sem_timedwait sID=%p", pthread_self(), *__sem);
         } else if (funcId == curElfImgInfo.semaphoreFuncId.SEM_CLOCKWAIT) {
             sem_t **__sem;
             parm_sem_clockwait(&__sem, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  sem_clockwait sID=%p\n",pthread_self(), *__sem);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  sem_clockwait sID=%p", pthread_self(), *__sem);
         } else if (funcId == curElfImgInfo.semaphoreFuncId.SEM_TRYWAIT) {
             sem_t **__sem;
             parm_sem_trywait(&__sem, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  sem_trywait sID=%p\n",pthread_self(), *__sem);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  sem_trywait sID=%p", pthread_self(), *__sem);
         } else if (funcId == curElfImgInfo.semaphoreFuncId.SEM_POST) {
             sem_t **__sem;
             parm_sem_post(&__sem, rdiLoc);
-            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  sem_post sID=%p\n",pthread_self(), *__sem);
+            DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  sem_post sID=%p", pthread_self(), *__sem);
         }
 
 
@@ -883,15 +893,15 @@ namespace scaler {
         auto &libraryFileName = _this->pmParser.idFileMap.at(libraryFileId);
         curContext.ctx->inHookHandler = false;
 
-        printf("[After Hook] Thread ID:%lu Library:%s, Func: %s Start: %ld End: %ld\n", pthread_self(),
-               libraryFileName.c_str(),
-               funcName.c_str(), startTimestamp, endTimestamp);
+        DBG_LOGS("[After Hook] Thread ID:%lu Library:%s, Func: %s Start: %ld End: %ld", pthread_self(),
+                 libraryFileName.c_str(),
+                 funcName.c_str(), startTimestamp, endTimestamp);
 
         if (funcId == curELFImgInfo.pthreadFuncId.PTHREAD_CREATE) {
             //todo: A better way is to compare function id rather than name. This is more efficient.
             //todo: A better way is to also compare library id because a custom library will also implement pthread_create.
             pthread_t *pthreadIdPtr = curContext.ctx->pthreadIdPtr.at(curContext.ctx->pthreadIdPtr.size() - 1);
-            DBG_LOGS("[After Hook Param Parser]    pthread_create tid=%lu\n", *pthreadIdPtr);
+            DBG_LOGS("[After Hook Param Parser]    pthread_create tid=%lu", *pthreadIdPtr);
         }
 
 

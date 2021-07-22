@@ -10,15 +10,13 @@
 #include <vector>
 #include <elf.h>
 #include <map>
-
+#define ELFW(type)	_ElfW (ELF, __ELF_NATIVE_CLASS, type)
 namespace scaler {
     //todo: Making ELF Parser a more complete class. (Make it possible to parse everything. ELF parser culd be a standalone module)
     class ELFParser_Linux : Object {
 
     public:
-        enum ErrCode {
-            SYMBOL_NOT_FOUND=-1
-        };
+
 
 
         class SecInfo {
@@ -58,18 +56,21 @@ namespace scaler {
 
         /**
         * "Content" means the binary code for a specifc section
+         * The returned memory will be freed with ELFParser
         * @return A pointer that points to the starting address of the section specified by targetSecName
         */
         void *getSecContent(const SecInfo &targetSecInfo);
 
         /**
         * "Content" means the binary code for a specifc segment
+        * The returned memory will be freed with ELFParser
         * @return A pointer that points to the starting address of the segment specified by targetSecName
         */
         void *getSegContent(const SegInfo &targetSegInfo);
 
         /**
          * This is a convient method to get the address of a group of segments. (eg: segments with the same p_type)
+         * The returned memory will be freed with ELFParser
         * @return A set of pointers that points to the starting address of the segment specified by a groups of segments
         */
         std::vector<void *> getSegContent(std::vector<SegInfo> &targetSegInfos);

@@ -14,11 +14,13 @@ namespace scaler {
          */
         class ExtSymInfo {
         public:
-            std::string symbolName;     //The name of a symbol in symbol table
-            void **gotEntry;            //Pointer to a symbol's GOT entry. Use *gotEntry to get this symbol's real address.
-            void *addr;                 //The address of a symbol. After a symbol is resolved, it's equal to *gotEntry;
-            size_t fileId;             //Store fileID for this symbol
-            size_t funcId;             //Store this symbol's ID (it's also called symbolID)
+            std::string symbolName = "";     //The name of a symbol in symbol table
+            void **gotEntry = nullptr;            //Pointer to a symbol's GOT entry. Use *gotEntry to get this symbol's real address.
+            void *pltEntry = nullptr;            //Pointer to a symbol's PLT entry.
+            void *pltSecEntry = nullptr;            //Pointer to a symbol's .plt.sec entry.
+            void *addr = nullptr;                 //The address of a symbol. After a symbol is resolved, it's equal to *gotEntry;
+            size_t fileId = 0;             //Store fileID for this symbol
+            size_t funcId = 0;             //Store this symbol's ID (it's also called symbolID) //todo: change this to symbolID for consistency
         };
 
         /**

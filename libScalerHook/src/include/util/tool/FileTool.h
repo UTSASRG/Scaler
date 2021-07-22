@@ -12,11 +12,6 @@
 #include <sstream>
 
 namespace scaler {
-
-    enum ErrCode {
-        PATH_ERROR = -1
-    };
-
     /**
      * Get the size of a file
      */

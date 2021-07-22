@@ -8,11 +8,17 @@
 #include <util/tool/Logging.h>
 //Please comment fprintf clause when not debugging
 
-#define throwScalerException(msg) \
-    throw ScalerException(msg,0, __FILE__, __LINE__);
+#define throwScalerExceptionS(code, errFmt, ...) \
+    char errMsg[1024];                \
+    sprintf(errMsg,errFmt,__VA_ARGS__);          \
+    ERR_LOG(errMsg);                             \
+    throw ScalerException(std::string(errMsg),0, __FILE__, __LINE__)
 
-#define throwScalerExceptionWithCode(msg, code) \
-    throw ScalerException(msg,code, __FILE__, __LINE__);
+#define throwScalerException(code, errFmt) \
+    char errMsg[1024];                \
+    sprintf(errMsg,errFmt);                \
+    ERR_LOG(errMsg); \
+    throw ScalerException(std::string(errMsg),0, __FILE__, __LINE__)
 
 class ScalerException : std::runtime_error, Object {
 public:

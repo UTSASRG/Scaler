@@ -11,9 +11,8 @@ scaler::Config *scaler::Config::instance = nullptr;
 scaler::Config::Config(std::string fileName) : fileName(fileName) {
     reader = new INIReader(fileName);
     if (reader->ParseError() == -1) {
-        std::stringstream ss;
-        ss << "Config parsing failed for Path=" << this->fileName;
-        throwScalerException(ss.str().c_str());
+        throwScalerExceptionS(ErrCode::CONFIG_PARSE_FAILED, "Config parsing failed for Path=%s",
+                              this->fileName.c_str());
     }
 
 }

@@ -10,6 +10,8 @@
 #include <vector>
 #include <util/tool/ProcInfoParser.h>
 #include <util/tool/MemTool.h>
+#include <util/tool/MemoryTool_Linux.h>
+#include <exceptions/ScalerException.h>
 
 namespace scaler {
 
@@ -90,7 +92,7 @@ namespace scaler {
 
             uint8_t *pseudoPlt = nullptr;                   //A pointer to pseudoPlt table
 
-            std::map<size_t, ExtSymInfo> hookedExtSymbol;   //External symbols that has already been hooked
+            std::map<ssize_t, ExtSymInfo> hookedExtSymbol;   //External symbols that has already been hooked
 
             ExtSymInfo *hookedExtSymbolC = nullptr;
             size_t hookedExtSymbolCSize = 0;
@@ -105,7 +107,8 @@ namespace scaler {
             const char *dynStrTable = nullptr;                        //The starting position of dynamic symbol name
             size_t dynStrSize = 0;                              //The size of dynamic string table
 
-            uint8_t *baseAddr = nullptr;                              //The loading address of current elf image
+            uint8_t *baseAddrStart = nullptr;                              //The loading address of current elf image
+            uint8_t *baseAddrEnd = nullptr;                              //The loading address of current elf image
 
             PthreadFuncId pthreadFuncId;
 
@@ -129,14 +132,54 @@ namespace scaler {
 
 
         /**
-        * Locate the address of required sections in memory
-        */
-        void locateRequiredSecAndSeg();
-
-        /**
          * Private constructor
          */
         ExtFuncCallHook_Linux(PmParser_Linux &parser, MemoryTool_Linux &memTool);
+
+        /**
+        * Locate the address of required sections in memory
+        */
+        virtual void locateRequiredSecAndSeg();
+
+        /**
+        * Find elf section in memory and return start and end address
+        */
+        virtual void
+        findELFSecInMemory(ELFParser_Linux &elfParser, std::string secName, void *&startAddr, void *endAddr,
+                           void *boundStartAddr, void *boundEndAddr);
+
+        virtual Elf64_Dyn *findDynamicSegment(ELFParser_Linux &elfParser);
+
+        template<typename SEGTYPE>
+        SEGTYPE findElemPtrInDynamicSeg(ELFParser_Linux &elfParser,
+                                        ELFImgInfo &curELFImgInfo,
+                                        size_t curFileID,
+                                        ElfW(Sxword) elemType) {
+
+            const ElfW(Dyn) *dynEntryPtr = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, elemType);
+            if (dynEntryPtr == nullptr) {
+                throwScalerException(-1, "Cannot find a dyn entry");
+            }
+            uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddrStart, curFileID,
+                                                            dynEntryPtr->d_un.d_ptr);
+            return (SEGTYPE) (curBaseAddr + dynEntryPtr->d_un.d_ptr);
+        }
+
+        template<typename SEGTYPE>
+        SEGTYPE findElemValInDynamicSeg(ELFParser_Linux &elfParser,
+                                        ELFImgInfo &curELFImgInfo,
+                                        size_t curFileID,
+                                        ElfW(Sxword) elemType) {
+
+            const ElfW(Dyn) *dynEntryPtr = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, elemType);
+            if (dynEntryPtr == nullptr) {
+                throwScalerException(0, "Cannot find a dyn entry");
+            }
+            return (SEGTYPE) (dynEntryPtr->d_un.d_val);
+        }
+
+
+        virtual void parseRelaSymbol(ELFImgInfo &curELFImgInfo, size_t curFileID);
     };
 
 }

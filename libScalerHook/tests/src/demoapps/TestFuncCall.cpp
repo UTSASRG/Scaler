@@ -4,23 +4,23 @@
 #include <TenThousandFunc.h>
 #include <util/hook/install.h>
 #include <util/tool/StringTool.h>
+#include <sys/prctl.h>
+#include <thread>
 
 using namespace std;
+
 int main() {
-    install([](std::string fileName, std::string funcName) -> bool {
-        //todo: User should be able to specify name here. Since they can change filename
-
-        if (fileName ==
-            "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall") {
-            fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
-            return true;
-        } else {
-            return false;
-        }
 
 
-    });
-
+//    install([](std::string fileName, std::string funcName) -> bool {
+//        //todo: User should be able to specify name here. Since they can change filename
+//        if (fileName == "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall") {
+//            return true;
+//        }else{
+//            printf("%s\n",fileName.c_str());
+//            return false;
+//        }
+//    });
 
     printf("Calling funcA\n");
     funcA();
@@ -56,6 +56,12 @@ int main() {
 
     printf("Calling callFunc1000\n");
     callFunc1000();
+    int a[] = {1, 2, 3, 4, 5};
+    printf("a[]={1,2,3,4,5} starts at %p", a);
+//    prctl(PR_SET_DUMPABLE, 1);
 
+//    while (1) {
+//        std::this_thread::sleep_for(std::chrono::seconds(1));
+//    }
     return 0;
 }
