@@ -62,7 +62,8 @@ namespace scaler {
                 //Get .plt.sec (may not exist)
                 try {
                     findELFSecInMemory(elfParser, ".plt.sec", curELFImgInfo.pltSecStartAddr,
-                                       curELFImgInfo.pltSecEndAddr,curELFImgInfo.baseAddrStart, curELFImgInfo.baseAddrEnd);
+                                       curELFImgInfo.pltSecEndAddr, curELFImgInfo.baseAddrStart,
+                                       curELFImgInfo.baseAddrEnd);
                     DBG_LOGS("%s .plt.sec = %p baseaddr=%p-%p", curELFImgInfo.filePath.c_str(),
                              curELFImgInfo.pltSecStartAddr, curELFImgInfo.baseAddrStart, curELFImgInfo.baseAddrEnd);
                 } catch (const ScalerException &e) {
@@ -233,7 +234,6 @@ namespace scaler {
     }
 
     void ExtFuncCallHook_Linux::ELFImgInfo::operator=(const ELFImgInfo &rho) {
-
         filePath = rho.filePath;
         pltStartAddr = rho.pltStartAddr;
         pltEndAddr = rho.pltEndAddr;
@@ -266,6 +266,44 @@ namespace scaler {
     }
 
 
+    bool ExtFuncCallHook_Linux::ELFImgInfo::PthreadFuncId::isFuncPthread(size_t funcID) {
+        return funcID == PTHREAD_CREATE ||
+               funcID == PTHREAD_JOIN ||
+               funcID == PTHREAD_TRYJOIN_NP ||
+               funcID == PTHREAD_TIMEDJOIN_NP ||
+               funcID == PTHREAD_CLOCKJOIN_NP ||
+               funcID == PTHREAD_MUTEX_LOCK ||
+               funcID == PTHREAD_MUTEX_TIMEDLOCK ||
+               funcID == PTHREAD_MUTEX_CLOCKLOCK ||
+               funcID == PTHREAD_MUTEX_UNLOCK ||
+               funcID == PTHREAD_RWLOCK_RDLOCK ||
+               funcID == PTHREAD_RWLOCK_TRYRDLOCK ||
+               funcID == PTHREAD_RWLOCK_TIMEDRDLOCK ||
+               funcID == PTHREAD_RWLOCK_CLOCKRDLOCK ||
+               funcID == PTHREAD_RWLOCK_WRLOCK ||
+               funcID == PTHREAD_RWLOCK_TRYWRLOCK ||
+               funcID == PTHREAD_RWLOCK_TIMEDWRLOCK ||
+               funcID == PTHREAD_RWLOCK_CLOCKWRLOCK ||
+               funcID == PTHREAD_RWLOCK_UNLOCK ||
+               funcID == PTHREAD_COND_SIGNAL ||
+               funcID == PTHREAD_COND_BROADCAST ||
+               funcID == PTHREAD_COND_WAIT ||
+               funcID == PTHREAD_COND_TIMEDWAIT ||
+               funcID == PTHREAD_COND_CLOCKWAIT ||
+               funcID == PTHREAD_SPIN_LOCK ||
+               funcID == PTHREAD_SPIN_TRYLOCK ||
+               funcID == PTHREAD_SPIN_UNLOCK ||
+               funcID == PTHREAD_BARRIER_WAIT;
+    }
+
+    bool ExtFuncCallHook_Linux::ELFImgInfo::SemaphoreFuncId::isFuncSemaphore(size_t funcID) {
+        return funcID == SEM_WAIT ||
+               funcID == SEM_TIMEDWAIT ||
+               funcID == SEM_CLOCKWAIT ||
+               funcID == SEM_TRYWAIT ||
+               funcID == SEM_POST;
+
+    }
 }
 
 

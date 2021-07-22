@@ -38,7 +38,8 @@ add_executable(libScalerHook-unittests
         src/unittests/TestELFParser.cpp
         src/unittests/TestLog.cpp
         src/unittests/TestConfig.cpp
-        src/unittests/TestTimer.cpp)
+        src/unittests/TestTimer.cpp
+        src/unittests/TestInvocationTree.cpp)
 target_link_libraries(libScalerHook-unittests PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread)
 target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHook-Tests_SOURCE_DIR}/linkerscripts/mylinker.ld")
 
@@ -179,6 +180,10 @@ add_executable(libScalerHook-proof-PtraceReadProcMem src/proofconcept/testPtrace
 add_executable(libScalerHook-proof-testMultithreadPrint src/proofconcept/testMultithreadPrint.cpp)
 target_link_libraries(libScalerHook-proof-testMultithreadPrint pthread)
 target_link_options(libScalerHook-proof-testMultithreadPrint PRIVATE "-z" "lazy" "-O0")
+
+add_executable(libScalerHook-proof-SaveDataUponExit src/proofconcept/testSaveDataUponExit.cpp)
+target_link_libraries(libScalerHook-proof-SaveDataUponExit pthread)
+
 
 #add_executable(libScalerHook-demoapps src/proofconcept/testprog.cpp)
 #target_link_libraries(DemoProg libTest PltHookLib dl)

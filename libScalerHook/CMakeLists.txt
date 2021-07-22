@@ -18,6 +18,8 @@ add_library(ScalerHook-HookManualAsm SHARED
         src/install.cpp
         src/Timer.cpp
         src/Config.cpp
+        src/Serilizable.cpp
+        src/InvocationTree.cpp
         src/StringTool.cpp)
 target_include_directories(ScalerHook-HookManualAsm PUBLIC src/include lib/inireader)
 target_compile_options(ScalerHook-HookManualAsm PRIVATE "--verbose;-lazy;-fPIE;-fPIC;")
@@ -37,6 +39,8 @@ add_executable(ScalerHook-HookManualPtrace
         src/install.cpp
         src/Timer.cpp
         src/Config.cpp
+        src/Serilizable.cpp
+        src/InvocationTree.cpp
         src/StringTool.cpp)
 target_include_directories(ScalerHook-HookManualPtrace PUBLIC src/include lib/inireader)
 target_compile_options(ScalerHook-HookManualPtrace PRIVATE "--verbose;-fPIE;-fPIC;")

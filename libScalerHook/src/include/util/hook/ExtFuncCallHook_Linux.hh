@@ -67,6 +67,9 @@ namespace scaler {
                 int PTHREAD_SPIN_TRYLOCK = -1;
                 int PTHREAD_SPIN_UNLOCK = -1;
                 int PTHREAD_BARRIER_WAIT = -1;
+
+                bool isFuncPthread(size_t funcID);
+
             };
 
             struct SemaphoreFuncId {
@@ -75,6 +78,9 @@ namespace scaler {
                 int SEM_CLOCKWAIT = -1;
                 int SEM_TRYWAIT = -1;
                 int SEM_POST = -1;
+
+                bool isFuncSemaphore(size_t funcID);
+
             };
 
 
