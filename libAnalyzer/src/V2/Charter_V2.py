@@ -15,7 +15,7 @@ class charter:
         self.fig, self.axs = plt.subplots(1, figsize=(10, 10))
 
         self.wedgeList.append(self.axs.pie(self.chartData[key].values(), labels=self.chartData[key].keys(), autopct='%1.1f%%', normalize=True))
-        self.axs.set_title(f"inlined total CPU execution time Pie Chart")
+        self.axs.set_title(f"Library total CPU execution time Pie Chart")
 
         self.axs.axis('equal')
 

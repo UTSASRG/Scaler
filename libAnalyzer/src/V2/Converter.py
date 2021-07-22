@@ -39,16 +39,26 @@ Redistribution:
 
 At the moment, total execution time may be misrepresented given that I have not accounted for true concurrent threads.
 The current underlying assumption is that the data is sequential, thus execution time overlap does not happen.
+
+Things to consider for now:
+Concurrency
+Synchronization Timing (Lock acquisition, etc.)
+Coz Implementation
+
+Since concurrency is not being considered. Assuming that all timing data is sequential (therefore no overlap), then
+after redistribution, the execution times of every node in the FunctionTree represents the true total execution time 
+of the node / function. 
+
+THEN, the sum of all the execution times in the tree represents the total ON-CPU execution time of the data.
 '''
 
 useTimestamps = False
 
-# TODO Deal with how to show the data that was under threshold
-# TODO Deal with repeating decimals like 33.333333333% => 1/3 of 100
 def useThreshold(_func=None, *, separateTID=False, threshold=5):
     """
-    Goal of use threshold decorator:
-    Will call a function that should return a dictionary with data in it (like the data retrieval functions in this script)
+        Goal of use threshold decorator:
+    Will call a function that should return a dictionary with data in it
+    (like the data retrieval functions in this script)
 
     This decorator will then add functionality to the function by doing post processing of stripping
     any data that does not exceed the threshold (This threshold will be based off of execution time).
@@ -82,10 +92,20 @@ def useThreshold(_func=None, *, separateTID=False, threshold=5):
     {lib:{func:execution time or sample totals}}
 
     in general some form of tid:lib:func
+    :param _func: An arbitrary function, it should return some kind of dictionary generated from tidData
+    :param separateTID: A boolean, when set to True tells the function to process with respect to TID
+                        Default value is: False
+    :param threshold: A threshold value, has to be between 0 and 100
+    :return: The decorated function
     """
+    belowThresStr = f"Under threshold of {str(threshold)} percent"
     # print("in use threshold")
     def get_sum(dictData):
-        """For calculating a sum of all values from a dictionary, can be nested or not"""
+        """
+        For calculating a sum of all values from a dictionary, can be nested or not
+        :param dictData: An arbitary dictionary (can be nested or not), assuming that the values are real numbers
+        :return: A sum of all values in the dictionary
+        """
         sum = 0
         for val in dictData.values():
             if isinstance(val, dict):
@@ -94,22 +114,47 @@ def useThreshold(_func=None, *, separateTID=False, threshold=5):
                 sum += val
         return sum
 
-
     def processDict(aDict, summ, thresholdVal):
-        """This will process any dictionary, nested or not, to strip any values that <= the thresholdVal"""
+        """
+        This will process any dictionary, nested or not, to strip any values that <= the thresholdVal
+        :param aDict: A dictionary
+        :param summ: An integer or float that represents total execution time or total sample counts
+                     (can be with respect to thread or all data in general)
+        :param thresholdVal: A threshold value, generally is obtained from the outer function
+        :return: The same as aDict but with all the values replaced with a percentage calculated based on the
+                 original value and the summ value
+        """
         output = {}
         for key, val in aDict.items():
             if isinstance(val, dict):
                 output.setdefault(key, {})
                 retVal = processDict(val, summ, thresholdVal)
+                # Update the output dictionary with our returned dictionary
+                # If the returned dictionary is empty, then simply delete the entry for key as it will just be an empty
+                # dictionary
                 if retVal:
-                    output[key].update(retVal)
+                    # Check if the below threshold key was created
+                    if belowThresStr in retVal:
+                        # If the below threshold key is 0 then delete its entry
+                        if not retVal[belowThresStr]:
+                            del retVal[belowThresStr]
+                    # Since we just changed the retVal dictionary, check again for if it is not empty
+                    # if so then update our dictionary, otherwise, delete the entry as it will
+                    # only have an empty dictionary associated with the key
+                    if retVal:
+                        output[key].update(retVal)
+                    else:
+                        del output[key]
                 else:
                     del output[key]
             else:
                 calcVal = val/summ * 100  # Convert the data value to a percentage
                 if calcVal >= thresholdVal:
-                    output[key] = calcVal
+                    output.setdefault(key, 0)
+                    output[key] += calcVal
+                else:
+                    output.setdefault(belowThresStr, 0)
+                    output[belowThresStr] += calcVal
         return output
 
     def processDictwithTIDSep(aDict, thresholdVal):
@@ -118,6 +163,10 @@ def useThreshold(_func=None, *, separateTID=False, threshold=5):
         If they exist then we will process the dictionaries at the thread level.
         Therefore the resulting percentages represent the thread execution time (or sample count),
         not total execution time (or total sample count)
+        :param aDict: A dictionary
+        :param thresholdVal: A threshold value, generally is obtained from the outer function
+        :return: A dictionary with the values replaced with a percentage representing a portion of the total
+        samples or execution of their corresponding threads
         """
         output = {}
         for key, val in aDict.items():
@@ -131,15 +180,26 @@ def useThreshold(_func=None, *, separateTID=False, threshold=5):
             else:
                 raise Exception("TID has no functions or libraries.")
             newSum = get_sum(output[key])
-            output[key][f"Below threshold: {str(thresholdVal)} percent"] = 100 - newSum
+            # output[key][belowThresStr] = round(100 - newSum, 10)
         return output
 
     def decorator_useThreshold(func):
-        """Decorates the function func"""
+        """
+        Decorates the function func
+        :param func: A function which should return some form of dictionary that was generated from tidData
+        :return: inner() which is the decorated form of the function func
+        """
         # print("In decorator use threshold")
         @wraps(func)  # For retaining the original function
         def inner(*args, **kwargs):
-            """The decorated function"""
+            """
+            The decorated function
+            :param args: Arbitrary # of positional arguments
+            :param kwargs: Arbitary # of keyword arguments
+            :return: A dictionary in the original form of the output of func with the values replaced with
+                     a percentage (represents a portion of total execution time either thread or all data in general)
+                     along with all values that fell below the threshold grouped up into one element
+            """
             # print("Inside inner")
             retVal = func(*args, **kwargs)
 
@@ -150,8 +210,8 @@ def useThreshold(_func=None, *, separateTID=False, threshold=5):
                 summ = get_sum(retVal)  # calculate the total execution time from the data
                 # print("WOOO", summ)
                 retVal = processDict(retVal, summ, threshold)
-                newSum = get_sum(retVal)
-                retVal[f"Under threshold: {str(threshold)} percent"] = 100 - newSum
+                # newSum = get_sum(retVal)
+                # retVal[belowThresStr] = round(100 - newSum, 10)
             return retVal  # return the processed dictionary
         return inner  # return the inner function which represents the decorated function
     # If none of the default parameters were passed in, then return the decorated function with the original function
@@ -162,9 +222,21 @@ def useThreshold(_func=None, *, separateTID=False, threshold=5):
     else:
         return decorator_useThreshold(_func)
 
-# This takes in the dictionary stored in the json format and reconstructs the original output data structure
-# The original output data structure being: {tid: {root function name: function tree}}
+
 def loadData(tidDict):
+    """
+    This takes in the dictionary stored in the json format and reconstructs the original output data structure
+    The original output data structure being: {tid: {root function name: function tree}}
+
+    :param tidDict: A dictionary in the form of
+                    {TID: {root function and library name: {func: function name,
+                                                            lib: library name,
+                                                            sampleTotal: sample count,
+                                                            timestamps: (time start, time end)
+                                                            execTime: execution time
+                                                            childFuncs: []}
+    :return: Nothing, updates the tidDict to the form of {TID:{root function and library name: Function Tree}}
+    """
     for key, treeDict in tidDict.items():
         for treeKey, tree in treeDict.items():
             tidDict[key][treeKey] = FunctionTree.reconstructNodefromDict(tree, useTimestamps)
@@ -220,71 +292,91 @@ def updateTimestampList(childTimeList):
 
     return newList
 
-'''
-This function will update the execTime attribute of the tree nodes to be the node's actual execution time
-A function's actual execution time will be its original execution time (that was calculated from the timestamps that were
-recorded with the trace/sample) minus total execution time spent through the function's child functions.
 
-This function will perform the redistribution of the function execution times in order to obtain the true
-execution times of the function calls
-
-The basic idea is to sum up all of the execution times of child functions without including overlap and sections
-of time where execution does not occur for the function
-Then subtract this sum from the parent function's execution time thus resulting in the time that was spent only
-in the parent function.
-'''
-def updateExecTime(tree):
-    # print(tree)
-    childTimestampList = []
-    # old = tree.execTime
-    # The case where we reach a leaf, then do nothing, the execution time of the leaf that's been calculated
-    # is the true execution time of that function
-    if not tree.childFuncs:
-        return
-    # For each child function of the current node, we will traverse down into its child nodes
-    # This will retrieve the earliest and latest timestamp seen in the child functions
-    for child in tree.childFuncs:
-        updateExecTime(child)
-        for childTS in child.timestamps:
-            childTimestampList.append(childTS)
-
-    childTimestampList = updateTimestampList(childTimestampList)
-    # Check if the child timestamps tuple was set, if so, then we update the execution time of the current node
-    # a = 0
-    for timeTup in childTimestampList:
-        tree.execTime -= timeTup[1] - timeTup[0]
-        # a += timeTup[1] - timeTup[0]
-    # Error check where somehow the execution time is changed to a negative value which makes no sense
-    if tree.execTime < 0:
-        # print(f"original exec time: {old}\nchild total exec time: {a}\ntree: {tree}\nchild timestamps: {childTimestampList} ")
-        print("ERROR: Execution time is negative, exiting...")
-        sys.exit()
-    return
-
-# Redistributes Time info to have the execution time attribute of each node represent the true execution of the function
-# NOTE: I wrote this in Converter because I am assuming that Scaler will output raw data in the form of fakeData.json
-# Where execution time is already calculated based off the timestamps given
-# This execution time is what gets redistributed
-# IF this ends up not being the case and Steven automatically performs the redistribution, then this will be moved into DataAggregator_V2
 def redistributeExecTime(tidData):
+    """
+    Redistributes Time info to have the execution time attribute of each node represent the true execution of the function
+    NOTE: I wrote this in Converter because I am assuming that Scaler will output raw data in the form of fakeData.json
+    Where execution time is already calculated based off the timestamps given
+    This execution time is what gets redistributed
+    IF this ends up not being the case and Steven automatically performs the redistribution, then this will be moved into DataAggregator_V2
+    :param tidData: The dictionary in the form of {TID:{root function and library name: Function Tree}}
+    :return:
+    """
+
+    def updateExecTime(tree):
+        """
+        This function will update the execTime attribute of the tree nodes to be the node's actual execution time
+        A function's actual execution time will be its original execution time (that was calculated from the timestamps that were
+        recorded with the trace/sample) minus total execution time spent through the function's child functions.
+
+        This function will perform the redistribution of the function execution times in order to obtain the true
+        execution times of the function calls
+
+        The basic idea is to sum up all of the execution times of child functions without including overlap and sections
+        of time where execution does not occur for the function
+        Then subtract this sum from the parent function's execution time thus resulting in the time that was spent only
+        in the parent function.
+        :param tree: A function tree node, generally a root node
+        :return: Nothing, updates the function tree
+        """
+        # print(tree)
+        childTimestampList = []
+        # old = tree.execTime
+        # The case where we reach a leaf, then do nothing, the execution time of the leaf that's been calculated
+        # is the true execution time of that function
+        if not tree.childFuncs:
+            return
+        # For each child function of the current node, we will traverse down into its child nodes
+        # This will retrieve the earliest and latest timestamp seen in the child functions
+        for child in tree.childFuncs.values():
+            updateExecTime(child)
+            for childTS in child.timestamps:
+                childTimestampList.append(childTS)
+
+        childTimestampList = updateTimestampList(childTimestampList)
+        # Check if the child timestamps tuple was set, if so, then we update the execution time of the current node
+        # a = 0
+        for timeTup in childTimestampList:
+            tree.execTime -= timeTup[1] - timeTup[0]
+            # a += timeTup[1] - timeTup[0]
+        # Error check where somehow the execution time is changed to a negative value which makes no sense
+        if tree.execTime < 0:
+            # print(f"original exec time: {old}\nchild total exec time: {a}\ntree: {tree}\nchild timestamps: {childTimestampList} ")
+            print("ERROR: Execution time is negative, exiting...")
+            sys.exit()
+        return
+
     for treeDict in tidData.values():
         for tree in treeDict.values():
             updateExecTime(tree)
     return
 
-def updateSamples(tree):
-    childTotal = 0
-    if not tree.childFuncs:
-        return
-
-    for child in tree.childFuncs:
-        childTotal += child.sampleTotal
-        updateSamples(child)
-
-    tree.sampleTotal -= childTotal
-    return
 
 def redistributeSamples(tidData):
+    """
+    Redistribute samples by subtracting the original sample count of all child functions from the parent's
+    sample total
+    :param tidData: The dictionary in the form of {TID:{root function and library name: Function Tree}}
+    :return: Nothing, updates tidData with the redistributed values
+    """
+    def updateSamples(tree):
+        """
+        Performs the redistribution for a tree
+        :param tree: A function tree node, generally a root node
+        :return: Nothing, updates the function tree
+        """
+        childTotal = 0
+        if not tree.childFuncs:
+            return
+
+        for child in tree.childFuncs.values():
+            childTotal += child.sampleTotal
+            updateSamples(child)
+
+        tree.sampleTotal -= childTotal
+        return
+
     for treeDict in tidData.values():
         for tree in treeDict.values():
             updateSamples(tree)
@@ -292,38 +384,12 @@ def redistributeSamples(tidData):
 
 # ========================================= DATA RETRIEVAL FUNCTIONS ===========================================
 
-# This will retrieve the leaves of the function trees stored in the final data structure
-# What is obtained from the leaves are the attributes except for the child function list
-# These leaf attributes are stored in a dictionary and then stored in a list
-# This list is stored in a dictionary where the key is tid and the value is the leaf list
-def getLeaves(tidData):
-    leafList = []
-    leafDict = dict.fromkeys(tidData.keys())
-    for tid in leafDict.keys():
-        leafDict[tid] = dict.fromkeys(tidData[tid].keys())
-        for tree in tidData[tid].values():
-            leafList += tree.retrieveLeaves()
-        leafDict[tid] = leafList
-        leafList = []
-    return leafDict
-
-# This will sum up the samples of the leaves with respect to the library the leaf called
-# These totals will be stored in a dictionary where the key-value pair is library:sample total
-# These totals will be stored with respect to a thread id so the final structure is
-# {tid: {lib: sample total}}
-def getLibSampTot(leafDict):
-    libDict = dict.fromkeys(leafDict.keys())
-    for tid, leafList in leafDict.items():
-        libDict[tid] = {}
-        for leaf in leafList:
-            libDict[tid].setdefault(leaf['lib'], 0)
-            libDict[tid][leaf['lib']] += leaf['sampleTotal']
-        # print(tid, libDict)
-    return libDict
-
-# Retrieves the total samples recorded for each thread
-# Returns a dictionary with a key-value pair of tid-total samples
 def getThreadSampTot(tidData):
+    """
+    Retrieves the total samples recorded for each thread
+    :param tidData: The dictionary in the form of {TID:{root function and library name: Function Tree}}
+    :return: a dictionary with a key-value pair of tid-total samples
+    """
     tidDict = dict.fromkeys(tidData.keys())
     for tid, treeDict in tidData.items():
         for tree in treeDict.values():
@@ -333,11 +399,16 @@ def getThreadSampTot(tidData):
                 tidDict[tid] = tree.sampleTotal
     return tidDict
 
-# Retrieves the execution times of the root functions
-# If retrieved before redistribution, these execution times do not represent total On-CPU execution time
-# This is because these root functions may include some off-cpu time in its total execution time
-# This makes sense since there may be some I/O operations and the function has to wait or something like lock contention
 def getThreadRootExe(tidData):
+    """
+    Retrieves the execution times of the root functions
+    If retrieved before redistribution, these execution times do not represent total On-CPU execution time
+    This is because these root functions may include some off-cpu time in its total execution time
+    This makes sense since there may be some I/O operations and the function has to wait or something like lock contention
+    If retrieved after redistribution, total execution time retrieved represents total On-CPU Execution Time
+    :param tidData: The dictionary in the form of {TID:{root function and library name: Function Tree}}
+    :return: A dictionary in the form of {TID:Execution Time}
+    """
     tidDict = dict.fromkeys(tidData.keys())
     for tid, treeDict in tidData.items():
         for tree in treeDict.values():
@@ -347,51 +418,29 @@ def getThreadRootExe(tidData):
                 tidDict[tid] = tree.execTime
     return tidDict
 
-# Will retrieve each thread's total execution time
-# The total execution time of the thread is determined by retrieving the earliest timestamp from all of the roots
-# And retrieving the latest timestamp from all of the roots
-# to calculate thread execution time
-def getThreadTotalExecution(tidData):
-    tidDict = dict.fromkeys(tidData.keys())
-    for tid, treeDict in tidData.items():
-        for tree in treeDict.values():
-            # print(tree.timestamps)
-            # If there is nothing in the dictionary, then set the current tree's timestamps as the current thread's timestamp
-            if tidDict[tid] is None:
-                tidDict[tid] = (tree.timestamps[0][0], tree.timestamps[-1][1])
-            # If the current root's timestamp starts earlier than the current thread timestamp
-            elif tree.timestamps[0][0] < tidDict[tid][0]:
-                # If the start timestamp is earlier and the end timestamp is later, then set the thread's timestamp
-                # as the current root's timestamp
-                if tree.timestamps[-1][1] > tidDict[tid][1]:
-                    tidDict[tid] = (tree.timestamps[0][0], tree.timestamps[-1][1])
-                # If the current root's start timestamp is earlier, but the end timestamp is earlier or the same
-                # as the thread's end timestamp
-                # Then simply replace the thread's start timestamp
-                else:
-                    tidDict[tid] = (tree.timestamps[0][0], tidDict[tid][1])
-            # If the current root's start timestamp is later or the same as the thread's start timestamp
-            # But the root's end timestamp is later, then replace the end timestamp of the thread
-            elif tree.timestamps[-1][1] > tidDict[tid][1]:
-                tidDict[tid] = (tidDict[tid][0], tree.timestamps[-1][1])
-    # After we get the timestamps, calculate the execution times
-    for tid, time in tidDict.items():
-        tidDict[tid] = time[1]-time[0]
-    return tidDict
 
 # ============================== SUBSECTION: Execution time Data Retrieval =======================
 
-# Retrieves all of the samples associated with a function. Stores these with respect to the function's library
-# and the thread it was called from
 @useThreshold(separateTID=True)
 def retrieveLibsFuncs(tidData):
-    # Helper function to traverse the tree and retrieve execution times and
-    # store them with respect to a function and library
+    """
+    Retrieves all of the samples associated with a function. Stores these with respect to the function's library
+    and the thread it was called from
+    :param tidData: The dictionary in the form of {TID:{root function and library name: Function Tree}}
+    :return: a dictionary in the form of {TID:{Lib:Execution Time}}
+    """
+
     def getLibsFuncsfromTree(node):
+        """
+        Helper function to traverse the tree and retrieve execution times and
+        store them with respect to a function and library
+        :param node: A Function Tree Node
+        :return: A dictionary in the form of {TID:{Lib:Exec Time}}
+        """
         if not node.childFuncs:
             return {node.lib: {node.func: node.execTime}}
         funcDict = {}
-        for child in node.childFuncs:
+        for child in node.childFuncs.values():
             # This nested for loop will merge function sample totals by summing them together
             for lib in set(innertempDict := getLibsFuncsfromTree(child)) | set(funcDict):
                 # Tests for if the library exists as a key yet in the dictionaries
@@ -427,28 +476,45 @@ def retrieveLibsFuncs(tidData):
 
 # ==========================================================================================
 
-'''
-This function will construct a dictionary for attrKey with the sum of all attrVals associated with attrKey.
-For example, in FunctionTree, attrKey can be "func" and attrVal can be "execTime".
-This means that this function will retrieve the execution time and function name of each node in the function tree
-and set the function name as the key of a dictionary and the execution time as the value.
 
-We perform merging of dictionaries with this rule:
-Given 2 dictionaries, if there are identical keys between the two, sum their values together, otherwise just copy the
-key-value pair over to the newly merged dictionary
-
-After redistribution, the values in the resulting dictionaries represent the true total On-CPU Execution time
-for their respective keys (If "execTime" was passed for attrVal)
-
-If "sampleTotal" is passed to attrVal, then it simply means that any attrKeys that have a non-zero positive 
-value, were the end of a unique call stack that was sampled.
-'''
 
 @useThreshold
 def retrieveAttrs(tidData, attrKey, attrVal):
-    # This is a helper function to retrieve a dictionary of the same form as described for
-    # retrieveAttrs from a tree structure
+    """
+    This function will construct a dictionary for attrKey with the sum of all attrVals associated with attrKey.
+    For example, in FunctionTree, attrKey can be "func" and attrVal can be "execTime".
+    This means that this function will retrieve the execution time and function name of each node in the function tree
+    and set the function name as the key of a dictionary and the execution time as the value.
+
+    We perform merging of dictionaries with this rule:
+    Given 2 dictionaries, if there are identical keys between the two, sum their values together, otherwise just copy the
+    key-value pair over to the newly merged dictionary
+
+    After redistribution, the values in the resulting dictionaries represent the true total On-CPU Execution time
+    for their respective keys (If "execTime" was passed for attrVal)
+
+    If "sampleTotal" is passed to attrVal, then it simply means that any attrKeys that have a non-zero positive
+    value, were the end of a unique call stack that was sampled.
+
+    :param tidData: The dictionary in the form of {TID:{root function and library name: Function Tree}}
+    :param attrKey: Attribute name which be used to retrieve an attribute from a FunctionTree Node
+                    That attribute will be the key to our returned dictionary (something like func or lib)
+    :param attrVal: Attribute name which will be used to retrieve an attribute from a FunctionTree Node
+                    That attribute will be used as the value for our returned dictionary (Like sampleTotal or execTime)
+    :return: A dictionary with the key:value pair as {attrKey:attrVal}.
+             With all attrKeys in tidData merged into one dictionary by summing their values
+    """
     def getAttrsfromTree(node, attrKey, attrVal):
+        """
+        This is a helper function to retrieve a dictionary of the same form as described for
+        retrieveAttrs from a tree structure
+        :param node: Function Tree Node
+        :param attrKey: Attribute name which be used to retrieve an attribute from a FunctionTree Node
+                        That attribute will be the key to our returned dictionary (something like func or lib)
+        :param attrVal: Attribute name which will be used to retrieve an attribute from a FunctionTree Node
+                        That attribute will be used as the value for our returned dictionary (Like sampleTotal or execTime)
+        :return: A Dictionary with a key:value pair of {attrKey:attrVal}
+        """
         if not node.childFuncs:
             return {getattr(node, attrKey): getattr(node, attrVal)}
         attrDict = {}
@@ -456,7 +522,7 @@ def retrieveAttrs(tidData, attrKey, attrVal):
         # Iterate through each child and merge the current node's dictionary and the child's dictionary
         # The current node's dictionary is attrDict,
         # and the child's dictionary is from the recursive call of getAttrsfromTree()
-        for child in node.childFuncs:
+        for child in node.childFuncs.values():
             for key in set(innertempDict := getAttrsfromTree(child, attrKey, attrVal)) | set(attrDict):
                 attrDict[key] = innertempDict.get(key, 0.0) + attrDict.get(key, 0.0)
 
@@ -488,14 +554,22 @@ def retrieveFuncSamples(tidData):
     """
     Retrieves all of the samples associated with a function. Stores these with respect to the function's library
     and the thread it was called from
+    :param tidData: The dictionary in the form of {TID:{root function and library name: Function Tree}}
+    :return: A dictionary of all functions merged by summing their sample counts, however they will be kept separate
+    if their library differs.
     """
     # print("AAAA")
     def getFuncsSampsfromTree(tree):
-        """Helper function for retrieving function samples while also maintaining library specificity"""
+        """
+        Helper function for retrieving function samples while also maintaining library specificity
+        :param tree: A function Tree Node
+        :return: A dictionary of all functions merged by summing their sample counts as long as their corresponding
+                 Library matches
+        """
         if not tree.childFuncs:
             return {tree.lib: {tree.func: tree.sampleTotal}}
         funcDict = {}
-        for child in tree.childFuncs:
+        for child in tree.childFuncs.values():
             # This nested for loop will merge function sample totals by summing them together
             for lib in set(innertempDict := getFuncsSampsfromTree(child)) | set(funcDict):
                 # Tests for if the library exists as a key yet in the dictionaries
@@ -531,14 +605,27 @@ def retrieveFuncSamples(tidData):
 
 @useThreshold(separateTID=True)
 def retrieveTIDLibSamples(tidData):
-    """This function will return a dictionary of all of the libraries and their samples"""
-    # This is simply a helper function for retrieving the library information of nodes from a single function tree
+    """
+    This function retrieves a dictionary of all libraries merged by summing their sample totals however these libraries
+    will not be merged if they are associated with different TIDs.
+    Thus the resulting dictionary is {TID:Lib:sample count}
+
+    :param tidData: The dictionary in the form of {TID:{root function and library name: Function Tree}}
+    :return: a dictionary of all of the libraries and their samples stored with respect to TID = {TID:{Lib:sample count}}
+    """
+
     def getLibsSampsfromTree(tree):
+        """
+        This is simply a helper function for retrieving the library information of nodes from a single function tree
+        :param tree: A function tree node
+        :return: A dictionary with a key:value pair of {Lib:sample count}. Sample counts are summed together if their
+                 libraries match.
+        """
         if not tree.childFuncs:
             # print(tree.lib, tree.sampleTotal)
             return {tree.lib: tree.sampleTotal}
         libDict = {}
-        for child in tree.childFuncs:
+        for child in tree.childFuncs.values():
             for lib in set(innertempDict := getLibsSampsfromTree(child)) | set(libDict):
                 libDict[lib] = innertempDict.get(lib, 0.0) + libDict.get(lib, 0.0)
         libDict[tree.lib] = libDict.get(tree.lib, 0.0) + tree.sampleTotal
@@ -560,8 +647,16 @@ def retrieveTIDLibSamples(tidData):
 
 # ================= Helper function to convert the {TID:{Lib:{Func:sample/execution time}}} =============
 
-# This function will convert {TID:{Lib:{Func:sample/execution time}}} into {lib:{func:execution time/samples}}
+
 def groupLibsandFuncs(TIDLibFuncDict):
+    """
+    This function will convert {TID:{Lib:{Func:sample/execution time}}} into {lib:{func:execution time/samples}}
+    Essentially if we see a dictionary in the form of {lib:{func:exec time or samples}} regardless of thread id, we will
+    merge those dictionaries with other ones that share the same library and function, by summing their values together.
+
+    :param TIDLibFuncDict: A dictionary in the form of: {TID:{Lib:{Func:sample or execution time}}}
+    :return: A dictionary in the form of: {lib:{func:execution time or samples}}
+    """
     # pprint.pprint(TIDLibFuncDict)
     newLibFuncDict = {}
     for libFuncDict in TIDLibFuncDict.values():
@@ -580,9 +675,16 @@ def groupLibsandFuncs(TIDLibFuncDict):
 
 # =============================== Debugging Functions ===============================
 def printFirstTreeDict(tidData):
+    """
+    Prints the first tree in our tidData dictionary which is simply the first TID then the first function tree found
+    via the for loop.
+
+    :param tidData: The dictionary in the form of {TID:{root function and library name: Function Tree}}
+    :return: Nothing
+    """
     for treeDict in tidData.values():
         printTree(treeDict)
-        # break
+        break
     return
 
 # ===================================================================================
@@ -628,9 +730,6 @@ def main():
 
         # Print the first tree again, but this time the tree has had its execution times redistributed
         #printFirstTreeDict(tidData)
-        # Retrieve the TOTAL time spent in each thread, this is a combination of On-CPU and Off-CPU execution times
-        outDict["threads"] = getThreadTotalExecution(tidData)
-        print(outDict["threads"])
 
         # Retrieve the function execution times
         # At this point, the execution times have been redistributed
@@ -644,6 +743,7 @@ def main():
         print("woop")
         # print(useThreshold_RetrieveAttrs(tidData, "func", "execTime"))
         print(retrieveAttrs(tidData, "func", "execTime"))
+        # print(f"sum: {sum()}")
         # print("Wow")
 
         # print(outDict["funcs"] == retrieveAttr(tidData, "func", "execTime"))
@@ -691,10 +791,13 @@ def main():
         # Just to sum all of the library samples to see if they sum as expected
         # Should sum to the same amounts that is stored in outDict["ThreadSamps"]
         libSums = []
+        total = 0
         for index, tid in enumerate(outDict["TIDLibSamps"].keys()):
             libSums.append(sum(outDict["TIDLibSamps"][tid].values()))
-            print(f"Tid: {tid}, sum: {libSums[index]}")
-
+            a = libSums[index]
+            total += a
+            print(f"Tid: {tid}, sum: {a}")
+        print(total)
         # print(sum(libSums) == sum(retrieveAttrs(tidData, "lib", "sampleTotal").values()))
         # This will sum all of the values in each thread of outDict["LibSamps"] and report the sample totals for each
         # library irrespective of threads
