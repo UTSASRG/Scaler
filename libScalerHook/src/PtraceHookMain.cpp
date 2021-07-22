@@ -20,10 +20,10 @@
 #include <exceptions/ErrCode.h>
 #include <string.h>
 
-void run_target(const char *programname) {
+void run_target(const char *programname, int argc, char **argv) {
     DBG_LOGS("target started. will run '%s'", programname);
     //Set dumpable so that we can read child process memory
-    if(prctl(PR_SET_DUMPABLE, 1)<0){
+    if (prctl(PR_SET_DUMPABLE, 1) < 0) {
         throwScalerExceptionS(ErrCode::PTRCTL_FAIL, "PR_SET_DUMPABLE failed because: %s", strerror(errno));
     }
 
@@ -33,8 +33,41 @@ void run_target(const char *programname) {
     }
 
     /* Replace this process's image with the given program */
-    if(execl(programname, programname, NULL)<0) {
-        throwScalerExceptionS(ErrCode::TARGET_EXEC_FAIL, "execl target failed because: %s", strerror(errno));
+    if (argc == 0) {
+        if (execl(programname, programname, NULL) < 0) {
+            throwScalerExceptionS(ErrCode::TARGET_EXEC_FAIL, "execl target failed because: %s", strerror(errno));
+        }
+    } else if (argc == 1) {
+        if (execl(programname, programname, argv[0]) < 0) {
+            throwScalerExceptionS(ErrCode::TARGET_EXEC_FAIL, "execl target failed because: %s", strerror(errno));
+        }
+    } else if (argc == 2) {
+        if (execl(programname, programname, argv[0], argv[1]) < 0) {
+            throwScalerExceptionS(ErrCode::TARGET_EXEC_FAIL, "execl target failed because: %s", strerror(errno));
+        }
+    } else if (argc == 3) {
+        printf("%s\n", argv[0]);
+        printf("%s\n", argv[1]);
+        printf("%s\n", argv[2]);
+        if (execl(programname, programname, argv[0], argv[1], argv[2]) < 0) {
+            throwScalerExceptionS(ErrCode::TARGET_EXEC_FAIL, "execl target failed because: %s", strerror(errno));
+        }
+    } else if (argc == 4) {
+        if (execl(programname, programname, argv[0], argv[1], argv[2], argv[3]) < 0) {
+            throwScalerExceptionS(ErrCode::TARGET_EXEC_FAIL, "execl target failed because: %s", strerror(errno));
+        }
+    } else if (argc == 5) {
+        if (execl(programname, programname, argv[0], argv[1], argv[2], argv[3], argv[4]) < 0) {
+            throwScalerExceptionS(ErrCode::TARGET_EXEC_FAIL, "execl target failed because: %s", strerror(errno));
+        }
+    } else if (argc == 6) {
+        if (execl(programname, programname, argv[0], argv[1], argv[2], argv[3], argv[4], argv[5]) < 0) {
+            throwScalerExceptionS(ErrCode::TARGET_EXEC_FAIL, "execl target failed because: %s", strerror(errno));
+        }
+    } else if (argc == 7) {
+        if (execl(programname, programname, argv[0], argv[1], argv[2], argv[3], argv[4], argv[5], argv[6]) < 0) {
+            throwScalerExceptionS(ErrCode::TARGET_EXEC_FAIL, "execl target failed because: %s", strerror(errno));
+        }
     }
 }
 
@@ -50,7 +83,7 @@ int main(int argc, char **argv) {
     }
     childPid = fork();
     if (childPid == 0)
-        run_target(argv[1]);
+        run_target(argv[1], argc - 2, argv + 2);
     else if (childPid > 0) {
         DBG_LOG("Debugger run");
 
@@ -59,7 +92,7 @@ int main(int argc, char **argv) {
         install([](std::string fileName, std::string funcName) -> bool {
             if (fileName == "/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28") {
                 //todo: User should be able to specify name here. Since they can change filename
-                return false;
+                return true;
             } else {
                 return true;
             }

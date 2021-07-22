@@ -269,9 +269,9 @@ namespace scaler {
 
         ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(curFileID);
 
-        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
-            printf(" ");
-        }
+//        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
+//            printf(" ");
+//        }
 
         DBG_LOGS("[Prehook %d] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(curFuncID).c_str(),
                  "unknownLib",
@@ -295,9 +295,9 @@ namespace scaler {
 
         auto &curContext = ptraceCurContext[childTid];
 
-        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
-            printf(" ");
-        }
+//        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
+//            printf(" ");
+//        }
 
         if (curContext.fileId.size() <= 0) {
             return;

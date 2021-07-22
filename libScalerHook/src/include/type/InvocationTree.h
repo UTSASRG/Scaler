@@ -33,11 +33,11 @@ namespace scaler {
         ssize_t funcID = -1;
         int64_t startTimestamp = -1;
         int64_t endTimeStamp = -1;
+        ssize_t childrenSize = 0;
 
         InvocationTreeNode *parent = nullptr;
         InvocationTreeNode *firstChild = nullptr;
         InvocationTreeNode *nextSibling = nullptr;
-        ssize_t childrenSize = 0;
 
     public:
         InvocationTreeNode();
@@ -118,8 +118,8 @@ namespace scaler {
     public:
         PthreadInvocationTreeNode();
 
-        int64_t extraFiled1;
-        int64_t extraFiled2;
+        int64_t extraField1;
+        int64_t extraField2;
 
         void load(FILE *fp) override;
 
@@ -131,7 +131,7 @@ namespace scaler {
     public:
         SemaphoreInvocationTreeNode();
 
-        int64_t extraFiled1;
+        int64_t extraField1;
 
         void load(FILE *fp) override;
 

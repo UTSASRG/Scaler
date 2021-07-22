@@ -132,8 +132,8 @@ void scaler::PthreadInvocationTreeNode::load(FILE *fp) {
 
 void scaler::PthreadInvocationTreeNode::save(FILE *fp) {
     scaler::InvocationTreeNode::save(fp);
-    fwrite(&extraFiled1, sizeof(extraFiled1), 1, fp);
-    fwrite(&extraFiled2, sizeof(extraFiled2), 1, fp);
+    fwrite(&extraField1, sizeof(extraField1), 1, fp);
+    fwrite(&extraField2, sizeof(extraField2), 1, fp);
 }
 
 scaler::SemaphoreInvocationTreeNode::SemaphoreInvocationTreeNode() {
@@ -146,7 +146,7 @@ void scaler::SemaphoreInvocationTreeNode::load(FILE *fp) {
 
 void scaler::SemaphoreInvocationTreeNode::save(FILE *fp) {
     scaler::InvocationTreeNode::save(fp);
-    fwrite(&extraFiled1, sizeof(extraFiled1), 1, fp);
+    fwrite(&extraField1, sizeof(extraField1), 1, fp);
 }
 
 void scaler::SerializableMixIn::load(FILE *fp) {

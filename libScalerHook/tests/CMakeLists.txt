@@ -92,6 +92,9 @@ add_executable(libScalerHook-demoapps-Signal src/demoapps/TestSingalHandler.cpp)
 target_include_directories(libScalerHook-demoapps-Signal PUBLIC)
 target_link_libraries(libScalerHook-demoapps-Signal pthread dl)
 
+add_executable(libScalerHook-demoapps-InlineFunc src/demoapps/TestInlineFunction.cpp)
+target_include_directories(libScalerHook-demoapps-InlineFunc PUBLIC)
+target_compile_options(libScalerHook-demoapps-InlineFunc PUBLIC "-g")
 
 add_executable(libScalerHook-parsecapps-aget
         src/parsecapps/aget/Aget.c
@@ -102,7 +105,7 @@ add_executable(libScalerHook-parsecapps-aget
         src/parsecapps/aget/Resume.c
         src/parsecapps/aget/Signal.c)
 target_include_directories(libScalerHook-parsecapps-aget PUBLIC src/parsecapps/aget/include)
-target_link_libraries(libScalerHook-parsecapps-aget ScalerHook-HookAuto pthread dl)
+target_link_libraries(libScalerHook-parsecapps-aget pthread dl)
 
 
 add_executable(libScalerHook-parsecapps-dedup
@@ -117,14 +120,14 @@ add_executable(libScalerHook-parsecapps-dedup
         src/parsecapps/dedup/util.c)
 target_include_directories(libScalerHook-parsecapps-dedup PUBLIC src/parsecapps/dedup/include)
 target_link_directories(libScalerHook-parsecapps-dedup PRIVATE src/parsecapps/dedup/lib)
-target_link_libraries(libScalerHook-parsecapps-dedup ScalerHook-HookAuto pthread dl
+target_link_libraries(libScalerHook-parsecapps-dedup pthread dl
         libcrypto.a
         libssl.a
         libz.a)
 
 add_executable(libScalerHook-parsecapps-blackscholes src/parsecapps/blackscholes/blackscholes-pthread.cpp)
 target_compile_options(libScalerHook-parsecapps-blackscholes PRIVATE "-DENABLE_THREADS" "-DPARALLEL" "-DNCO=2" "-DN=960")
-target_link_libraries(libScalerHook-parsecapps-blackscholes pthread ScalerHook-HookAuto)
+target_link_libraries(libScalerHook-parsecapps-blackscholes pthread)
 
 
 find_package(BZip2 REQUIRED)
@@ -133,7 +136,7 @@ add_executable(libScalerHook-parsecapps-pbzip2
         src/parsecapps/pbzip2/ErrorContext.cpp
         src/parsecapps/pbzip2/pbzip2.cpp)
 target_include_directories(libScalerHook-parsecapps-pbzip2 PUBLIC src/parsecapps/pbzip2/include)
-target_link_libraries(libScalerHook-parsecapps-pbzip2 ScalerHook-HookAuto pthread BZip2::BZip2)
+target_link_libraries(libScalerHook-parsecapps-pbzip2 pthread BZip2::BZip2)
 
 
 #add_library(InstallTest SHARED libInstalltest/src/installTest.cpp)

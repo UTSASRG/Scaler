@@ -6,7 +6,6 @@
 
 TEST(INVOCATION_TREE, general) {
     scaler::SerilizableInvocationTree serializableTree;
-    serializableTree.saveOnExit = false;
     scaler::InvocationTreeNode *newNode11 = &serializableTree.treeRoot;
     newNode11->setFileID(11);
 

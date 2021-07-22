@@ -698,119 +698,119 @@ namespace scaler {
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_JOIN) {
                 pthread_t *joinThread;
                 parm_pthread_join(&joinThread, rdiLoc);
-                newNode->extraFiled1 = *joinThread;
+                newNode->extraField1 = *joinThread;
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_join tid=%lu", pthread_self(),
                          *joinThread);
 
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_TRYJOIN_NP) {
                 pthread_t *joinThread;
                 parm_pthread_tryjoin_np(&joinThread, rdiLoc);
-                newNode->extraFiled1 = *joinThread;
+                newNode->extraField1 = *joinThread;
                 DBG_LOGS("[Pre Hook Param Parser]   callingthread=%lu pthread_tryjoin_np tid=%lu", pthread_self(),
                          *joinThread);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_TIMEDJOIN_NP) {
                 pthread_t *joinThread;
                 parm_pthread_timedjoin_np(&joinThread, rdiLoc);
-                newNode->extraFiled1 = *joinThread;
+                newNode->extraField1 = *joinThread;
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_timedjoin_np tid=%lu", pthread_self(),
                          *joinThread);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_CLOCKJOIN_NP) {
                 pthread_t *joinThread;
                 parm_pthread_clockjoin_np(&joinThread, rdiLoc);
-                newNode->extraFiled1 = *joinThread;
+                newNode->extraField1 = *joinThread;
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_clockjoin_np tid=%lu", pthread_self(),
                          *joinThread);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_MUTEX_LOCK) {
                 pthread_mutex_t **mutex_t;
                 parm_pthread_mutex_lock(&mutex_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_mutex_lock lID=%p", pthread_self(),
                          *mutex_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_MUTEX_TIMEDLOCK) {
                 pthread_mutex_t **mutex_t;
                 parm_pthread_mutex_timedlock(&mutex_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_mutex_timedlock lID=%p", pthread_self(),
                          *mutex_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_MUTEX_CLOCKLOCK) {
                 pthread_mutex_t **mutex_t;
                 parm_pthread_mutex_clocklock(&mutex_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_mutex_clocklock lID=%p", pthread_self(),
                          *mutex_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_MUTEX_UNLOCK) {
                 pthread_mutex_t **mutex_t;
                 parm_pthread_mutex_unlock(&mutex_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  parm_pthread_mutex_unlock lID=%p",
                          pthread_self(),
                          *mutex_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_RDLOCK) {
                 pthread_rwlock_t **mutex_t;
                 parm_pthread_rwlock_rdlock(&mutex_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_rdlock lID=%p", pthread_self(),
                          *mutex_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_TRYRDLOCK) {
                 pthread_rwlock_t **mutex_t;
                 parm_pthread_rwlock_tryrdlock(&mutex_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_tryrdlock lID=%p",
                          pthread_self(),
                          *mutex_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_TIMEDRDLOCK) {
                 pthread_rwlock_t **mutex_t;
                 parm_pthread_rwlock_timedrdlock(&mutex_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_timedrdlock lID=%p",
                          pthread_self(), *mutex_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_CLOCKRDLOCK) {
                 pthread_rwlock_t **mutex_t;
                 parm_pthread_rwlock_clockrdlock(&mutex_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_clockrdlock lID=%p",
                          pthread_self(), *mutex_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_WRLOCK) {
                 pthread_rwlock_t **mutex_t;
                 parm_pthread_rwlock_wrlock(&mutex_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_wrlock lID=%p", pthread_self(),
                          *mutex_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_TRYWRLOCK) {
                 pthread_rwlock_t **mutex_t;
                 parm_pthread_rwlock_trywrlock(&mutex_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_trywrlock lID=%p",
                          pthread_self(),
                          *mutex_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_TIMEDWRLOCK) {
                 pthread_rwlock_t **mutex_t;
                 parm_pthread_rwlock_timedwrlock(&mutex_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_timedwrlock lID=%p",
                          pthread_self(), *mutex_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_CLOCKWRLOCK) {
                 pthread_rwlock_t **mutex_t;
                 parm_pthread_rwlock_clockwrlock(&mutex_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_clockwrlock lID=%p",
                          pthread_self(), *mutex_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_RWLOCK_UNLOCK) {
                 pthread_rwlock_t **mutex_t;
                 parm_pthread_rwlock_unlock(&mutex_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_rwlock_unlock lID=%p", pthread_self(),
                          *mutex_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_COND_SIGNAL) {
                 pthread_cond_t **cond_t;
                 parm_pthread_cond_signal(&cond_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*cond_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*cond_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_cond_signal condID=%p", pthread_self(),
                          *cond_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_COND_BROADCAST) {
                 pthread_cond_t **cond_t;
                 parm_pthread_cond_broadcast(&cond_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*cond_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*cond_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_cond_broadcast condID=%p",
                          pthread_self(),
                          *cond_t);
@@ -818,16 +818,16 @@ namespace scaler {
                 pthread_cond_t **cond_t;
                 pthread_mutex_t **mutex_t;
                 parm_pthread_cond_wait(&cond_t, &mutex_t, rdiLoc, rsiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*cond_t);
-                newNode->extraFiled2 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*cond_t);
+                newNode->extraField2 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_cond_wait condID=%p", pthread_self(),
                          *cond_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_COND_TIMEDWAIT) {
                 pthread_cond_t **cond_t;
                 pthread_mutex_t **mutex_t;
                 parm_pthread_cond_timedwait(&cond_t, &mutex_t, rdiLoc, rsiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*cond_t);
-                newNode->extraFiled2 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*cond_t);
+                newNode->extraField2 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_cond_timedwait condID=%p",
                          pthread_self(),
                          *cond_t);
@@ -835,33 +835,33 @@ namespace scaler {
                 pthread_cond_t **cond_t;
                 pthread_mutex_t **mutex_t;
                 parm_pthread_cond_clockwait(&cond_t, &mutex_t, rdiLoc, rsiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*cond_t);
-                newNode->extraFiled2 = reinterpret_cast<int64_t>(*mutex_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*cond_t);
+                newNode->extraField2 = reinterpret_cast<int64_t>(*mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_cond_clockwait condId=%p",
                          pthread_self(),
                          *cond_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_SPIN_LOCK) {
                 pthread_spinlock_t **spinlock_t;
                 parm_pthread_spin_lock(&spinlock_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*spinlock_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*spinlock_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_spin_lock lID=%p", pthread_self(),
                          *spinlock_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_SPIN_TRYLOCK) {
                 pthread_spinlock_t **spinlock_t;
                 parm_pthread_spin_trylock(&spinlock_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*spinlock_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*spinlock_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_spin_trylock lID=%p", pthread_self(),
                          *spinlock_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_SPIN_UNLOCK) {
                 pthread_spinlock_t **spinlock_t;
                 parm_pthread_spin_unlock(&spinlock_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*spinlock_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*spinlock_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_spin_unlock lID=%p", pthread_self(),
                          *spinlock_t);
             } else if (funcId == curElfImgInfo.pthreadFuncId.PTHREAD_BARRIER_WAIT) {
                 pthread_barrier_t **barrier_t;
                 parm_pthread_barrier_wait(&barrier_t, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*barrier_t);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*barrier_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  pthread_barrier_wait barrierId=%p",
                          pthread_self(), *barrier_t);
             }
@@ -876,27 +876,27 @@ namespace scaler {
             if (funcId == curElfImgInfo.semaphoreFuncId.SEM_WAIT) {
                 sem_t **__sem;
                 parm_sem_wait(&__sem, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*__sem);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*__sem);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  sem_wait sID=%p", pthread_self(), *__sem);
             } else if (funcId == curElfImgInfo.semaphoreFuncId.SEM_TIMEDWAIT) {
                 sem_t **__sem;
                 parm_sem_timedwait(&__sem, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*__sem);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*__sem);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  sem_timedwait sID=%p", pthread_self(), *__sem);
             } else if (funcId == curElfImgInfo.semaphoreFuncId.SEM_CLOCKWAIT) {
                 sem_t **__sem;
                 parm_sem_clockwait(&__sem, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*__sem);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*__sem);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  sem_clockwait sID=%p", pthread_self(), *__sem);
             } else if (funcId == curElfImgInfo.semaphoreFuncId.SEM_TRYWAIT) {
                 sem_t **__sem;
                 parm_sem_trywait(&__sem, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*__sem);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*__sem);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  sem_trywait sID=%p", pthread_self(), *__sem);
             } else if (funcId == curElfImgInfo.semaphoreFuncId.SEM_POST) {
                 sem_t **__sem;
                 parm_sem_post(&__sem, rdiLoc);
-                newNode->extraFiled1 = reinterpret_cast<int64_t>(*__sem);
+                newNode->extraField1 = reinterpret_cast<int64_t>(*__sem);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%lu  sem_post sID=%p", pthread_self(), *__sem);
             }
 
