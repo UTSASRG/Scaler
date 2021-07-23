@@ -296,6 +296,69 @@ namespace scaler {
                funcID == PTHREAD_BARRIER_WAIT;
     }
 
+    std::vector<int> ExtFuncCallHook_Linux::ELFImgInfo::PthreadFuncId::getAllIds() {
+        std::vector<int> result;
+
+        if (PTHREAD_CREATE !=-1)
+            result.push_back(PTHREAD_CREATE);
+        if (PTHREAD_JOIN !=-1)
+            result.push_back(PTHREAD_JOIN);
+        if (PTHREAD_TRYJOIN_NP !=-1)
+            result.push_back(PTHREAD_TRYJOIN_NP);
+        if (PTHREAD_TIMEDJOIN_NP !=-1)
+            result.push_back(PTHREAD_TIMEDJOIN_NP);
+        if (PTHREAD_CLOCKJOIN_NP !=-1)
+            result.push_back(PTHREAD_CLOCKJOIN_NP);
+        if (PTHREAD_MUTEX_LOCK !=-1)
+            result.push_back(PTHREAD_MUTEX_LOCK);
+        if (PTHREAD_MUTEX_TIMEDLOCK !=-1)
+            result.push_back(PTHREAD_MUTEX_TIMEDLOCK);
+        if (PTHREAD_MUTEX_CLOCKLOCK !=-1)
+            result.push_back(PTHREAD_MUTEX_CLOCKLOCK);
+        if (PTHREAD_MUTEX_UNLOCK !=-1)
+            result.push_back(PTHREAD_MUTEX_UNLOCK);
+        if (PTHREAD_RWLOCK_RDLOCK !=-1)
+            result.push_back(PTHREAD_RWLOCK_RDLOCK);
+        if (PTHREAD_RWLOCK_TRYRDLOCK !=-1)
+            result.push_back(PTHREAD_RWLOCK_TRYRDLOCK);
+        if (PTHREAD_RWLOCK_TIMEDRDLOCK !=-1)
+            result.push_back(PTHREAD_RWLOCK_TIMEDRDLOCK);
+        if (PTHREAD_RWLOCK_CLOCKRDLOCK !=-1)
+            result.push_back(PTHREAD_RWLOCK_CLOCKRDLOCK);
+        if (PTHREAD_RWLOCK_WRLOCK !=-1)
+            result.push_back(PTHREAD_RWLOCK_WRLOCK);
+        if (PTHREAD_RWLOCK_TRYWRLOCK !=-1)
+            result.push_back(PTHREAD_RWLOCK_TRYWRLOCK);
+        if (PTHREAD_RWLOCK_TIMEDWRLOCK !=-1)
+            result.push_back(PTHREAD_RWLOCK_TIMEDWRLOCK);
+        if (PTHREAD_RWLOCK_CLOCKWRLOCK !=-1)
+            result.push_back(PTHREAD_RWLOCK_CLOCKWRLOCK);
+        if (PTHREAD_RWLOCK_UNLOCK !=-1)
+            result.push_back(PTHREAD_RWLOCK_UNLOCK);
+        if (PTHREAD_COND_SIGNAL !=-1)
+            result.push_back(PTHREAD_COND_SIGNAL);
+        if (PTHREAD_COND_BROADCAST !=-1)
+            result.push_back(PTHREAD_COND_BROADCAST);
+        if (PTHREAD_COND_WAIT !=-1)
+            result.push_back(PTHREAD_COND_WAIT);
+        if (PTHREAD_COND_TIMEDWAIT !=-1)
+            result.push_back(PTHREAD_COND_TIMEDWAIT);
+        if (PTHREAD_COND_CLOCKWAIT !=-1)
+            result.push_back(PTHREAD_COND_CLOCKWAIT);
+        if (PTHREAD_SPIN_LOCK !=-1)
+            result.push_back(PTHREAD_SPIN_LOCK);
+        if (PTHREAD_SPIN_TRYLOCK !=-1)
+            result.push_back(PTHREAD_SPIN_TRYLOCK);
+        if (PTHREAD_SPIN_UNLOCK !=-1)
+            result.push_back(PTHREAD_SPIN_UNLOCK);
+        if (PTHREAD_BARRIER_WAIT !=-1)
+            result.push_back(PTHREAD_BARRIER_WAIT);
+
+
+        return result;
+    }
+
+
     bool ExtFuncCallHook_Linux::ELFImgInfo::SemaphoreFuncId::isFuncSemaphore(size_t funcID) {
         return funcID == SEM_WAIT ||
                funcID == SEM_TIMEDWAIT ||
@@ -303,6 +366,21 @@ namespace scaler {
                funcID == SEM_TRYWAIT ||
                funcID == SEM_POST;
 
+    }
+
+    std::vector<int> ExtFuncCallHook_Linux::ELFImgInfo::SemaphoreFuncId::getAllIds() {
+        std::vector<int> result;
+        if (SEM_WAIT !=-1)
+            result.push_back(SEM_WAIT);
+        if (SEM_TIMEDWAIT !=-1)
+            result.push_back(SEM_TIMEDWAIT);
+        if (SEM_CLOCKWAIT !=-1)
+            result.push_back(SEM_CLOCKWAIT);
+        if (SEM_TRYWAIT !=-1)
+            result.push_back(SEM_TRYWAIT);
+        if (SEM_POST !=-1)
+            result.push_back(SEM_POST);
+        return result;
     }
 }
 

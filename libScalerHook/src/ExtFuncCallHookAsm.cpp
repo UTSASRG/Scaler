@@ -23,7 +23,7 @@
 #include <exceptions/ErrCode.h>
 #include <type/InvocationTree.h>
 #include <util/tool/StringTool.h>
-
+#include <nlohmann/json.hpp>
 //todo: many functions are too long
 
 namespace scaler {
@@ -996,106 +996,70 @@ namespace scaler {
 
 
     ExtFuncCallHookAsm::~ExtFuncCallHookAsm() {
-
         if (elfImgInfoMapC) {
             delete[] elfImgInfoMapC;
         }
-
     }
 
     void ExtFuncCallHookAsm::saveCommonFuncID() {
+        using Json = nlohmann::json;
+
+        Json outFile;
+        for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
+            auto &curFileID = iterFile->first;
+            auto &curELFImgInfo = iterFile->second;
+
+            auto pthreadIds = curELFImgInfo.pthreadFuncId.getAllIds();
+            outFile[std::to_string(curFileID)]["pthread"] = Json();
+            for (int i = 0; i < pthreadIds.size(); ++i) {
+                outFile[std::to_string(curFileID)]["pthread"].push_back(pthreadIds[i]);
+            }
+            auto semaphoreIds = curELFImgInfo.semaphoreFuncId.getAllIds();
+            outFile[std::to_string(curFileID)]["semaphore"] = Json();
+            for (int i = 0; i < semaphoreIds.size(); ++i) {
+                outFile[std::to_string(curFileID)]["semaphore"].push_back(semaphoreIds[i]);
+            }
+        }
+
         FILE *fp = NULL;
-        fp = fopen("./symbol.json", "w");
-        fwrite("{", 1, 1, fp);
+        fp = fopen("./commonFuncId.json", "w");
+        std::stringstream ss;
+        ss << outFile;
+        fwrite(ss.str().c_str(), 1, ss.str().size(), fp);
+        fclose(fp);
+    }
+
+    void ExtFuncCallHookAsm::saveAllSymbolId() {
+        using Json = nlohmann::json;
+
+        Json outFile;
 
         for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
             auto &curFileID = iterFile->first;
             auto &curELFImgInfo = iterFile->second;
-            char key[128];
-            sprintf(key, "\"%lu\":{", curFileID);
-            fwrite(key, 1, strlen(key), fp);
 
-            fwrite("\"pthread\":[", 1, 11, fp);
             auto pthreadIds = curELFImgInfo.pthreadFuncId.getAllIds();
-            for (int i = 0; i < pthreadIds.size(); ++i) {
-                char number[32];
-                sprintf(number, "%d", pthreadIds[i]);
-                fwrite(number, 1, strlen(number), fp);
+            outFile[std::to_string(curFileID)]["fileName"] = pmParser.idFileMap[curFileID];
 
-                if (i != pthreadIds.size() - 1) {
-                    fwrite(",", 1, 1, fp);
-                }
+            outFile[std::to_string(curFileID)]["funcNames"] = Json();
+            for (auto iter = curELFImgInfo.hookedExtSymbol.begin();
+                 iter != curELFImgInfo.hookedExtSymbol.end(); ++iter) {
+                outFile[std::to_string(curFileID)]["funcNames"][std::to_string(iter->first)] = iter->second.symbolName;
             }
-            fwrite("],", 1, 2, fp);
 
-            fwrite("\"semaphore\":[", 1, 13, fp);
-            auto semaphoreIds = curELFImgInfo.semaphoreFuncId.getAllIds();
-            for (int i = 0; i < semaphoreIds.size(); ++i) {
-                char number[32];
-                sprintf(number, "%d", semaphoreIds[i]);
-                fwrite(number, 1, strlen(number), fp);
-
-                if (i != semaphoreIds.size() - 1) {
-                    fwrite(",", 1, 1, fp);
-                }
-            }
-            fwrite("]}", 1, 2, fp);
-
-            if (iterFile != std::prev(elfImgInfoMap.end(), 1)) {
-                fwrite(",", 1, 1, fp);
-            }
         }
 
-        fwrite("}", 1, 1, fp);
-        fclose(fp);
-    }
-
-    void ExtFuncCallHookAsm::saveCommonFuncID() {
         FILE *fp = NULL;
         fp = fopen("./symbol.json", "w");
-        fwrite("{", 1, 1, fp);
-
-        for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
-            auto &curFileID = iterFile->first;
-            auto &curELFImgInfo = iterFile->second;
-            char key[128];
-            sprintf(key, "\"%lu\":{", curFileID);
-            fwrite(key, 1, strlen(key), fp);
-
-            fwrite("\"pthread\":[", 1, 11, fp);
-            auto pthreadIds = curELFImgInfo.pthreadFuncId.getAllIds();
-            for (int i = 0; i < pthreadIds.size(); ++i) {
-                char number[32];
-                sprintf(number, "%d", pthreadIds[i]);
-                fwrite(number, 1, strlen(number), fp);
-
-                if (i != pthreadIds.size() - 1) {
-                    fwrite(",", 1, 1, fp);
-                }
-            }
-            fwrite("],", 1, 2, fp);
-
-            fwrite("\"semaphore\":[", 1, 13, fp);
-            auto semaphoreIds = curELFImgInfo.semaphoreFuncId.getAllIds();
-            for (int i = 0; i < semaphoreIds.size(); ++i) {
-                char number[32];
-                sprintf(number, "%d", semaphoreIds[i]);
-                fwrite(number, 1, strlen(number), fp);
-
-                if (i != semaphoreIds.size() - 1) {
-                    fwrite(",", 1, 1, fp);
-                }
-            }
-            fwrite("]}", 1, 2, fp);
-
-            if (iterFile != std::prev(elfImgInfoMap.end(), 1)) {
-                fwrite(",", 1, 1, fp);
-            }
-        }
-
-        fwrite("}", 1, 1, fp);
+        std::stringstream ss;
+        ss << outFile;
+        fwrite(ss.str().c_str(), 1, ss.str().size(), fp);
         fclose(fp);
+
     }
+
+
+
 
 
 //I used to put cHookHandler out of scaler namespace

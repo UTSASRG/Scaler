@@ -33,6 +33,10 @@ namespace scaler {
 
         ~ExtFuncCallHookAsm() override;
 
+        void saveCommonFuncID();
+
+        void saveAllSymbolId();
+
     protected:
 
         PmParserC_Linux pmParser;                            //A parser to /proc/self/maps

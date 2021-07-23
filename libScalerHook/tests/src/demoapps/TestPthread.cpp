@@ -10,18 +10,18 @@ using namespace std;
 void *print_message_function(void *ptr);
 
 int main() {
-    install([](std::string fileName, std::string funcName) -> bool {
-        //todo: User should be able to specify name here. Since they can change filename
-
-        if (fileName ==
-            "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-Pthread") {
-            fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
-            return true;
-        } else {
-            return false;
-        }
-
-    });
+//    install([](std::string fileName, std::string funcName) -> bool {
+//        //todo: User should be able to specify name here. Since they can change filename
+//
+//        if (fileName ==
+//            "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-Pthread") {
+//            fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
+//            return true;
+//        } else {
+//            return false;
+//        }
+//
+//    });
 
 //    pthread_create((pthread_t *) 123, (pthread_attr_t *) 0x11, (void *(*)(void *)) (0x11),
 //                   (void *) 0x11);
@@ -47,7 +47,10 @@ int main() {
 
     printf("Thread 1 returns: %d\n", iret1);
     printf("Thread 2 returns: %d\n", iret2);
-    exit(0);
+
+//    scaler::ExtFuncCallHookAsm *libPltHook = scaler::ExtFuncCallHookAsm::getInst();
+//    libPltHook->saveCommonFuncID();
+//    libPltHook->saveAllSymbolId();
 }
 
 void *print_message_function(void *ptr) {

@@ -70,6 +70,8 @@ namespace scaler {
 
                 bool isFuncPthread(size_t funcID);
 
+                std::vector<int> getAllIds();
+
             };
 
             struct SemaphoreFuncId {
@@ -81,6 +83,7 @@ namespace scaler {
 
                 bool isFuncSemaphore(size_t funcID);
 
+                std::vector<int> getAllIds();
             };
 
 
