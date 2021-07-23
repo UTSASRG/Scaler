@@ -996,10 +996,105 @@ namespace scaler {
 
 
     ExtFuncCallHookAsm::~ExtFuncCallHookAsm() {
+
         if (elfImgInfoMapC) {
             delete[] elfImgInfoMapC;
         }
 
+    }
+
+    void ExtFuncCallHookAsm::saveCommonFuncID() {
+        FILE *fp = NULL;
+        fp = fopen("./symbol.json", "w");
+        fwrite("{", 1, 1, fp);
+
+        for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
+            auto &curFileID = iterFile->first;
+            auto &curELFImgInfo = iterFile->second;
+            char key[128];
+            sprintf(key, "\"%lu\":{", curFileID);
+            fwrite(key, 1, strlen(key), fp);
+
+            fwrite("\"pthread\":[", 1, 11, fp);
+            auto pthreadIds = curELFImgInfo.pthreadFuncId.getAllIds();
+            for (int i = 0; i < pthreadIds.size(); ++i) {
+                char number[32];
+                sprintf(number, "%d", pthreadIds[i]);
+                fwrite(number, 1, strlen(number), fp);
+
+                if (i != pthreadIds.size() - 1) {
+                    fwrite(",", 1, 1, fp);
+                }
+            }
+            fwrite("],", 1, 2, fp);
+
+            fwrite("\"semaphore\":[", 1, 13, fp);
+            auto semaphoreIds = curELFImgInfo.semaphoreFuncId.getAllIds();
+            for (int i = 0; i < semaphoreIds.size(); ++i) {
+                char number[32];
+                sprintf(number, "%d", semaphoreIds[i]);
+                fwrite(number, 1, strlen(number), fp);
+
+                if (i != semaphoreIds.size() - 1) {
+                    fwrite(",", 1, 1, fp);
+                }
+            }
+            fwrite("]}", 1, 2, fp);
+
+            if (iterFile != std::prev(elfImgInfoMap.end(), 1)) {
+                fwrite(",", 1, 1, fp);
+            }
+        }
+
+        fwrite("}", 1, 1, fp);
+        fclose(fp);
+    }
+
+    void ExtFuncCallHookAsm::saveCommonFuncID() {
+        FILE *fp = NULL;
+        fp = fopen("./symbol.json", "w");
+        fwrite("{", 1, 1, fp);
+
+        for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
+            auto &curFileID = iterFile->first;
+            auto &curELFImgInfo = iterFile->second;
+            char key[128];
+            sprintf(key, "\"%lu\":{", curFileID);
+            fwrite(key, 1, strlen(key), fp);
+
+            fwrite("\"pthread\":[", 1, 11, fp);
+            auto pthreadIds = curELFImgInfo.pthreadFuncId.getAllIds();
+            for (int i = 0; i < pthreadIds.size(); ++i) {
+                char number[32];
+                sprintf(number, "%d", pthreadIds[i]);
+                fwrite(number, 1, strlen(number), fp);
+
+                if (i != pthreadIds.size() - 1) {
+                    fwrite(",", 1, 1, fp);
+                }
+            }
+            fwrite("],", 1, 2, fp);
+
+            fwrite("\"semaphore\":[", 1, 13, fp);
+            auto semaphoreIds = curELFImgInfo.semaphoreFuncId.getAllIds();
+            for (int i = 0; i < semaphoreIds.size(); ++i) {
+                char number[32];
+                sprintf(number, "%d", semaphoreIds[i]);
+                fwrite(number, 1, strlen(number), fp);
+
+                if (i != semaphoreIds.size() - 1) {
+                    fwrite(",", 1, 1, fp);
+                }
+            }
+            fwrite("]}", 1, 2, fp);
+
+            if (iterFile != std::prev(elfImgInfoMap.end(), 1)) {
+                fwrite(",", 1, 1, fp);
+            }
+        }
+
+        fwrite("}", 1, 1, fp);
+        fclose(fp);
     }
 
 
