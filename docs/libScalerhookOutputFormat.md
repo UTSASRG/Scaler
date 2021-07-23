@@ -7,12 +7,11 @@ eg: **number**.txt should have the form of 1.txt, 2.txt, 1958.txt .etc
 ## FileName
 
 
-| Name template              | Comments                                                     |
-| -------------------------- | ------------------------------------------------------------ |
-| thread_0x**THREAD_ID**.bin | A serialized tree structure                                  |
-| symbol.json                | {**fileID**:{<br />       fileName: **1.EXE**<br />       funcNames:{<br />             **funcID**: **FUNCA** <br />              } <br />       }<br />} |
-| pthread.json               | {<br />**fileID**:[**pthreadFuncID1**,**pthreadFuncID2**,......]<br />} |
-| semaphore.json             | {<br />**fileID**:[**semaphoreFuncID1**,**semaphoreFuncID2**,......]<br />} |
+| Name template              | Comments                                            | Example                                     |
+| -------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| thread_0x**THREAD_ID**.bin | A serialized tree structure                     | See below |
+| symbol.json                | Map fileID to fildName, and map (fileID, funcID) to function name. If there are no symbol, a nullptr will present. Check example. | {"0":{"fileName":"/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-Pthread","funcNames":{"0":"printf","1":"_ZN6scaler18ExtFuncCallHookAsm7getInstEv","10":"_ZNSt8ios_base4InitC1Ev","11":"_ZN6scaler18ExtFuncCallHookAsm15saveAllSymbolIdEv","2":"_ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE7compareEPKc","3":"_ZNKSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE5c_strEv","4":"pthread_join","5":"pthread_create","6":"_Z7installPFbNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEES4_E","7":"__cxa_atexit","8":"_ZN6scaler18ExtFuncCallHookAsm16saveCommonFuncIDEv","9":"fprintf"}},"10":{"fileName":"/usr/lib/x86_64-linux-gnu/ld-2.31.so","funcNames":null},"2":{"fileName":"","funcNames":null},"3":{"fileName":"/usr/lib/x86_64-linux-gnu/libgcc_s.so.1","funcNames":null},"4":{"fileName":"/usr/lib/x86_64-linux-gnu/libm-2.31.so","funcNames":null},"5":{"fileName":"/usr/lib/x86_64-linux-gnu/libdl-2.31.so","funcNames":null},"6":{"fileName":"/usr/lib/x86_64-linux-gnu/libc-2.31.so","funcNames":null},"7":{"fileName":"/usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.28","funcNames":null},"8":{"fileName":"/usr/lib/x86_64-linux-gnu/libpthread-2.31.so","funcNames":null},"9":{"fileName":"/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/libScalerHook-HookManualAsm.so","funcNames":null}} |
+| commonFuncId.json               | Save pthread and semaphore ids in each file. This is a convenient method for programmer to test whether a function id belongs to pthread/semaphore | {"0":{"pthread":[5,4],"semaphore":null},"10":{"pthread":null,"semaphore":null},"2":{"pthread":null,"semaphore":null},"3":{"pthread":null,"semaphore":null},"4":{"pthread":null,"semaphore":null},"5":{"pthread":null,"semaphore":null},"6":{"pthread":null,"semaphore":null},"7":{"pthread":null,"semaphore":null},"8":{"pthread":null,"semaphore":null},"9":{"pthread":null,"semaphore":null}} |
 
 
 
