@@ -29,8 +29,9 @@ namespace scaler {
 
     class InvocationTreeNode : public SerializableMixIn {
     protected:
-        int64_t fileID = -1;
-        int64_t funcID = -1;
+        int64_t realFileID = -1;
+        void *funcAddr = nullptr;
+        int64_t extFuncID;
         int64_t startTimestamp = -1;
         int64_t endTimeStamp = -1;
         int64_t childrenSize = 0;
@@ -47,8 +48,8 @@ namespace scaler {
         InvocationTreeNode(InvocationTreeNode &&) = delete;
 
         inline bool isEmpty() {
-            assert(fileID == -1 && funcID == -1 || fileID != -1 && funcID != -1);
-            return fileID == -1 && funcID == -1;
+            assert(realFileID == -1 && funcAddr == nullptr || realFileID != -1 && funcAddr != nullptr);
+            return realFileID == -1 && realFileID == -1;
         }
 
         inline bool isLeaf() {
@@ -75,21 +76,30 @@ namespace scaler {
             return endTimeStamp;
         }
 
-        inline void setFileID(size_t fileID) {
-            this->fileID = fileID;
+        inline void setRealFileID(size_t fileID) {
+            this->realFileID = fileID;
         }
 
-        inline ssize_t getFileID() {
-            return fileID;
+        inline ssize_t getRealFileID() {
+            return realFileID;
         }
 
-        inline void setFuncID(size_t funcID) {
-            this->funcID = funcID;
+        inline void setFuncAddr(void *funcAddr) {
+            this->funcAddr = funcAddr;
         }
 
-        inline ssize_t getFuncID() {
-            return funcID;
+        inline void *getFuncAddr() {
+            return funcAddr;
         }
+
+        inline void setExtFuncID(int64_t extFuncID) {
+            this->extFuncID = extFuncID;
+        }
+
+        inline int64_t getExtFuncID() {
+            return extFuncID;
+        }
+
 
         inline InvocationTreeNode *getParent() {
             return parent;

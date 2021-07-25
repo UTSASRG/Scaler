@@ -7,6 +7,7 @@
 #include <util/tool/Config.h>
 #include <vector>
 #include <queue>
+#include <util/hook/ExtFuncCallHookAsm.hh>
 
 void scaler::SerilizableInvocationTree::load(FILE *fp) {
     throwScalerException(ErrCode::FUNC_NOT_IMPLEMENTED, "load has not been implemented");
@@ -16,8 +17,17 @@ void scaler::SerilizableInvocationTree::load(FILE *fp) {
 
 }
 
+
 void scaler::SerilizableInvocationTree::save(FILE *fp) {
     if (saveOnExit) {
+        scaler::ExtFuncCallHookAsm *libPltHook = scaler::ExtFuncCallHookAsm::getInst();
+        auto appEndTimestamp = getunixtimestampms();
+        //Add information for root node
+//        treeRoot.setStartTimestamp(libPltHook->appStartTimestamp);
+//        treeRoot.setEndTimestamp(appEndTimestamp);
+        treeRoot.setRealFileID(0);
+        treeRoot.setFuncAddr(nullptr);
+
         char fileName[255];
         sprintf(fileName, "thread_%p.bin", tid);
         auto layerOrderedElem = serializeRootNode();
@@ -25,10 +35,58 @@ void scaler::SerilizableInvocationTree::save(FILE *fp) {
 
         FILE *fp = NULL;
         fp = fopen(fileName, "w");
+
+        for (size_t i = 0; i < layerOrderedElem.size(); ++i) {
+            auto &curElem = layerOrderedElem[i];
+
+            if (curElem->getEndTimestamp() == -1) {
+                curElem->setEndTimestamp(appEndTimestamp);
+                ERR_LOG("Program exits abnormally, adding timestamp");
+            }
+
+            if (curElem->getRealFileID() == -1 && curElem->getParent() != nullptr) {
+                //todo: move this to ExtFuncCallHookAsm
+                int64_t callerFileID = curElem->getParent()->getRealFileID();
+                int64_t fileIDInCaller = curElem->getExtFuncID();
+                void *funcAddr = nullptr;
+                int64_t libraryID = -1;
+                assert(callerFileID != -1);
+                assert(fileIDInCaller != -1);
+                libPltHook->parseFuncInfo(callerFileID, fileIDInCaller, funcAddr, libraryID);
+                curElem->setFuncAddr(funcAddr);
+                curElem->setRealFileID(libraryID);
+                ERR_LOGS("Program exits abnormally, parsing %ld:%ld for realAddr, funcAddr=%p",callerFileID,fileIDInCaller,funcAddr);
+            }
+
+            if ((curElem->getExtFuncID() == -1 || curElem->getFuncAddr() == nullptr ||
+                 curElem->getRealFileID() == -1 || curElem->getStartTimestamp() == -1 ||
+                 curElem->getEndTimestamp() == -1) && curElem->getParent() != nullptr) {
+                //After previous op, all nodes other than the root node should be complete.
+                ERR_LOG("Program exits abnormally, one or more attributes are -1.");
+//                assert(false);
+            }
+        }
+
         for (size_t i = 0; i < layerOrderedElem.size(); ++i) {
             layerOrderedElem[i]->save(fp);
         }
         fclose(fp);
+
+
+        for (size_t i = 0; i < layerOrderedElem.size(); ++i) {
+            if (layerOrderedElem[i]->getParent()) {
+                auto &curSymbol = libPltHook->elfImgInfoMap.at(
+                        layerOrderedElem[i]->getParent()->getRealFileID()).hookedExtSymbol.at(
+                        layerOrderedElem[i]->getExtFuncID());
+                if(curSymbol.symbolName=="exit"){
+                    int j=1;
+                }
+
+                DBG_LOGS("layerOrderedElem %d:%p %s", i, layerOrderedElem[i]->getFuncAddr(),
+                         curSymbol.symbolName.c_str());
+            }
+        }
+        libPltHook->saveAllSymbolId();
     }
 }
 
@@ -37,8 +95,12 @@ scaler::SerilizableInvocationTree::SerilizableInvocationTree() {
     tid = pthread_self();
 }
 
+static pthread_mutex_t saveLock;
+
 scaler::SerilizableInvocationTree::~SerilizableInvocationTree() {
+    pthread_mutex_lock(&saveLock);
     save(nullptr);
+    pthread_mutex_unlock(&saveLock);
 }
 
 scaler::SerilizableInvocationTree::SerilizableInvocationTree(std::string fileName) : fileName(fileName) {
@@ -113,16 +175,12 @@ void scaler::InvocationTreeNode::load(FILE *fp) {
 
 void scaler::InvocationTreeNode::save(FILE *fp) {
     fwrite(&type, sizeof(type), 1, fp);
-    fwrite(&fileID, sizeof(fileID), 1, fp);
-    fwrite(&funcID, sizeof(funcID), 1, fp);
+    fwrite(&realFileID, sizeof(realFileID), 1, fp);
+    fwrite(&funcAddr, sizeof(funcAddr), 1, fp);
     fwrite(&startTimestamp, sizeof(startTimestamp), 1, fp);
     fwrite(&endTimeStamp, sizeof(endTimeStamp), 1, fp);
     fwrite(&firstChildIndex, sizeof(firstChildIndex), 1, fp);
     fwrite(&childrenSize, sizeof(childrenSize), 1, fp);
-
-    if((fileID==-1 || funcID==-1 || startTimestamp==-1||endTimeStamp==-1)&&parent!= nullptr){
-        ERR_LOG("Program exits abnormally");
-    }
 }
 
 scaler::PthreadInvocationTreeNode::PthreadInvocationTreeNode() {

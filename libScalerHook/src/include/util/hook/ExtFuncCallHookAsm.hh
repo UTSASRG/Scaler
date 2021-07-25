@@ -33,16 +33,21 @@ namespace scaler {
 
         ~ExtFuncCallHookAsm() override;
 
-        void saveCommonFuncID();
+        //void saveCommonFuncID();
 
         void saveAllSymbolId();
 
+        PmParserC_Linux pmParser;
+
+
+        void parseFuncInfo(size_t callerFileID, int64_t fileIDInCaller, void *&funcAddr, int64_t &libraryFileID);
+
+    public:
+        int64_t appStartTimestamp;
     protected:
 
-        PmParserC_Linux pmParser;                            //A parser to /proc/self/maps
+        //A parser to /proc/self/maps
         MemoryTool_Linux *memTool;
-        ELFImgInfo *elfImgInfoMapC = nullptr;
-        size_t elfImgInfoMapCSize = 0;
         static ExtFuncCallHookAsm *instance; //Singleton
 
         /**
@@ -63,7 +68,7 @@ namespace scaler {
         * todo: This function is machine specific
         * todo: Add assemboly code to comments to make it more clear
         */
-        std::vector<uint8_t> fillDestAddr2PseudoPltCode(size_t funcId, void *funcAddr);
+        std::vector<uint8_t> fillDestAddr2PseudoPltCode(size_t extSymbolId, void *funcAddr);
 
         /**
          * A handler written in C. It calls custom handler and calculates actual function address
@@ -73,7 +78,7 @@ namespace scaler {
          * @param oriRBPLoc The rsp location before saving all registers
          * @return Original function pointer
          */
-        static void *cPreHookHandlerLinuxSec(size_t fileId, size_t funcId, void *callerAddr, void *oriRBPLoc);
+        static void *cPreHookHandlerLinuxSec(size_t fileId, size_t extSymbolId, void *callerAddr, void *oriRBPLoc);
 
         //static __attribute__ void *callerAddr);
 

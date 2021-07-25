@@ -26,10 +26,6 @@ int doubletake_main(int argc, char **argv, char **envp) {
             return false;
         }
     });
-
-    libPltHook->saveAllSymbolId();
-    libPltHook->saveCommonFuncID();
-
 //    libPltHook->install([](std::string fileName, std::string funcName) -> bool {
 //        //todo: User should be able to specify name here. Since they can change filename
 //        if (funcName == "") {
@@ -42,7 +38,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
 //        }  else {
 //            return true;
 //        }
-    //todo: User should be able to specify name here. Since they can change filename
+        //todo: User should be able to specify name here. Since they can change filename
 //        if (funcName == "") {
 //            return false;
 //        } else if (fileName.length() >= 16 && fileName.substr(fileName.length() - 16, 16) == "libscalerhook.so") {

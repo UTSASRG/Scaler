@@ -196,7 +196,7 @@ namespace scaler {
                 }
 
                 newSymbol.fileId = curFileID;
-                newSymbol.funcId = i;
+                newSymbol.extSymbolId = i;
 
                 if (newSymbol.symbolName == "") {
                     ss.str("");
@@ -217,11 +217,7 @@ namespace scaler {
 
 
     ExtFuncCallHook_Linux::ELFImgInfo::~ELFImgInfo() {
-        if (realAddrResolvedC)
-            delete[] realAddrResolvedC;
 
-        if (hookedExtSymbolC)
-            delete[] hookedExtSymbolC;
     }
 
 
@@ -242,15 +238,7 @@ namespace scaler {
         _DYNAMICAddr = rho._DYNAMICAddr;
         realAddrResolved = rho.realAddrResolved;
 
-        realAddrResolvedC = new bool[rho.realAddrResolved.size()];
-        memcpy(realAddrResolvedC, rho.realAddrResolvedC, rho.realAddrResolvedCSize * sizeof(bool));
-        realAddrResolvedCSize = rho.realAddrResolvedCSize;
-
-        hookedExtSymbolC = new ExtSymInfo[rho.relaPltCnt];
-        memcpy(hookedExtSymbolC, rho.hookedExtSymbolC, rho.hookedExtSymbolCSize * sizeof(ExtSymInfo));
-        hookedExtSymbolCSize = rho.hookedExtSymbolCSize;
-
-        pseudoPlt = rho.pseudoPlt;
+       pseudoPlt = rho.pseudoPlt;
 
         hookedExtSymbol = rho.hookedExtSymbol;
         allExtSymbol = rho.allExtSymbol;
