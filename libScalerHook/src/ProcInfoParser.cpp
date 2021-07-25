@@ -207,6 +207,7 @@ namespace scaler {
             perror(e.what());
             return nullptr;
         }
+        close(mem_fd);
         return readRlt;
     }
 

@@ -20,10 +20,13 @@
 #include <exceptions/ErrCode.h>
 #include <string.h>
 
+
+static char **Argv;
+
 void run_target(const char *programname) {
     DBG_LOGS("target started. will run '%s'", programname);
     //Set dumpable so that we can read child process memory
-    if(prctl(PR_SET_DUMPABLE, 1)<0){
+    if (prctl(PR_SET_DUMPABLE, 1) < 0) {
         throwScalerExceptionS(ErrCode::PTRCTL_FAIL, "PR_SET_DUMPABLE failed because: %s", strerror(errno));
     }
 
@@ -32,8 +35,10 @@ void run_target(const char *programname) {
         throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_TRACEME failed because: %s", strerror(errno));
     }
 
+
+
     /* Replace this process's image with the given program */
-    if(execl(programname, programname, NULL)<0) {
+    if (execv(programname, Argv) < 0) {
         throwScalerExceptionS(ErrCode::TARGET_EXEC_FAIL, "execl target failed because: %s", strerror(errno));
     }
 }
@@ -41,6 +46,9 @@ void run_target(const char *programname) {
 std::string executableName;
 
 int main(int argc, char **argv) {
+
+    Argv = argv+1;
+
     pid_t childPid;
 
     executableName = argv[1];

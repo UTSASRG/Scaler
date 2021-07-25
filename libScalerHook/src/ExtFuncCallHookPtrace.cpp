@@ -274,9 +274,9 @@ namespace scaler {
         //    printf(" ");
         //}
 
-        DBG_LOGS("[Prehook %d] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(curFuncID).c_str(),
-                 "unknownLib",
-                 curELFImgInfo.filePath.c_str());
+        //DBG_LOGS("[Prehook %d] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(curFuncID).c_str(),
+        //         "unknownLib",
+        //         curELFImgInfo.filePath.c_str());
 
         //Check if a breakpoint is inserted at return address
         if (!brkPointInstalledAt(callerAddr)) {
@@ -338,9 +338,9 @@ namespace scaler {
         }
         auto libraryFileId = pmParser.findExecNameByAddr(curSymbol.addr);
         auto &libraryFileName = pmParser.idFileMap.at(libraryFileId);
-        DBG_LOGS("[Afterhook %d] %s in %s is called in %s", childTid, curSymbol.symbolName.c_str(),
-                 libraryFileName.c_str(),
-                 curELFImgInfo.filePath.c_str());
+        //DBG_LOGS("[Afterhook %d] %s in %s is called in %s", childTid, curSymbol.symbolName.c_str(),
+        //         libraryFileName.c_str(),
+        //         curELFImgInfo.filePath.c_str());
     }
 
 

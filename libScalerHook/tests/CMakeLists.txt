@@ -47,7 +47,7 @@ target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHoo
 # Demo Application
 # ============================================================
 
-option(libScalerHook-demoapps_AUTO_INSTALL_HOOK "If ON, then ScalerHook-HookAuto will be linked. Otherwise ScalerHook-HookManualAsm will be linked" ON)
+option(libScalerHook-demoapps_AUTO_INSTALL_HOOK "If ON, then ScalerHook-HookManualAsm will be linked. Otherwise ScalerHook-HookManualAsm will be linked" ON)
 
 add_executable(libScalerHook-demoapps-FuncCall src/demoapps/TestFuncCall.cpp)
 target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall
@@ -102,7 +102,7 @@ add_executable(libScalerHook-parsecapps-aget
         src/parsecapps/aget/Resume.c
         src/parsecapps/aget/Signal.c)
 target_include_directories(libScalerHook-parsecapps-aget PUBLIC src/parsecapps/aget/include)
-target_link_libraries(libScalerHook-parsecapps-aget ScalerHook-HookAuto pthread dl)
+target_link_libraries(libScalerHook-parsecapps-aget ScalerHook-HookManualAsm pthread dl)
 
 
 add_executable(libScalerHook-parsecapps-dedup
@@ -117,14 +117,14 @@ add_executable(libScalerHook-parsecapps-dedup
         src/parsecapps/dedup/util.c)
 target_include_directories(libScalerHook-parsecapps-dedup PUBLIC src/parsecapps/dedup/include)
 target_link_directories(libScalerHook-parsecapps-dedup PRIVATE src/parsecapps/dedup/lib)
-target_link_libraries(libScalerHook-parsecapps-dedup ScalerHook-HookAuto pthread dl
+target_link_libraries(libScalerHook-parsecapps-dedup ScalerHook-HookManualAsm pthread dl
         libcrypto.a
         libssl.a
         libz.a)
 
 add_executable(libScalerHook-parsecapps-blackscholes src/parsecapps/blackscholes/blackscholes-pthread.cpp)
 target_compile_options(libScalerHook-parsecapps-blackscholes PRIVATE "-DENABLE_THREADS" "-DPARALLEL" "-DNCO=2" "-DN=960")
-target_link_libraries(libScalerHook-parsecapps-blackscholes pthread ScalerHook-HookAuto)
+target_link_libraries(libScalerHook-parsecapps-blackscholes pthread ScalerHook-HookManualAsm)
 
 
 find_package(BZip2 REQUIRED)
@@ -133,7 +133,7 @@ add_executable(libScalerHook-parsecapps-pbzip2
         src/parsecapps/pbzip2/ErrorContext.cpp
         src/parsecapps/pbzip2/pbzip2.cpp)
 target_include_directories(libScalerHook-parsecapps-pbzip2 PUBLIC src/parsecapps/pbzip2/include)
-target_link_libraries(libScalerHook-parsecapps-pbzip2 ScalerHook-HookAuto pthread BZip2::BZip2)
+target_link_libraries(libScalerHook-parsecapps-pbzip2 ScalerHook-HookManualAsm pthread BZip2::BZip2)
 
 
 #add_library(InstallTest SHARED libInstalltest/src/installTest.cpp)
