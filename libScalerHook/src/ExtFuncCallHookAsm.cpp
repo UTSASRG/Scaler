@@ -923,7 +923,7 @@ namespace scaler {
         assert(libraryFileId!=-1);
         curSymbol.libraryFileID = libraryFileId;
         curNode->setRealFileID(libraryFileId);
-        curNode->setFuncAddr(curSymbol.addr);
+        curNode->setFuncAddr(reinterpret_cast<int64_t>(curSymbol.addr));
         curNode->setEndTimestamp(endTimestamp);
         curNode = curNode->getParent();
 

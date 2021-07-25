@@ -26,7 +26,6 @@ void scaler::SerilizableInvocationTree::save(FILE *fp) {
 //        treeRoot.setStartTimestamp(libPltHook->appStartTimestamp);
 //        treeRoot.setEndTimestamp(appEndTimestamp);
         treeRoot.setRealFileID(0);
-        treeRoot.setFuncAddr(nullptr);
 
         char fileName[255];
         sprintf(fileName, "thread_%p.bin", tid);
@@ -53,12 +52,12 @@ void scaler::SerilizableInvocationTree::save(FILE *fp) {
                 assert(callerFileID != -1);
                 assert(fileIDInCaller != -1);
                 libPltHook->parseFuncInfo(callerFileID, fileIDInCaller, funcAddr, libraryID);
-                curElem->setFuncAddr(funcAddr);
+                curElem->setFuncAddr(reinterpret_cast<int64_t>(funcAddr));
                 curElem->setRealFileID(libraryID);
                 ERR_LOGS("Program exits abnormally, parsing %ld:%ld for realAddr, funcAddr=%p",callerFileID,fileIDInCaller,funcAddr);
             }
 
-            if ((curElem->getExtFuncID() == -1 || curElem->getFuncAddr() == nullptr ||
+            if ((curElem->getExtFuncID() == -1 || curElem->getFuncAddr() == -1 ||
                  curElem->getRealFileID() == -1 || curElem->getStartTimestamp() == -1 ||
                  curElem->getEndTimestamp() == -1) && curElem->getParent() != nullptr) {
                 //After previous op, all nodes other than the root node should be complete.

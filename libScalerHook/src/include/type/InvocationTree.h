@@ -30,7 +30,7 @@ namespace scaler {
     class InvocationTreeNode : public SerializableMixIn {
     protected:
         int64_t realFileID = -1;
-        void *funcAddr = nullptr;
+        int64_t funcAddr = -1;
         int64_t extFuncID;
         int64_t startTimestamp = -1;
         int64_t endTimeStamp = -1;
@@ -48,7 +48,7 @@ namespace scaler {
         InvocationTreeNode(InvocationTreeNode &&) = delete;
 
         inline bool isEmpty() {
-            assert(realFileID == -1 && funcAddr == nullptr || realFileID != -1 && funcAddr != nullptr);
+            assert(realFileID == -1 && funcAddr == -1 || realFileID != -1 && funcAddr != -1);
             return realFileID == -1 && realFileID == -1;
         }
 
@@ -84,11 +84,11 @@ namespace scaler {
             return realFileID;
         }
 
-        inline void setFuncAddr(void *funcAddr) {
+        inline void setFuncAddr(int64_t funcAddr) {
             this->funcAddr = funcAddr;
         }
 
-        inline void *getFuncAddr() {
+        inline int64_t getFuncAddr() {
             return funcAddr;
         }
 
