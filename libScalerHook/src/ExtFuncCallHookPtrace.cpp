@@ -221,31 +221,32 @@ namespace scaler {
         Context();
 
         Context(Context &);
-        Context(Context &&) noexcept ;
 
-        Context& operator=(Context& other);
+        Context(Context &&) noexcept;
+
+        Context &operator=(Context &other);
 
     };
 
-    Context::Context(Context & rho) {
-        funcId=rho.funcId;
-        fileId=rho.fileId;
-        callerAddr=rho.callerAddr;
-        timestamp=rho.timestamp;
+    Context::Context(Context &rho) {
+        funcId = rho.funcId;
+        fileId = rho.fileId;
+        callerAddr = rho.callerAddr;
+        timestamp = rho.timestamp;
     }
 
-    Context::Context(Context && rho) noexcept {
-        funcId=rho.funcId;
-        fileId=rho.fileId;
-        callerAddr=rho.callerAddr;
-        timestamp=rho.timestamp;
+    Context::Context(Context &&rho) noexcept {
+        funcId = rho.funcId;
+        fileId = rho.fileId;
+        callerAddr = rho.callerAddr;
+        timestamp = rho.timestamp;
     }
 
     Context &Context::operator=(Context &rho) {
-        funcId=rho.funcId;
-        fileId=rho.fileId;
-        callerAddr=rho.callerAddr;
-        timestamp=rho.timestamp;
+        funcId = rho.funcId;
+        fileId = rho.fileId;
+        callerAddr = rho.callerAddr;
+        timestamp = rho.timestamp;
         return *this;
     }
 
@@ -269,9 +270,9 @@ namespace scaler {
 
         ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(curFileID);
 
-        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
-            printf(" ");
-        }
+        //for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
+        //    printf(" ");
+        //}
 
         DBG_LOGS("[Prehook %d] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(curFuncID).c_str(),
                  "unknownLib",
@@ -295,9 +296,9 @@ namespace scaler {
 
         auto &curContext = ptraceCurContext[childTid];
 
-        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
-            printf(" ");
-        }
+        //for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
+        //    printf(" ");
+        //}
 
         if (curContext.fileId.size() <= 0) {
             return;
@@ -318,15 +319,15 @@ namespace scaler {
         curContext.funcId.pop_back();
         auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
 
-        if (curELFImgInfo.hookedExtSymbol.find(funcId) == curELFImgInfo.hookedExtSymbol.end()) {
-            DBG_LOGS("%d %lu", curELFImgInfo.hookedExtSymbol.find(0) == curELFImgInfo.hookedExtSymbol.end(),
-                     curELFImgInfo.hookedExtSymbol.size());
-            for (auto iter = curELFImgInfo.hookedExtSymbol.begin();
-                 iter != curELFImgInfo.hookedExtSymbol.end(); ++iter) {
-                DBG_LOGS("%ld:%s", iter->first, iter->second.symbolName.c_str());
-            }
-            assert(false);
-        }
+        //if (curELFImgInfo.hookedExtSymbol.find(funcId) == curELFImgInfo.hookedExtSymbol.end()) {
+        //    DBG_LOGS("%d %lu", curELFImgInfo.hookedExtSymbol.find(0) == curELFImgInfo.hookedExtSymbol.end(),
+        //             curELFImgInfo.hookedExtSymbol.size());
+        //   for (auto iter = curELFImgInfo.hookedExtSymbol.begin();
+        //        iter != curELFImgInfo.hookedExtSymbol.end(); ++iter) {
+        //       DBG_LOGS("%ld:%s", iter->first, iter->second.symbolName.c_str());
+        //   }
+        //   assert(false);
+        //}
 
         auto &curSymbol = curELFImgInfo.hookedExtSymbol.at(funcId);
         if (curSymbol.addr == nullptr) {
