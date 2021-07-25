@@ -2,16 +2,9 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="ecb3259b-1cdb-40fa-b443-617610e98e0a" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/../../libScalerHook/lib/json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../.gitmodules" beforeDir="false" afterPath="$PROJECT_DIR$/../../.gitmodules" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../libScalerHook/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../../libScalerHook/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../libScalerHook/src/ExtFuncCallHookAsm.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../libScalerHook/src/ExtFuncCallHookAsm.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../libScalerHook/src/ExtFuncCallHook_Linux.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../libScalerHook/src/ExtFuncCallHook_Linux.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../libScalerHook/src/include/util/hook/ExtFuncCallHookAsm.hh" beforeDir="false" afterPath="$PROJECT_DIR$/../../libScalerHook/src/include/util/hook/ExtFuncCallHookAsm.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../libScalerHook/src/include/util/hook/ExtFuncCallHook_Linux.hh" beforeDir="false" afterPath="$PROJECT_DIR$/../../libScalerHook/src/include/util/hook/ExtFuncCallHook_Linux.hh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../libScalerHook/tests/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../../libScalerHook/tests/CMakeLists.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../libScalerHook/tests/src/demoapps/TestPthread.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../libScalerHook/tests/src/demoapps/TestPthread.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../libScalerHook/src/autoinstall.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../libScalerHook/src/autoinstall.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../libScalerHook/src/include/util/tool/Logging.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../libScalerHook/src/include/util/tool/Logging.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

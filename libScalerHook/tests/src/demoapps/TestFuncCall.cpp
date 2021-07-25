@@ -2,8 +2,6 @@
 #include <FuncWithDiffParms.h>
 #include <CallFunctionCall.h>
 #include <TenThousandFunc.h>
-#include <util/hook/install.h>
-#include <util/tool/StringTool.h>
 #include <sys/prctl.h>
 #include <thread>
 

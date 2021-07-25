@@ -119,6 +119,10 @@ void scaler::InvocationTreeNode::save(FILE *fp) {
     fwrite(&endTimeStamp, sizeof(endTimeStamp), 1, fp);
     fwrite(&firstChildIndex, sizeof(firstChildIndex), 1, fp);
     fwrite(&childrenSize, sizeof(childrenSize), 1, fp);
+
+    if((fileID==-1 || funcID==-1 || startTimestamp==-1||endTimeStamp==-1)&&parent!= nullptr){
+        ERR_LOG("Program exits abnormally");
+    }
 }
 
 scaler::PthreadInvocationTreeNode::PthreadInvocationTreeNode() {
