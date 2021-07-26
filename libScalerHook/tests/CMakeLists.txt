@@ -47,7 +47,7 @@ target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHoo
 # Demo Application
 # ============================================================
 
-option(libScalerHook-demoapps_AUTO_INSTALL_HOOK "If ON, then ScalerHook-HookManualAsm will be linked. Otherwise ScalerHook-HookManualAsm will be linked" ON)
+option(libScalerHook-demoapps_AUTO_INSTALL_HOOK "If ON, then ScalerHook-HookAuto will be linked. Otherwise ScalerHook-HookManualAsm will be linked" ON)
 
 add_executable(libScalerHook-demoapps-FuncCall src/demoapps/TestFuncCall.cpp)
 target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall
@@ -92,6 +92,9 @@ add_executable(libScalerHook-demoapps-Signal src/demoapps/TestSingalHandler.cpp)
 target_include_directories(libScalerHook-demoapps-Signal PUBLIC)
 target_link_libraries(libScalerHook-demoapps-Signal pthread dl)
 
+add_executable(libScalerHook-demoapps-InlineFunc src/demoapps/TestInlineFunction.cpp)
+target_include_directories(libScalerHook-demoapps-InlineFunc PUBLIC)
+target_compile_options(libScalerHook-demoapps-InlineFunc PUBLIC "-g")
 
 add_executable(libScalerHook-parsecapps-aget
         src/parsecapps/aget/Aget.c

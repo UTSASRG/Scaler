@@ -3,8 +3,6 @@
 #include <pthread.h>
 #include <signal.h>
 #include <cstdio>
-#include <util/hook/install.h>
-#include <util/tool/StringTool.h>
 
 //=========================================================================
 // Thread Functions
@@ -149,18 +147,18 @@ void test_continue() {
 
 
 int main(int argc, char *argv[]) {
-    install([](std::string fileName, std::string funcName) -> bool {
-        //todo: User should be able to specify name here. Since they can change filename
-
-        if (fileName ==
-            "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-ComplexThreadop") {
-            fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
-            return true;
-        } else {
-            return false;
-        }
-
-    });
+//    install([](std::string fileName, std::string funcName) -> bool {
+//        //todo: User should be able to specify name here. Since they can change filename
+//
+//        if (fileName ==
+//            "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-ComplexThreadop") {
+//            fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
+//            return true;
+//        } else {
+//            return false;
+//        }
+//
+//    });
 
     pthread_t thread1, thread2, thread3;
     int iret1, iret2, iret3;

@@ -2,8 +2,6 @@
 #include <FuncWithDiffParms.h>
 #include <CallFunctionCall.h>
 #include <TenThousandFunc.h>
-#include <util/hook/install.h>
-#include <util/tool/StringTool.h>
 #include <sys/prctl.h>
 #include <thread>
 
@@ -12,15 +10,15 @@ using namespace std;
 int main() {
 
 
-    install([](std::string fileName, std::string funcName) -> bool {
-        //todo: User should be able to specify name here. Since they can change filename
-        if (fileName == "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall") {
-            return true;
-        }else{
-            printf("%s\n",fileName.c_str());
-            return false;
-        }
-    });
+//    install([](std::string fileName, std::string funcName) -> bool {
+//        //todo: User should be able to specify name here. Since they can change filename
+//        if (fileName == "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall") {
+//            return true;
+//        }else{
+//            printf("%s\n",fileName.c_str());
+//            return false;
+//        }
+//    });
 
     printf("Calling funcA\n");
     funcA();

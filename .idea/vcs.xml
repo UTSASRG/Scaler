@@ -2,6 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/libScalerHook/lib/json" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/libScalerHook/tests/lib/multithreadingtests" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/libScalerHook/tests/lib/multithreadingtests/benchmarks/pyperformance/src" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/libScalerHook/tests/lib/multithreadingtests/realworldapps/apache/libs/apr" vcs="Git" />

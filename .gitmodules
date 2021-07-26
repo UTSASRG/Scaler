@@ -4,3 +4,6 @@
 [submodule "libScalerHook/tests/lib/multithreadingtests"]
 	path = libScalerHook/tests/lib/multithreadingtests
 	url = https://github.com/UTSASRG/multithreadingtests.git
+[submodule "libScalerHook/lib/json"]
+	path = libScalerHook/lib/json
+	url = https://github.com/nlohmann/json.git

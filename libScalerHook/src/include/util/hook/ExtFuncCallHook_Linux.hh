@@ -30,8 +30,6 @@ namespace scaler {
 
         virtual ~ExtFuncCallHook_Linux() override = 0;
 
-    protected:
-
 
         /**
          * ELF image (ELF file in memory) information.
@@ -70,6 +68,8 @@ namespace scaler {
 
                 bool isFuncPthread(size_t funcID);
 
+                std::vector<int> getAllIds();
+
             };
 
             struct SemaphoreFuncId {
@@ -81,6 +81,7 @@ namespace scaler {
 
                 bool isFuncSemaphore(size_t funcID);
 
+                std::vector<int> getAllIds();
             };
 
 
@@ -92,16 +93,12 @@ namespace scaler {
             ElfW(Dyn) *_DYNAMICAddr = nullptr;              //The staring address of _DYNAMIC
 
             std::vector<bool> realAddrResolved;             //Whether function with id i has been resolved.
-            bool *realAddrResolvedC = nullptr;
-            size_t realAddrResolvedCSize = 0;
 
 
             uint8_t *pseudoPlt = nullptr;                   //A pointer to pseudoPlt table
 
             std::map<ssize_t, ExtSymInfo> hookedExtSymbol;   //External symbols that has already been hooked
 
-            ExtSymInfo *hookedExtSymbolC = nullptr;
-            size_t hookedExtSymbolCSize = 0;
 
             std::map<size_t, ExtSymInfo> allExtSymbol;      //All external symbols in ELF image
             std::map<std::string, size_t> funcIdMap;        //Mapping function name to it's id
@@ -116,9 +113,9 @@ namespace scaler {
             uint8_t *baseAddrStart = nullptr;                              //The loading address of current elf image
             uint8_t *baseAddrEnd = nullptr;                              //The loading address of current elf image
 
-            PthreadFuncId pthreadFuncId;
+            PthreadFuncId pthreadExtSymbolId;
 
-            SemaphoreFuncId semaphoreFuncId;
+            SemaphoreFuncId semaphoreExtSymbolId;
 
             ~ELFImgInfo();
 

@@ -29,15 +29,16 @@ namespace scaler {
 
     class InvocationTreeNode : public SerializableMixIn {
     protected:
-        ssize_t fileID = -1;
-        ssize_t funcID = -1;
+        int64_t realFileID = -1;
+        int64_t funcAddr = -1;
+        int64_t extFuncID;
         int64_t startTimestamp = -1;
         int64_t endTimeStamp = -1;
+        int64_t childrenSize = 0;
 
         InvocationTreeNode *parent = nullptr;
         InvocationTreeNode *firstChild = nullptr;
         InvocationTreeNode *nextSibling = nullptr;
-        ssize_t childrenSize = 0;
 
     public:
         InvocationTreeNode();
@@ -47,8 +48,8 @@ namespace scaler {
         InvocationTreeNode(InvocationTreeNode &&) = delete;
 
         inline bool isEmpty() {
-            assert(fileID == -1 && funcID == -1 || fileID != -1 && funcID != -1);
-            return fileID == -1 && funcID == -1;
+            assert(realFileID == -1 && funcAddr == -1 || realFileID != -1 && funcAddr != -1);
+            return realFileID == -1 && realFileID == -1;
         }
 
         inline bool isLeaf() {
@@ -75,21 +76,30 @@ namespace scaler {
             return endTimeStamp;
         }
 
-        inline void setFileID(size_t fileID) {
-            this->fileID = fileID;
+        inline void setRealFileID(size_t fileID) {
+            this->realFileID = fileID;
         }
 
-        inline ssize_t getFileID() {
-            return fileID;
+        inline ssize_t getRealFileID() {
+            return realFileID;
         }
 
-        inline void setFuncID(size_t funcID) {
-            this->funcID = funcID;
+        inline void setFuncAddr(int64_t funcAddr) {
+            this->funcAddr = funcAddr;
         }
 
-        inline ssize_t getFuncID() {
-            return funcID;
+        inline int64_t getFuncAddr() {
+            return funcAddr;
         }
+
+        inline void setExtFuncID(int64_t extFuncID) {
+            this->extFuncID = extFuncID;
+        }
+
+        inline int64_t getExtFuncID() {
+            return extFuncID;
+        }
+
 
         inline InvocationTreeNode *getParent() {
             return parent;
@@ -118,8 +128,8 @@ namespace scaler {
     public:
         PthreadInvocationTreeNode();
 
-        int64_t extraFiled1;
-        int64_t extraFiled2;
+        int64_t extraField1;
+        int64_t extraField2;
 
         void load(FILE *fp) override;
 
@@ -131,7 +141,7 @@ namespace scaler {
     public:
         SemaphoreInvocationTreeNode();
 
-        int64_t extraFiled1;
+        int64_t extraField1;
 
         void load(FILE *fp) override;
 

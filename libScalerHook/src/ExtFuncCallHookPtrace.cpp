@@ -79,9 +79,9 @@ namespace scaler {
 
                     //Step6: Insert breakpoint at .plt entry
                     //todo: we only use one of them. If ,plt.sec exists, hook .plt.sec rather than plt
-                    recordOriCode(curSymbol.funcId, curSymbol.pltEntry, true);
+                    recordOriCode(curSymbol.extSymbolId, curSymbol.pltEntry, true);
 
-                    recordOriCode(curSymbol.funcId, curSymbol.pltSecEntry, true);
+                    recordOriCode(curSymbol.extSymbolId, curSymbol.pltSecEntry, true);
 
                     //todo: Add logic to determine whether hook .plt or .plt.sec. Currently only hook .plt.sec
                     assert(pmParser.fileBaseAddrMap.at(curFileId).first <= curSymbol.pltSecEntry &&
@@ -91,7 +91,7 @@ namespace scaler {
                              curSymbol.pltSecEntry);
                     insertBrkpointAt(curSymbol.pltSecEntry, childMainThreadTID);
 
-                    curElfImgInfo.hookedExtSymbol[curSymbol.funcId] = curSymbol;
+                    curElfImgInfo.hookedExtSymbol[curSymbol.extSymbolId] = curSymbol;
                 }
 
 
@@ -212,7 +212,7 @@ namespace scaler {
     class Context {
     public:
         //todo: Initialize using maximum stack size
-        std::vector<size_t> funcId;
+        std::vector<size_t> extSymbolId;
         std::vector<size_t> fileId;
         //Variables used to determine whether it's called by hook handler or not
         std::vector<void *> callerAddr;
@@ -221,32 +221,31 @@ namespace scaler {
         Context();
 
         Context(Context &);
+        Context(Context &&) noexcept ;
 
-        Context(Context &&) noexcept;
-
-        Context &operator=(Context &other);
+        Context& operator=(Context& other);
 
     };
 
-    Context::Context(Context &rho) {
-        funcId = rho.funcId;
-        fileId = rho.fileId;
-        callerAddr = rho.callerAddr;
-        timestamp = rho.timestamp;
+    Context::Context(Context & rho) {
+        extSymbolId=rho.extSymbolId;
+        fileId=rho.fileId;
+        callerAddr=rho.callerAddr;
+        timestamp=rho.timestamp;
     }
 
-    Context::Context(Context &&rho) noexcept {
-        funcId = rho.funcId;
-        fileId = rho.fileId;
-        callerAddr = rho.callerAddr;
-        timestamp = rho.timestamp;
+    Context::Context(Context && rho) noexcept {
+        extSymbolId=rho.extSymbolId;
+        fileId=rho.fileId;
+        callerAddr=rho.callerAddr;
+        timestamp=rho.timestamp;
     }
 
     Context &Context::operator=(Context &rho) {
-        funcId = rho.funcId;
-        fileId = rho.fileId;
-        callerAddr = rho.callerAddr;
-        timestamp = rho.timestamp;
+        extSymbolId=rho.extSymbolId;
+        fileId=rho.fileId;
+        callerAddr=rho.callerAddr;
+        timestamp=rho.timestamp;
         return *this;
     }
 
@@ -265,18 +264,18 @@ namespace scaler {
         curContext.timestamp.push_back(getunixtimestampms());
         curContext.callerAddr.push_back(callerAddr);
         curContext.fileId.push_back(curFileID);
-        curContext.funcId.push_back(curFuncID);
+        curContext.extSymbolId.push_back(curFuncID);
 
 
         ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(curFileID);
 
-        //for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
-        //    printf(" ");
-        //}
+//        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
+//            printf(" ");
+//        }
 
-        //DBG_LOGS("[Prehook %d] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(curFuncID).c_str(),
-        //         "unknownLib",
-        //         curELFImgInfo.filePath.c_str());
+        DBG_LOGS("[Prehook %d] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(curFuncID).c_str(),
+                 "unknownLib",
+                 curELFImgInfo.filePath.c_str());
 
         //Check if a breakpoint is inserted at return address
         if (!brkPointInstalledAt(callerAddr)) {
@@ -296,9 +295,9 @@ namespace scaler {
 
         auto &curContext = ptraceCurContext[childTid];
 
-        //for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
-        //    printf(" ");
-        //}
+//        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
+//            printf(" ");
+//        }
 
         if (curContext.fileId.size() <= 0) {
             return;
@@ -315,8 +314,8 @@ namespace scaler {
 
         ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(fileId);
 
-        size_t funcId = curContext.funcId.at(curContext.funcId.size() - 1);
-        curContext.funcId.pop_back();
+        size_t funcId = curContext.extSymbolId.at(curContext.extSymbolId.size() - 1);
+        curContext.extSymbolId.pop_back();
         auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
 
         //if (curELFImgInfo.hookedExtSymbol.find(funcId) == curELFImgInfo.hookedExtSymbol.end()) {
@@ -338,9 +337,9 @@ namespace scaler {
         }
         auto libraryFileId = pmParser.findExecNameByAddr(curSymbol.addr);
         auto &libraryFileName = pmParser.idFileMap.at(libraryFileId);
-        //DBG_LOGS("[Afterhook %d] %s in %s is called in %s", childTid, curSymbol.symbolName.c_str(),
-        //         libraryFileName.c_str(),
-        //         curELFImgInfo.filePath.c_str());
+        DBG_LOGS("[Afterhook %d] %s in %s is called in %s", childTid, curSymbol.symbolName.c_str(),
+                 libraryFileName.c_str(),
+                 curELFImgInfo.filePath.c_str());
     }
 
 
