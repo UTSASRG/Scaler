@@ -920,7 +920,7 @@ namespace scaler {
         auto &curSymbol = curELFImgInfo.hookedExtSymbol[extSymbolID];
         auto libraryFileId = _this->pmParser.findExecNameByAddr(curSymbol.addr);
         auto &libraryFileName = _this->pmParser.idFileMap.at(libraryFileId);
-        assert(libraryFileId!=-1);
+        assert(libraryFileId != -1);
         curSymbol.libraryFileID = libraryFileId;
         curNode->setRealFileID(libraryFileId);
         curNode->setFuncAddr(reinterpret_cast<int64_t>(curSymbol.addr));
@@ -994,13 +994,11 @@ namespace scaler {
 
         Json outFile;
 
-        for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
-            auto &curFileID = iterFile->first;
-            auto &curELFImgInfo = iterFile->second;
+        for (int i = 0; i < pmParser.idFileMap.size(); ++i) {
 
-            outFile[std::to_string(curFileID)]["fileName"] = pmParser.idFileMap[curFileID];
+            outFile[std::to_string(i)]["fileName"] = pmParser.idFileMap[i];
 
-            outFile[std::to_string(curFileID)]["funcNames"] = Json();
+            outFile[std::to_string(i)]["funcNames"] = Json();
         }
 
         for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
@@ -1009,7 +1007,8 @@ namespace scaler {
             for (auto iter = curELFImgInfo.hookedExtSymbol.begin();
                  iter != curELFImgInfo.hookedExtSymbol.end(); ++iter) {
 
-                DBG_LOGS("%zd %s %p %zd", iter->second.libraryFileID, iter->second.symbolName.c_str(),iter->second.addr,iter->second.fileId);
+                DBG_LOGS("%zd %s %p %zd", iter->second.libraryFileID, iter->second.symbolName.c_str(),
+                         iter->second.addr, iter->second.fileId);
                 outFile[std::to_string(iter->second.libraryFileID)]["funcNames"][std::to_string(int64_t(
                         iter->second.addr))] = iter->second.symbolName;
             }
@@ -1039,15 +1038,15 @@ namespace scaler {
         //Find correct symbol
         auto &curSymbol = elfImgInfoMap.at(callerFileID).hookedExtSymbol.at(fileIDInCaller);
 
-        if(curSymbol.symbolName=="exit"){
-            int j=1;
+        if (curSymbol.symbolName == "exit") {
+            int j = 1;
         }
         //Parse address from got table
         curSymbol.addr = *curSymbol.gotEntry;
         funcAddr = curSymbol.addr;
         //Search the fileID
         libraryFileID = pmParser.findExecNameByAddr(curSymbol.addr);
-        assert(libraryFileID!=-1);
+        assert(libraryFileID != -1);
         curSymbol.libraryFileID = libraryFileID;
         DBG_LOGS("curSymbol patched %s lib:%d", curSymbol.symbolName.c_str(), curSymbol.libraryFileID);
 

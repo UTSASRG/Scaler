@@ -5,7 +5,7 @@
 #ifndef SCALER_LOGGING_H
 #define SCALER_LOGGING_H
 
-#define PRINT_DBG_LOG true
+#define PRINT_DBG_LOG false
 
 #if PRINT_DBG_LOG
 
