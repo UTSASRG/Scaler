@@ -30,7 +30,8 @@ We should do something (based on the communication with Yang Wang):
 
 - We should have better idea on the processing time of different components, since it is based on more correct information. For instance, perf may only sample one access out of 1 million accesses. 
 - Because of the more precise information, this allows us to perform some Coz related information to infer the component (or function) with potential performance impacts.  
-- It could easily figure out some synchronization issues or IO issues that perf cannot do. For instance, if a thread is swapped out when it cannot get the lock or inside the IO, maybe perf will skip such information. We will need to check this. 
+- It could easily figure out some synchronization issues or IO issues that perf cannot do. For instance, if a thread is swapped out when it cannot get the lock or inside the IO, maybe perf will skip such information because the thread is scheduled out by the system. We will need to check this. 
+- The perf may have the issue to handle multithreaded programs, especially if some threads are not inside the execution. Maybe we could evaluate this problem using some applications with locks, such as Hoard for swaptions or other applications.
 
 
 ## Development
