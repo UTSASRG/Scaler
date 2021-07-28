@@ -25,7 +25,7 @@ This is not able to detect cache-related issues. Therefore, can combine with cac
 We should do something (based on the communication with Yang Wang): 
 - First, we will need to compare it with perf!
 - Second, we may try to use Coz for this case, to see how much performance improvement that we could achieve. 
-- Third, it could easily figure out some synchronization issues that perf cannot do. 
+- Third, it could easily figure out some synchronization issues or IO issues that perf cannot do. 
 
 ## Difference with sampling based tools (e.g., perf)
 
