@@ -6,40 +6,90 @@ Sorts lines by TID in ascending order
 import sys
 import tkinter as tk
 from tkinter import filedialog
+import pprint
+
+useTimestamps = False
 
 def libraryStrip(lib):
+    """
+    Strips perf library entries of the parentheses and then removes the file path and
+    simply returns the file name.
+    :param lib: a library entry from a perf script output
+    :return: A library file name
+    """
     #Can be in the form of ([library name]) or (library file path) or ([unknown])
     libraryName = lib.strip('()')
     libList = libraryName.split('/')
     return libList[-1]
 
 def functionStrip(func):
+    """
+    Strips a perf function name entry
+    Simply strips the address offset that perf script adds to the function name.
+    :param func:
+    :return: The function name without the offset value
+    """
     #This can be in the form of function name+offset or [unknown]
     funcList = func.split('+') # To the left of the + is the function name, to the right is the address offset
     return funcList[0]
 
-def sortFinalList(final):
-    return sorted(final, key= lambda x: x[0].split()[0].split('/')[1])
-
-
-def writeToFile(final,finalFile):
-    for line in sortFinalList(final):
+def writeToFile(final, finalFile):
+    """
+    Writes the final dict to finalFile
+    :param final: Final output dictionary
+    :param finalFile: output file object from open()
+    :return: nothing
+    """
+    # pprint.pprint(final)
+    # pprint.pprint(final.keys())
+    for key, lineDict in final:
+        # print(key, lineDict)
+        for line, sampleNum in lineDict.items():
         # print(line)
-        finalFile.write(' '.join((line[0], str(line[1]) + "\n")))
+            finalFile.write(' '.join((';'.join([key, line]), str(sampleNum) + "\n")))
 
-def addTimestamps(oldLine, finalDict, timestampTuple):
-    if oldLine == "":
+def addTimestamps(oldLineDict, commpidtid, finalDict, timestampDict):
+    """
+    Will tack on a timestamp tuple to each function name in the function line stored at oldLineDict[commpidtid]
+
+    The rule is this:
+    For a given sample, we will take the sample's timestamp as the start timestamp
+    and the end timestamp will be the next sample that shares the same command and tid.
+
+    :param oldLineDict: A dictionary with a key-value pair of commpidtid:last call stack that does not have timestamps
+    :param commpidtid: A string of command-pid/tid
+    :param finalDict: The final output dictionary
+    :param timestampDict: A dictionary with a key-value pair of commpidtid:timestamp tuple to be attributed
+    :return: nothing
+    """
+    '''if oldLine == "":
         print("ERROR: No Line detected, exiting...")
-        sys.exit()
-    keyList = oldLine.split(';')
-    index = 1
-    for func in keyList[1:]:
-        keyList[index] = f"{func} {timestampTuple[0]} {timestampTuple[1]}"
-        index += 1
-    finalDict[";".join(keyList)] = finalDict.pop(oldLine)
+        sys.exit()'''
+    # keyList = oldLine.split(';')
+
+    # Get a list of all of the function names and library names
+    keyList = oldLineDict[commpidtid].split(';')
+
+    # index = 1
+    # Insert our timestamp tuple into the previously read function line for commpidtid
+    for index, func in enumerate(keyList):
+        # keyList[index] = f"{func} {timestampTuple[0]} {timestampTuple[1]}"
+        keyList[index] = f"{func} {timestampDict[commpidtid][0]} {timestampDict[commpidtid][1]}"
+        # index += 1
+    # Replace the old entry in the final dict with the new function line that now has timestamps
+    finalDict[commpidtid][";".join(keyList)] = finalDict[commpidtid].pop(oldLineDict[commpidtid])
     return
 
 def parseScript():
+    """
+    Parses perf script output.
+    Collapses a sample's call stack into a one-liner with the form of:
+    command-pid/tid;(bottom of stack) func1 [library] or [library] timestamp start timestamp end; func2 [library] or [library] timestamp start timestamp end;...;(Top of stack) funcn [library] or [library] timestamp start timestamp end sample count
+    And writes it to an output file
+    :return: Nothing
+    """
+    global useTimestamps
+
     root = tk.Tk()
     root.withdraw()
     fileName = filedialog.askopenfilename()
@@ -59,13 +109,19 @@ def parseScript():
                     return
             else:
                 break
+
+    timestampInput = input("Use Timestamps? y/n Default is n: ")
+    if timestampInput == "y":
+        useTimestamps = True
+
     perfOut = open(fileName)
     finalFile = open(outFileName, 'w')
     commBool = True
     finalDict = {}
     outLine = []
-    timestampTuple = ()
-    oldLine = ""
+    timestampDict = {}
+    oldLineDict = {}
+    # oldLine = ""
     # Parse each line of perf script output
     for line in perfOut:
         # When we are about to read a new sample, there will be an empty new line read first,
@@ -73,15 +129,28 @@ def parseScript():
         if line == "\n" or line == "\r\n":
             # finalFile.write(";".join(outLine) + " 1\n")
             # Join the processed lines from the sample by semi colon
-            aLine = ';'.join(outLine)
 
-            oldLine = aLine
+            # The final dictionary will have a format like this: {"comm-pid/tid":{funcLine:sample count}}
+            commpidtidold = outLine[0]
+            funcLine = ";".join(outLine[1:])
+
+            # This old line dict will contain the previously read line for each commpidtid entry
+            oldLineDict[commpidtidold] = funcLine
+            # aLine = ';'.join(outLine)
+
+            # oldLine = aLine
             # If the line is unique then we set the sample count as 1, otherwise if we see the line repeated,
             # we will increment its current sample count by 1
-            if aLine in finalDict.keys():
-                finalDict[aLine] += 1
+
+            # Create an entry if it does not exist, if it does update it.
+            if commpidtidold in finalDict.keys():
+                if funcLine in finalDict[commpidtidold]:
+                    finalDict[commpidtidold][funcLine] += 1
+                else:
+                    finalDict[commpidtidold][funcLine] = 1
             else:
-                finalDict[aLine] = 1
+                finalDict[commpidtidold] = {}
+                finalDict[commpidtidold][funcLine] = 1
             # Reset the output line list for the next sample
             outLine = []
             # Reset this boolean because we are about to read a line with the command in it
@@ -90,23 +159,23 @@ def parseScript():
         else:
             outList = line.split()
             if commBool:
-                #Current line is line with commands and timestamps
+                # Current line is line with commands and timestamps
 
-                #Split in case the pid was reported with the tid, if it is just the pid, nothing happens, just a list with a single item is returned
+                # Split in case the pid was reported with the tid, if it is just the pid, nothing happens, just a list with a single item is returned
                 pidtidList = outList[1].split('/')
 
-                #If pid was reported then simply join the first two elements (command and pid/tid) with a -
+                # If pid was reported then simply join the first two elements (command and pid/tid) with a -
                 if len(pidtidList) > 1:
                     commpidtid = "-".join(outList[:2])
                 else:
-                    #If pid was not reported then we will check if tid is in pidtidList, by trying to cast it to an int
-                    #A value error is returned if the item is not a number indicating some error
+                    # If pid was not reported then we will check if tid is in pidtidList, by trying to cast it to an int
+                    # A value error is returned if the item is not a number indicating some error
                     try:
                         int(pidtidList[0])
                     except ValueError:
                         print("Error: Invalid input for pid and tid.")
                         sys.exit()
-                    #The cast was successful, thus we know the tid was reported, then we just join the command and tid together with a -?/ which would end up being command-?/tid
+                    # The cast was successful, thus we know the tid was reported, then we just join the command and tid together with a -?/ which would end up being command-?/tid
                     commpidtid = '-?/'.join(outList[:2])
 
                 # Save every item from the line except the event name and event counter
@@ -117,19 +186,21 @@ def parseScript():
                 # For simulating timing with perf script outputs
                 # Remove any : characters
                 for ind in range(0,len(outList)):
-                    outList[ind] = outList[ind].replace(':','')
+                    outList[ind] = outList[ind].replace(':', '')
 
-                # Add timestamps to the previous call stack
-                if not timestampTuple:
-                    timestampTuple = (float(outList.pop(1)),)
-                    print(len(timestampTuple))
-                elif len(timestampTuple) < 2:
-                    timestampTuple = (timestampTuple[0], float(outList.pop(1)))
-                    print(timestampTuple)
-                    addTimestamps(oldLine, finalDict, timestampTuple)
+                if useTimestamps:
+                    # Add timestamps to the previous call stack for commpidtid
+                    if commpidtid not in timestampDict:
+                        timestampDict[commpidtid] = (float(outList.pop(1)),)
+                    elif len(timestampDict[commpidtid]) < 2:
+                        timestampDict[commpidtid] = (timestampDict[commpidtid][0], float(outList.pop(1)))
+                        addTimestamps(oldLineDict, commpidtid, finalDict, timestampDict)
+                    else:
+                        timestampDict[commpidtid] = (timestampDict[commpidtid][1], float(outList.pop(1)))
+                        addTimestamps(oldLineDict, commpidtid, finalDict, timestampDict)
                 else:
-                    timestampTuple = (timestampTuple[1], float(outList.pop(1)))
-                    addTimestamps(oldLine, finalDict, timestampTuple)
+                    outList.pop(1) # Remove the timestamp
+
                 # Join all of the items into one string from outList and then append to the final list that will be written to a file
                 finalComm = " ".join(outList)
                 outLine.append(finalComm)
@@ -141,6 +212,16 @@ def parseScript():
 
                 # Clean up the function name and library names
                 outList[-1] = libraryStrip(outList[-1])
+                # outList[1:-1] = '_'.join(outList[1:-1])
+
+                # There is a rare case where the line with functions has a function that is not joined by an _
+                # An example of this is where operator new or operator new[] is called.
+                # There fore I will join all function name elements by '_' if this happens
+                # Any function names that do not fit this case will simply not change.
+                temp = '_'.join(outList[1:-1])
+                del outList[1:-1]
+                outList.insert(1, temp)
+
                 outList[1] = functionStrip(outList[1])
 
                 # Deal with the case of when an unknown function was sampled or unknown library was sampled
@@ -162,8 +243,11 @@ def parseScript():
                 # print(" ".join(outList[1:]))
         if commBool:
             commBool = False
-    # Throw away last line due to lack of timestamps
-    del finalDict[oldLine]
+    if useTimestamps:
+        # Throw away last line due to lack of timestamps
+        for key in oldLineDict:
+            del finalDict[key][oldLineDict[key]]
+    print(len(finalDict), finalDict.keys())
     writeToFile(finalDict.items(), finalFile)
     perfOut.close()
     finalFile.close()
