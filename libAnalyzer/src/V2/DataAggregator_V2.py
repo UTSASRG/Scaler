@@ -5,7 +5,6 @@ from tkinter import filedialog
 import sys
 import json
 '''
-
 Input Data Format:
 command-pid/tid;(bottom of stack) func1 [library] or [library] timestamp start timestamp end; func2 [library] or [library] timestamp start timestamp end;...;(Top of stack) funcn [library] or [library] timestamp start timestamp end sample count
 
@@ -37,6 +36,8 @@ root function given a function name and library
 With the dictionary, the worst case search is O(1) since keying a dictionary uses a hash map
 
 '''
+
+
 # This will be set to true if the user acknowledges the use of timing information
 # Otherwise, this remains false
 # When true, I will check for data validation on timestamps to ensure that the user has valid timing data and then
@@ -45,10 +46,11 @@ With the dictionary, the worst case search is O(1) since keying a dictionary use
 # To save on data
 useTimestamps = False
 attributeInline = False
+attributeKernel = False
 
 class FunctionTree:
     __slots__ = ['func', 'lib', 'timestamps', 'sampleTotal', 'childFuncs', 'execTime']
-    def __init__(self, sampleCnt, lib, func='Unknown', timestamps=[], useTime=False):
+    def __init__(self, sampleCnt, lib, func='Unknown', timestamps=None, useTime=False):
         # self.root = True
         """
         Initializes a node of the Function Tree. Makes use of __slots__ for more efficiency
@@ -65,7 +67,7 @@ class FunctionTree:
         # If the user requests to use timing information, then I will expect that every function
         # has appropriate timestamp information, if not then we will exit and report the error
         if useTimestamps or useTime:
-            if not timestamps:
+            if timestamps is None:
                 raise Exception("ERROR: No Timestamps available, exiting...")
             else:
                 self.timestamps = []
@@ -83,7 +85,7 @@ class FunctionTree:
         self.childFuncs = {}
 
 
-    def addNode(self, sampleCnt, lib, func="Unknown", timestamps=()):
+    def addNode(self, sampleCnt, lib, func="Unknown", timestamps=(), useTime=False):
         """
         Adds a node to the child list if it does not exist,
         otherwise if we find the function and library in our child list
@@ -100,26 +102,15 @@ class FunctionTree:
         # If a node is found, then we will update its values with the current sample count and the timestamps
         # If a node is not found or the list is empty then we know we need to create a new child node
         if self.childFuncs:
-            '''for child in self.childFuncs:
-                if child.func == func and child.lib == lib:
-                    # if cnt > 1:
-                    #    print("Error: Multiple of one function detected in child nodes, exiting...")
-                    #    sys.exit()
-                    child.sampleTotal += sampleCnt
-                    if useTimestamps:
-                        if not timestamps:
-                            raise Exception("Error: No Timestamps Available, exiting...")
-                        child.addTimestamps(timestamps)
-                    return child'''
             child = self.childFuncs.get(f"{func} {lib}", None)
             if child is not None:
                 child.sampleTotal += sampleCnt
-                if useTimestamps:
+                if useTimestamps or useTime:
                     if not timestamps:
                         raise Exception("Error: No Timestamps Available, exiting...")
                     child.addTimestamps(timestamps)
                 return child
-        newNode = FunctionTree(sampleCnt, lib, func, [timestamps])
+        newNode = FunctionTree(sampleCnt, lib, func, [timestamps], useTime=useTime)
         self.childFuncs[f"{func} {lib}"] = newNode
         return newNode
             # cnt += 1
@@ -133,7 +124,7 @@ class FunctionTree:
         self.timestamps.append(timestamps)
 
     # Method for updating the timestamps of the node it was called by merging timestamps
-    def updateTimestamps(self):
+    def updateTimestamps(self, useTime=False):
         """
         These are the various cases that have to be considered regarding this function
             example timestamp tuple: |---------|
@@ -166,8 +157,17 @@ class FunctionTree:
         # Timestamps are added in, in sequential order, meaning that the self.timestamps list
         # should already be sorted in ascending order based on the start timestamp
         # If somehow the list is not sorted, then that indicates a problem with the profiling data.
-        if self.timestamps != sorted(self.timestamps):
+        if self.timestamps != sorted(self.timestamps) and useTimestamps:
             raise Exception("Data Error: Timestamps are not already sorted.")
+
+        # If useTime is set to True then that means this function was called from outside DataAggregator
+        # This will most likely occur in Parse_Scaler_Output.
+        # In Parse Scaler output, I have to merge function trees that were constructed from invocation trees
+        # This may lead to timestamps not being sorted, since the timestamps of each invocation tree
+        # are naturally sorted locally in the scope of the invocation tree, but merging multiple together
+        # by simply concatenating their timestamps lists obviously leads to loss of sorting
+        if useTime:
+            self.timestamps.sort()
 
         # (currentStart, currentEnd) will be the new merged timestamp tuple
         currentStart = 0
@@ -237,20 +237,20 @@ class FunctionTree:
                 continue
         return retStr
 
-    def __retrieveAttrs(self):
+    def __retrieveAttrs(self, useTime=False):
         """
         This is a private method to retrieve all of the attributes (aside from the child function list)
         and store them into a dictionary which is used for serialization
         :return: A dictionary with all of the attributes and their value except for child functions, which an empty list
         is returned instead
         """
-        if useTimestamps:
+        if useTimestamps or useTime:
             return {"func":self.func, "lib":self.lib, "sampleTotal":self.sampleTotal, "timestamps":self.timestamps, "execTime":self.execTime, "childFuncs":[]}
         else:
             return {"func":self.func, "lib":self.lib, "sampleTotal":self.sampleTotal, "childFuncs":[]}
 
 
-    def serialize(self):
+    def serialize(self, useTime=False):
         """
         This method will convert the current function tree into a serializable json format
         This method assumes that serialize was called from the root node of the function tree
@@ -262,10 +262,10 @@ class FunctionTree:
         """
         tempList = []
         if len(self.childFuncs) <= 0:
-            return self.__retrieveAttrs()
+            return self.__retrieveAttrs(useTime=useTime)
         for childFunc in self.childFuncs.values():
-            tempList.append(childFunc.serialize())
-        aDict = self.__retrieveAttrs()
+            tempList.append(childFunc.serialize(useTime=useTime))
+        aDict = self.__retrieveAttrs(useTime=useTime)
         aDict["childFuncs"] = tempList
         return aDict
 
@@ -304,7 +304,7 @@ class FunctionTree:
         if len(j_Dict["childFuncs"]) <= 0:
             return node
         for child in j_Dict["childFuncs"]:
-            #node.childFuncs.append(FunctionTree.reconstructNodefromDict(child, useTime))
+            # node.childFuncs.append(FunctionTree.reconstructNodefromDict(child, useTime))
             func = child["func"]
             lib = child["lib"]
             if node.childFuncs.get(f"{func} {lib}", None) is None:
@@ -454,23 +454,71 @@ def constructFuncBranch(root, sampleNum, funcLine, index):
         return
     # Grab the data from the current function
     funcResult = list(parseFunc(funcLine, index))
+    if attributeInline and attributeKernel:
+        """
+        Given: current Node and next node
+        Cases to handle:
+        1: Kernel occurs before inlined (current Node is kernel and next node is inlined)
+           Let the last known library propagate through the kernel funcs then inlined (Handled by case 3)
+        2: Kernel occurs after inlined (current node is inlined and next node is kernel)
+            Sub-Case: Inlined is first function on call stack
+                      If I were to simply just attribute the last known library and the last known
+                      library is inlined, then we would incorrectly declare kernel functions as inlined
+                      therefore just do nothing
+            Otherwise, Let the last known library propagate through the inlined funcs then kernel (handled by case 3)
+        3: current node is regular library, next node is kernel or inlined
+           Simply just propagate the regular library through the next node.
+        4: Neither occurs, current node is regular library and next node is regular library
+           Do nothing
+        """
+        lowerRootLib = root.lib.lower()
+        if "kernel" not in lowerRootLib:
+            # If root.lib is both not kernel and inlined then
+            # replace the next node's library with the root.lib if the next node is kernel or inlined
+            # otherwise do nothing
+
+            # If root.lib is inlined, then we do nothing as well since this can only occur if the
+            # function tree root node is inlined, we can't resolve this with our method of attribution, thus do nothing
+            if "inline" not in lowerRootLib:
+                # Case 3
+                if funcResult[0] <= 2:
+                    lowerfuncLib = funcResult[2].lower()
+                    if ("kernel" in lowerfuncLib) ^ ("inline" in lowerfuncLib):
+                        funcResult[2] = root.lib
+                    # otherwise case 4 occurs
+                else:
+                    lowerfuncLib = funcResult[1].lower()
+                    if ("kernel" in lowerfuncLib) ^ ("inline" in lowerfuncLib):
+                        funcResult[1] = root.lib
+                    # otherwise case 4 occurs
+        else:
+            if index == 1:
+                # If the actual function tree root node is kernel, then this should be impossible
+                # With attributeKernel on, we always prevent the creation of a function tree root node
+                # with kernel as the library.
+                raise Exception("root.lib is kernel. This is not possible.")
+            # Otherwise Case 2's sub case occurs
 
     # Attribute all inlined functions to the last known library
-    if attributeInline:
-        # Last known library will propagate through consecutive inlined functions,
-        # Thus the parent node will have the last known library
-        # Which means we can check for this by checking if the library is set to inlined because using this method
-        # the only way for the final result to have inlined as the library, would have to be that the first level
-        # of the call stack is inlined
-        if "inline" not in root.lib:
+    elif attributeInline:
+        """
+        Last known library will propagate through consecutive inlined functions,
+        Thus the parent node will have the last known library
+        Which means we can check for this by checking if the library is set to inlined because using this method
+        the only way for the final result to have inlined as the library, would have to be that the first level
+        of the call stack is inlined
+        """
+        if "inline" not in root.lib.lower():
             if funcResult[0] <= 2:
                 # Only attribute the last known library as the library of the new node if the new node's library has
                 # inline in the string
-                if "inline" in funcResult[2]:
+                if "inline" in funcResult[2].lower():
                     funcResult[2] = root.lib
             else:
-                if "inline" in funcResult[1]:
+                if "inline" in funcResult[1].lower():
                     funcResult[1] = root.lib
+    elif attributeKernel: # Only attribute kernel was set
+        raise Exception("Kernel attribution should only be activated with inline attribution.")
 
 
     # We will add a node if the current function has not had a node created at the current stack depth and return it
@@ -508,6 +556,10 @@ def createNewFuncTree(treeDict, sampleNum, funcLine):
     if funcResult[0] == 1 and useTimestamps:
         # funcResult = (1, func, lib, (time start, time end))
         # print(funcResult)
+
+        if attributeKernel and "kernel" in funcResult[2].lower():
+            return None
+
         try:
             time = (float(funcResult[3][0]), float(funcResult[3][1]))
         except ValueError:
@@ -519,9 +571,17 @@ def createNewFuncTree(treeDict, sampleNum, funcLine):
 
     elif funcResult[0] == 2 or (funcResult == 1 and not useTimestamps):
         # funcResult = (2, func, lib) or funcResult = (1, func, lib, (time start, time end)) while useTimestamps is false
+
+        if attributeKernel and "kernel" in funcResult[2].lower():
+            return None
+
         rootNode = treeDict.setdefault(' '.join(funcResult[1:]), FunctionTree(0, lib=funcResult[2], func=funcResult[1]))
     elif funcResult[0] == 3 and useTimestamps:
         # funcResult = (3, lib, (time start, time end))
+
+        if attributeKernel and "kernel" in funcResult[1].lower():
+            return None
+
         try:
             time = (float(funcResult[2][0]), float(funcResult[2][1]))
         except ValueError:
@@ -533,18 +593,22 @@ def createNewFuncTree(treeDict, sampleNum, funcLine):
 
     else:
         # funcResult = (4, lib) or funcResult = (3, lib, (time start, time end)) while useTimestamps is false
+
+        if attributeKernel and "kernel" in funcResult[1].lower():
+            return None
+
         rootNode = treeDict.setdefault(funcResult[1], FunctionTree(0, lib=funcResult[1]))
     rootNode.sampleTotal += sampleNum
     return rootNode
 
-def mergeTimestamps(tidData):
+def mergeTimestamps(tidData, useTime=False):
     """
     Function to be called after all the data has been processed to create our function trees
     Merges the timestamps stored in each node's timestamp list
     :param tidData: The final dictionary with all of the function trees
     :return: Nothing
     """
-    def traverseTreeandUpdate(node):
+    def traverseTreeandUpdate(node, useTime=False):
         if not node.childFuncs:
             node.updateTimestamps()
             return
@@ -552,12 +616,12 @@ def mergeTimestamps(tidData):
         for child in node.childFuncs.values():
             traverseTreeandUpdate(child)
 
-        node.updateTimestamps()
+        node.updateTimestamps(useTime)
         return
 
     for treeDict in tidData.values():
         for tree in treeDict.values():
-            traverseTreeandUpdate(tree)
+            traverseTreeandUpdate(tree, useTime)
     return
 
 # =========================================================================================
@@ -601,8 +665,12 @@ def printTree(treeList):
 
 def main():
     tidData = {}
+    global useTimestamps
+    global attributeInline
+    global attributeKernel
     # tidTree = FunctionTree()
-    # Ask user for an input file, they can refuse it and the aggregator will use a default file path set to finalFold.folded in the repo
+    # Ask user for an input file,
+    # they can refuse it and the aggregator will use a default file path set to finalFold.folded in the repo
     root = tk.Tk()
     root.withdraw()
     fileName = filedialog.askopenfilename()
@@ -622,7 +690,9 @@ def main():
         # If no file name then just default to opening a file in the repo
         # print(True)
         fileName = "C:/Users/John/PycharmProjects/Scaler/libAnalyzer/tests/PerfTests/finalFold.folded"
-        outFileName = "perfMemcachedData_V2.json"
+        # outFileName = "perfMemcachedData_V2.json"
+        outFileName = "perfMemcachedData_V2_nokernelinlined.json"
+        # outFileName = "perfMemcachedData_V2_noinlined.json"
     else:
         stopBool = False
         while True:
@@ -637,20 +707,25 @@ def main():
             else:
                 break
     # We will handle the data differently depending on if the user wants to use the timing data
-    # If "y" is entered, then we will use the time stamp info and sample data, if not then we will use sample data by default
+    # If "y" is entered, then we will use the time stamp info and sample data,
+    # if not then we will use sample data by default
     timestampInput = input("Use Timestamps? y/n Default is n: ")
     if timestampInput == "y":
         # print(timestampInput)
-        global useTimestamps
         useTimestamps = True
 
     inlinedInput = input("Attribute Inlined functions to last known library? y/n Default is n: ")
     if inlinedInput == "y":
-        global attributeInline
-        print(attributeInline)
+        # print(attributeInline)
         attributeInline = True
-    # currentTID = ''
-    # print("Wow")
+        # Kernel attribution should only be done in conjunction with inline attribution.
+        # If we were to only do kernel attribution, we may accidentally attribute kernel functions as inlined functions
+        # which makes no sense. Since inlining is only in user space.
+        kernelInput = input("Attribute Kernel functions to last known library? y/n Default is n: ")
+        if kernelInput == "y":
+            # print(attributeInline)
+            attributeKernel = True
+
     with open(fileName) as fold:
         # a = 0
         lineNum = 1
@@ -668,7 +743,8 @@ def main():
             # print(treeDict)
             # treeDict.setdefault()
 
-            # This section will clean up the line list of the sample number that way I do not have to deal with the edge case of parsing the sample number
+            # This section will clean up the line list of the sample number
+            # that way I do not have to deal with the edge case of parsing the sample number
             # Every element in the line list will be the same format as a result except for the first element
             # The first element is the command-pid/tid format
             lastEleList = lineList[-1].split() # The last element split by white space
@@ -680,24 +756,14 @@ def main():
             # Grab the function tree with the first function in the sample as the root
             rootNode = createNewFuncTree(treeDict, sampleNum, lineList)
 
+            # If we want to attribute kernel to the last known library,
+            # but we detect that during the creation/retrieval of root node, we find that the library is kernel
+            # We will throw away any kernel functions that were at the start of the call stack
+            # This is because scaler's data has no fine-grained information about kernel, therefore we will ignore
+            # any kernel information from perf data.
+            if attributeKernel and rootNode is None:
+                continue
             constructFuncBranch(rootNode, sampleNum, lineList, 1)
-            # if a > 20:
-            #    break
-            '''
-            if currentTID != tid:
-                if currentTID == '':
-                    currentTID = tid
-                else:
-                    for treeDict in tidData.values():
-                        printTree(treeDict)
-                    break
-            '''
-            # a += 1
-            # print(lineList, sampleNum)
-            # if lineNum > 100:
-            #    break
-            #else:
-            #    print(lineNum)
             lineNum += 1
     if not tidData:
         print("ERROR: Tid Data Dict empty, exiting...")
