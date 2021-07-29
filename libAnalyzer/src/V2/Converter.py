@@ -7,6 +7,8 @@ from tkinter import filedialog
 import sys
 import copy
 from functools import wraps
+import warnings
+
 '''
 This converter script will convert the final output data of Data Aggregator into an easy to use format
 for charter, that way I pre-process all of the data so I can immediately create a pie chart.
@@ -107,11 +109,15 @@ def useThreshold(_func=None, *, separateTID=False, threshold=5):
         :return: A sum of all values in the dictionary
         """
         sum = 0
-        for val in dictData.values():
-            if isinstance(val, dict):
-                sum += get_sum(val)
-            else:
-                sum += val
+        try:
+            for val in dictData.values():
+                if isinstance(val, dict):
+                    sum += get_sum(val)
+                else:
+                    sum += val
+        # Can happen with kernel attribution.
+        except AttributeError:
+            print(dictData)
         return sum
 
     def processDict(aDict, summ, thresholdVal):
@@ -171,15 +177,21 @@ def useThreshold(_func=None, *, separateTID=False, threshold=5):
         output = {}
         for key, val in aDict.items():
             try:
-                int(key.split("/")[-1])
+                if key.startswith("0x"):
+                    int(key, 16)
+                else:
+                    int(key.split("/")[-1])
             except ValueError:
                 raise Exception("TID does not exist.")
             summ = get_sum(val) # Calculate the thread execution time or thread sample count
             if isinstance(val, dict):
                 output[key] = processDict(val, summ, thresholdVal)
             else:
-                raise Exception("TID has no functions or libraries.")
-            newSum = get_sum(output[key])
+                # Just let this run, this may be triggered due to kernel attribution
+                # But it is okay.
+                warnings.warn("TID has no functions or libraries.")
+                # raise Exception("TID has no functions or libraries.")
+            # newSum = get_sum(output[key])
             # output[key][belowThresStr] = round(100 - newSum, 10)
         return output
 
@@ -299,7 +311,6 @@ def redistributeExecTime(tidData):
     NOTE: I wrote this in Converter because I am assuming that Scaler will output raw data in the form of fakeData.json
     Where execution time is already calculated based off the timestamps given
     This execution time is what gets redistributed
-    IF this ends up not being the case and Steven automatically performs the redistribution, then this will be moved into DataAggregator_V2
     :param tidData: The dictionary in the form of {TID:{root function and library name: Function Tree}}
     :return:
     """
@@ -422,7 +433,7 @@ def getThreadRootExe(tidData):
 # ============================== SUBSECTION: Execution time Data Retrieval =======================
 
 @useThreshold(separateTID=True)
-def retrieveLibsFuncs(tidData):
+def retrieveTIDLibsFuncs(tidData):
     """
     Retrieves all of the samples associated with a function. Stores these with respect to the function's library
     and the thread it was called from
@@ -430,7 +441,7 @@ def retrieveLibsFuncs(tidData):
     :return: a dictionary in the form of {TID:{Lib:Execution Time}}
     """
 
-    def getLibsFuncsfromTree(node):
+    def getTIDLibFuncsfromTree(node):
         """
         Helper function to traverse the tree and retrieve execution times and
         store them with respect to a function and library
@@ -442,7 +453,7 @@ def retrieveLibsFuncs(tidData):
         funcDict = {}
         for child in node.childFuncs.values():
             # This nested for loop will merge function sample totals by summing them together
-            for lib in set(innertempDict := getLibsFuncsfromTree(child)) | set(funcDict):
+            for lib in set(innertempDict := getTIDLibFuncsfromTree(child)) | set(funcDict):
                 # Tests for if the library exists as a key yet in the dictionaries
                 innertempDict.setdefault(lib, {})
                 funcDict.setdefault(lib, {})
@@ -456,24 +467,48 @@ def retrieveLibsFuncs(tidData):
             funcDict[node.lib][node.func] = funcDict[node.lib].get(node.func, 0.0) + node.execTime
         return funcDict
 
-    libfuncDict = dict.fromkeys(tidData.keys())
+    TIDLibFuncDict = dict.fromkeys(tidData.keys())
     for tid, treeDict in tidData.items():
         for tree in treeDict.values():
-            if libfuncDict[tid] is None:
-                libfuncDict[tid] = getLibsFuncsfromTree(tree)
+            if TIDLibFuncDict[tid] is None:
+                TIDLibFuncDict[tid] = getTIDLibFuncsfromTree(tree)
             else:
-                # This nested for loop is for merging the dictionaries by summing together sample totals for a function
-                for lib in set(tempDict := getLibsFuncsfromTree(tree)) | set(libfuncDict[tid]):
+                # This nested for loop is for merging the dictionaries by summing together execution time for a function
+                for lib in set(tempDict := getTIDLibFuncsfromTree(tree)) | set(TIDLibFuncDict[tid]):
                     # Tests for if the library is in the dictionary
                     tempDict.setdefault(lib, {})
-                    libfuncDict[tid].setdefault(lib, {})
+                    TIDLibFuncDict[tid].setdefault(lib, {})
                     # print(f"temp dict: {tempDict}")
                     # print(f"func sample Dict: {funcSampDict}")
-                    for func in set(tempDict[lib]) | set(libfuncDict[tid][lib]):
+                    for func in set(tempDict[lib]) | set(TIDLibFuncDict[tid][lib]):
                         # print(func)
-                        libfuncDict[tid][lib][func] = tempDict[lib].get(func, 0.0) + libfuncDict[tid][lib].get(func, 0.0)
-    return libfuncDict
+                        TIDLibFuncDict[tid][lib][func] = tempDict[lib].get(func, 0.0) + TIDLibFuncDict[tid][lib].get(func, 0.0)
+    return TIDLibFuncDict
 
+def retrieveTIDLibs(tidData):
+    
+    def getTIDLibsfromTree(node):
+        # print(tidData)
+        if not node.childFuncs:
+            return {node.lib: node.execTime}
+        libDict = {}
+        for child in node.childFuncs.values():
+            for lib in set(innerTempDict := getTIDLibsfromTree(child)) | set(libDict):
+                libDict[lib] = innerTempDict.get(lib, 0.0) + libDict.get(lib, 0.0)
+        libDict[node.lib] = node.execTime + libDict.get(node.lib, 0.0)
+        return libDict
+
+    TIDLibDict = dict.fromkeys(tidData.keys())
+    for tid, treeDict in tidData.items():
+        for tree in treeDict.values():
+            if TIDLibDict[tid] is None:
+                TIDLibDict[tid] = getTIDLibsfromTree(tree)
+            else:
+                for lib in set(tempDict := getTIDLibsfromTree(tree)) | set(TIDLibDict[tid]):
+                    TIDLibDict[tid][lib] = tempDict.get(lib, 0.0) + TIDLibDict[tid].get(lib, 0.0)
+    return TIDLibDict
+    
+    
 # ==========================================================================================
 
 
@@ -672,7 +707,6 @@ def groupLibsandFuncs(TIDLibFuncDict):
     return newLibFuncDict
 
 # ===================================================================================
-
 # =============================== Debugging Functions ===============================
 def printFirstTreeDict(tidData):
     """
@@ -690,6 +724,9 @@ def printFirstTreeDict(tidData):
 # ===================================================================================
 def main():
     print("in main")
+
+    global useTimestamps
+
     root = tk.Tk()
     root.withdraw()
     fileName = filedialog.askopenfilename()
@@ -703,120 +740,146 @@ def main():
     # By default, samples are used, we let the user use timestamps if they want to
     timestampInput = input("Use Timestamps? y/n Default is n: ")
     if timestampInput == "y":
-        global useTimestamps
         useTimestamps = True
-
-    # NOTE: Below the code currently is doing work on timestamps
-    # If useTimestamps is not set to True, then this will crash
 
     loadData(tidData)
     # printFirstTreeDict(tidData)
-    outDict = {}
+
+    outDict = {} # The final output dictionary that will be written to chart_data.json
+
+    # A dictionary to contain any removed data from outDict, if there are data in this dict, then we will write it to
+    # removed_data.json
+    removedDict = {}
+
+    """
+    Depending on what the user inputted for the timestamp prompt, 
+    the script will process execution time or samples accordingly.
+    
+    One may edit the execution time processing section accordingly if they may want samples as well.
+    Function trees node will have a sample count based on the number of times their function name was shown up in the data 
+    at the call stack level the node is at.
+    
+    However, it is not guaranteed that execution time is available if using the sample processing section.
+    
+    This is because function trees are designed to always have sample counts, but not timestamps.
+    This is just a consequence of being adaptable towards perf data.
+    Scaler data should always have both sample values and timestamps.
+    
+    The output data format is designed so that there will be a top level key that will be represent the type of
+    data stored with that key.
+    
+    For example: {tidlibs: value}
+    tidlibs is a string that will key to another value which is most likely a dictionary that
+    contains thread ids and all libraries that were called from a thread id as well as their execution times or samples.
+    
+    This makes it easy to request the data in charter. Charter may require modification in order
+    to display the data. However that is fairly trivial.
+    
+    Perhaps one may do a slight refactoring of charter to handle any type of data. 
+    And maybe implement a functionality
+    that lets the user select data without modifying the script.
+    """
     if useTimestamps:
         # print the first tree
-        #printFirstTreeDict(tidData)
+        # printFirstTreeDict(tidData)
 
         # Retrieve the root execution times before redistribution
         # These execution times do not represent pure On-CPU execution.
         # This is explained in comments above this function's definition
-        outDict["ThreadRoot"] = getThreadRootExe(tidData)
-        # Positional Debug print to let me know where we are in the code
-        print("Wow")
+        outDict["Threads"] = getThreadRootExe(tidData)
 
         redistributeExecTime(tidData)
 
-        # pprint.pprint(tidData)
-        # print(tidData)
-
-        # Print the first tree again, but this time the tree has had its execution times redistributed
-        #printFirstTreeDict(tidData)
+        outDict["tidLibs"] = retrieveTIDLibs(tidData)
 
         # Retrieve the function execution times
         # At this point, the execution times have been redistributed
         # Therefore, the sum of these execution times should be the On-CPU execution times
-        # outDict["funcs"] = retrieveFuncs(tidData)
-        print("what")
         outDict["funcs"] = retrieveAttrs.__wrapped__(tidData, "func", "execTime")
-        print(outDict["funcs"])
-        print("sum:", sum(outDict["funcs"].values()))
 
-        print("woop")
-        # print(useThreshold_RetrieveAttrs(tidData, "func", "execTime"))
-        print(retrieveAttrs(tidData, "func", "execTime"))
-        # print(f"sum: {sum()}")
-        # print("Wow")
+        # Retrieve all of the execution times for functions and libraries relative to the thread they were called from
+        outDict["tidlibsFuncs"] = retrieveTIDLibsFuncs.__wrapped__(tidData)
 
-        # print(outDict["funcs"] == retrieveAttr(tidData, "func", "execTime"))
-
-        # As explained, these execution times simply represent the pre-redistribution
-        # root execution times, I wanted to know if the sum of the function redistributed execution times
-        # would be the same as the sum of these root times
-        # I discovered they are not, but it makes sense, This is explained in the get thread root execution time function
-        # comments
-        print(outDict["ThreadRoot"])
-        print("sum:", sum(outDict["ThreadRoot"].values()))
-
-
-        # outDict["libs"] = retrieveLibs(tidData)
-        outDict["libs"] = retrieveAttrs.__wrapped__(tidData, "lib", "execTime")
-        print(outDict["libs"])
-        print("sum: ", sum(outDict["libs"].values()))
-        print("uh")
-        print(retrieveAttrs(tidData,"lib", "execTime"))
-        # print("Woo")
-
-        # print(outDict["libs"] == retrieveAttr(tidData, "lib", "execTime"))
-
-        outDict["tidlibsFuncs"] = retrieveLibsFuncs.__wrapped__(tidData)
-        pprint.pprint(retrieveLibsFuncs(tidData))
+        # Groups all libraries and functions by ignoring thread association
         outDict["libsFuncs"] = groupLibsandFuncs(outDict["tidlibsFuncs"])
 
     else:
         # Sum all thread samples and store them with their respective threads
-        outDict["ThreadSamps"] = getThreadSampTot(tidData)
-        print(outDict["ThreadSamps"])
+        outDict["Threads"] = getThreadSampTot(tidData)
+        print(outDict["Threads"])
 
         # Perform sample redistribution
         redistributeSamples(tidData)
         # printFirstTreeDict(tidData)
-        # outDict["FuncSamps"] =
 
         # Retrieving all library samples and store them with their respective libraries and in their respective threads
-        outDict["TIDLibSamps"] = retrieveTIDLibSamples.__wrapped__(tidData)
+        outDict["tidLibs"] = retrieveTIDLibSamples.__wrapped__(tidData)
         # print("wow")
-        print(outDict["TIDLibSamps"])
+        print(outDict["tidLibs"])
 
-        # print(retrieveAttrs(tidData, "lib", "sampleTotal"))
-        # print(outDict["TIDLibSamps"] == retrieveAttrs(tidData, "lib", "sampleTotal"))
         # Just to sum all of the library samples to see if they sum as expected
-        # Should sum to the same amounts that is stored in outDict["ThreadSamps"]
-        libSums = []
+        # Should sum to the same amounts that is stored in outDict["Threads"]
         total = 0
-        for index, tid in enumerate(outDict["TIDLibSamps"].keys()):
-            libSums.append(sum(outDict["TIDLibSamps"][tid].values()))
-            a = libSums[index]
-            total += a
-            print(f"Tid: {tid}, sum: {a}")
+        for index, tid in enumerate(outDict["tidLibs"].keys()):
+            try:
+                a = sum(outDict["tidLibs"][tid].values())
+                total += a
+                print(f"Tid: {tid}, sum: {a}")
+            # Can happen with kernel attribution, some thread data may have nothing due to kernel root nodes being removed
+            except AttributeError:
+                print(f"TID: {tid}, sum:", outDict["tidLibs"][tid])
         print(total)
-        # print(sum(libSums) == sum(retrieveAttrs(tidData, "lib", "sampleTotal").values()))
+
         # This will sum all of the values in each thread of outDict["LibSamps"] and report the sample totals for each
         # library irrespective of threads
-        for libDict in outDict["TIDLibSamps"].values():
+        for libDict in outDict["tidLibs"].values():
             try:
-                for lib in set(outDict["LibTotSamps"]) | set(libDict):
-                    outDict["LibTotSamps"][lib] = outDict["LibTotSamps"].get(lib, 0.0) + libDict.get(lib, 0.0)
+                for lib in set(outDict["libs"]) | set(libDict):
+                    outDict["libs"][lib] = outDict["libs"].get(lib, 0.0) + libDict.get(lib, 0.0)
             except KeyError:
-                outDict["LibTotSamps"] = libDict.copy()
+                try:
+                    outDict["libs"] = libDict.copy()
+                # Can happen with kernel attribution, some thread data may have nothing due to kernel root nodes bring removed.
+                except AttributeError:
+                    continue
 
-        print(outDict["LibTotSamps"])
-        print(outDict["TIDLibSamps"])
+        print(outDict["libs"])
+        print(outDict["tidLibs"])
 
         # This will grab the sample totals of all functions and store them with their respective threads and libraries
-        outDict["FuncLibSamps"] = retrieveFuncSamples.__wrapped__(tidData)
+        outDict["tidlibsfuncs"] = retrieveFuncSamples.__wrapped__(tidData)
 
         pprint.pprint(retrieveTIDLibSamples(tidData))
         pprint.pprint(retrieveFuncSamples(tidData))
         # printFirstTreeDict(tidData)
+
+    # Clean up the output dict of any None values.
+    # None values can only appear if the thread data had no function trees in it.
+    # This may occur due to kernel attribution.
+    for key in list(outDict.keys()):
+        if "tid" in key.lower() or "thread" in key.lower():
+            if None in list(outDict[key].values()):
+                for tid, val in list(outDict[key].items()):
+                    if val is None:
+                        if key in removedDict:
+                            removedDict[key][tid] = outDict[key].pop(tid)
+                        else:
+                            removedDict[key] = {tid: outDict[key].pop(tid)}
+
+    # If we removed anything from the output dictionary, we will write to the removed_data.json file so that
+    # users can see what was removed.
+    if removedDict:
+        """
+        NOTE:
+        The file name is the same regardless of data. Therefore, when you use converter on some data.
+        Make sure to save the removed data file somewhere else. Otherwise, subsequent runs of converter will overwrite
+        your previous removed data. 
+        
+        One can edit charter or this script to move the removed data file to some directory automatically.
+        """
+        print("Removed null data... Writing it to removed_data.json")
+        with open("removed_data.json", 'w') as removed_file:
+            json.dump(removedDict, removed_file, indent=4)
 
     # Dump our output data into the chart data json so we can chart stuff
     with open("chart_data.json", 'w') as chart_file:
