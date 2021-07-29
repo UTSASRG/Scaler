@@ -17,18 +17,28 @@
    - Note: I edited the stackcollapse-perf.pl script from the original version in Brandon Gregg's Flame Graph repo to always report library/shared object names. Just using the original code would result in the loss of library names and mess up the data aggregator.
    - 2nd Note: I created a separate python script called Perf_Script_Parser.py which does the same thing as stackcollapse-perf.pl
   
-      - The sole difference is that given a perf script sample, we will attribute to each function in the sample's call stack the current sample's timestamp as the start timestamp and the timestamp of the next sample as the end timestamp.
-      - This leads to the necessity to throw away the last sample as there is no way to attribute an end timestamp.
-      - This method is not necessarily accurate in getting the execution time of the data, however we used it to get some idea of the execution time of functions recorded.
+      - The sole difference is that given a perf script sample, we will attribute to each function in the sample's call stack the current sample's timestamp as the start timestamp and the timestamp of the next sample that shares the same command-pid/tid as the end timestamp.
+      - This leads to the necessity to throw away the last sample for each command-pid/tid as there is no way to attribute an end timestamp.
+      - This method is not necessarily be accurate in getting the execution time of the data, however we used it to get some idea of the execution time of functions recorded.
 4. After this, go to the main Lib-analyzer instructions
 
-### Running Lib-Analyzer
+### Running Lib-Analyzer on Perf Data
 1. Run DataAggregator_V2.py on your data, if it succeeds, then a json file should have been created with aggregated forms of your data. The data structure stored in the json file is explained in detail in DataAggregator.py.
    
    - Note: Currently assumes a semicolon separated format, explained in detail in the code itself.
    
-2. Run Charter.py with the json file. This script will generate a pie chart based on the data in the json file.
-   - Needs to undergo some code clean up and refactoring to allow for more flexible charting. Currently the code needs to be directly edited to retrieve the desired data to chart form chart_data.json
+2. Run Converter.py on the json file to generate chart data which is outputted to chart_data.json
+3. Run Charter.py with the chart_data.json file. This script will generate a pie chart based on the data in the json file.
+   - Needs to undergo some refactoring to allow for more flexible charting. Currently the code needs to be directly edited to retrieve the desired data to chart from chart_data.json
+
+### Running Lib-Analyzer on Scaler Data
+1. Run Parse_Scaler_Output.py on the binary data outputted by Scaler. This will generate 3 json files.
+   
+    - InvocationTree.json: A json of the invocation trees reconstructed from the binary data and then serialized. 
+    - ErrorLog.json: A json of all removed bad nodes (nodes with missing information)
+    - Output File: An output json file that is selected by user. This will store a serialized version of the Invocation trees that have been converted to DataAggregator_V2's Function Tree data structure.
+2. The outputted data is already in the output format of DataAggregator_V2.py, therefore directly run Converter.py on the output file.
+3. Then run Charter_V2.py on the chart_data.json that is created by Converter.py
 
 ### About Lib-Analyzer
 
@@ -95,7 +105,8 @@
       - The algorithm is simple:
         - Since our data structure is a generic tree, with each node representing a function and direct childs representing a function that the parent called
         - Then the execution times prior to redistribution of the direct childs represent the time that was not part of the true execution of the parent function. Therefore, we subtract the child execution times from parent's execution time which the result would then represent the true execution time of that node.
-    
+        
+
 
 #### How perf samples counts are handled in converter
     
