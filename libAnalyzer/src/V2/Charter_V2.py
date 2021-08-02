@@ -261,15 +261,15 @@ def main():
 
     Chart = charter(chartData, figSuffix="_perf_Fig_nokernel_noinlined")
 
-    Chart.setupChart("Threads")
+    Chart.setupChart("libsScaled")
 
     # back = plt.axes([0.7, 0.05, 0.1, 0.075])
     # bback = Button(back, "Back", color='0.5', hovercolor='1.0')
     # bback.on_clicked(Chart.updateBack)
 
-    save = plt.axes([0.7, 0.05, 0.1, 0.075])
+    '''save = plt.axes([0.7, 0.05, 0.1, 0.075])
     saveButton = Button(save, "Save", color='0.5', hovercolor='1.0')
-    saveButton.on_clicked(Chart.saveThreadLibFigs)
+    saveButton.on_clicked(Chart.saveThreadLibFigs)'''
 
     handler = wedgeHoverHandler(Chart, Chart.wedgeList[0][0])
 
@@ -279,14 +279,14 @@ def main():
 
 if __name__ == "__main__":
 
-    root = tk.Tk()
+    '''root = tk.Tk()
     root.withdraw()
     print("Select a output directory for figures.")
     directory = filedialog.askdirectory()
-    saveFigList = []
+    saveFigList = []'''
 
     main()
     # We created a bunch of figures in the directory that charter is in. Thus we will
     # move them all to the directory the user selected.
-    for figName in saveFigList:
-        shutil.move(figName, directory+'/'+figName)
+    '''for figName in saveFigList:
+        shutil.move(figName, directory+'/'+figName)'''
