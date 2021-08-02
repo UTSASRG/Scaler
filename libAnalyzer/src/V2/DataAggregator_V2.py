@@ -737,6 +737,12 @@ def main():
             If the tid has not been registered into the tid data dictionary then create an entry with an empty dictionary
             If the tid has been registered, then we will retrieve the dictionary of function trees associated
             with the tid
+            
+            NOTE:
+            Since at the time of development, python 3.9 was being used, Dictionaries are insertion ordered. And this
+            is guaranteed in Python 3.7+. 
+            Therefore the first sample line we read in will contain the first sample thus the tid we read from this
+            line will be regarded as the main thread.
             '''
             tid = lineList.pop(0)
             treeDict = tidData.setdefault(tid, {})
