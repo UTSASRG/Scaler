@@ -127,22 +127,28 @@ def parseScript():
         # When we are about to read a new sample, there will be an empty new line read first,
         # When we detect this new line, we prepare for the new sample
         if line == "\n" or line == "\r\n":
-            # finalFile.write(";".join(outLine) + " 1\n")
             # Join the processed lines from the sample by semi colon
-
             # The final dictionary will have a format like this: {"comm-pid/tid":{funcLine:sample count}}
             commpidtidold = outLine[0]
             funcLine = ";".join(outLine[1:])
 
             # This old line dict will contain the previously read line for each commpidtid entry
             oldLineDict[commpidtidold] = funcLine
-            # aLine = ';'.join(outLine)
 
-            # oldLine = aLine
             # If the line is unique then we set the sample count as 1, otherwise if we see the line repeated,
             # we will increment its current sample count by 1
 
             # Create an entry if it does not exist, if it does update it.
+            """
+            NOTE:
+            In Python 3.7+, Dictionaries are Insertion Ordered. 
+            Meaning that the first line we wrote into our output file will be the first sample that was read.
+            This is guaranteed only in Python 3.7+ since I am using the built-in dictionary data structure.
+            
+            In older versions of Python, it may not be guaranteed and reliable. May need the OrderedDict data structure
+            from the collections module to resolve that issue. This is only really necessary if one needs to maintain
+            sample ordering.
+            """
             if commpidtidold in finalDict.keys():
                 if funcLine in finalDict[commpidtidold]:
                     finalDict[commpidtidold][funcLine] += 1
@@ -199,13 +205,11 @@ def parseScript():
                         timestampDict[commpidtid] = (timestampDict[commpidtid][1], float(outList.pop(1)))
                         addTimestamps(oldLineDict, commpidtid, finalDict, timestampDict)
                 else:
-                    outList.pop(1) # Remove the timestamp
+                    outList.pop(1)  # Remove the timestamp
 
                 # Join all of the items into one string from outList and then append to the final list that will be written to a file
                 finalComm = " ".join(outList)
                 outLine.append(finalComm)
-                # print("woop " + finalComm)
-                # break
             else:
                 # Line with functions
                 # print(outList)
