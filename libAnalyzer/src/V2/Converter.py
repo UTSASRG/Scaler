@@ -682,7 +682,109 @@ def retrieveTIDLibSamples(tidData):
 
 # ================= Helper function to convert the {TID:{Lib:{Func:sample/execution time}}} =============
 
+def excludeMainThread(funct):
+    """
+    This is a decorator primarily used for groupLibsandFuncs.
+    This decorator will seperate the data into serial phase and parallel phase
+    This makes it easy to seperate the main thread data without having to drastically change
+    groupLibsandFuncs
+    :param funct: a function. This should be groupLibsandFuncs.
+    :return: Decorated form of funct
+    """
+    def checkForTID(dictwithTID):
+        """
+        Simply returns a boolean representing whether the dictionary passed in has proper TIDs
+        :param dictwithTID: A dictionary that should have TIDs
+        :return: A boolean
+        """
+        for key in dictwithTID:
+            try:
+                if key.startswith('0x'):
+                    int(key, 16)
+                else:
+                    int(key.split('/')[-1])
+            except ValueError:
+                return False
+        return True
 
+    def extractMainThread(aDict):
+        """
+        Simply removes the main thread which will always be the first thread entry in the dictionary.
+        This is always true for Python 3.7+.
+        :param aDict: A dictionary with a form of {TID:{lib:{func:sample count or exec time}}}
+        :return: A dictionary with the removed main thread and its data
+        """
+        dictKeys = list(aDict.keys())
+        """
+        We will remove any null entries and continue until we get the first entry with non-null entries
+        This will be the main thread
+        """
+        retTID = ""
+        for firstTID in dictKeys:
+            if aDict[firstTID] is None:
+                aDict.pop(firstTID)
+            else:
+                retTID = firstTID
+                break
+        if not retTID:
+            raise Exception("No threads to extract")
+        return {retTID: aDict.pop(retTID)}, len(aDict)
+
+    def scaleDownValues(aDict, threadNum):
+        """
+        Scale down all values in the dictionary by threadNum. This is essentially a naive averaging approach.
+        :param aDict: A dictionary with the form of {TID:{Lib:{func:sample count or exec time}}}
+        :param threadNum: A total count of all threads excluding the main thread
+        :return: Nothing
+        """
+        for lib in aDict:
+            for func in aDict[lib]:
+                aDict[lib][func] /= threadNum
+        return
+
+    def getLibTotals(aDict):
+        """
+        Take a dictionary of the form {lib:{func:sample count or exec time}}
+        and sum all the values for each function and store the sum with the library name
+        :param aDict: A dictionary of the form {lib:{func:sample count or exec time}}
+        :return: A dictionary with the form of {lib:total}
+        """
+        outDict = {}
+        for lib in aDict:
+            for func in aDict[lib]:
+                if lib in outDict:
+                    outDict[lib] += aDict[lib][func]
+                else:
+                    outDict[lib] = aDict[lib][func]
+        return outDict
+
+    @wraps(funct)
+    def inner(*args, **kwargs):
+        """
+        The decorated form of funct
+        :param args: Arbitary number of positional arguments
+        :param kwargs: Arbitrary number of keyword arguments
+        :return: The output of groupLibsandFuncs except all of the data except the data associated with our "main"
+                 thread is scaled down by the total number of threads excluding the main thread. Also a dictionary
+                 of the scaled down output but all of the libraries have a total of all values that was stored with them
+        """
+        if not checkForTID(*args, **kwargs):
+            raise Exception("Error: Invalid argument. Expected dictionary with thread ids.")
+        tempDict, threadNum = extractMainThread(*args, **kwargs)
+        tempDict = funct(tempDict)
+        output = funct(*args, **kwargs)
+        print(threadNum)
+        scaleDownValues(output, threadNum)
+
+        for lib in tempDict:
+            output.setdefault(lib, {})
+            for func in set(tempDict[lib]) | set(output[lib]):
+                output[lib][func] = tempDict[lib].get(func, 0.0) + output[lib].get(func, 0.0)
+
+        return output, getLibTotals(output)
+    return inner
+
+@excludeMainThread
 def groupLibsandFuncs(TIDLibFuncDict):
     """
     This function will convert {TID:{Lib:{Func:sample/execution time}}} into {lib:{func:execution time/samples}}
@@ -698,10 +800,10 @@ def groupLibsandFuncs(TIDLibFuncDict):
         if not newLibFuncDict:
             newLibFuncDict = copy.deepcopy(libFuncDict)
         else:
-            for lib, funcDict in libFuncDict.items():
+            for lib in libFuncDict:
                 newLibFuncDict.setdefault(lib, {})
-                libFuncDict.setdefault(lib, {})
-                for func in set(libFuncDict) | set(newLibFuncDict):
+                # libFuncDict.setdefault(lib, {})
+                for func in set(libFuncDict[lib]) | set(newLibFuncDict[lib]):
                     newLibFuncDict[lib][func] = libFuncDict[lib].get(func, 0.0) + newLibFuncDict[lib].get(func, 0.0)
     # pprint.pprint(TIDLibFuncDict)
     return newLibFuncDict
@@ -801,7 +903,10 @@ def main():
         outDict["tidlibsFuncs"] = retrieveTIDLibsFuncs.__wrapped__(tidData)
 
         # Groups all libraries and functions by ignoring thread association
-        outDict["libsFuncs"] = groupLibsandFuncs(outDict["tidlibsFuncs"])
+        outDict["libsFuncs"] = groupLibsandFuncs.__wrapped__(outDict["tidlibsFuncs"])
+
+        groupTup = groupLibsandFuncs(copy.deepcopy(outDict["tidlibsFuncs"]))
+        outDict["libsFuncsScaled"], outDict["libsScaled"] = groupTup[0], groupTup[1]
 
     else:
         # Sum all thread samples and store them with their respective threads
@@ -847,12 +952,25 @@ def main():
         print(outDict["tidLibs"])
 
         # This will grab the sample totals of all functions and store them with their respective threads and libraries
-        outDict["tidlibsfuncs"] = retrieveFuncSamples.__wrapped__(tidData)
+        outDict["tidlibsFuncs"] = retrieveFuncSamples.__wrapped__(tidData)
 
+        outDict["libsFuncs"] = groupLibsandFuncs.__wrapped__(outDict["tidlibsFuncs"])
+
+        groupTup = groupLibsandFuncs(copy.deepcopy(outDict["tidlibsFuncs"]))
+        outDict["libsFuncsScaled"], outDict["libsScaled"] = groupTup[0], groupTup[1]
+        print(sum(outDict["libsScaled"].values()))
         pprint.pprint(retrieveTIDLibSamples(tidData))
         pprint.pprint(retrieveFuncSamples(tidData))
         # printFirstTreeDict(tidData)
-
+    # print("libScaled" in outDict)
+    """
+    Removed kernel, inline and libscalerhook libraries from the scaled data, 
+    can be commented out or removed, if not needed.
+    """
+    if "libsScaled" in outDict:
+        for lib in list(outDict["libsScaled"].keys()):
+            if "kernel" in lib.lower() or "inline" in lib.lower() or "libscalerhook" in lib.lower():
+                outDict["libsScaled"].pop(lib)
     # Clean up the output dict of any None values.
     # None values can only appear if the thread data had no function trees in it.
     # This may occur due to kernel attribution.
