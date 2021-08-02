@@ -429,6 +429,7 @@ def main():
 
     tidInvocationDict = {} # Will contain a thread's invocation tree
 
+    mainThreadTup = ()
     errorDict = {} # Will contain a thread's bad node sub-tree
     outputDict = {} # Will contain the final data structure to be loaded into a json file for converter.py
 
@@ -474,7 +475,7 @@ def main():
         currentIndex = 0
         TID = getFileName(filePath).split('_')[-1][:-4]
         tidInvocationDict.setdefault(TID, None)
-        outputDict.setdefault(TID, None)
+        # outputDict.setdefault(TID, None)
         with open(filePath, 'rb') as scaler_input:
             """
             Below is essentially a level-order traversal, except we are constructing each level as we traverse to them.
@@ -527,12 +528,66 @@ def main():
             errorDict[TID] = tidInvocationDict[TID].retrieveBadNodes()
             # pprint.pprint(errorDict)
 
-            funcTreeDict = convertToFunctionTree(tidInvocationDict[TID], jsonDict[f"symbol_{TID}"])
+            """
+            Below will search for the tid associated with the earliest pthread_create call.
+            The earliest pthread_create call is from the main thread.
+            TODO: may need to perform a check on if a pthread_create is called, 
+            but there were no more threads in the data
+            """
+            assert tidInvocationDict[TID].childFuncs, "Invocation tree has no functions recorded"
+            for child in tidInvocationDict[TID].childFuncs:
+                symbolDict = getSymbol(jsonDict[f"symbol_{TID}"], child.libID, child.funcAddr)
+                if child.type == 2:
+                    assert "pthread" in symbolDict["fileName"], "Pthread function, but not part of a pthread library."
 
-            assert outputDict[TID] is None, "Output dictionary should not have a value for tid yet."
+                    if symbolDict["funcName"].lower() == "pthread_create":
+                        if mainThreadTup:
+                            if child.timestamps[0] < mainThreadTup[1][0]:
+                                mainThreadTup = (TID, child.timestamps)
+                            else:
+                                continue
+                        else:
+                            mainThreadTup = (TID, child.timestamps)
+                    else:
+                        continue
+                else:
+                    continue
 
-            outputDict[TID] = funcTreeDict
+    """
+    Ensure that the main tid is inserted as the first element to the output dictionary
+    Nothing will be done if there was no pthread_create detected.
+    """
+    if mainThreadTup:
+        print(mainThreadTup[0])
+        funcTreeDict = convertToFunctionTree(tidInvocationDict[mainThreadTup[0]], jsonDict[f"symbol_{mainThreadTup[0]}"])
 
+        outputDict.setdefault(mainThreadTup[0], None)
+        assert outputDict[mainThreadTup[0]] is None, "Output dictionary should not have a value for tid yet."
+
+        outputDict[mainThreadTup[0]] = funcTreeDict
+
+    # Convert the rest of the invocation trees into function trees and insert them into the output dictionary.
+    for tid, invoTree in tidInvocationDict.items():
+        if mainThreadTup:
+            # To prevent the re-assignment of the value at the main thread id
+            if tid != mainThreadTup[0]:
+                funcTreeDict = convertToFunctionTree(tidInvocationDict[tid], jsonDict[f"symbol_{tid}"])
+
+                outputDict.setdefault(tid, None)
+                assert outputDict[tid] is None, "Output dictionary should not have a value for tid yet."
+
+                outputDict[tid] = funcTreeDict
+            else:
+                continue
+        # If there were no pthread_creates, just create function trees for the values in tidInvocationDict
+        # and insert them into the output dictionary
+        else:
+            funcTreeDict = convertToFunctionTree(tidInvocationDict[tid], jsonDict[f"symbol_{tid}"])
+
+            outputDict.setdefault(tid, None)
+            assert outputDict[tid] is None, "Output dictionary should not have a value for tid yet."
+
+            outputDict[tid] = funcTreeDict
     if not defaultCase:
         print("Writing to output files...")
         assert len(tidInvocationDict) > 0, "Dictionary of Invocation trees empty."
