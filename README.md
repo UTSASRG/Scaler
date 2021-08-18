@@ -23,8 +23,10 @@ This is not able to detect cache-related issues. Therefore, can combine with cac
 ## Exchanges with other people
 
 We should do something (based on the communication with Yang Wang): 
-- First, we will need to compare it with perf!
-- Second, we may try to use Coz for this case, to see how much performance improvement that we could achieve. 
+- We will need to compare it with perf!
+- We may try to use Coz for this case, to see how much performance improvement that we could achieve. 
+- We will sell this a framework. Basically, it proposed a principle way for different types of profiling: that is, we could monitor the interaction between components to identify a series of performance issues, such as performance bottleneck, tail latency, performance variance, and freezing issue. We could evaluate different applications. 
+- To test against the perf, maybe we could utilize the results of perf to approximate the results of Scaler. Generally, it takes a long time for it to approximate the results of perf. But that is not applicable for some applications that will run short. 
 
 ## Difference with sampling based tools (e.g., perf)
 
@@ -71,7 +73,3 @@ git stash pop
 ```
 git push -f 
 ```
-
-We will sell this a framework. Basically, it proposed a principle way for different types of profiling: that is, we could monitor the interaction between components to identify a series of performance issues, such as performance bottleneck, tail latency, performance variance, and freezing issue. We could evaluate different applications. 
-To against the perf, maybe we could utilize the results of perf to approximate the results of Scaler. Generally, it takes a long time for it to approximate the results of perf. But that is not applicable for some applications that will run short. 
-
