@@ -35,8 +35,6 @@ void run_target(const char *programname) {
         throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_TRACEME failed because: %s", strerror(errno));
     }
 
-
-
     /* Replace this process's image with the given program */
     if (execv(programname, Argv) < 0) {
         throwScalerExceptionS(ErrCode::TARGET_EXEC_FAIL, "execl target failed because: %s", strerror(errno));

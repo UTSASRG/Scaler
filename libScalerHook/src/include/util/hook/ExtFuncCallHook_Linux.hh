@@ -30,6 +30,9 @@ namespace scaler {
 
         virtual ~ExtFuncCallHook_Linux() override = 0;
 
+        virtual void parseFuncInfo(size_t callerFileID, int64_t fileIDInCaller, void *&funcAddr, int64_t &libraryFileID);
+
+        virtual void saveAllSymbolId();
 
         /**
          * ELF image (ELF file in memory) information.

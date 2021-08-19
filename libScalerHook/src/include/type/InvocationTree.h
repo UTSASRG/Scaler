@@ -6,6 +6,7 @@
 #include <cassert>
 #include <string>
 #include <vector>
+#include <util/hook/ExtFuncCallHook_Linux.hh>
 
 namespace scaler {
 
@@ -152,6 +153,7 @@ namespace scaler {
     public:
 
         InvocationTreeNode treeRoot;
+        scaler::ExtFuncCallHook_Linux *libPltHook;
 
         SerilizableInvocationTree();
 

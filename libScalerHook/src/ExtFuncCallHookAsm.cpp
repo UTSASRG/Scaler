@@ -334,10 +334,12 @@ namespace scaler {
         curContext.ctx->inHookHandler = false;
     }
 
+    thread_local SerilizableInvocationTree invocationTree;
+    thread_local InvocationTreeNode *curNode = &invocationTree.treeRoot;
 
     ExtFuncCallHookAsm::ExtFuncCallHookAsm() : ExtFuncCallHook_Linux(pmParser,
                                                                      *MemoryTool_Linux::getInst()) {
-
+        invocationTree.libPltHook = this;
     }
 
     ExtFuncCallHookAsm *ExtFuncCallHookAsm::getInst() {
@@ -572,9 +574,6 @@ namespace scaler {
         return handle;
     }
 
-
-    thread_local SerilizableInvocationTree invocationTree;
-    thread_local InvocationTreeNode *curNode = &invocationTree.treeRoot;
 
     pthread_mutex_t lock0 = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
@@ -961,6 +960,24 @@ namespace scaler {
     ExtFuncCallHookAsm::~ExtFuncCallHookAsm() {
     }
 
+    void ExtFuncCallHookAsm::parseFuncInfo(size_t callerFileID, int64_t fileIDInCaller, void *&funcAddr,
+                                           int64_t &libraryFileID) {
+        //Find correct symbol
+        auto &curSymbol = elfImgInfoMap.at(callerFileID).hookedExtSymbol.at(fileIDInCaller);
+
+        if (curSymbol.symbolName == "exit") {
+            int j = 1;
+        }
+        //Parse address from got table
+        curSymbol.addr = *curSymbol.gotEntry;
+        funcAddr = curSymbol.addr;
+        //Search the fileID
+        libraryFileID = pmParser.findExecNameByAddr(curSymbol.addr);
+        assert(libraryFileID != -1);
+        curSymbol.libraryFileID = libraryFileID;
+        DBG_LOGS("curSymbol patched %s lib:%d", curSymbol.symbolName.c_str(), curSymbol.libraryFileID);
+    }
+
 //    void ExtFuncCallHookAsm::saveCommonFuncID() {
 //        using Json = nlohmann::json;
 //
@@ -988,73 +1005,6 @@ namespace scaler {
 //        fwrite(ss.str().c_str(), 1, ss.str().size(), fp);
 //        fclose(fp);
 //    }
-
-    void ExtFuncCallHookAsm::saveAllSymbolId() {
-        using Json = nlohmann::json;
-
-        Json outFile;
-
-        for (int i = 0; i < pmParser.idFileMap.size(); ++i) {
-
-            outFile[std::to_string(i)]["fileName"] = pmParser.idFileMap[i];
-
-            outFile[std::to_string(i)]["funcNames"] = Json();
-        }
-
-        for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
-            auto &curFileID = iterFile->first;
-            auto &curELFImgInfo = iterFile->second;
-            for (auto iter = curELFImgInfo.hookedExtSymbol.begin();
-                 iter != curELFImgInfo.hookedExtSymbol.end(); ++iter) {
-
-                DBG_LOGS("%zd %s %p %zd", iter->second.libraryFileID, iter->second.symbolName.c_str(),
-                         iter->second.addr, iter->second.fileId);
-                outFile[std::to_string(iter->second.libraryFileID)]["funcNames"][std::to_string(int64_t(
-                        iter->second.addr))] = iter->second.symbolName;
-            }
-        }
-
-        char fileName[255];
-        sprintf(fileName, "symbol_%p.json", pthread_self());
-
-        FILE *fp = NULL;
-        fp = fopen(fileName, "w");
-        std::stringstream ss;
-        ss << outFile;
-        fwrite(ss.str().c_str(), 1, ss.str().size(), fp);
-        fclose(fp);
-
-    }
-
-    /**
-     * This function will also update the libary fileID in ExtFuncCallHookAsm::hookedExtSymbol
-     * @param callerFileID
-     * @param fileIDInCaller
-     * @param funcAddr
-     * @param libraryFileID
-     */
-    void ExtFuncCallHookAsm::parseFuncInfo(size_t callerFileID, int64_t fileIDInCaller, void *&funcAddr,
-                                           int64_t &libraryFileID) {
-        //Find correct symbol
-        auto &curSymbol = elfImgInfoMap.at(callerFileID).hookedExtSymbol.at(fileIDInCaller);
-
-        if (curSymbol.symbolName == "exit") {
-            int j = 1;
-        }
-        //Parse address from got table
-        curSymbol.addr = *curSymbol.gotEntry;
-        funcAddr = curSymbol.addr;
-        //Search the fileID
-        libraryFileID = pmParser.findExecNameByAddr(curSymbol.addr);
-        assert(libraryFileID != -1);
-        curSymbol.libraryFileID = libraryFileID;
-        DBG_LOGS("curSymbol patched %s lib:%d", curSymbol.symbolName.c_str(), curSymbol.libraryFileID);
-
-    }
-
-
-
-
 
 //I used to put cHookHandler out of scaler namespace
 //However, cHookHandler needs to access variables defined in ExtHook_Linux

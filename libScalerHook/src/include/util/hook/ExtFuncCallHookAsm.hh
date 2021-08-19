@@ -35,14 +35,11 @@ namespace scaler {
 
         //void saveCommonFuncID();
 
-        void saveAllSymbolId();
+        void
+        parseFuncInfo(size_t callerFileID, int64_t fileIDInCaller, void *&funcAddr, int64_t &libraryFileID) override;
 
         PmParserC_Linux pmParser;
 
-
-        void parseFuncInfo(size_t callerFileID, int64_t fileIDInCaller, void *&funcAddr, int64_t &libraryFileID);
-
-    public:
         int64_t appStartTimestamp;
     protected:
 

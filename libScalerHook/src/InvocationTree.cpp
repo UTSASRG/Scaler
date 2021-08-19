@@ -20,7 +20,6 @@ void scaler::SerilizableInvocationTree::load(FILE *fp) {
 
 void scaler::SerilizableInvocationTree::save(FILE *fp) {
     if (saveOnExit) {
-        scaler::ExtFuncCallHookAsm *libPltHook = scaler::ExtFuncCallHookAsm::getInst();
         auto appEndTimestamp = getunixtimestampms();
         //Add information for root node
 //        treeRoot.setStartTimestamp(libPltHook->appStartTimestamp);
@@ -38,24 +37,24 @@ void scaler::SerilizableInvocationTree::save(FILE *fp) {
         for (size_t i = 0; i < layerOrderedElem.size(); ++i) {
             auto &curElem = layerOrderedElem[i];
 
-            if (curElem->getEndTimestamp() == -1) {
-                curElem->setEndTimestamp(appEndTimestamp);
-                ERR_LOG("Program exits abnormally, adding timestamp");
-            }
+//            if (curElem->getEndTimestamp() == -1) {
+//                curElem->setEndTimestamp(appEndTimestamp);
+//                ERR_LOG("Program exits abnormally, adding timestamp");
+//            }
 
-            if (curElem->getRealFileID() == -1 && curElem->getParent() != nullptr) {
-                //todo: move this to ExtFuncCallHookAsm
-                int64_t callerFileID = curElem->getParent()->getRealFileID();
-                int64_t fileIDInCaller = curElem->getExtFuncID();
-                void *funcAddr = nullptr;
-                int64_t libraryID = -1;
-                assert(callerFileID != -1);
-                assert(fileIDInCaller != -1);
-                libPltHook->parseFuncInfo(callerFileID, fileIDInCaller, funcAddr, libraryID);
-                curElem->setFuncAddr(reinterpret_cast<int64_t>(funcAddr));
-                curElem->setRealFileID(libraryID);
-                ERR_LOGS("Program exits abnormally, parsing %ld:%ld for realAddr, funcAddr=%p",callerFileID,fileIDInCaller,funcAddr);
-            }
+//            if (curElem->getRealFileID() == -1 && curElem->getParent() != nullptr) {
+//                //todo: move this to ExtFuncCallHookAsm
+//                int64_t callerFileID = curElem->getParent()->getRealFileID();
+//                int64_t fileIDInCaller = curElem->getExtFuncID();
+//                void *funcAddr = nullptr;
+//                int64_t libraryID = -1;
+//                assert(callerFileID != -1);
+//                assert(fileIDInCaller != -1);
+//                libPltHook->parseFuncInfo(callerFileID, fileIDInCaller, funcAddr, libraryID);
+//                curElem->setFuncAddr(reinterpret_cast<int64_t>(funcAddr));
+//                curElem->setRealFileID(libraryID);
+//                ERR_LOGS("Program exits abnormally, parsing %ld:%ld for realAddr, funcAddr=%p",callerFileID,fileIDInCaller,funcAddr);
+//            }
 
             if ((curElem->getExtFuncID() == -1 || curElem->getFuncAddr() == -1 ||
                  curElem->getRealFileID() == -1 || curElem->getStartTimestamp() == -1 ||
@@ -71,20 +70,6 @@ void scaler::SerilizableInvocationTree::save(FILE *fp) {
         }
         fclose(fp);
 
-
-        for (size_t i = 0; i < layerOrderedElem.size(); ++i) {
-            if (layerOrderedElem[i]->getParent()) {
-                auto &curSymbol = libPltHook->elfImgInfoMap.at(
-                        layerOrderedElem[i]->getParent()->getRealFileID()).hookedExtSymbol.at(
-                        layerOrderedElem[i]->getExtFuncID());
-                if(curSymbol.symbolName=="exit"){
-                    int j=1;
-                }
-
-                DBG_LOGS("layerOrderedElem %d:%p %s", i, layerOrderedElem[i]->getFuncAddr(),
-                         curSymbol.symbolName.c_str());
-            }
-        }
         libPltHook->saveAllSymbolId();
     }
 }

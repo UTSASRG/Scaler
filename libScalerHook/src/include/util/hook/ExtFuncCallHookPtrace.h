@@ -36,6 +36,10 @@ namespace scaler {
 
         ~ExtFuncCallHookPtrace() override;
 
+        void
+        parseFuncInfo(size_t callerFileID, int64_t fileIDInCaller, void *&funcAddr, int64_t &libraryFileID) override;
+
+
     protected:
 
         /**
@@ -87,7 +91,7 @@ namespace scaler {
 
         void debuggerLoop();
 
-        void preHookHandler(size_t curFileID, size_t curFuncID, void *callerAddr, void *brkpointLoc,
+        void preHookHandler(size_t curFileID, size_t extSymbolId, void *callerAddr, void *brkpointLoc,
                             user_regs_struct &regs, int childTid);
 
         void afterHookHandler(int childTid);
