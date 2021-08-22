@@ -1121,7 +1121,9 @@ namespace scaler {
          * Pre-Hook
          */
         //tips: Use http://www.sunshine2k.de/coding/javascript/onlineelfviewer/onlineelfviewer.html to find the external function name
-        "call  _ZN6scaler18ExtFuncCallHookAsm23cPreHookHandlerLinuxSecEmmPvS1_\n\t"
+
+        //todo: This is error on the server
+        //"call  _ZN6scaler18ExtFuncCallHookAsm23cPreHookHandlerLinuxSecEmmPvS1_\n\t"
         //Save return value to R11. This is the address of real function parsed by handler.
         //The return address is maybe the real function address. Or a pointer to the pseodoPlt table
         "movq %rax,%r11\n\t"
@@ -1227,7 +1229,8 @@ namespace scaler {
         /**
          * Call After Hook
          */
-        "call  _ZN6scaler18ExtFuncCallHookAsm22cAfterHookHandlerLinuxEv\n\t"
+        //todo: This line has compilation error on the server
+        //"call  _ZN6scaler18ExtFuncCallHookAsm22cAfterHookHandlerLinuxEv\n\t"
         //Save return value to R11. R11 now has the address of caller.
         "movq %rax,%r11\n\t"
 

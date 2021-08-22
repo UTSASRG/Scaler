@@ -74,7 +74,7 @@ add_executable(ScalerHook-HookBrkpoint
         )
 target_include_directories(ScalerHook-HookBrkpoint PUBLIC src/include lib/inireader)
 target_compile_options(ScalerHook-HookBrkpoint PRIVATE "--verbose;-fPIE;-fPIC;")
-target_link_libraries(ScalerHook-HookBrkpoint PRIVATE pthread dl nlohmann_json::nlohmann_json)
+target_link_libraries(ScalerHook-HookBrkpoint PRIVATE pthread dl nlohmann_json::nlohmann_json watcher)
 
 
 #ScalerHook with auto installation enabled. Scaler hook will run automatically before main.
