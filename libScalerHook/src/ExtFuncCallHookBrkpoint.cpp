@@ -21,6 +21,7 @@
 #include <util/tool/PthreadParmExtractor.h>
 #include <semaphore.h>
 #include <util/tool/SemaphoreParmExtractor.h>
+#include <software_breakpoint.h>
 
 namespace scaler {
 
@@ -128,9 +129,9 @@ namespace scaler {
 
                     //Step6: Insert breakpoint at .plt entry
                     //todo: we only use one of them. If ,plt.sec exists, hook .plt.sec rather than plt
-                    recordOriCode(curSymbol.extSymbolId, curSymbol.pltEntry, true);
+                    //recordOriCode(curSymbol.extSymbolId, curSymbol.pltEntry, true);
 
-                    recordOriCode(curSymbol.extSymbolId, curSymbol.pltSecEntry, true);
+                    //recordOriCode(curSymbol.extSymbolId, curSymbol.pltSecEntry, true);
 
                     //todo: Add logic to determine whether hook .plt or .plt.sec. Currently only hook .plt.sec
                     assert(pmParser.fileBaseAddrMap.at(curFileId).first <= curSymbol.pltSecEntry &&
@@ -138,7 +139,7 @@ namespace scaler {
                     DBG_LOGS("Instrumented pltsec code for symbol: %s:%s at:%p",
                              pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
                              curSymbol.pltSecEntry);
-                    insertBrkpointAt(curSymbol.pltSecEntry, childMainThreadTID);
+                    //insertBrkpointAt(curSymbol.pltSecEntry, childMainThreadTID);
 
                     curELFImgInfo.hookedExtSymbol[curSymbol.extSymbolId] = curSymbol;
                 }
@@ -149,16 +150,15 @@ namespace scaler {
     thread_local SerilizableInvocationTree invocationTreeBrkpoint;
     thread_local InvocationTreeNode *curNodeBrkpoint = &invocationTreeBrkpoint.treeRoot;
 
-    ExtFuncCallHookBrkpoint::ExtFuncCallHookBrkpoint(pid_t childPID)
-            : pmParser(childPID), ExtFuncCallHook_Linux(pmParser, *MemoryTool_Linux::getInst()) {
-        this->childMainThreadTID = childPID;
+    ExtFuncCallHookBrkpoint::ExtFuncCallHookBrkpoint()
+            : pmParser(), ExtFuncCallHook_Linux(pmParser, *MemoryTool_Linux::getInst()) {
         invocationTreeBrkpoint.libPltHook = this;
 
     }
 
-    ExtFuncCallHookBrkpoint *ExtFuncCallHookBrkpoint::getInst(pid_t childPID) {
+    ExtFuncCallHookBrkpoint *ExtFuncCallHookBrkpoint::getInst() {
         if (!instance)
-            instance = new ExtFuncCallHookBrkpoint(childPID);
+            instance = new ExtFuncCallHookBrkpoint();
         return instance;
     }
 

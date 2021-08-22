@@ -2,7 +2,7 @@
 #define SCALER_EXTFUNCCALLHOOKBRKPOINT_H
 
 #include "ExtFuncCallHook_Linux.hh"
-
+#include <set>
 namespace scaler {
 
     class ExtFuncCallHookBrkpoint : public ExtFuncCallHook_Linux {
@@ -16,7 +16,7 @@ namespace scaler {
         /**
          * Singeleton
          */
-        static ExtFuncCallHookBrkpoint *getInst(pid_t tracedFilePath);
+        static ExtFuncCallHookBrkpoint *getInst();
 
         ExtFuncCallHookBrkpoint(ExtFuncCallHookBrkpoint &) = delete;
 
@@ -60,12 +60,9 @@ namespace scaler {
         /**
          * Private constructor
          */
-        explicit ExtFuncCallHookBrkpoint(pid_t childPID);
+        explicit ExtFuncCallHookBrkpoint();
 
         void parseRelaSymbol(ELFImgInfo &curELFImgInfo, size_t curFileID) override;
-
-
-        pid_t childMainThreadTID;
 
 
         size_t findDynSymTblSize(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo);

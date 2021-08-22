@@ -2,6 +2,7 @@
 #include <util/hook/ExtFuncCallHookAsm.hh>
 #include <utility>
 #include <util/hook/ExtFuncCallHookPtrace.h>
+#include <util/hook/ExtFuncCallHookBrkpoint.h>
 #include <exceptions/ScalerException.h>
 
 //todo: If use ptrace, asm doesn't have to be imported. Use macro to handle this?
@@ -20,7 +21,8 @@ void install(scaler::Hook::SYMBOL_FILTER filterCallB, INSTALL_TYPE type) {
         throwScalerException(ErrCode::WRONG_INTERFACE,
                              "Wrong interface, you have to pass executable full path for BRKPOINT_PTRACE");
     } else if (type == INSTALL_TYPE::BRKPOINT) {
-        throwScalerException(ErrCode::FUNC_NOT_IMPLEMENTED, "Breakpoint not implemented yet. Can't install.");
+        scaler::ExtFuncCallHookBrkpoint *libPltHook = scaler::ExtFuncCallHookBrkpoint::getInst();
+        libPltHook->install(filterCallB);
     }
 }
 
@@ -32,7 +34,7 @@ void install(scaler::Hook::SYMBOL_FILTER filterCallB, INSTALL_TYPE type, pid_t c
         scaler::ExtFuncCallHookPtrace *libPltHook = scaler::ExtFuncCallHookPtrace::getInst(childPID);
         libPltHook->install(filterCallB);
     } else if (type == INSTALL_TYPE::BRKPOINT) {
-        throwScalerException(ErrCode::FUNC_NOT_IMPLEMENTED, "Breakpoint not implemented yet. Can't install.");
+        throwScalerException(ErrCode::FUNC_NOT_IMPLEMENTED, "Wrong interface, you don't need to specify childPID.");
     }
 }
 

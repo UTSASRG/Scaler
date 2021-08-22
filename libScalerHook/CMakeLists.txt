@@ -14,6 +14,7 @@ add_library(ScalerHook-HookManualAsm SHARED
         src/ExtFuncCallHook_Linux.cpp
         src/ExtFuncCallHookAsm.cpp
         src/ExtFuncCallHookPtrace.cpp
+        src/ExtFuncCallHookBrkpoint.cpp
         src/ProcInfoParser.cpp
         src/ElfParser.cpp
         src/MemTool.cpp
@@ -29,13 +30,14 @@ add_library(ScalerHook-HookManualAsm SHARED
         )
 target_include_directories(ScalerHook-HookManualAsm PUBLIC src/include lib/inireader)
 target_compile_options(ScalerHook-HookManualAsm PRIVATE "--verbose;-lazy;-fPIE;-fPIC;")
-target_link_libraries(ScalerHook-HookManualAsm PRIVATE pthread dl nlohmann_json::nlohmann_json)
+target_link_libraries(ScalerHook-HookManualAsm PRIVATE pthread dl nlohmann_json::nlohmann_json watcher)
 
 add_executable(ScalerHook-HookManualPtrace
         src/PtraceHookMain.cpp
         src/ExtFuncCallHook_Linux.cpp
         src/ExtFuncCallHookAsm.cpp
         src/ExtFuncCallHookPtrace.cpp
+        src/ExtFuncCallHookBrkpoint.cpp
         src/ProcInfoParser.cpp
         src/ElfParser.cpp
         src/MemTool.cpp
@@ -51,13 +53,13 @@ add_executable(ScalerHook-HookManualPtrace
         )
 target_include_directories(ScalerHook-HookManualPtrace PUBLIC src/include lib/inireader)
 target_compile_options(ScalerHook-HookManualPtrace PRIVATE "--verbose;-fPIE;-fPIC;")
-target_link_libraries(ScalerHook-HookManualPtrace PRIVATE pthread dl nlohmann_json::nlohmann_json)
+target_link_libraries(ScalerHook-HookManualPtrace PRIVATE pthread dl nlohmann_json::nlohmann_json watcher)
 
 
-add_executable(ScalerHook-HookBrkpoint
-        src/PtraceHookMain.cpp
+add_library(ScalerHook-HookBrkpoint SHARED
         src/ExtFuncCallHook_Linux.cpp
         src/ExtFuncCallHookAsm.cpp
+        src/ExtFuncCallHookBrkpoint.cpp
         src/ExtFuncCallHookPtrace.cpp
         src/ProcInfoParser.cpp
         src/ElfParser.cpp
@@ -74,7 +76,7 @@ add_executable(ScalerHook-HookBrkpoint
         )
 target_include_directories(ScalerHook-HookBrkpoint PUBLIC src/include lib/inireader)
 target_compile_options(ScalerHook-HookBrkpoint PRIVATE "--verbose;-fPIE;-fPIC;")
-target_link_libraries(ScalerHook-HookBrkpoint PRIVATE pthread dl nlohmann_json::nlohmann_json watcher)
+target_link_libraries(ScalerHook-HookBrkpoint PUBLIC pthread dl nlohmann_json::nlohmann_json watcher)
 
 
 #ScalerHook with auto installation enabled. Scaler hook will run automatically before main.

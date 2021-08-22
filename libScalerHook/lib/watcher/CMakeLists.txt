@@ -4,9 +4,6 @@ add_subdirectory(lib/heaplayers)
 add_subdirectory(lib/libunwind)
 add_subdirectory(lib/xed2)
 
-include_directories(include)
-
-
 #src/libwatcher.cpp
 #src/instbuffer.cpp
 #src/internalsyncs.cpp
@@ -26,11 +23,12 @@ include_directories(include)
 #src/xmemory.cpp
 #src/xrun.cpp
 #src/xthread.cpp
-add_library(watcher
+add_library(watcher SHARED
             src/software_breakpoint.cpp
             )
 target_link_libraries(watcher PUBLIC pthread ipt-wat unwind-wat xed2-wat heaplayer-wac)
-target_compile_definitions(watcher PRIVATE SINGLELL
+target_include_directories(watcher PUBLIC include)
+target_compile_definitions(watcher PUBLIC SINGLELL
         ENABLE_WATCHPOINT_DETECTOR
         NINTERACTIVE_DEBUG
         NDUMP_LOG_TODISK
