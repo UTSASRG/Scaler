@@ -1,4 +1,4 @@
 
-add_library(xed2-wat IMPORTED SHARED GLOBAL)
-set_target_properties(xed2-wat PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_LIST_DIR}/lib/libxed-ild.so)
-set_target_properties(xed2-wat PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_LIST_DIR}/include)
+add_library(xed2-ild STATIC IMPORTED GLOBAL)
+set_target_properties(xed2-ild PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_LIST_DIR}/lib/libxed-ild.a)
+set_target_properties(xed2-ild PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${CMAKE_CURRENT_LIST_DIR}/include)
