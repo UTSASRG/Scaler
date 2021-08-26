@@ -23,8 +23,18 @@ This is not able to detect cache-related issues. Therefore, can combine with cac
 ## Exchanges with other people
 
 We should do something (based on the communication with Yang Wang): 
-- First, we will need to compare it with perf!
-- Second, we may try to use Coz for this case, to see how much performance improvement that we could achieve. 
+- We will need to compare it with perf!
+- We may try to use Coz for this case, to see how much performance improvement that we could achieve. 
+- We will sell this a framework. Basically, it proposed a principle way for different types of profiling: that is, we could monitor the interaction between components to identify a series of performance issues, such as performance bottleneck, tail latency, performance variance, and freezing issue. We could evaluate different applications. 
+- To test against the perf, maybe we could utilize the results of perf to approximate the results of Scaler. Generally, it takes a long time for it to approximate the results of perf. But that is not applicable for some applications that will run short. 
+
+## Difference with sampling based tools (e.g., perf)
+
+- We should have better idea on the processing time of different components, since it is based on more correct information. For instance, perf may only sample one access out of 1 million accesses. 
+- Because of the more precise information, this allows us to perform some Coz related information to infer the component (or function) with potential performance impacts.  
+- It could easily figure out some synchronization issues or IO issues that perf cannot do. For instance, if a thread is swapped out when it cannot get the lock or inside the IO, maybe perf will skip such information because the thread is scheduled out by the system. We will need to check this. 
+- The perf may have the issue to handle multithreaded programs, especially if some threads are not inside the execution. Maybe we could evaluate this problem using some applications with locks, such as Hoard for swaptions or other applications.
+
 
 ## Development
 
@@ -63,4 +73,3 @@ git stash pop
 ```
 git push -f 
 ```
-
