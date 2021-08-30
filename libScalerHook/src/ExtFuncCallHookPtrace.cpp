@@ -151,7 +151,7 @@ namespace scaler {
 
                     auto &curSymbol = curELFImgInfo.allExtSymbol.at(curSymbolId);
 
-                    //Step6: Insert breakpoint at .plt entry
+                    //Step6: Insert breakpoint at .plt entrybrkpointEmitted
                     //todo: we only use one of them. If ,plt.sec exists, hook .plt.sec rather than plt
                     recordOriCode(curSymbol.extSymbolId, curSymbol.pltEntry, true);
 
@@ -300,22 +300,22 @@ namespace scaler {
 
         Context();
 
-        Context(Context &);
+        Context(const Context &);
 
-        Context(Context &&) noexcept;
+        Context(const Context &&) noexcept;
 
         Context &operator=(Context &other);
 
     };
 
-    Context::Context(Context &rho) {
+    Context::Context(const Context &rho) {
         extSymbolId = rho.extSymbolId;
         fileId = rho.fileId;
         callerAddr = rho.callerAddr;
         timestamp = rho.timestamp;
     }
 
-    Context::Context(Context &&rho) noexcept {
+    Context::Context(const Context &&rho) noexcept {
         extSymbolId = rho.extSymbolId;
         fileId = rho.fileId;
         callerAddr = rho.callerAddr;

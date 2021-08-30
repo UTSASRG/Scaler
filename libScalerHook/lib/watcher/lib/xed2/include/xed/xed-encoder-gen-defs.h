@@ -1,6 +1,6 @@
-/* BEGIN_LEGAL 
+/*BEGIN_LEGAL 
 
-Copyright (c) 2021 Intel Corporation
+Copyright (c) 2018 Intel Corporation
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -24,9 +24,9 @@ END_LEGAL */
 # define XED_ENCODER_GEN_DEFS_H
 #define XED_ENCODE_ORDER_MAX_ENTRIES  32
 #define XED_ENCODE_ORDER_MAX_OPERANDS 5
-#define XED_ENCODE_MAX_FB_PATTERNS 121
-#define XED_ENCODE_MAX_EMIT_PATTERNS 199
-#define XED_ENCODE_FB_VALUES_TABLE_SIZE 3880
-#define XED_ENCODE_MAX_IFORMS 7639
-#define XED_ENC_GROUPS 535
+#define XED_ENCODE_MAX_FB_PATTERNS 100
+#define XED_ENCODE_MAX_EMIT_PATTERNS 172
+#define XED_ENCODE_FB_VALUES_TABLE_SIZE 3370
+#define XED_ENCODE_MAX_IFORMS 6816
+#define XED_ENC_GROUPS 493
 #endif

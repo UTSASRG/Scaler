@@ -1,6 +1,6 @@
-/* BEGIN_LEGAL 
+/*BEGIN_LEGAL 
 
-Copyright (c) 2021 Intel Corporation
+Copyright (c) 2018 Intel Corporation
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -23,15 +23,6 @@ END_LEGAL */
 #if !defined(XED_MACHINE_MODE_ENUM_H)
 # define XED_MACHINE_MODE_ENUM_H
 #include "xed-common-hdrs.h"
-#define XED_MACHINE_MODE_INVALID_DEFINED 1
-#define XED_MACHINE_MODE_LONG_64_DEFINED 1
-#define XED_MACHINE_MODE_LONG_COMPAT_32_DEFINED 1
-#define XED_MACHINE_MODE_LONG_COMPAT_16_DEFINED 1
-#define XED_MACHINE_MODE_LEGACY_32_DEFINED 1
-#define XED_MACHINE_MODE_LEGACY_16_DEFINED 1
-#define XED_MACHINE_MODE_REAL_16_DEFINED 1
-#define XED_MACHINE_MODE_REAL_32_DEFINED 1
-#define XED_MACHINE_MODE_LAST_DEFINED 1
 typedef enum {
   XED_MACHINE_MODE_INVALID,
   XED_MACHINE_MODE_LONG_64, ///< 64b operating mode

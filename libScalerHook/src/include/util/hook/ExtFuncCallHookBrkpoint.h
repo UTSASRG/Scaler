@@ -2,7 +2,10 @@
 #define SCALER_EXTFUNCCALLHOOKBRKPOINT_H
 
 #include "ExtFuncCallHook_Linux.hh"
+#include <type/breakpoint.h>
+#include <ucontext.h>
 #include <set>
+
 namespace scaler {
 
     class ExtFuncCallHookBrkpoint : public ExtFuncCallHook_Linux {
@@ -30,28 +33,6 @@ namespace scaler {
 
     protected:
 
-        /**
-        * PltCode information
-        */
-        class BrkPointInfo {
-        public:
-            BrkPointInfo() = default;
-
-            BrkPointInfo(const BrkPointInfo &rho) = delete;
-
-            void operator=(const BrkPointInfo &rho) = delete;
-
-
-            std::map<void *, unsigned long *> brkpointCodeMap; //addr: original code
-
-            std::map<void *, size_t> brkpointFuncMap; //Map plt/pltsec address to function id
-
-            std::set<void *> brkpointPltAddr;
-
-            ~BrkPointInfo();
-        };
-
-
         PmParser_Linux pmParser;                            //A parser to /proc/self/maps
         MemoryTool_Linux *memTool;
 
@@ -68,41 +49,43 @@ namespace scaler {
         size_t findDynSymTblSize(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo);
 
 
-        BrkPointInfo brkPointInfo;         //Mapping fileID to PltCodeInfo
+        std::map<void *, Breakpoint> brkPointInfo;         //Mapping fileID to PltCodeInfo
 
-        void recordOriCode(const size_t &funcID, void *addr, bool isPLT = false);
+        std::set<void *> brkpointPltAddr;
 
-        void insertBrkpointAt(void *addr, int childTid);
 
-        void debuggerLoop();
+        void recordBrkpointInfo(const size_t &funcID, void *addr, bool isPLT = false);
+
+        void insertBrkpointAt(Breakpoint &bp);
 
         void preHookHandler(size_t curFileID, size_t extSymbolId, void *callerAddr, void *brkpointLoc,
-                             int childTid);
+                            pthread_t childTid);
 
-        void afterHookHandler(int childTid);
+        void afterHookHandler(pthread_t childTid);
 
-        bool parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr, void *&brkpointLoc,
-                              int childTid);
+        static bool parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr, void *&brkpointLoc,
+                                    ucontext_t *context);
 
         bool brkPointInstalledAt(void *addr);
 
         bool isBrkPointLocPlt(void *brkpointLoc);
 
-        void skipBrkPoint(void *brkpointLoc, int childTid, bool continueAfterSkip = true);
+        void skipBrkPoint(Breakpoint& bp);
 
         std::set<int> tracedTID;
 
-        void brkpointEmitted(int childTid);
+        static void brkpointEmitted(int signum, siginfo_t *siginfo, void *context);
+
 
         void newThreadCreated(int childTid);
-
-        void threadExited(int childTid);
 
         int waitForAllChild(int &waitStatus);
 
         void *findMainAddress();
 
         void waitBeforeMainExecution();
+
+        void installSigIntHandler();
     };
 }
 

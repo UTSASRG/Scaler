@@ -21,7 +21,10 @@
 #include <util/tool/PthreadParmExtractor.h>
 #include <semaphore.h>
 #include <util/tool/SemaphoreParmExtractor.h>
-#include <software_breakpoint.h>
+#include <util/tool/VMEmulator.h>
+#include <exceptions/ErrCode.h>
+#include <sys/syscall.h>      /* Definition of SYS_* constants */
+#include <unistd.h>
 
 namespace scaler {
 
@@ -31,12 +34,68 @@ namespace scaler {
     ExtFuncCallHookBrkpoint *ExtFuncCallHookBrkpoint::instance = nullptr;
 
 
+    class ContextBrkpoint {
+    public:
+        //todo: Initialize using maximum stack size
+        std::vector<size_t> extSymbolId;
+        std::vector<size_t> fileId;
+        //Variables used to determine whether it's called by hook handler or not
+        std::vector<void *> callerAddr;
+        std::vector<int64_t> timestamp;
+        std::vector<pthread_t *> pthreadIdPtr;
+        bool inHookHandler = false;
+
+        char instrExecArea[256];
+
+        ContextBrkpoint();
+
+        ContextBrkpoint(ContextBrkpoint &);
+
+        ContextBrkpoint(ContextBrkpoint &&) noexcept;
+
+        ContextBrkpoint &operator=(ContextBrkpoint &other);
+
+    };
+
+    ContextBrkpoint::ContextBrkpoint(ContextBrkpoint &rho) {
+        extSymbolId = rho.extSymbolId;
+        fileId = rho.fileId;
+        callerAddr = rho.callerAddr;
+        timestamp = rho.timestamp;
+    }
+
+    ContextBrkpoint::ContextBrkpoint(ContextBrkpoint &&rho) noexcept {
+        extSymbolId = rho.extSymbolId;
+        fileId = rho.fileId;
+        callerAddr = rho.callerAddr;
+        timestamp = rho.timestamp;
+    }
+
+    ContextBrkpoint &ContextBrkpoint::operator=(ContextBrkpoint &rho) {
+        extSymbolId = rho.extSymbolId;
+        fileId = rho.fileId;
+        callerAddr = rho.callerAddr;
+        timestamp = rho.timestamp;
+        return *this;
+    }
+
+    ContextBrkpoint::ContextBrkpoint() {
+
+    }
+
+    thread_local ContextBrkpoint brkpointCurContext;
+
     void ExtFuncCallHookBrkpoint::install(Hook::SYMBOL_FILTER filterCallB) {
+        brkpointCurContext.inHookHandler = true;
         memTool = MemoryTool_Linux::getInst();
         pmParser.parsePMMap();
 
         //Step1: Locating table in memory
         locateRequiredSecAndSeg();
+
+        //Step2: Install signal handler
+        installSigIntHandler();
+
 
         //Step3: Use callback to determine which ID to hook
         std::set<size_t> fileToHook;
@@ -129,22 +188,22 @@ namespace scaler {
 
                     //Step6: Insert breakpoint at .plt entry
                     //todo: we only use one of them. If ,plt.sec exists, hook .plt.sec rather than plt
-                    //recordOriCode(curSymbol.extSymbolId, curSymbol.pltEntry, true);
+                    recordBrkpointInfo(curSymbol.extSymbolId, curSymbol.pltEntry, true);
 
-                    //recordOriCode(curSymbol.extSymbolId, curSymbol.pltSecEntry, true);
-
-                    //todo: Add logic to determine whether hook .plt or .plt.sec. Currently only hook .plt.sec
-                    assert(pmParser.fileBaseAddrMap.at(curFileId).first <= curSymbol.pltSecEntry &&
-                           curSymbol.pltSecEntry < pmParser.fileBaseAddrMap.at(curFileId).second);
-                    DBG_LOGS("Instrumented pltsec code for symbol: %s:%s at:%p",
+                    assert(pmParser.fileBaseAddrMap.at(curFileId).first <= curSymbol.pltEntry &&
+                           curSymbol.pltEntry < pmParser.fileBaseAddrMap.at(curFileId).second);
+                    DBG_LOGS("Instrumented plt code for symbol: %s:%s at:%p",
                              pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
-                             curSymbol.pltSecEntry);
-                    //insertBrkpointAt(curSymbol.pltSecEntry, childMainThreadTID);
+                             curSymbol.pltEntry);
+                    //todo: confusing API interface, addr or brkpointinfo?
+                    insertBrkpointAt(brkPointInfo.at(curSymbol.pltEntry));
 
                     curELFImgInfo.hookedExtSymbol[curSymbol.extSymbolId] = curSymbol;
                 }
             }
         }
+
+        brkpointCurContext.inHookHandler = false;
     }
 
     thread_local SerilizableInvocationTree invocationTreeBrkpoint;
@@ -209,85 +268,49 @@ namespace scaler {
                 maxID = idx;
         }
         return maxID;
-
     }
 
 
-    void ExtFuncCallHookBrkpoint::insertBrkpointAt(void *addr, int childTid) {
-        unsigned long oriCode = *brkPointInfo.brkpointCodeMap.at(addr);
+    pthread_mutex_t lockBrkpointOp = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
+    void ExtFuncCallHookBrkpoint::insertBrkpointAt(Breakpoint &bp) {
+        pthread_mutex_lock(&lockBrkpointOp);
+
+        memTool->adjustMemPerm(bp.addr,
+                               (uint8_t *) bp.addr + bp.instLen,
+                               PROT_READ | PROT_WRITE | PROT_EXEC);
+
+        bp.addr[0] = 0xCC; //Insert 0xCC to the first byte
+
+        memTool->adjustMemPerm(bp.addr,
+                               (uint8_t *) bp.addr + bp.instLen,
+                               PROT_READ | PROT_EXEC);
+
+        pthread_mutex_unlock(&lockBrkpointOp);
     }
 
-
-    class ContextBrkpoint {
-    public:
-        //todo: Initialize using maximum stack size
-        std::vector<size_t> extSymbolId;
-        std::vector<size_t> fileId;
-        //Variables used to determine whether it's called by hook handler or not
-        std::vector<void *> callerAddr;
-        std::vector<int64_t> timestamp;
-        std::vector<pthread_t *> pthreadIdPtr;
-
-        ContextBrkpoint();
-
-        ContextBrkpoint(ContextBrkpoint &);
-
-        ContextBrkpoint(ContextBrkpoint &&) noexcept;
-
-        ContextBrkpoint &operator=(ContextBrkpoint &other);
-
-    };
-
-    ContextBrkpoint::ContextBrkpoint(ContextBrkpoint &rho) {
-        extSymbolId = rho.extSymbolId;
-        fileId = rho.fileId;
-        callerAddr = rho.callerAddr;
-        timestamp = rho.timestamp;
-    }
-
-    ContextBrkpoint::ContextBrkpoint(ContextBrkpoint &&rho) noexcept {
-        extSymbolId = rho.extSymbolId;
-        fileId = rho.fileId;
-        callerAddr = rho.callerAddr;
-        timestamp = rho.timestamp;
-    }
-
-    ContextBrkpoint &ContextBrkpoint::operator=(ContextBrkpoint &rho) {
-        extSymbolId = rho.extSymbolId;
-        fileId = rho.fileId;
-        callerAddr = rho.callerAddr;
-        timestamp = rho.timestamp;
-        return *this;
-    }
-
-    ContextBrkpoint::ContextBrkpoint() {
-
-    }
-
-    std::map<unsigned long long, ContextBrkpoint> brkpointCurContext;
 
     void
     ExtFuncCallHookBrkpoint::preHookHandler(size_t curFileID, size_t extSymbolId, void *callerAddr, void *brkpointLoc,
-                                            int childTid) {
+                                            pthread_t childTid) {
         auto startTimeStamp = getunixtimestampms();
-        auto &curContext = brkpointCurContext[childTid];
+        brkpointCurContext.inHookHandler = true;
 
-        curContext.timestamp.push_back(getunixtimestampms());
-        curContext.callerAddr.push_back(callerAddr);
-        curContext.fileId.push_back(curFileID);
-        curContext.extSymbolId.push_back(extSymbolId);
+        brkpointCurContext.timestamp.push_back(getunixtimestampms());
+        brkpointCurContext.callerAddr.push_back(callerAddr);
+        brkpointCurContext.fileId.push_back(curFileID);
+        brkpointCurContext.extSymbolId.push_back(extSymbolId);
 
 
-        //ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(curFileID);
+        ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(curFileID);
 
 //        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
 //            printf(" ");
 //        }
 
-//        DBG_LOGS("[Prehook %d] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(extSymbolId).c_str(),
-//                 "unknownLib",
-//                 curELFImgInfo.filePath.c_str());
+        DBG_LOGS("[Prehook %d] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(extSymbolId).c_str(),
+                 "unknownLib",
+                 curELFImgInfo.filePath.c_str());
 
         //Check if a breakpoint is inserted at return address
         if (!brkPointInstalledAt(callerAddr)) {
@@ -295,40 +318,39 @@ namespace scaler {
             //DBG_LOGS("[Prehook %d] Afterhook breakpoint not installed for %s, install now", childTid,
             //         curELFImgInfo.idFuncMap.at(curFuncID).c_str());
             //Mark it as installed
-            recordOriCode(extSymbolId, callerAddr);
-            insertBrkpointAt(callerAddr, childTid);
+//            recordOriCode(extSymbolId, callerAddr);
+//            insertBrkpointAt(callerAddr);
         }
 
 
     }
 
     void
-    ExtFuncCallHookBrkpoint::afterHookHandler(int childTid) {
+    ExtFuncCallHookBrkpoint::afterHookHandler(pthread_t childTid) {
 
 
-        auto &curContext = brkpointCurContext[childTid];
 
 //        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
 //            printf(" ");
 //        }
 
-        if (curContext.fileId.size() <= 0) {
+        if (brkpointCurContext.fileId.size() <= 0) {
             return;
         }
 
-        int64_t startTimestamp = curContext.timestamp.at(curContext.timestamp.size() - 1);
-        curContext.timestamp.pop_back();
+        int64_t startTimestamp = brkpointCurContext.timestamp.at(brkpointCurContext.timestamp.size() - 1);
+        brkpointCurContext.timestamp.pop_back();
 
-        void *callerAddr = curContext.callerAddr.at(curContext.callerAddr.size() - 1);
-        curContext.callerAddr.pop_back();
+        void *callerAddr = brkpointCurContext.callerAddr.at(brkpointCurContext.callerAddr.size() - 1);
+        brkpointCurContext.callerAddr.pop_back();
 
-        size_t fileId = curContext.fileId.at(curContext.fileId.size() - 1);
-        curContext.fileId.pop_back();
+        size_t fileId = brkpointCurContext.fileId.at(brkpointCurContext.fileId.size() - 1);
+        brkpointCurContext.fileId.pop_back();
 
         ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(fileId);
 
-        size_t funcId = curContext.extSymbolId.at(curContext.extSymbolId.size() - 1);
-        curContext.extSymbolId.pop_back();
+        size_t funcId = brkpointCurContext.extSymbolId.at(brkpointCurContext.extSymbolId.size() - 1);
+        brkpointCurContext.extSymbolId.pop_back();
         auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
 
         //if (curELFImgInfo.hookedExtSymbol.find(funcId) == curELFImgInfo.hookedExtSymbol.end()) {
@@ -367,7 +389,7 @@ namespace scaler {
         if (funcId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_CREATE) {
             //todo: A better way is to compare function id rather than name. This is more efficient.
             //todo: A better way is to also compare library id because a custom library will also implement pthread_create.
-            pthread_t *pthreadIdPtr = curContext.pthreadIdPtr.at(curContext.pthreadIdPtr.size() - 1);
+            pthread_t *pthreadIdPtr = brkpointCurContext.pthreadIdPtr.at(brkpointCurContext.pthreadIdPtr.size() - 1);
             pmParser.readProcMem(pthreadIdPtr, (size_t) pthreadIdPtr);
 
             DBG_LOGS("[After Hook Param Parser]    pthread_create tid=%lu", *pthreadIdPtr);
@@ -379,92 +401,128 @@ namespace scaler {
 
     bool
     ExtFuncCallHookBrkpoint::parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr,
-                                             void *&brkpointLoc,
-                                             int childTid) {
-//        //Parse symbol info based on rip, rsp
-//        //todo:only need rip
-//        if (ptrace(PTRACE_GETREGS, childTid, 0, &regs) < 0) {
-//            throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_POKETEXT failed because: %s", strerror(errno));
-//        }
-//
-//
-//        //todo: we could also intercept a later instruction and parse function id from stack
-//        //todo: We could also map addr directly to both func and file id
-//        brkpointLoc = reinterpret_cast<void *>(regs.rip - 1);
-//
-//        curFileID = pmParser.findExecNameByAddr(brkpointLoc);
-//
-//        if (brkPointInfo.brkpointFuncMap.find(brkpointLoc) == brkPointInfo.brkpointFuncMap.end()) {
-//            ERR_LOGS("Unexpected stop because rip=%p doesn't seem to be caused by hook", brkpointLoc);
-//            return false;
-//        }
-//
-//        //DBG_LOGS("RIP=%p RSP=%p TID=%d\n", regs.rip, regs.rsp, childTid);
-//        void **realCallAddr = (void **) pmParser.readProcMem(reinterpret_cast<void *>(regs.rsp), sizeof(void *));
-//        callerAddr = *realCallAddr;
-//        free(realCallAddr);
-//
-//        //DBG_LOGS("Child stopped at RIP = %p offset=%llu", regs.rip,
-//        //         regs.rip - (uint64_t) elfImgInfoMap.at(curFileID).baseAddr);
-//        //DBG_LOGS("Calleraddr= %p offset=%llu", regs.rsp,
-//        //         regs.rsp - (uint64_t) elfImgInfoMap.at(curFileID).baseAddr);
-//
-//        curFuncID = brkPointInfo.brkpointFuncMap.at(brkpointLoc);
+                                             void *&brkpointLoc, ucontext_t *context) {
+
+        auto thiz = ExtFuncCallHookBrkpoint::getInst();
+
+        //Parse symbol info based on rip, rsp
+        //todo:only need rip
+        //todo: only support 64 bits
+
+        greg_t regRip = context->uc_mcontext.gregs[REG_RIP];
+        greg_t regRsp = context->uc_mcontext.gregs[REG_RSP];
+
+        brkpointLoc = (void *) (regRip - 1); // address of breakpoint
+
+        curFileID = thiz->pmParser.findExecNameByAddr(brkpointLoc);
+
+        if (thiz->brkPointInfo.find(brkpointLoc) == thiz->brkPointInfo.end()) {
+            ERR_LOGS("Unexpected stop because rip=%p doesn't seem to be caused by hook", brkpointLoc);
+            return false;
+        }
+        DBG_LOGS("RIP=%lld RSP=%lld TID=%lu\n", regRip, regRsp, pthread_self());
+        callerAddr = reinterpret_cast<void *>(regRsp);
+
+        auto &brkpointInfo = thiz->brkPointInfo.at(brkpointLoc);
+        curFuncID = brkpointInfo.funcID;
+
         return true;
 
     }
 
     bool ExtFuncCallHookBrkpoint::brkPointInstalledAt(void *addr) {
         //If a breakpoint is installed, then it must be in pltCodeInfoMap::addrFuncMap
-        auto &curBrkpointCodeMap = brkPointInfo.brkpointCodeMap;
-        return curBrkpointCodeMap.find(addr) != curBrkpointCodeMap.end();
+        return brkPointInfo.find(addr) != brkPointInfo.end();
     }
 
-    void ExtFuncCallHookBrkpoint::recordOriCode(const size_t &funcID, void *addr, bool isPLT) {
+    void ExtFuncCallHookBrkpoint::recordBrkpointInfo(const size_t &funcID, void *addr, bool isPLT) {
         //Get the plt data of curSymbol
         //todo: .plt size is hard coded
-        //Warning: this memory should be freed in ~PltCodeInfo
 
-        brkPointInfo.brkpointCodeMap[addr] = static_cast<unsigned long *>(pmParser.readProcMem(addr,
-                                                                                               sizeof(unsigned long)));
-        brkPointInfo.brkpointFuncMap[addr] = funcID;
+        brkPointInfo[addr].addr = static_cast<uint8_t *>(addr);
+        brkPointInfo[addr].funcID = funcID;
+
+        //Parse instruction
+        //todo: what if fail
+        VMEmulator::getInstance().getInstrInfo(brkPointInfo[addr]);
 
         if (isPLT)
-            brkPointInfo.brkpointPltAddr.insert(addr);
+            brkpointPltAddr.insert(addr);
     }
 
     bool ExtFuncCallHookBrkpoint::isBrkPointLocPlt(void *brkpointLoc) {
-        auto &curBreakpointPLTAddr = brkPointInfo.brkpointPltAddr;
-        return curBreakpointPLTAddr.find(brkpointLoc) != curBreakpointPLTAddr.end();
+        return brkpointPltAddr.find(brkpointLoc) != brkpointPltAddr.end();
     }
 
-    void ExtFuncCallHookBrkpoint::skipBrkPoint(void *brkpointLoc, int childTid,
-                                               bool continueAfterSkip) {
+    void ExtFuncCallHookBrkpoint::skipBrkPoint(Breakpoint &bp) {
+        //void* nextinst = VMEmulator::getInstance().executeInstr(bp, context);
 
+        memTool->adjustMemPerm(brkpointCurContext.instrExecArea,
+                               (uint8_t *) brkpointCurContext.instrExecArea +
+                               sizeof(brkpointCurContext.instrExecArea),
+                               PROT_READ | PROT_WRITE | PROT_EXEC);
+        //Copy the first instruction
+        memcpy(bp.oriCode, brkpointCurContext.instrExecArea, bp.instLen);
+        assert(sizeof(bp.oriCode) < sizeof(brkpointCurContext.instrExecArea) - 1);
+        brkpointCurContext.instrExecArea[bp.instLen] = 0xCB;
+
+        //Fill memory address
+        asm volatile (
+        "movq %[aInstrExecArea],%%r11\n\t"
+        "callq *%%r11\n\t"
+        :  //output
+        : [aInstrExecArea] "rm"(brkpointCurContext.instrExecArea) //input
+        : //clobbers
+        );
+
+        DBG_LOG("Return complete");
+        return;
     }
 
-    void ExtFuncCallHookBrkpoint::brkpointEmitted(int childTid) {
-//        size_t curFileID = 0;
-//        size_t curFuncID = 0;
-//        void *callerAddr = nullptr;
-//        void *oriBrkpointLoc = nullptr;
-//        struct user_regs_struct regs{};
-//        if (!parseSymbolInfo(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs, childTid)) {
-//            //Brakpoint failed, may cause by sigstop sent by other process, continue.
-//            //todo: Maybe I should pass signal to target instead
-//            if (ptrace(PTRACE_CONT, childTid, 0, 0) < 0) {
-//                throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_CONT failed because: %s", strerror(errno));
-//            }
-//            return;
-//        }
-//
-//        //Check if the breakpoint loc is a plt address
-//        if (isBrkPointLocPlt(oriBrkpointLoc)) {
-//            preHookHandler(curFileID, curFuncID, callerAddr, oriBrkpointLoc, regs, childTid);
-//        } else {
-//            afterHookHandler(childTid);
-//        }
-//        skipBrkPoint(oriBrkpointLoc, regs, childTid);
+    void ExtFuncCallHookBrkpoint::brkpointEmitted(int signum, siginfo_t *siginfo, void *context) {
+        DBG_LOG("brkpointEmitted");
+        pthread_t tid = pthread_self();
+        auto thiz = ExtFuncCallHookBrkpoint::getInst();
+
+        greg_t regRip = ((ucontext_t *) context)->uc_mcontext.gregs[REG_RIP];
+
+        void *pltPtr = (void *) ((uint64_t) regRip - 1); //The plt address where we applied breakpoint to
+
+        if (thiz->brkPointInfo.find(pltPtr) == thiz->brkPointInfo.end()) {
+            ERR_LOGS("Cannot find this breakpoint %p in my library. Not set by me?", pltPtr);
+        } else if (brkpointCurContext.inHookHandler) {
+            DBG_LOG("Function called within libscalerhook. Skip");
+            auto &brkpointInfo = thiz->brkPointInfo.at(pltPtr);
+            thiz->skipBrkPoint(brkpointInfo);
+        } else {
+            brkpointCurContext.inHookHandler = true;
+            //Parse information
+            size_t curFileID = 0;
+            size_t curFuncID = 0;
+            void *callerAddr = nullptr;
+            void *oriBrkpointLoc = nullptr;
+
+            if (!parseSymbolInfo(curFileID, curFuncID, callerAddr, oriBrkpointLoc, (ucontext_t *) context)) {
+                //Brakpoint failed, may cause by sigstop sent by other process, continue.
+                //todo: Maybe I should pass signal to target instead
+                ERR_LOG("Cannot parse function info, continue execution");
+                exit(-1);
+            }
+
+            //Check if the breakpoint loc is a plt address
+            if (thiz->isBrkPointLocPlt(oriBrkpointLoc)) {
+                thiz->preHookHandler(curFileID, curFuncID, callerAddr, oriBrkpointLoc, tid);
+            } else {
+                thiz->afterHookHandler(tid);
+            }
+            DBG_LOG("brkpoint processing finished, skipping breakpoint");
+
+            auto &brkpointInfo = thiz->brkPointInfo.at((void *) (regRip - 1));
+            brkpointCurContext.inHookHandler = false;
+            thiz->skipBrkPoint(brkpointInfo);
+        }
+
+
     }
 
 
@@ -488,16 +546,23 @@ namespace scaler {
         curSymbol.libraryFileID = libraryFileID;
     }
 
+    void ExtFuncCallHookBrkpoint::installSigIntHandler() {
 
-    ExtFuncCallHookBrkpoint::BrkPointInfo::~BrkPointInfo() {
-        //Free plt code
-        for (auto iter = brkpointCodeMap.begin(); iter != brkpointCodeMap.end(); ++iter) {
-            if (iter->second != nullptr) {
-                free(iter->second);
-                iter->second = nullptr;
-            }
+        struct sigaction sig_trap;
+        // block the signal, if it is already inside signal handler
+        sigemptyset(&sig_trap.sa_mask);
+        sigaddset(&sig_trap.sa_mask, SIGTRAP);
+        //set sa_sigaction handler
+        sig_trap.sa_flags = SA_SIGINFO;
+        sig_trap.sa_sigaction = ExtFuncCallHookBrkpoint::brkpointEmitted;
+        // register signal handler
+        if (sigaction(SIGTRAP, &sig_trap, NULL) == -1) {
+            throwScalerException(ErrCode::SIGINT_HANDLER_REG_FAIL, "Cannot succesfully set signal breakpoint");
         }
+
     }
+
+
 }
 
 

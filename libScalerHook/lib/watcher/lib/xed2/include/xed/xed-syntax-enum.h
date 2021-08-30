@@ -1,6 +1,6 @@
-/* BEGIN_LEGAL 
+/*BEGIN_LEGAL 
 
-Copyright (c) 2021 Intel Corporation
+Copyright (c) 2018 Intel Corporation
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -23,11 +23,6 @@ END_LEGAL */
 #if !defined(XED_SYNTAX_ENUM_H)
 # define XED_SYNTAX_ENUM_H
 #include "xed-common-hdrs.h"
-#define XED_SYNTAX_INVALID_DEFINED 1
-#define XED_SYNTAX_XED_DEFINED 1
-#define XED_SYNTAX_ATT_DEFINED 1
-#define XED_SYNTAX_INTEL_DEFINED 1
-#define XED_SYNTAX_LAST_DEFINED 1
 typedef enum {
   XED_SYNTAX_INVALID,
   XED_SYNTAX_XED, ///< XED disassembly syntax

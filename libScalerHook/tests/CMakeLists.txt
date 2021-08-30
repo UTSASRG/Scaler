@@ -51,7 +51,7 @@ option(libScalerHook-demoapps_AUTO_INSTALL_HOOK "If ON, then ScalerHook-HookAuto
 
 add_executable(libScalerHook-demoapps-FuncCall src/demoapps/TestFuncCall.cpp)
 target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC ScalerHook-HookBrkpoint libScalerHook-testlib-FuncCall
-        libScalerHook-testlib-CallFuncCall KuBoPltHook dl)
+        libScalerHook-testlib-CallFuncCall KuBoPltHook dl )
 
 add_executable(libScalerHook-demoapps-HookEverything src/demoapps/TestHookEverything.cpp)
 target_include_directories(libScalerHook-demoapps-HookEverything PUBLIC libtest/header)
@@ -61,7 +61,6 @@ target_link_libraries(libScalerHook-demoapps-HookEverything PUBLIC ScalerHook-Ho
 add_executable(libScalerHook-demoapps-FuncCallDelay src/demoapps/TestFuncCallDelay.cpp)
 target_link_libraries(libScalerHook-demoapps-FuncCallDelay PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall dl pthread)
-
 
 add_executable(libScalerHook-demoapps-FuncNestedCall src/demoapps/TestNestedFuncCallPthread.cpp)
 target_link_libraries(libScalerHook-demoapps-FuncNestedCall PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall

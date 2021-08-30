@@ -35,10 +35,6 @@ int main() {
     printf("Calling funcE\n");
     funcE(1, 2, 3);
 
-    printf("Calling func1472\n");
-    func1472();
-
-
     printf("Calling funcEverything\n");
     structparm strP;
     structparm s;

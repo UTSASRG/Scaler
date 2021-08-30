@@ -1,6 +1,6 @@
-/* BEGIN_LEGAL 
+/*BEGIN_LEGAL 
 
-Copyright (c) 2021 Intel Corporation
+Copyright (c) 2018 Intel Corporation
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -274,21 +274,12 @@ XED_DLL_EXPORT xed_bool_t
 xed_operand_values_has_sib_byte(const xed_operand_values_t* p);
 //@}
 
-
-/// @ingroup OPERANDS
-/// Returns  true if 0x2E prefix on Jcc
+/// @ingroup OPERANDS    
 XED_DLL_EXPORT xed_bool_t
 xed_operand_values_branch_not_taken_hint(const xed_operand_values_t* p);
-
-/// @ingroup OPERANDS
-/// Returns  true if 0x3E prefix on Jcc
+/// @ingroup OPERANDS    
 XED_DLL_EXPORT xed_bool_t
 xed_operand_values_branch_taken_hint(const xed_operand_values_t* p);
-
-/// @ingroup OPERANDS
-/// Returns true for indirect call/jmp with 0x3E prefix (if the legacy prefix rules are obeyed)
-XED_DLL_EXPORT xed_bool_t
-xed_operand_values_cet_no_track(const xed_operand_values_t* p);
 
 /// @ingroup OPERANDS    
 XED_DLL_EXPORT xed_bool_t

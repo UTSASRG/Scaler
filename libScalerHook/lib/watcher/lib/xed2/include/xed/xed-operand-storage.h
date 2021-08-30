@@ -1,6 +1,6 @@
-/* BEGIN_LEGAL 
+/*BEGIN_LEGAL 
 
-Copyright (c) 2021 Intel Corporation
+Copyright (c) 2018 Intel Corporation
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -38,7 +38,6 @@ typedef struct xed_operand_storage_s {
     xed_uint8_t df64;
     xed_uint8_t dummy;
     xed_uint8_t encoder_preferred;
-    xed_uint8_t encode_force;
     xed_uint8_t has_sib;
     xed_uint8_t ild_f2;
     xed_uint8_t ild_f3;
@@ -52,11 +51,8 @@ typedef struct xed_operand_storage_s {
     xed_uint8_t modep5;
     xed_uint8_t modep55c;
     xed_uint8_t mode_first_prefix;
-    xed_uint8_t mode_short_ud0;
     xed_uint8_t mpxmode;
-    xed_uint8_t must_use_evex;
     xed_uint8_t needrex;
-    xed_uint8_t need_sib;
     xed_uint8_t norex;
     xed_uint8_t no_scale_disp8;
     xed_uint8_t osz;
@@ -73,6 +69,8 @@ typedef struct xed_operand_storage_s {
     xed_uint8_t rexw;
     xed_uint8_t rexx;
     xed_uint8_t sae;
+    xed_uint8_t sib;
+    xed_uint8_t skip_osz;
     xed_uint8_t tzcnt;
     xed_uint8_t ubit;
     xed_uint8_t using_default_segment0;
@@ -113,8 +111,8 @@ typedef struct xed_operand_storage_s {
     xed_uint8_t nelem;
     xed_uint8_t scale;
     xed_uint8_t bcast;
-    xed_uint8_t need_memdisp;
     xed_uint8_t chip;
+    xed_uint8_t need_memdisp;
     xed_uint8_t brdisp_width;
     xed_uint8_t disp_width;
     xed_uint8_t ild_seg;
@@ -147,7 +145,6 @@ typedef struct xed_operand_storage_s {
     xed_uint16_t reg6;
     xed_uint16_t reg7;
     xed_uint16_t reg8;
-    xed_uint16_t reg9;
     xed_uint16_t seg0;
     xed_uint16_t seg1;
     xed_uint16_t iclass;

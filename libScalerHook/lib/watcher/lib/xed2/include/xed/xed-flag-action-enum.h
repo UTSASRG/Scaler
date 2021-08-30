@@ -1,6 +1,6 @@
-/* BEGIN_LEGAL 
+/*BEGIN_LEGAL 
 
-Copyright (c) 2021 Intel Corporation
+Copyright (c) 2018 Intel Corporation
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -23,15 +23,6 @@ END_LEGAL */
 #if !defined(XED_FLAG_ACTION_ENUM_H)
 # define XED_FLAG_ACTION_ENUM_H
 #include "xed-common-hdrs.h"
-#define XED_FLAG_ACTION_INVALID_DEFINED 1
-#define XED_FLAG_ACTION_u_DEFINED 1
-#define XED_FLAG_ACTION_tst_DEFINED 1
-#define XED_FLAG_ACTION_mod_DEFINED 1
-#define XED_FLAG_ACTION_0_DEFINED 1
-#define XED_FLAG_ACTION_pop_DEFINED 1
-#define XED_FLAG_ACTION_ah_DEFINED 1
-#define XED_FLAG_ACTION_1_DEFINED 1
-#define XED_FLAG_ACTION_LAST_DEFINED 1
 typedef enum {
   XED_FLAG_ACTION_INVALID,
   XED_FLAG_ACTION_u, ///< undefined (treated as a write)

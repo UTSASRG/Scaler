@@ -1,6 +1,6 @@
-/* BEGIN_LEGAL 
+/*BEGIN_LEGAL 
 
-Copyright (c) 2021 Intel Corporation
+Copyright (c) 2018 Intel Corporation
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -23,15 +23,6 @@ END_LEGAL */
 #if !defined(XED_OPERAND_ACTION_ENUM_H)
 # define XED_OPERAND_ACTION_ENUM_H
 #include "xed-common-hdrs.h"
-#define XED_OPERAND_ACTION_INVALID_DEFINED 1
-#define XED_OPERAND_ACTION_RW_DEFINED 1
-#define XED_OPERAND_ACTION_R_DEFINED 1
-#define XED_OPERAND_ACTION_W_DEFINED 1
-#define XED_OPERAND_ACTION_RCW_DEFINED 1
-#define XED_OPERAND_ACTION_CW_DEFINED 1
-#define XED_OPERAND_ACTION_CRW_DEFINED 1
-#define XED_OPERAND_ACTION_CR_DEFINED 1
-#define XED_OPERAND_ACTION_LAST_DEFINED 1
 typedef enum {
   XED_OPERAND_ACTION_INVALID,
   XED_OPERAND_ACTION_RW, ///< Read and written (must write)

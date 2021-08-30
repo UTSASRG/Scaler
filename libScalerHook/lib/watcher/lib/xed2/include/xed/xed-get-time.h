@@ -1,6 +1,6 @@
-/* BEGIN_LEGAL 
+/*BEGIN_LEGAL 
 
-Copyright (c) 2021 Intel Corporation
+Copyright (c) 2018 Intel Corporation
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -36,9 +36,7 @@ END_LEGAL */
 #         pragma intrinsic(__rdtsc)
 #      endif
 #      if defined(__GNUC__)
-#         if defined(__i386__) || defined(i386) || defined(i686) || defined(__x86_64__)
-#             include <x86intrin.h>
-#         endif
+#         include <x86intrin.h>
 #      endif
 #   endif
 

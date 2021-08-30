@@ -1,6 +1,6 @@
-/* BEGIN_LEGAL 
+/*BEGIN_LEGAL 
 
-Copyright (c) 2021 Intel Corporation
+Copyright (c) 2018 Intel Corporation
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -23,18 +23,6 @@ END_LEGAL */
 #if !defined(XED_OPERAND_ELEMENT_TYPE_ENUM_H)
 # define XED_OPERAND_ELEMENT_TYPE_ENUM_H
 #include "xed-common-hdrs.h"
-#define XED_OPERAND_ELEMENT_TYPE_INVALID_DEFINED 1
-#define XED_OPERAND_ELEMENT_TYPE_UINT_DEFINED 1
-#define XED_OPERAND_ELEMENT_TYPE_INT_DEFINED 1
-#define XED_OPERAND_ELEMENT_TYPE_SINGLE_DEFINED 1
-#define XED_OPERAND_ELEMENT_TYPE_DOUBLE_DEFINED 1
-#define XED_OPERAND_ELEMENT_TYPE_LONGDOUBLE_DEFINED 1
-#define XED_OPERAND_ELEMENT_TYPE_LONGBCD_DEFINED 1
-#define XED_OPERAND_ELEMENT_TYPE_STRUCT_DEFINED 1
-#define XED_OPERAND_ELEMENT_TYPE_VARIABLE_DEFINED 1
-#define XED_OPERAND_ELEMENT_TYPE_FLOAT16_DEFINED 1
-#define XED_OPERAND_ELEMENT_TYPE_BFLOAT16_DEFINED 1
-#define XED_OPERAND_ELEMENT_TYPE_LAST_DEFINED 1
 typedef enum {
   XED_OPERAND_ELEMENT_TYPE_INVALID,
   XED_OPERAND_ELEMENT_TYPE_UINT, ///< Unsigned integer
@@ -46,7 +34,6 @@ typedef enum {
   XED_OPERAND_ELEMENT_TYPE_STRUCT, ///< a structure of various fields
   XED_OPERAND_ELEMENT_TYPE_VARIABLE, ///< depends on other fields in the instruction
   XED_OPERAND_ELEMENT_TYPE_FLOAT16, ///< 16b floating point
-  XED_OPERAND_ELEMENT_TYPE_BFLOAT16, ///< bfloat16 floating point
   XED_OPERAND_ELEMENT_TYPE_LAST
 } xed_operand_element_type_enum_t;
 

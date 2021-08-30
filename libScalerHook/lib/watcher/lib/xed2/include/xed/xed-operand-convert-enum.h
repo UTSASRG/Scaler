@@ -1,6 +1,6 @@
-/* BEGIN_LEGAL 
+/*BEGIN_LEGAL 
 
-Copyright (c) 2021 Intel Corporation
+Copyright (c) 2018 Intel Corporation
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -23,12 +23,6 @@ END_LEGAL */
 #if !defined(XED_OPERAND_CONVERT_ENUM_H)
 # define XED_OPERAND_CONVERT_ENUM_H
 #include "xed-common-hdrs.h"
-#define XED_OPERAND_CONVERT_INVALID_DEFINED 1
-#define XED_OPERAND_CONVERT_ZEROSTR_DEFINED 1
-#define XED_OPERAND_CONVERT_SAESTR_DEFINED 1
-#define XED_OPERAND_CONVERT_ROUNDC_DEFINED 1
-#define XED_OPERAND_CONVERT_BCASTSTR_DEFINED 1
-#define XED_OPERAND_CONVERT_LAST_DEFINED 1
 typedef enum {
   XED_OPERAND_CONVERT_INVALID,
   XED_OPERAND_CONVERT_ZEROSTR,
