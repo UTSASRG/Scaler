@@ -1,5 +1,5 @@
 extern "C" {
-    #include "xed/xed-interface.h"
+#include "xed/xed-interface.h"
 }
 
 #include <type/breakpoint.h>
@@ -10,22 +10,12 @@ extern "C" {
 
 
 namespace scaler {
+#define GET_REG_VALUE(ctxt, reg) (((ucontext_t *)ctxt)->uc_mcontext.gregs[reg])
+#define SET_REG_VALUE(ctxt, reg, new_value) (((ucontext_t *)ctxt)->uc_mcontext.gregs[reg] = new_value)
+#define OPERAND_NUMBER 3
 
-    class InstrOp {
-    public:
-        enum Type {
-            OPERAND_TYPE_NONE,
-            OPERAND_TYPE_IMM,
-            OPERAND_TYPE_ADDRESS,
-            OPERAND_TYPE_MEMORY,
-            OPERAND_TYPE_REGISTER
-        };
+    typedef void (*callback_sa_sigaction)(int, siginfo_t *, void *);
 
-        Type instrType;
-        int name;
-        int size;
-        size_t value;
-    };
 
     class VMEmulator {
     public:
@@ -39,19 +29,19 @@ namespace scaler {
 
         void getInstrInfo(Breakpoint &bp);
 
-        void parseOp(xed_decoded_inst_t *xptr, xed_uint64_t rel_address, InstrOp *operands, int real_size,
+        void parseOp(xed_decoded_inst_t &decodedInst, xed_uint64_t rel_address, InstrOp *operands, int real_size,
                      void *context);
+
+        size_t getOp(InstrOp &op);
 
     private:
         VMEmulator();
 
-        size_t getOp(InstrOp *op);
-
         void setMemory(void *address, int size, size_t value);
 
-        size_t getRegMask(InstrOp *op);
+        size_t getRegMask(InstrOp &op);
 
-        bool is32BitReg(InstrOp *op);
+        bool is32BitReg(InstrOp &op);
 
         bool chkOpVisibility(const xed_operand_t *op, xed_operand_enum_t opName, xed_decoded_inst_t *xptr);
 

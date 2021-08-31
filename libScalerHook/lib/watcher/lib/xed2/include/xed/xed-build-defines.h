@@ -1,6 +1,6 @@
-/*BEGIN_LEGAL 
+/* BEGIN_LEGAL 
 
-Copyright (c) 2018 Intel Corporation
+Copyright (c) 2021 Intel Corporation
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -30,14 +30,11 @@ END_LEGAL */
 #  if !defined(XED_DECODER)
 #    define XED_DECODER
 #  endif
-#  if !defined(XED_DLL)
-#    define XED_DLL
-#  endif
 #  if !defined(XED_ENCODER)
 #    define XED_ENCODER
 #  endif
 #  if !defined(XED_GIT_VERSION)
-#    define XED_GIT_VERSION "v10.0-380-gca37abe"
+#    define XED_GIT_VERSION "12.0.1-72-gd57a3bd"
 #  endif
 #  if !defined(XED_MPX)
 #    define XED_MPX

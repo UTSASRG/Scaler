@@ -2,7 +2,7 @@
 #add_subdirectory(lib/libipt)
 #add_subdirectory(lib/heaplayers)
 #add_subdirectory(lib/libunwind)
-#add_subdirectory(lib/xed2)
+add_subdirectory(lib/xed2)
 
 
 #add_library(watcher STATIC
@@ -40,3 +40,4 @@
 #        HAVE_SOFTWARE_BREAKPOINT
 #        GET_REPLAY_RUNTIME
 #        NGET_INST_COUNT)
+

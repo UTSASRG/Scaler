@@ -12,11 +12,15 @@ int main() {
 
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
+
+        if(fileName=="/lib/x86_64-linux-gnu/libc-2.27.so")
+            return false;
+
         if (fileName == "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall") {
             return true;
         }else{
-            printf("%s\n",fileName.c_str());
-            return false;
+//            printf("%s\n",fileName.c_str());
+            return true;
         }
     },INSTALL_TYPE::BRKPOINT);
 

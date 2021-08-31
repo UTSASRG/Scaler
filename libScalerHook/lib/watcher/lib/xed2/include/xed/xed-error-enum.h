@@ -1,6 +1,6 @@
-/*BEGIN_LEGAL 
+/* BEGIN_LEGAL 
 
-Copyright (c) 2018 Intel Corporation
+Copyright (c) 2021 Intel Corporation
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -23,6 +23,29 @@ END_LEGAL */
 #if !defined(XED_ERROR_ENUM_H)
 # define XED_ERROR_ENUM_H
 #include "xed-common-hdrs.h"
+#define XED_ERROR_NONE_DEFINED 1
+#define XED_ERROR_BUFFER_TOO_SHORT_DEFINED 1
+#define XED_ERROR_GENERAL_ERROR_DEFINED 1
+#define XED_ERROR_INVALID_FOR_CHIP_DEFINED 1
+#define XED_ERROR_BAD_REGISTER_DEFINED 1
+#define XED_ERROR_BAD_LOCK_PREFIX_DEFINED 1
+#define XED_ERROR_BAD_REP_PREFIX_DEFINED 1
+#define XED_ERROR_BAD_LEGACY_PREFIX_DEFINED 1
+#define XED_ERROR_BAD_REX_PREFIX_DEFINED 1
+#define XED_ERROR_BAD_EVEX_UBIT_DEFINED 1
+#define XED_ERROR_BAD_MAP_DEFINED 1
+#define XED_ERROR_BAD_EVEX_V_PRIME_DEFINED 1
+#define XED_ERROR_BAD_EVEX_Z_NO_MASKING_DEFINED 1
+#define XED_ERROR_NO_OUTPUT_POINTER_DEFINED 1
+#define XED_ERROR_NO_AGEN_CALL_BACK_REGISTERED_DEFINED 1
+#define XED_ERROR_BAD_MEMOP_INDEX_DEFINED 1
+#define XED_ERROR_CALLBACK_PROBLEM_DEFINED 1
+#define XED_ERROR_GATHER_REGS_DEFINED 1
+#define XED_ERROR_INSTR_TOO_LONG_DEFINED 1
+#define XED_ERROR_INVALID_MODE_DEFINED 1
+#define XED_ERROR_BAD_EVEX_LL_DEFINED 1
+#define XED_ERROR_BAD_REG_MATCH_DEFINED 1
+#define XED_ERROR_LAST_DEFINED 1
 typedef enum {
   XED_ERROR_NONE, ///< There was no error
   XED_ERROR_BUFFER_TOO_SHORT, ///< There were not enough bytes in the given buffer
@@ -45,6 +68,7 @@ typedef enum {
   XED_ERROR_INSTR_TOO_LONG, ///< Full decode of instruction would exeed 15B.
   XED_ERROR_INVALID_MODE, ///< The instruction was not valid for the specified mode
   XED_ERROR_BAD_EVEX_LL, ///< EVEX.LL must not ==3 unless using embedded rounding
+  XED_ERROR_BAD_REG_MATCH, ///< Source registers must not match the destination register for this instruction.
   XED_ERROR_LAST
 } xed_error_enum_t;
 

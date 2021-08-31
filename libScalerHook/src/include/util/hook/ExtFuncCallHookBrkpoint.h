@@ -70,7 +70,7 @@ namespace scaler {
 
         bool isBrkPointLocPlt(void *brkpointLoc);
 
-        void skipBrkPoint(Breakpoint& bp);
+        void skipBrkPoint(Breakpoint& bp,ucontext_t* context);
 
         std::set<int> tracedTID;
 

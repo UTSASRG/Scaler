@@ -33,6 +33,7 @@ namespace scaler {
     //Initialize instance variable to nullptr;
     ExtFuncCallHookBrkpoint *ExtFuncCallHookBrkpoint::instance = nullptr;
 
+#define INSTR_EXEC_AREA_LEN 256
 
     class ContextBrkpoint {
     public:
@@ -45,7 +46,7 @@ namespace scaler {
         std::vector<pthread_t *> pthreadIdPtr;
         bool inHookHandler = false;
 
-        char instrExecArea[256];
+        char instrExecArea[INSTR_EXEC_AREA_LEN];
 
         ContextBrkpoint();
 
@@ -420,7 +421,7 @@ namespace scaler {
             ERR_LOGS("Unexpected stop because rip=%p doesn't seem to be caused by hook", brkpointLoc);
             return false;
         }
-        DBG_LOGS("RIP=%lld RSP=%lld TID=%lu\n", regRip, regRsp, pthread_self());
+        //DBG_LOGS("RIP=%lld RSP=%lld TID=%lu\n", regRip, regRsp, pthread_self());
         callerAddr = reinterpret_cast<void *>(regRsp);
 
         auto &brkpointInfo = thiz->brkPointInfo.at(brkpointLoc);
@@ -446,6 +447,7 @@ namespace scaler {
         //todo: what if fail
         VMEmulator::getInstance().getInstrInfo(brkPointInfo[addr]);
 
+
         if (isPLT)
             brkpointPltAddr.insert(addr);
     }
@@ -454,28 +456,183 @@ namespace scaler {
         return brkpointPltAddr.find(brkpointLoc) != brkpointPltAddr.end();
     }
 
-    void ExtFuncCallHookBrkpoint::skipBrkPoint(Breakpoint &bp) {
-        //void* nextinst = VMEmulator::getInstance().executeInstr(bp, context);
+#define GET_REG_VALUE(ctxt, reg) (((ucontext_t *)ctxt)->uc_mcontext.gregs[reg])
+#define SET_REG_VALUE(ctxt, reg, new_value) (((ucontext_t *)ctxt)->uc_mcontext.gregs[reg] = new_value)
 
-        memTool->adjustMemPerm(brkpointCurContext.instrExecArea,
-                               (uint8_t *) brkpointCurContext.instrExecArea +
-                               sizeof(brkpointCurContext.instrExecArea),
-                               PROT_READ | PROT_WRITE | PROT_EXEC);
-        //Copy the first instruction
-        memcpy(bp.oriCode, brkpointCurContext.instrExecArea, bp.instLen);
-        assert(sizeof(bp.oriCode) < sizeof(brkpointCurContext.instrExecArea) - 1);
-        brkpointCurContext.instrExecArea[bp.instLen] = 0xCB;
+    void ExtFuncCallHookBrkpoint::skipBrkPoint(Breakpoint &bp, ucontext_t *context) {
+        //Otherwise we should execute
+        //todo: Assert instruction is valid as it is guaranteed in brkpointEmitted
 
-        //Fill memory address
-        asm volatile (
-        "movq %[aInstrExecArea],%%r11\n\t"
-        "callq *%%r11\n\t"
-        :  //output
-        : [aInstrExecArea] "rm"(brkpointCurContext.instrExecArea) //input
-        : //clobbers
-        );
+        VMEmulator &emulator = VMEmulator::getInstance();
 
-        DBG_LOG("Return complete");
+        xed_uint64_t relativeAddr = (xed_uint64_t) bp.addr;
+        bool isapp = pmParser.addrInApplication(bp.addr);
+        if (!isapp) {
+            //todo: Change everything to intptr
+            relativeAddr = (xed_uint64_t) ((intptr_t) bp.addr - (intptr_t) pmParser.sortedSegments[0].second.addrStart);
+        }
+        emulator.parseOp(bp.xedDecodedInst, relativeAddr, bp.operands, OPERAND_NUMBER, context);
+
+        //Check the type of original code. If it is jmp, then we shouldn't use assembly to execute but should modify rip directly
+        if (bp.xiclass >= XED_ICLASS_JB && bp.xiclass <= XED_ICLASS_JZ) {
+            bool shouldJmp = false;
+            long long flags = context->uc_mcontext.gregs[REG_EFL];
+            long cf_mask = 0x0001;
+            long pf_mask = 0x0004;
+            //long af_mask = 0x0010;
+            long zf_mask = 0x0040;
+            long sf_mask = 0x0080;
+            long of_mask = 0x0800;
+
+            switch (bp.xiclass) {
+                case XED_ICLASS_JB: {
+                    // (CF=1)
+                    shouldJmp = cf_mask & flags;
+                    break;
+                }
+                case XED_ICLASS_JBE: {
+                    // CF=1 or ZF=1
+                    shouldJmp = (cf_mask & flags) || (zf_mask & flags);
+                    break;
+                }
+                case XED_ICLASS_JCXZ: {
+                    // CX register is 0
+                    size_t rcx_value = GET_REG_VALUE(context, REG_RCX);
+                    size_t cx = rcx_value & 0xFFFF;
+                    shouldJmp = (cx == 0);
+                    break;
+                }
+                case XED_ICLASS_JECXZ: {
+                    // ECX register is 0
+                    size_t rcx_value = GET_REG_VALUE(context, REG_RCX);
+                    size_t ecx = rcx_value & 0xFFFFFFFF;
+                    shouldJmp = (ecx == 0);
+                    break;
+                }
+                case XED_ICLASS_JL: {
+                    // SF≠ OF
+                    shouldJmp = (sf_mask & flags) ^ (of_mask & flags);
+                    break;
+                }
+                case XED_ICLASS_JLE: {
+                    // (ZF=1 or SF ≠ OF)
+                    shouldJmp = (zf_mask & flags) || ((sf_mask & flags) ^ (of_mask & flags));
+                    break;
+                }
+                case XED_ICLASS_JNB: {
+                    // (CF=0)
+                    shouldJmp = !(cf_mask & flags);
+                    break;
+                }
+                case XED_ICLASS_JNBE: {
+                    // (CF=0 and ZF=0)
+                    shouldJmp = !(cf_mask & flags) && !(zf_mask & flags);
+                    break;
+                }
+                case XED_ICLASS_JNL: {
+                    // (SF=OF)
+                    shouldJmp = !((sf_mask & flags) ^ (of_mask & flags));
+                    break;
+                }
+                case XED_ICLASS_JNLE: {
+                    // (ZF=0 and SF=OF)
+                    shouldJmp = !(zf_mask & flags) && !((sf_mask & flags) ^ (of_mask & flags));
+                    break;
+                }
+                case XED_ICLASS_JNO: {
+                    // (OF=0)
+                    shouldJmp = !(of_mask & flags);
+                    break;
+                }
+                case XED_ICLASS_JNP: {
+                    // (PF=0)
+                    shouldJmp = !(pf_mask & flags);
+                    break;
+                }
+                case XED_ICLASS_JNS: {
+                    // (SF=0)
+                    shouldJmp = !(sf_mask & flags);
+                    break;
+                }
+                case XED_ICLASS_JNZ: {
+                    // (ZF=0)
+                    shouldJmp = !(zf_mask & flags);
+                    break;
+                }
+                case XED_ICLASS_JO: {
+                    // (OF=1)
+                    shouldJmp = of_mask & flags;
+                    break;
+                }
+                case XED_ICLASS_JP: {
+                    // (PF=1)
+                    shouldJmp = pf_mask & flags;
+                    break;
+                }
+                case XED_ICLASS_JRCXZ: {
+                    // RCX register is 0
+                    size_t rcx_value = GET_REG_VALUE(context, REG_RCX);
+                    shouldJmp = (rcx_value == 0);
+                    break;
+                }
+                case XED_ICLASS_JS: {
+                    // (SF=1)
+                    shouldJmp = sf_mask & flags;
+                    break;
+                }
+                case XED_ICLASS_JZ: {
+                    // (ZF=1)
+                    shouldJmp = zf_mask & flags;
+                    break;
+                }
+                case XED_ICLASS_JMP:
+                case XED_ICLASS_JMP_FAR: {
+                    shouldJmp = true;
+                    break;
+                }
+                default: {
+                    throwScalerException(ErrCode::UNRECOGNIZSBLE_INSTR,
+                                         "Instruction is jmp but scaler doesn't recognize it");
+                }
+            }
+
+            if (shouldJmp) {
+                //near jump
+                size_t jmpTarget = VMEmulator::getInstance().getOp(bp.operands[0]);
+                //far jump
+                void *nextInstrAddr = (void *) jmpTarget;
+
+                bool isapp = pmParser.addrInApplication(bp.addr);
+                if (xed3_operand_get_nominal_opcode(&bp.xedDecodedInst) != 0xFF && !isapp) {
+                    nextInstrAddr = (void *) ((intptr_t) pmParser.sortedSegments[0].second.addrStart + jmpTarget);
+                }
+
+                //Change register value and jmp to this instruction directly
+                context->uc_mcontext.gregs[REG_RIP] = (intptr_t) nextInstrAddr;
+            }
+        } else {
+            //Normal instruciton. Execute directly using assembly code;
+            MemoryTool_Linux::getInst()->adjustMemPerm(brkpointCurContext.instrExecArea,
+                                                       (uint8_t *) brkpointCurContext.instrExecArea +
+                                                       INSTR_EXEC_AREA_LEN,
+                                                       PROT_READ | PROT_WRITE | PROT_EXEC);
+            //Copy the first instruction
+            memcpy(brkpointCurContext.instrExecArea, bp.oriCode, bp.instLen);
+            assert(sizeof(bp.oriCode) < sizeof(brkpointCurContext.instrExecArea) - 1);
+            brkpointCurContext.instrExecArea[bp.instLen] = 0xCB;
+
+            //Fill memory address
+            asm volatile (
+            "movq %[aInstrExecArea],%%r11\n\t"
+            "callq *%%r11\n\t"
+            :  //output
+            : [aInstrExecArea] "rm"(brkpointCurContext.instrExecArea) //input
+            : //clobbers
+            );
+        }
+
+
+        //DBG_LOG("Return complete");
         return;
     }
 
@@ -493,7 +650,7 @@ namespace scaler {
         } else if (brkpointCurContext.inHookHandler) {
             DBG_LOG("Function called within libscalerhook. Skip");
             auto &brkpointInfo = thiz->brkPointInfo.at(pltPtr);
-            thiz->skipBrkPoint(brkpointInfo);
+            thiz->skipBrkPoint(brkpointInfo, (ucontext_t *) context);
         } else {
             brkpointCurContext.inHookHandler = true;
             //Parse information
@@ -519,7 +676,7 @@ namespace scaler {
 
             auto &brkpointInfo = thiz->brkPointInfo.at((void *) (regRip - 1));
             brkpointCurContext.inHookHandler = false;
-            thiz->skipBrkPoint(brkpointInfo);
+            thiz->skipBrkPoint(brkpointInfo, static_cast<ucontext_t *>(context));
         }
 
 

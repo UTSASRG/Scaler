@@ -2,6 +2,7 @@
 #include <util/tool/VMEmulator.h>
 #include <asm/prctl.h>
 #include <sys/syscall.h>
+#include <exceptions/ErrCode.h>
 
 static xed_state_t vm_xed_machine_state = {
         XED_MACHINE_MODE_LONG_64,
@@ -11,23 +12,25 @@ static xed_state_t vm_xed_machine_state = {
 #define OPERAND_NUMBER 3
 
 void scaler::VMEmulator::getInstrInfo(scaler::Breakpoint &bp) {
-    xed_decoded_inst_t xedd;
-    xed_decoded_inst_t *xptr = &xedd;
-    xed_decoded_inst_zero_set_mode(xptr, &vm_xed_machine_state);
+    xed_decoded_inst_zero_set_mode(&bp.xedDecodedInst, &vm_xed_machine_state);
     xed_error_enum_t xed_error;
 
-    xed_error = xed_decode((xed_decoded_inst_t *) xptr,
+    xed_error = xed_decode((xed_decoded_inst_t *) &bp.xedDecodedInst,
                            (const xed_uint8_t *) XED_REINTERPRET_CAST(const xed_uint8_t*, bp.addr),
                            (const unsigned int) XED_MAX_INSTRUCTION_BYTES);
 
     if (xed_error == XED_ERROR_NONE) {
-        bp.instLen = xed_decoded_inst_get_length(xptr);
+        bp.instLen = xed_decoded_inst_get_length(&bp.xedDecodedInst);
+        //Extract instruction type
+        bp.xiclass = xed_decoded_inst_get_iclass(&bp.xedDecodedInst);
+
         // backup original data
         for (int i = 0; i < bp.instLen; i++) {
             bp.oriCode[i] = ((char *) bp.addr)[i];
         }
         // TRY to avoid functions from other library
         //memcpy(bp->inst_data, bp->addr, bp->inst_length);
+
     } else {
         throwScalerException(ErrCode::UNRECOGNIZSBLE_INSTR,
                              "Intel xed fail to decode instruction, meaning the instruction is unrecognizable");
@@ -35,6 +38,9 @@ void scaler::VMEmulator::getInstrInfo(scaler::Breakpoint &bp) {
 }
 
 void *scaler::VMEmulator::executeInstr(scaler::Breakpoint &bp, ucontext_t *context) {
+
+
+
 //    void* next_instruction = NULL;
 //    xed_decoded_inst_t xedd;
 //    xed_decoded_inst_t *xptr = &xedd;
@@ -665,9 +671,175 @@ void *scaler::VMEmulator::executeInstr(scaler::Breakpoint &bp, ucontext_t *conte
 }
 
 void
-scaler::VMEmulator::parseOp(xed_decoded_inst_t *xptr, uint64_t rel_address, scaler::InstrOp *operands, int real_size,
+scaler::VMEmulator::parseOp(xed_decoded_inst_t& decodedInst, uint64_t rel_address, scaler::InstrOp *operands, int real_size,
                             void *context) {
+    const xed_inst_t *xi = xed_decoded_inst_inst(&decodedInst);
+    int real_noperands = 0;
+    // decode operands: register, memory address, immediate value
+    unsigned int noperands = xed_inst_noperands(xi);
+    for (int i = 0; i < noperands; i++) {
+        const xed_operand_t *op = xed_inst_operand(xi, i);
+        const xed_operand_values_t *ov = xed_decoded_inst_operands_const(&decodedInst);
+        xed_operand_enum_t op_name = xed_operand_name(op);
 
+        if (!chkOpVisibility(op, op_name, &decodedInst)) {
+            continue;
+        }
+
+        if (real_noperands >= real_size) {
+            fprintf(stderr, "Only support %d operands\n", real_size);
+            abort();
+        }
+
+        switch (op_name) {
+            case XED_OPERAND_AGEN:
+            case XED_OPERAND_MEM0:
+            case XED_OPERAND_MEM1: {
+                int memop = -1;
+                if (op_name == XED_OPERAND_AGEN) {
+                    operands[real_noperands].instrType = InstrOp::OPERAND_TYPE_ADDRESS;
+                    operands[real_noperands].name = InstrOp::OPERAND_TYPE_ADDRESS;
+                    memop = 0;
+                } else {
+                    operands[real_noperands].instrType = InstrOp::OPERAND_TYPE_MEMORY;
+                    operands[real_noperands].name = InstrOp::OPERAND_TYPE_MEMORY;
+                    if (op_name == XED_OPERAND_MEM0) {
+                        memop = 0;
+                    } else if (op_name == XED_OPERAND_MEM1) {
+                        memop = 1;
+                    }
+                }
+
+                xed_int64_t addr = 0;
+                xed_reg_enum_t base, index, seg;
+                base = xed_decoded_inst_get_base_reg(&decodedInst, memop);
+                index = xed_decoded_inst_get_index_reg(&decodedInst, memop);
+                seg = xed_decoded_inst_get_seg_reg(&decodedInst, memop);
+                unsigned long long base_r_val = 0;
+                unsigned long long index_r_val = 0;
+
+                xed_int64_t disp = xed_operand_values_get_memory_displacement_int64(ov);
+                xed_uint_t bytes = xed_decoded_inst_operand_length_bits(&decodedInst, i) >> 3;
+
+                // FIXME segment register
+                //size_t segment_register;
+                //asm volatile("mov %%fs:0x0, %[Var]" : [Var] "=r" (segment_register));
+                if (seg == XED_REG_FS) {
+                    unsigned long real_fs_addr;
+                    syscall(SYS_arch_prctl, ARCH_GET_FS, &real_fs_addr);
+                    addr += real_fs_addr;
+                }
+
+                if (base != XED_REG_INVALID) {
+                    int reg_enum = regMapping[base];
+                    if (reg_enum >= REG_R8 && reg_enum <= REG_RIP) {
+                        if (reg_enum == REG_RIP) {
+                            xed_uint64_t instruction_length = xed_decoded_inst_get_length(&decodedInst);
+                            base_r_val = rel_address + instruction_length;
+                        } else {
+                            base_r_val = GET_REG_VALUE(context, reg_enum);
+                        }
+                        addr += base_r_val;
+                    }
+                }
+                if (index != XED_REG_INVALID) {
+                    int reg_enum = regMapping[index];
+                    if (reg_enum >= REG_R8 && reg_enum <= REG_RIP) {
+                        if (reg_enum == REG_RIP) {
+                            xed_uint64_t instruction_length = xed_decoded_inst_get_length(&decodedInst);
+                            index_r_val = rel_address + instruction_length;;
+                        } else {
+                            index_r_val = GET_REG_VALUE(context, reg_enum);
+                        }
+                        xed_bits_t scale = xed3_operand_get_scale(&decodedInst);
+                        index_r_val *= XED_STATIC_CAST(xed_uint_t, scale);
+                        addr += index_r_val;
+                    }
+                }
+
+                xed_bool_t no_base_index = (base == XED_REG_INVALID) && (index == XED_REG_INVALID);
+                if (xed_operand_values_has_memory_displacement(ov)) {
+                    unsigned int disp_bits = xed_operand_values_get_memory_displacement_length_bits(ov);
+                    if (disp_bits && (disp || no_base_index)) {
+                        addr += disp;
+                    }
+                }
+
+                operands[real_noperands].value = addr;
+                operands[real_noperands].size = bytes;
+
+                break;
+            }
+            case XED_OPERAND_IMM0: {
+                xed_uint64_t imm = xed_operand_values_get_immediate_uint64(ov);
+
+                operands[real_noperands].instrType = InstrOp::OPERAND_TYPE_IMM;
+                operands[real_noperands].name = XED_OPERAND_IMM0;
+                operands[real_noperands].value = imm;
+                operands[real_noperands].size = 8;
+
+                break;
+            }
+            case XED_OPERAND_IMM1: {
+                xed_uint64_t imm = xed3_operand_get_uimm1(&decodedInst);
+
+                operands[real_noperands].instrType = InstrOp::OPERAND_TYPE_IMM;
+                operands[real_noperands].name = XED_OPERAND_IMM1;
+                operands[real_noperands].value = imm;
+                operands[real_noperands].size = 8;
+
+                break;
+            }
+            case XED_OPERAND_PTR: {
+                unsigned int disp = (unsigned int) xed_operand_values_get_branch_displacement_int32(ov);
+
+                operands[real_noperands].instrType = InstrOp::OPERAND_TYPE_ADDRESS;
+                operands[real_noperands].name = XED_OPERAND_PTR;
+                operands[real_noperands].value = disp;
+                operands[real_noperands].size = 8;
+
+                break;
+            }
+            case XED_OPERAND_RELBR: {
+                xed_int64_t disp = xed3_operand_get_disp(&decodedInst);
+                xed_uint64_t instruction_length = xed_decoded_inst_get_length(&decodedInst);
+                xed_uint64_t pc = rel_address + instruction_length;
+                xed_uint64_t effective_addr = (xed_uint64_t) ((xed_int64_t) pc + disp);
+
+                operands[real_noperands].instrType = InstrOp::OPERAND_TYPE_ADDRESS;
+                operands[real_noperands].name = XED_OPERAND_RELBR;
+                operands[real_noperands].value = effective_addr;
+                operands[real_noperands].size = 8;
+
+                break;
+            }
+            default: {
+                bool is_register = xed_operand_is_register(op_name);
+                bool is_memory_register = xed_operand_is_memory_addressing_register(op_name);
+                if (is_register || is_memory_register) {
+                    xed_reg_enum_t r = xed_decoded_inst_get_reg(&decodedInst, op_name);
+                    int reg_enum = regMapping[r];
+                    if (reg_enum >= REG_R8 && reg_enum <= REG_RIP) {
+                        size_t val = GET_REG_VALUE(context, reg_enum);
+
+                        if (is_register) {
+                            operands[real_noperands].instrType = InstrOp::OPERAND_TYPE_REGISTER;
+                        } else {
+                            operands[real_noperands].instrType = InstrOp::OPERAND_TYPE_MEMORY;
+                        }
+                        operands[real_noperands].name = r;
+                        operands[real_noperands].value = val;
+                        operands[real_noperands].size = xed_decoded_inst_operand_length(&decodedInst, i);
+                    }
+
+                } else {
+                    fprintf(stderr, "Can not support %d op_name\n", op_name);
+                    abort();
+                }
+            }
+        }
+        ++real_noperands;
+    }
 }
 
 scaler::VMEmulator::VMEmulator() {
@@ -675,25 +847,66 @@ scaler::VMEmulator::VMEmulator() {
     xed_tables_init();
 }
 
-size_t scaler::VMEmulator::getOp(scaler::InstrOp *op) {
-    return 0;
+size_t scaler::VMEmulator::getOp(scaler::InstrOp &op) {
+    size_t op_value = op.value;
+    if (op.instrType == InstrOp::Type::OPERAND_TYPE_MEMORY) {
+        // get memory value
+        // if this is the last word of current mapping, it could be a SEGV
+        op_value = *(size_t *) op.value;
+        // get right value based on size
+        // FIXME Little Endian !!!
+        op_value &= (0xFFFFFFFFFFFFFFFF >> ((8 - op.size) * sizeof(size_t)));
+    } else if (op.instrType == InstrOp::Type::OPERAND_TYPE_REGISTER) {
+        size_t mask = getRegMask(op);
+        op_value &= mask;
+    }
+    return op_value;
 }
 
 void scaler::VMEmulator::setMemory(void *address, int size, size_t value) {
 
 }
 
-size_t scaler::VMEmulator::getRegMask(scaler::InstrOp *op) {
-    return 0;
+size_t scaler::VMEmulator::getRegMask(scaler::InstrOp &op) {
+    size_t mask = 0;
+    if (op.name >= XED_REG_AX && op.name <= XED_REG_R15W) {
+        mask = 0xFFFF;
+    } else if (op.name >= XED_REG_EAX && op.name <= XED_REG_R15D) {
+        mask = 0xFFFFFFFF;
+    } else if (op.name >= XED_REG_RAX && op.name <= XED_REG_R15) {
+        mask = 0xFFFFFFFFFFFFFFFF;
+    } else if (op.name >= XED_REG_AL && op.name <= XED_REG_R15B) {
+        mask = 0xFF;
+    } else {
+        throwScalerException(ErrCode::INSTR_INFO_PARSE_FAIL, "Not support (A, B, C, D)H register\n");
+    }
+    //else if (dest->name >= XED_REG_AH && dest->name <= XED_REG_BH) {
+    //  mask = 0xFF00;
+    //}
+    return mask;
 }
 
-bool scaler::VMEmulator::is32BitReg(scaler::InstrOp *op) {
+bool scaler::VMEmulator::is32BitReg(scaler::InstrOp &op) {
     return false;
 }
 
 bool
 scaler::VMEmulator::chkOpVisibility(const xed_operand_t *op, xed_operand_enum_t op_name, xed_decoded_inst_t *xptr) {
-    return false;
+    bool isvisibile = true;
+    if (xed_operand_operand_visibility(op) == XED_OPVIS_SUPPRESSED) {
+        /*   allow a fall through to print the memop for stringops to match dumpbin */
+        xed_bool_t stringop = (xed_decoded_inst_get_category(xptr) == XED_CATEGORY_STRINGOP);
+        if (stringop) {
+            if (op_name == XED_OPERAND_MEM0 || op_name == XED_OPERAND_MEM1) {
+            } else {
+                isvisibile = false;
+            }
+        } else {
+            isvisibile = false;
+        }
+    }
+
+    return isvisibile;
 }
 
 void scaler::VMEmulator::initRegMapping() {

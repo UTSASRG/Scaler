@@ -1,6 +1,6 @@
-/*BEGIN_LEGAL 
+/* BEGIN_LEGAL 
 
-Copyright (c) 2018 Intel Corporation
+Copyright (c) 2021 Intel Corporation
 
   Licensed under the Apache License, Version 2.0 (the "License");
   you may not use this file except in compliance with the License.
@@ -23,6 +23,11 @@ END_LEGAL */
 #if !defined(XED_ADDRESS_WIDTH_ENUM_H)
 # define XED_ADDRESS_WIDTH_ENUM_H
 #include "xed-common-hdrs.h"
+#define XED_ADDRESS_WIDTH_INVALID_DEFINED 1
+#define XED_ADDRESS_WIDTH_16b_DEFINED 1
+#define XED_ADDRESS_WIDTH_32b_DEFINED 1
+#define XED_ADDRESS_WIDTH_64b_DEFINED 1
+#define XED_ADDRESS_WIDTH_LAST_DEFINED 1
 typedef enum {
   XED_ADDRESS_WIDTH_INVALID=0,
   XED_ADDRESS_WIDTH_16b=2, ///< 16b addressing

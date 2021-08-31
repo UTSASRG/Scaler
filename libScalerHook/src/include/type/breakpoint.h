@@ -11,25 +11,56 @@
 #include <vector>
 #include <util/hook/ExtFuncCallHook_Linux.hh>
 #include <bits/types/siginfo_t.h>
+#include <xed/xed-iclass-enum.h>
+#include <xed/xed-decoded-inst.h>
 
 namespace scaler {
+#define OPERAND_NUMBER 3
+
+
+    class InstrOp {
+    public:
+        enum Type {
+            OPERAND_TYPE_NONE,
+            OPERAND_TYPE_IMM,
+            OPERAND_TYPE_ADDRESS,
+            OPERAND_TYPE_MEMORY,
+            OPERAND_TYPE_REGISTER
+        };
+
+        Type instrType;
+        int name;
+        int size;
+        size_t value;
+    };
+
 
     typedef void (*callback_sa_sigaction)(int, siginfo_t *, void *);
 
     class Breakpoint {
     public:
-        uint8_t *addr;
+        uint8_t *addr = 0;
         // now it support one thread,
         // we can change it to thread mask later
-        char oriCode[15];
-        int instLen;
+        char oriCode[15]{};
+        int instLen = 0;
+        xed_iclass_enum_t xiclass;
+        size_t funcID = 0; //funcID from scaler
+        InstrOp operands[OPERAND_NUMBER];
+        xed_decoded_inst_t xedDecodedInst;
 
-        size_t funcID; //funcID from scaler
+        Breakpoint() = default;
 
-        // callback function
-        // callback_sa_sigaction func;
+        Breakpoint(const Breakpoint &);
+
+        Breakpoint(const Breakpoint &&) noexcept;
+
+        Breakpoint &operator=(const Breakpoint &);
+
+        Breakpoint &operator=(const Breakpoint &&) noexcept;
 
     };
+
 
 }
 #endif

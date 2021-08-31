@@ -170,6 +170,8 @@ namespace scaler {
              */
         virtual void parsePMMap();
 
+        bool addrInApplication(void* addr);
+
     protected:
         //Process ID
         int procID;

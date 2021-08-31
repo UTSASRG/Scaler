@@ -36,32 +36,29 @@ find_package(XED REQUIRED)
 add_library(ScalerHook-HookManualAsm SHARED
             ${ScalerHookSrc})
 target_include_directories(ScalerHook-HookManualAsm PUBLIC src/include lib/inireader)
-#target_compile_options(ScalerHook-HookManualAsm PRIVATE "--verbose;-fPIE;-fPIC;")
 target_link_libraries(ScalerHook-HookManualAsm PUBLIC pthread dl nlohmann_json::nlohmann_json xed2 xed2-ild)
-#target_link_options(ScalerHook-HookManualAsm PUBLIC "LINKER:SHELL: --no-as-needed;")
-
+target_compile_definitions(ScalerHook-HookManualAsm PUBLIC XED_ENCODER)
 
 add_executable(ScalerHook-HookManualPtrace
         src/PtraceHookMain.cpp
-        ${ScalerHookSrc})
+        ${ScalerHookSrc} src/breakpoint.cpp)
 target_include_directories(ScalerHook-HookManualPtrace PUBLIC src/include lib/inireader)
-#target_compile_options(ScalerHook-HookManualPtrace PRIVATE "--verbose;-fPIE;-fPIC;")
 target_link_libraries(ScalerHook-HookManualPtrace PUBLIC pthread dl nlohmann_json::nlohmann_json xed2 xed2-ild)
-#target_link_options(ScalerHook-HookManualPtrace PUBLIC "LINKER:SHELL: --no-as-needed;")
+target_compile_definitions(ScalerHook-HookManualPtrace PUBLIC XED_ENCODER)
 
 
 add_library(ScalerHook-HookBrkpoint SHARED
         ${ScalerHookSrc})
 target_include_directories(ScalerHook-HookBrkpoint PUBLIC src/include lib/inireader)
-target_compile_options(ScalerHook-HookBrkpoint PRIVATE "--verbose;-fPIE;-fPIC;")
+target_compile_options(ScalerHook-HookBrkpoint PRIVATE "--verbose;")
 target_link_libraries(ScalerHook-HookBrkpoint PUBLIC pthread dl nlohmann_json::nlohmann_json xed2 xed2-ild)
-#target_link_options(ScalerHook-HookBrkpoint PUBLIC "LINKER:SHELL: --no-as-needed;" xed2)
+target_compile_definitions(ScalerHook-HookBrkpoint PUBLIC XED_ENCODER)
 
 
 
 #ScalerHook with auto installation enabled. Scaler hook will run automatically before main.
 add_library(ScalerHook-HookAuto SHARED src/autoinstall.cpp)
-target_compile_options(ScalerHook-HookAuto PRIVATE "--verbose" "-fPIC")
+target_compile_options(ScalerHook-HookAuto PRIVATE "--verbose")
 target_link_libraries(ScalerHook-HookAuto PUBLIC ScalerHook-HookManualAsm)
 
 #Add tests

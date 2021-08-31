@@ -185,8 +185,8 @@ namespace scaler {
 
                 newSymbol.pltSecEntry = (uint8_t *) curELFImgInfo.pltSecStartAddr + i * 16;
 
-                //DBG_LOGS("pltEntryCheck: %s:%s entry is %p", curELFImgInfo.filePath.c_str(),
-                //         newSymbol.symbolName.c_str(), newSymbol.pltSecEntry);
+                DBG_LOGS("pltEntryCheck: %s:%s entry is %p", curELFImgInfo.filePath.c_str(),
+                         newSymbol.symbolName.c_str(), newSymbol.pltSecEntry);
 
                 uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddrStart, curFileID,
                                                                 curRelaPlt->r_offset);
@@ -234,8 +234,8 @@ namespace scaler {
             for (auto iter = curELFImgInfo.hookedExtSymbol.begin();
                  iter != curELFImgInfo.hookedExtSymbol.end(); ++iter) {
 
-                DBG_LOGS("%zd %s %p %zd", iter->second.libraryFileID, iter->second.symbolName.c_str(),
-                         iter->second.addr, iter->second.fileId);
+                //DBG_LOGS("%zd %s %p %zd", iter->second.libraryFileID, iter->second.symbolName.c_str(),
+                //         iter->second.addr, iter->second.fileId);
                 outFile[std::to_string(iter->second.libraryFileID)]["funcNames"][std::to_string(int64_t(
                         iter->second.addr))] = iter->second.symbolName;
             }
