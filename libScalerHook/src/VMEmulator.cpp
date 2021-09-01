@@ -850,7 +850,7 @@ scaler::VMEmulator::VMEmulator() {
 size_t scaler::VMEmulator::getOp(scaler::InstrOp &op) {
     size_t op_value = op.value;
     if (op.instrType == InstrOp::Type::OPERAND_TYPE_MEMORY) {
-        DBG_LOGS("Error scene=%p",op.value);
+        //DBG_LOGS("Error scene=%p",op.value);
         // get memory value
         // if this is the last word of current mapping, it could be a SEGV
         op_value = *(size_t *) op.value;

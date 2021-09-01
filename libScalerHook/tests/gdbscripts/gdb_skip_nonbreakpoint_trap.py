@@ -1,7 +1,7 @@
 import gdb
 
 import sys
-sys.setrecursionlimit(9000)
+sys.setrecursionlimit(999999)
 
 def stopHandler(event):
 	

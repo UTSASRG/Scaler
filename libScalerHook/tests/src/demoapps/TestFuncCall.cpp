@@ -20,8 +20,6 @@ int main() {
             return false;
         }else if(fileName == "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/libScalerHook-HookBrkpoint.so"){
             return false;
-        }else if(fileName == "/lib/x86_64-linux-gnu/ld-2.27.so"){
-            return false;
         }
 
 
@@ -66,7 +64,10 @@ int main() {
     printf("Calling callFunc1000\n");
     callFunc1000();
     int a[] = {1, 2, 3, 4, 5};
-    printf("a[]={1,2,3,4,5} starts at %p", a);
+    printf("a[]={1,2,3,4,5} starts at %p\n", a);
+
+    printf("My id is: %p\n",pthread_self());
+
 //    prctl(PR_SET_DUMPABLE, 1);
 
 //    while (1) {

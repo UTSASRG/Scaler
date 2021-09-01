@@ -185,8 +185,8 @@ namespace scaler {
 
                 newSymbol.pltSecEntry = (uint8_t *) curELFImgInfo.pltSecStartAddr + i * 16;
 
-                DBG_LOGS("pltEntryCheck: %s:%s entry is %p", curELFImgInfo.filePath.c_str(),
-                         newSymbol.symbolName.c_str(), newSymbol.pltSecEntry);
+                //DBG_LOGS("pltEntryCheck: %s:%s entry is %p", curELFImgInfo.filePath.c_str(),
+                //         newSymbol.symbolName.c_str(), newSymbol.pltSecEntry);
 
                 uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddrStart, curFileID,
                                                                 curRelaPlt->r_offset);
