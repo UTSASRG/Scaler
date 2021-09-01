@@ -63,8 +63,7 @@ namespace scaler {
 
         void afterHookHandler(pthread_t childTid);
 
-        static bool parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr, void *&brkpointLoc,
-                                    ucontext_t *context);
+        static bool parseSymbolInfo(void *&callerAddr,ucontext_t *context);
 
         bool brkPointInstalledAt(void *addr);
 

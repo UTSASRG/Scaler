@@ -401,8 +401,7 @@ namespace scaler {
 
 
     bool
-    ExtFuncCallHookBrkpoint::parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr,
-                                             void *&brkpointLoc, ucontext_t *context) {
+    ExtFuncCallHookBrkpoint::parseSymbolInfo(void *&callerAddr, ucontext_t *context) {
 
         auto thiz = ExtFuncCallHookBrkpoint::getInst();
 
@@ -413,19 +412,21 @@ namespace scaler {
         greg_t regRip = context->uc_mcontext.gregs[REG_RIP];
         greg_t regRsp = context->uc_mcontext.gregs[REG_RSP];
 
-        brkpointLoc = (void *) (regRip - 1); // address of breakpoint
-
-        curFileID = thiz->pmParser.findExecNameByAddr(brkpointLoc);
+        void *brkpointLoc = (void *) (regRip - 1); // address of breakpoint
 
         if (thiz->brkPointInfo.find(brkpointLoc) == thiz->brkPointInfo.end()) {
             ERR_LOGS("Unexpected stop because rip=%p doesn't seem to be caused by hook", brkpointLoc);
             return false;
         }
+        Breakpoint &bp = thiz->brkPointInfo.at(brkpointLoc);
+
+        if (bp.fileID == -1)
+            bp.fileID = thiz->pmParser.findExecNameByAddr(brkpointLoc);
+
+
         //DBG_LOGS("RIP=%lld RSP=%lld TID=%lu\n", regRip, regRsp, pthread_self());
         callerAddr = reinterpret_cast<void *>(regRsp);
 
-        auto &brkpointInfo = thiz->brkPointInfo.at(brkpointLoc);
-        curFuncID = brkpointInfo.funcID;
 
         return true;
 
@@ -442,6 +443,8 @@ namespace scaler {
 
         brkPointInfo[addr].addr = static_cast<uint8_t *>(addr);
         brkPointInfo[addr].funcID = funcID;
+
+
 
         //Parse instruction
         //todo: what if fail
@@ -463,14 +466,22 @@ namespace scaler {
         //Otherwise we should execute
         //todo: Assert instruction is valid as it is guaranteed in brkpointEmitted
 
+
+        if (brkPointInfo[bp.addr].fileID == -1) {
+            //fileID unresolved, recolve now
+            bp.fileID = pmParser.findExecNameByAddr(bp.addr);
+        }
+
+
         VMEmulator &emulator = VMEmulator::getInstance();
 
         xed_uint64_t relativeAddr = (xed_uint64_t) bp.addr;
         bool isapp = pmParser.addrInApplication(bp.addr);
-        if (!isapp) {
-            //todo: Change everything to intptr
-            relativeAddr = (xed_uint64_t) ((intptr_t) bp.addr - (intptr_t) pmParser.sortedSegments[0].second.addrStart);
-        }
+//        if (!isapp) {
+//            //todo: Change everything to intptr
+//            relativeAddr = (xed_uint64_t) ((intptr_t) bp.addr - (intptr_t) pmParser.fileBaseAddrMap.at(bp.fileID).first);
+//        }
+        DBG_LOGS("relativeAddr=%p %p isApp=%s", relativeAddr, bp.addr, isapp ? "true" : "false");
         emulator.parseOp(bp.xedDecodedInst, relativeAddr, bp.operands, OPERAND_NUMBER, context);
 
         //Check the type of original code. If it is jmp, then we shouldn't use assembly to execute but should modify rip directly
@@ -600,39 +611,44 @@ namespace scaler {
                 //near jump
                 size_t jmpTarget = VMEmulator::getInstance().getOp(bp.operands[0]);
                 //far jump
+
                 void *nextInstrAddr = (void *) jmpTarget;
 
-                bool isapp = pmParser.addrInApplication(bp.addr);
                 if (xed3_operand_get_nominal_opcode(&bp.xedDecodedInst) != 0xFF && !isapp) {
                     nextInstrAddr = (void *) ((intptr_t) pmParser.sortedSegments[0].second.addrStart + jmpTarget);
                 }
 
-                //Change register value and jmp to this instruction directly
+                //Change pc and jmp to this instruction directly
                 context->uc_mcontext.gregs[REG_RIP] = (intptr_t) nextInstrAddr;
+            } else {
+                //Change pc and jmp to this instruction directly
+                context->uc_mcontext.gregs[REG_RIP] = (intptr_t) bp.addr + bp.instLen;
             }
         } else {
-            //Normal instruciton. Execute directly using assembly code;
-            MemoryTool_Linux::getInst()->adjustMemPerm(brkpointCurContext.instrExecArea,
-                                                       (uint8_t *) brkpointCurContext.instrExecArea +
-                                                       INSTR_EXEC_AREA_LEN,
-                                                       PROT_READ | PROT_WRITE | PROT_EXEC);
-            //Copy the first instruction
-            memcpy(brkpointCurContext.instrExecArea, bp.oriCode, bp.instLen);
-            assert(sizeof(bp.oriCode) < sizeof(brkpointCurContext.instrExecArea) - 1);
-            brkpointCurContext.instrExecArea[bp.instLen] = 0xCB;
-
-            //Fill memory address
-            asm volatile (
-            "movq %[aInstrExecArea],%%r11\n\t"
-            "callq *%%r11\n\t"
-            :  //output
-            : [aInstrExecArea] "rm"(brkpointCurContext.instrExecArea) //input
-            : //clobbers
-            );
+            DBG_LOG("Return complete2");
+            assert(false);
+//            //Normal instruciton. Execute directly using assembly code;
+//            MemoryTool_Linux::getInst()->adjustMemPerm(brkpointCurContext.instrExecArea,
+//                                                       (uint8_t *) brkpointCurContext.instrExecArea +
+//                                                       INSTR_EXEC_AREA_LEN,
+//                                                       PROT_READ | PROT_WRITE | PROT_EXEC);
+//            //Copy the first instruction
+//            memcpy(brkpointCurContext.instrExecArea, bp.oriCode, bp.instLen);
+//            assert(sizeof(bp.oriCode) < sizeof(brkpointCurContext.instrExecArea) - 1);
+//            brkpointCurContext.instrExecArea[bp.instLen] = 0xCB;
+//
+//            //Fill memory address
+//            asm volatile (
+//            "movq %[aInstrExecArea],%%r11\n\t"
+//            "callq *%%r11\n\t"
+//            :  //output
+//            : [aInstrExecArea] "rm"(brkpointCurContext.instrExecArea) //input
+//            : //clobbers
+//            );
         }
 
 
-        //DBG_LOG("Return complete");
+        DBG_LOG("Return complete");
         return;
     }
 
@@ -644,22 +660,20 @@ namespace scaler {
         greg_t regRip = ((ucontext_t *) context)->uc_mcontext.gregs[REG_RIP];
 
         void *pltPtr = (void *) ((uint64_t) regRip - 1); //The plt address where we applied breakpoint to
+        auto &bp = thiz->brkPointInfo.at(pltPtr);
 
         if (thiz->brkPointInfo.find(pltPtr) == thiz->brkPointInfo.end()) {
             ERR_LOGS("Cannot find this breakpoint %p in my library. Not set by me?", pltPtr);
         } else if (brkpointCurContext.inHookHandler) {
             DBG_LOG("Function called within libscalerhook. Skip");
-            auto &brkpointInfo = thiz->brkPointInfo.at(pltPtr);
-            thiz->skipBrkPoint(brkpointInfo, (ucontext_t *) context);
+            thiz->skipBrkPoint(bp, (ucontext_t *) context);
         } else {
             brkpointCurContext.inHookHandler = true;
             //Parse information
-            size_t curFileID = 0;
-            size_t curFuncID = 0;
             void *callerAddr = nullptr;
             void *oriBrkpointLoc = nullptr;
 
-            if (!parseSymbolInfo(curFileID, curFuncID, callerAddr, oriBrkpointLoc, (ucontext_t *) context)) {
+            if (!parseSymbolInfo(callerAddr, (ucontext_t *) context)) {
                 //Brakpoint failed, may cause by sigstop sent by other process, continue.
                 //todo: Maybe I should pass signal to target instead
                 ERR_LOG("Cannot parse function info, continue execution");
@@ -668,7 +682,7 @@ namespace scaler {
 
             //Check if the breakpoint loc is a plt address
             if (thiz->isBrkPointLocPlt(oriBrkpointLoc)) {
-                thiz->preHookHandler(curFileID, curFuncID, callerAddr, oriBrkpointLoc, tid);
+                thiz->preHookHandler(bp.fileID, bp.funcID, callerAddr, oriBrkpointLoc, tid);
             } else {
                 thiz->afterHookHandler(tid);
             }

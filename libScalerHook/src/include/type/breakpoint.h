@@ -45,7 +45,8 @@ namespace scaler {
         char oriCode[15]{};
         int instLen = 0;
         xed_iclass_enum_t xiclass;
-        size_t funcID = 0; //funcID from scaler
+        ssize_t funcID = 0; //funcID from scaler
+        ssize_t fileID = -1;
         InstrOp operands[OPERAND_NUMBER];
         xed_decoded_inst_t xedDecodedInst;
 

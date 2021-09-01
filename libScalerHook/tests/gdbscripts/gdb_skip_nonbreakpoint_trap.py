@@ -8,10 +8,7 @@ def stopHandler(event):
 	if(type(event)==gdb.BreakpointEvent):
 		print ("event type: breakpoint stop")
 	else: 
-		print(event)
-		try:
-			gdb.execute("signal 5",from_tty=True)
-		except:
+		gdb.execute("signal 5",from_tty=True)
 			
 
 gdb.events.stop.connect(stopHandler)

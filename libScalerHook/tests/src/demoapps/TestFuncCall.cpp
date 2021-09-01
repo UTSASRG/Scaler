@@ -13,16 +13,27 @@ int main() {
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
 
-        if(fileName=="/lib/x86_64-linux-gnu/libc-2.27.so")
+        if (fileName == "/lib/x86_64-linux-gnu/libc-2.27.so") {
             return false;
+        } else if (fileName ==
+                   "/media/umass/datasystem/steven/Scaler/libScalerHook/lib/watcher/lib/xed2/lib/libxed.so") {
+            return false;
+        }else if(fileName == "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/libScalerHook-HookBrkpoint.so"){
+            return false;
+        }else if(fileName == "/lib/x86_64-linux-gnu/ld-2.27.so"){
+            return false;
+        }
 
-        if (fileName == "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall") {
+
+
+        if (fileName ==
+            "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall") {
             return true;
-        }else{
+        } else {
 //            printf("%s\n",fileName.c_str());
             return true;
         }
-    },INSTALL_TYPE::BRKPOINT);
+    }, INSTALL_TYPE::BRKPOINT);
 
     printf("Calling funcA\n");
     funcA();
