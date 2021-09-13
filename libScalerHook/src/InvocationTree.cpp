@@ -27,7 +27,7 @@ void scaler::SerilizableInvocationTree::save(FILE *fp) {
         treeRoot.setRealFileID(0);
 
         char fileName[255];
-        sprintf(fileName, "thread_%p.bin", tid);
+        sprintf(fileName, "thread_%lu.bin", tid);
         auto layerOrderedElem = serializeRootNode();
 
 

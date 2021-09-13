@@ -39,7 +39,7 @@ void scaler::VMEmulator::getInstrInfo(scaler::Breakpoint &bp) {
 
 void *scaler::VMEmulator::executeInstr(scaler::Breakpoint &bp, ucontext_t *context) {
 
-
+    return nullptr;
 
 //    void* next_instruction = NULL;
 //    xed_decoded_inst_t xedd;
@@ -671,7 +671,8 @@ void *scaler::VMEmulator::executeInstr(scaler::Breakpoint &bp, ucontext_t *conte
 }
 
 void
-scaler::VMEmulator::parseOp(xed_decoded_inst_t& decodedInst, uint64_t rel_address, scaler::InstrOp *operands, int real_size,
+scaler::VMEmulator::parseOp(xed_decoded_inst_t &decodedInst, uint64_t rel_address, scaler::InstrOp *operands,
+                            int real_size,
                             void *context) {
     const xed_inst_t *xi = xed_decoded_inst_inst(&decodedInst);
     int real_noperands = 0;

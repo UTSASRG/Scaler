@@ -278,8 +278,8 @@ namespace scaler {
 
                 //jmp to custom handler function
                 char output[256];
-                char *funcName = "pltHandler_%zu_%zu";
-                sprintf(output, funcName, curSymbol.fileId, curSymbol.extSymbolId);
+                std::string funcName = "pltHandler_%zu_%zu";
+                sprintf(output, funcName.c_str(), curSymbol.fileId, curSymbol.extSymbolId);
                 void *pltEntryAddr = dlsym(pltHookDl, output);
 
                 if (pltEntryAddr == NULL) {
@@ -320,7 +320,7 @@ namespace scaler {
                                            PROT_READ | PROT_WRITE | PROT_EXEC);
                     memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.extSymbolId + 1), dataPtr, 16);
                 } catch (const ScalerException &e) {
-                    ERR_LOGS(".plt replacement Failed for \"\":\"\" %s because %s",
+                    ERR_LOGS(".plt replacement Failed for \"%s\":\"%s\" because %s",
                              pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
                              e.info.c_str());
                     continue;
@@ -504,7 +504,7 @@ namespace scaler {
             fprintf(fp, "\"jmpq *%%r11\\n\\t\"\n");
 
             fprintf(fp, ");\n");
-            fprintf(fp, "}\n", pos);
+            fprintf(fp, "}\n");
         }
         fprintf(fp, "}\n");
         fclose(fp);
@@ -554,7 +554,7 @@ namespace scaler {
             fprintf(fp, "\"jmpq *%%r11\\n\\t\"\n");
 
             fprintf(fp, ");\n");
-            fprintf(fp, "}\n", pos);
+            fprintf(fp, "}\n");
         }
         fprintf(fp, "}\n");
         fclose(fp);
@@ -975,7 +975,7 @@ namespace scaler {
         libraryFileID = pmParser.findExecNameByAddr(curSymbol.addr);
         assert(libraryFileID != -1);
         curSymbol.libraryFileID = libraryFileID;
-        DBG_LOGS("curSymbol patched %s lib:%d", curSymbol.symbolName.c_str(), curSymbol.libraryFileID);
+        DBG_LOGS("curSymbol patched %s lib:%zd", curSymbol.symbolName.c_str(), curSymbol.libraryFileID);
     }
 
 //    void ExtFuncCallHookAsm::saveCommonFuncID() {

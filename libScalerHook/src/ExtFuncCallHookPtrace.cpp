@@ -827,7 +827,7 @@ namespace scaler {
         //Attach to new thread
         ptrace(PTRACE_SEIZE, newThreadTID, nullptr, nullptr);
 
-        DBG_LOGS("thread tid=%d created new thread tid=%d, new thread is attached", childTid, newThreadTID);
+        DBG_LOGS("thread tid=%d created new thread tid=%ld, new thread is attached", childTid, newThreadTID);
 
         if (ptrace(PTRACE_CONT, childTid, 0, 0) < 0) {
             throwScalerExceptionS(ErrCode::PTRACE_FAIL, "PTRACE_CONT failed because: %s", strerror(errno));
@@ -855,6 +855,7 @@ namespace scaler {
                 return -1;
             }
         }
+        return 1;
     }
 
     void *ExtFuncCallHookPtrace::findMainAddress() {

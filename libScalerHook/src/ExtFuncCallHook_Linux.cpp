@@ -242,7 +242,7 @@ namespace scaler {
         }
 
         char fileName[255];
-        sprintf(fileName, "symbol_%p.json", pthread_self());
+        sprintf(fileName, "symbol_%lu.json", pthread_self());
 
         FILE *fp = NULL;
         fp = fopen(fileName, "w");

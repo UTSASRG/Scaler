@@ -310,7 +310,7 @@ namespace scaler {
 //            printf(" ");
 //        }
 
-        DBG_LOGS("[Prehook %d] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(extSymbolId).c_str(),
+        DBG_LOGS("[Prehook %lu] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(extSymbolId).c_str(),
                  "unknownLib",
                  curELFImgInfo.filePath.c_str());
 
@@ -467,12 +467,11 @@ namespace scaler {
         //Otherwise we should execute
         //todo: Assert instruction is valid as it is guaranteed in brkpointEmitted
 
-
         if (brkPointInfo[bp.addr].fileID == -1) {
             //fileID unresolved, recolve now
             bp.fileID = pmParser.findExecNameByAddr(bp.addr);
         }
-
+        DBG_LOG("2");
 
         VMEmulator &emulator = VMEmulator::getInstance();
 
@@ -661,14 +660,15 @@ namespace scaler {
         greg_t regRip = ((ucontext_t *) context)->uc_mcontext.gregs[REG_RIP];
 
         void *pltPtr = (void *) ((uint64_t) regRip - 1); //The plt address where we applied breakpoint to
-        auto &bp = thiz->brkPointInfo.at(pltPtr);
 
-        if (thiz->brkPointInfo.find(pltPtr) == thiz->brkPointInfo.end()) {
-            ERR_LOGS("Cannot find this breakpoint %p in my library. Not set by me?", pltPtr);
-        } else if (brkpointCurContext.inHookHandler) {
-            //DBG_LOG("Function called within libscalerhook. Skip");
+        if (brkpointCurContext.inHookHandler) {
+            DBG_LOG("Function called within libscalerhook. Skip");
+            auto &bp = thiz->brkPointInfo.at(pltPtr);
             thiz->skipBrkPoint(bp, (ucontext_t *) context);
+        } else if (thiz->brkPointInfo.find(pltPtr) == thiz->brkPointInfo.end()) {
+            ERR_LOGS("Cannot find this breakpoint %p in my library. Not set by me?", pltPtr);
         } else {
+            auto &bp = thiz->brkPointInfo.at(pltPtr);
             brkpointCurContext.inHookHandler = true;
             //Parse information
             void *callerAddr = nullptr;

@@ -228,7 +228,7 @@ namespace scaler {
 
     void PmParser_Linux::parseOffsetStr(PMEntry_Linux &curEntry, const std::string &offsetStr) {
         //Put offset into offset (They are 8-bit hex without 0x prefix)
-        sscanf(offsetStr.c_str(), "%08x", &curEntry.offset);
+        sscanf(offsetStr.c_str(), "%8lx", &curEntry.offset);
     }
 
     void PmParser_Linux::parsePermStr(PMEntry_Linux &curEntry, const std::string &permStr) {

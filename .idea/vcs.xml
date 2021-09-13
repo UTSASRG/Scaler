@@ -2,7 +2,6 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/libScalerHook/lib/WatcherSource" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/libScalerHook/lib/json" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/libScalerHook/tests/lib/multithreadingtests" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/libScalerHook/tests/lib/multithreadingtests/benchmarks/pyperformance/src" vcs="Git" />
@@ -20,7 +19,5 @@
     <mapping directory="$PROJECT_DIR$/libScalerHook/tests/lib/multithreadingtests/realworldappsclient/apache-apr/src" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/libScalerHook/tests/lib/multithreadingtests/realworldappsclient/mysql-sysbench/src" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/libScalerHook/tests/lib/plthook" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/mbuild" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/xed" vcs="Git" />
   </component>
 </project>

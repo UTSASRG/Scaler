@@ -147,7 +147,9 @@ target_link_libraries(libScalerHook-parsecapps-pbzip2 ScalerHook-HookManualAsm p
 #target_link_libraries(TestInstall scalerhook FuncCallTest InstallTest dl)
 #target_link_options(TestInstall PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/unittests/libScalerHook/oldexperiments/mylinker.ld")
 
-
+add_executable(libScalerHook-unittests-Hashmap
+        src/unittests/TestHashmap.cpp)
+target_link_libraries(libScalerHook-unittests-Hashmap ScalerHook-HookManualAsm pthread)
 #
 #add_executable(TestNestingCall TestNestingCall.cpp)
 #target_include_directories(TestNestingCall PUBLIC libtest/header)
