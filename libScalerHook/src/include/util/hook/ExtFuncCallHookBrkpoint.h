@@ -5,14 +5,13 @@
 #include <type/breakpoint.h>
 #include <ucontext.h>
 #include <set>
+#include <util/datastructure/Hashmap.hh>
 
 namespace scaler {
-
     class ExtFuncCallHookBrkpoint : public ExtFuncCallHook_Linux {
     public:
 
         void install(SYMBOL_FILTER filterCallB) override;
-
 
         void uninstall() override;
 
@@ -49,7 +48,11 @@ namespace scaler {
         size_t findDynSymTblSize(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo);
 
 
-        std::map<void *, Breakpoint> brkPointInfo;         //Mapping fileID to PltCodeInfo
+        static uint8_t cmp(void *const &src, void *const &dst);
+
+        static ssize_t hfunc(void* const& key);
+
+        HashMap<void *, Breakpoint> brkPointInfo;         //Mapping fileID to PltCodeInfo
 
         std::set<void *> brkpointPltAddr;
 
@@ -63,13 +66,13 @@ namespace scaler {
 
         void afterHookHandler(pthread_t childTid);
 
-        static bool parseSymbolInfo(void *&callerAddr,ucontext_t *context);
+        static bool parseSymbolInfo(void *&callerAddr, ucontext_t *context);
 
         bool brkPointInstalledAt(void *addr);
 
         bool isBrkPointLocPlt(void *brkpointLoc);
 
-        void skipBrkPoint(Breakpoint& bp,ucontext_t* context);
+        void skipBrkPoint(Breakpoint &bp, ucontext_t *context);
 
         std::set<int> tracedTID;
 
@@ -85,6 +88,7 @@ namespace scaler {
         void waitBeforeMainExecution();
 
         void installSigIntHandler();
+
     };
 }
 

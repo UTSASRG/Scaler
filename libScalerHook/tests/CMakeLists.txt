@@ -104,7 +104,7 @@ add_executable(libScalerHook-parsecapps-aget
         src/parsecapps/aget/Resume.c
         src/parsecapps/aget/Signal.c)
 target_include_directories(libScalerHook-parsecapps-aget PUBLIC src/parsecapps/aget/include)
-target_link_libraries(libScalerHook-parsecapps-aget ScalerHook-HookManualAsm pthread dl)
+target_link_libraries(libScalerHook-parsecapps-aget ScalerHook-HookAuto-Brkpoint pthread dl)
 
 
 add_executable(libScalerHook-parsecapps-dedup
@@ -126,7 +126,7 @@ target_link_libraries(libScalerHook-parsecapps-dedup ScalerHook-HookManualAsm pt
 
 add_executable(libScalerHook-parsecapps-blackscholes src/parsecapps/blackscholes/blackscholes-pthread.cpp)
 target_compile_options(libScalerHook-parsecapps-blackscholes PRIVATE "-DENABLE_THREADS" "-DPARALLEL" "-DNCO=2" "-DN=960")
-target_link_libraries(libScalerHook-parsecapps-blackscholes pthread ScalerHook-HookManualAsm)
+target_link_libraries(libScalerHook-parsecapps-blackscholes ScalerHook-HookAuto-Brkpoint)
 
 
 find_package(BZip2 REQUIRED)

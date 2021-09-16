@@ -19,11 +19,15 @@ int doubletake_main(int argc, char **argv, char **envp) {
     //todo:Merged from asmSimpleCase. Only hook current executable for testing
     libPltHook->install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
-        if (fileName == execFileName) {
-            ERR_LOGS("Autoinstall %s:%s", fileName.c_str(), funcName.c_str());
-            return true;
-        } else {
+        if (fileName == "/lib/x86_64-linux-gnu/libc-2.27.so") {
             return false;
+        } else if (fileName ==
+                   "/media/umass/datasystem/steven/Scaler/libScalerHook/lib/watcher/lib/xed2/lib/libxed.so") {
+            return false;
+        }else if(fileName == "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/libScalerHook-HookBrkpoint.so"){
+            return false;
+        }else{
+            return true;
         }
     });
 

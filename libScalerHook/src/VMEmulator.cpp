@@ -25,9 +25,12 @@ void scaler::VMEmulator::getInstrInfo(scaler::Breakpoint &bp) {
         bp.xiclass = xed_decoded_inst_get_iclass(&bp.xedDecodedInst);
 
         // backup original data
-        for (int i = 0; i < bp.instLen; i++) {
-            bp.oriCode[i] = ((char *) bp.addr)[i];
-        }
+//        for (int i = 0; i < bp.instLen; i++) {
+//            bp.oriCode[i] = ((char *) bp.addr)[i];
+//
+//            DBG_LOGS("%d-%d,", bp.oriCode[i],bp.addr[i]);
+//        }
+
         // TRY to avoid functions from other library
         //memcpy(bp->inst_data, bp->addr, bp->inst_length);
 

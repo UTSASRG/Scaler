@@ -26,7 +26,8 @@ set(ScalerHookSrc
         src/Serilizable.cpp
         src/VMEmulator.cpp
         src/InvocationTree.cpp
-        src/StringTool.cpp)
+        src/StringTool.cpp
+        src/breakpoint.cpp)
 
 list(APPEND CMAKE_PREFIX_PATH "/media/umass/datasystem/steven/Downloads/intel/build/kits/xed-install-base-2021-08-26-lin-x86-64" )
 find_package(XED REQUIRED)
@@ -41,7 +42,7 @@ target_compile_definitions(ScalerHook-HookManualAsm PUBLIC XED_ENCODER)
 
 add_executable(ScalerHook-HookManualPtrace
         src/PtraceHookMain.cpp
-        ${ScalerHookSrc} src/breakpoint.cpp)
+       )
 target_include_directories(ScalerHook-HookManualPtrace PUBLIC src/include lib/inireader)
 target_link_libraries(ScalerHook-HookManualPtrace PUBLIC pthread dl nlohmann_json::nlohmann_json xed2 xed2-ild)
 target_compile_definitions(ScalerHook-HookManualPtrace PUBLIC XED_ENCODER)
@@ -60,6 +61,10 @@ target_compile_definitions(ScalerHook-HookBrkpoint PUBLIC XED_ENCODER)
 add_library(ScalerHook-HookAuto SHARED src/autoinstall.cpp)
 target_compile_options(ScalerHook-HookAuto PRIVATE "--verbose")
 target_link_libraries(ScalerHook-HookAuto PUBLIC ScalerHook-HookManualAsm)
+
+add_library(ScalerHook-HookAuto-Brkpoint SHARED src/autoinstall.cpp)
+target_compile_options(ScalerHook-HookAuto-Brkpoint PRIVATE "--verbose")
+target_link_libraries(ScalerHook-HookAuto-Brkpoint PUBLIC ScalerHook-HookBrkpoint)
 
 #Add tests
 add_subdirectory(tests)

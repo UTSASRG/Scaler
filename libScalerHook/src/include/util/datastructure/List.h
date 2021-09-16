@@ -18,26 +18,27 @@ namespace scaler {
             Entry *prev;
             Entry *next;
             T value;
-            bool root=false;
+            bool root = false;
 
             Entry() : prev(nullptr), next(nullptr), value() {
 
             }
 
-            Entry(Entry &rho) = delete;
+            bool operator==(const Entry &rho) {
+                value == rho.value;
+            }
 
-            Entry &operator=(Entry &rho) = delete;
+            Entry(const Entry &rho) {
+                operator=(rho);
+            };
 
-//            Entry(Entry &rho) {
-//                operator=(rho);
-//            };
-//
-//            Entry &operator=(Entry &rho) {
-//                prev = rho.prev;
-//                next = rho.next;
-//                value = rho.value;
-//                return *this;
-//            };
+            Entry &operator=(const Entry &rho) {
+                prev = rho.prev;
+                next = rho.next;
+                value = rho.value;
+                return *this;
+            };
+
             inline bool hasNext() {
                 return next != nullptr;
             }
@@ -45,15 +46,33 @@ namespace scaler {
 
         Entry root;
 
-        Entry *head;
-        Entry *tail;
-
-        List() : head(&root), tail(&root) {
-            root.root=true;
-        }
-
         bool isEmpty() {
             return head->next == nullptr;
+        }
+
+        inline void remove(Entry *node) {
+            //No element left
+            assert(node != head);
+            //Can't delete empty node
+            assert(node != nullptr);
+
+            if (!node->hasNext()) {
+                tail = node->prev;
+            }
+
+            node->prev->next = node->next;
+            node->next->prev = node->prev;
+            delete node;
+            node = nullptr;
+        }
+
+    public:
+        inline Entry *firstEntry() {
+            return head->next;
+        }
+
+        List() : head(&root), tail(&root) {
+            root.root = true;
         }
 
         inline void insertAfter(Entry *node, const T &val) {
@@ -76,25 +95,8 @@ namespace scaler {
                 newEntry->next->prev = newEntry;
         }
 
-        inline void remove(Entry *node) {
-            //No element left
-            assert(node != head);
-            //Can't delete empty node
-            assert(node != nullptr);
-
-            if (!node->hasNext()) {
-                tail = node->prev;
-            }
-
-            node->prev->next = node->next;
-            node->next->prev = node->prev;
-            delete node;
-            node = nullptr;
-        }
-
-        inline Entry *firstEntry() {
-            return head->next;
-        }
+        Entry *head;
+        Entry *tail;
     };
 
 

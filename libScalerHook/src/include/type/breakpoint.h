@@ -42,7 +42,7 @@ namespace scaler {
         uint8_t *addr = 0;
         // now it support one thread,
         // we can change it to thread mask later
-        char oriCode[15]{};
+        uint8_t oriCode[15]{};
         int instLen = 0;
         xed_iclass_enum_t xiclass;
         ssize_t funcID = 0; //funcID from scaler

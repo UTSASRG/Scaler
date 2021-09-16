@@ -98,8 +98,7 @@ namespace scaler {
                                                                                                  kcmp(kcmp),
                                                                                                  initialized(false),
                                                                                                  buckets(nullptr),
-                                                                                                 bucketNum(
-                                                                                                         bucketNum) {
+                                                                                                 bucketNum(bucketNum) {
             assert(hfunc != nullptr && kcmp != nullptr);
             // Initialize all of these _entries.
             buckets = (HashBucket *) malloc(sizeof(HashBucket) * (bucketNum + 1));
@@ -118,15 +117,15 @@ namespace scaler {
         // Look up whether an entry is existing or not.
         // If existing, return true. *value should be carried specific value for this key.
         // Otherwise, return false.
-        bool get(const TpKey &key, TpVal &value) {
+        bool get(const TpKey &key, TpVal *&value) {
             assert(initialized);
             size_t hindex = hashIndex(key);
 
-            typename HashBucket::Entry hashEntry;
+            typename HashBucket::Entry *hashEntry;
             HashBucket *bucket = getHashBucket(hindex);
             bool found = getHashEntry(key, bucket, hashEntry);
             if (found) {
-                value = hashEntry.val;
+                value = &hashEntry->val;
             }
             return found;
         }
@@ -317,7 +316,7 @@ namespace scaler {
                             //Reached the end of the list, try prev bucket
                             bucket = &hashMap->buckets[bucket->index - 1];
                             entry = bucket->entryList.tail;
-                            if(!entry->root)
+                            if (!entry->root)
                                 //If it is not root node, then we need to search forward
                                 return true;
                         } else {

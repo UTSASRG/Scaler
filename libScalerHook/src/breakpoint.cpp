@@ -13,6 +13,7 @@ scaler::Breakpoint &scaler::Breakpoint::operator=(const scaler::Breakpoint &rho)
         this->instLen = rho.instLen;
         this->addr = rho.addr;
         this->funcID = rho.funcID;
+        this->fileID = rho.fileID;
         memcpy(this->oriCode, rho.oriCode, rho.instLen);
         this->xedDecodedInst = rho.xedDecodedInst;
         this->xiclass = rho.xiclass;
