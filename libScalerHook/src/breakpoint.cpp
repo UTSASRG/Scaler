@@ -28,3 +28,7 @@ scaler::Breakpoint &scaler::Breakpoint::operator=(const scaler::Breakpoint &&rho
     operator=(rho);
     return *this;
 }
+
+bool scaler::Breakpoint::operator==(const scaler::Breakpoint &rho) {
+    return this->addr == rho.addr;
+}

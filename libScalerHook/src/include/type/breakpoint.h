@@ -56,6 +56,8 @@ namespace scaler {
 
         Breakpoint(const Breakpoint &&) noexcept;
 
+        bool operator==(const Breakpoint &);
+
         Breakpoint &operator=(const Breakpoint &);
 
         Breakpoint &operator=(const Breakpoint &&) noexcept;

@@ -67,20 +67,6 @@ namespace scaler {
         */
         std::vector<uint8_t> fillDestAddr2PseudoPltCode(size_t extSymbolId, void *funcAddr);
 
-        /**
-         * A handler written in C. It calls custom handler and calculates actual function address
-         * In the new code, .plt and .plt.sec uses the same handler. Since we currently don't calculate
-         * based on the first address.
-         * @param callerFuncAddr The next caller
-         * @param oriRBPLoc The rsp location before saving all registers
-         * @return Original function pointer
-         */
-        static void *cPreHookHandlerLinuxSec(size_t fileId, size_t extSymbolId, void *callerAddr, void *oriRBPLoc);
-
-        //static __attribute__ void *callerAddr);
-
-        static void *cAfterHookHandlerLinux();
-
         void *writeAndCompileHookHandler(std::vector<ExtSymInfo> &symbolToHook);
 
         void *writeAndCompilePseudoPlt(std::vector<ExtSymInfo> &symbolToHook);
@@ -89,13 +75,22 @@ namespace scaler {
 
 }
 
-#define DECL_PREHOOK(suffix) void *cPreHookHanlderLinux##suffix(int index, void *callerFuncAddr);
-
 
 extern "C" {
-DECL_PREHOOK()
 
-DECL_PREHOOK(Sec)
+/**
+ * A handler written in C. It calls custom handler and calculates actual function address
+ * In the new code, .plt and .plt.sec uses the same handler. Since we currently don't calculate
+ * based on the first address.
+ * @param callerFuncAddr The next caller
+ * @param oriRBPLoc The rsp location before saving all registers
+ * @return Original function pointer
+ */
+__attribute__((used)) static void *cPreHookHandlerLinux(size_t fileId, size_t extSymbolId, void *callerAddr, void *rspLoc);
+
+
+__attribute__((used)) static void *cAfterHookHandlerLinux();
+
 }
 
 #endif

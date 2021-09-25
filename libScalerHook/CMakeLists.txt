@@ -42,6 +42,7 @@ target_compile_definitions(ScalerHook-HookManualAsm PUBLIC XED_ENCODER)
 
 add_executable(ScalerHook-HookManualPtrace
         src/PtraceHookMain.cpp
+        ${ScalerHookSrc}
        )
 target_include_directories(ScalerHook-HookManualPtrace PUBLIC src/include lib/inireader)
 target_link_libraries(ScalerHook-HookManualPtrace PUBLIC pthread dl nlohmann_json::nlohmann_json xed2 xed2-ild)

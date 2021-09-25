@@ -164,7 +164,7 @@ void test7() {
     assert(b->oriCode[2] == 3);
     assert(b->oriCode[3] == 4);
     assert(b->instLen == 4);
-    assert(a==b);
+    assert(a==*b);
 
 }
 
