@@ -150,6 +150,10 @@ target_link_libraries(libScalerHook-parsecapps-pbzip2 ScalerHook-HookManualAsm p
 add_executable(libScalerHook-unittests-Hashmap
         src/unittests/TestHashmap.cpp)
 target_link_libraries(libScalerHook-unittests-Hashmap ScalerHook-HookManualAsm pthread)
+
+add_executable(libScalerHook-unittests-Stack
+        src/unittests/TestStack.cpp)
+target_link_libraries(libScalerHook-unittests-Stack ScalerHook-HookManualAsm pthread)
 #
 #add_executable(TestNestingCall TestNestingCall.cpp)
 #target_include_directories(TestNestingCall PUBLIC libtest/header)

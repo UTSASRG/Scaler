@@ -11,7 +11,7 @@
 #include <util/tool/ProcInfoParser.h>
 #include <util/tool/MemTool.h>
 #include "ExtFuncCallHook_Linux.hh"
-
+#include <util/datastructure/Stack.h>
 namespace scaler {
 
     class ExtFuncCallHookAsm : public ExtFuncCallHook_Linux {
