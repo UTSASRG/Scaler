@@ -2,7 +2,7 @@
 
 
 int main() {
-    scaler::Stack<int> myStack;
+    scaler::Stack<int> myStack(5);
     myStack.push(1);
     myStack.push(2);
     myStack.push(3);
@@ -19,5 +19,6 @@ int main() {
     myStack.pop();
     printf("%d\n",myStack.peek());
     myStack.pop();
+
     return 0;
 }

@@ -39,6 +39,12 @@ namespace scaler {
             internalVec.remove(internalVec.getSize() - 1);
         }
 
+        inline const T peekpop() {
+            auto rlt = peek();
+            pop();
+            return rlt;
+        }
+
     protected:
         Vector<T> internalVec;
     };
