@@ -28,15 +28,6 @@
 
 namespace scaler {
 
-#define PUSHXMM(ArgumentName) \
-"subq $16,%rsp\n\t" \
-"movdqu  %xmm"#ArgumentName" ,(%rsp)\n\t"
-
-#define POPXMM(ArgumentName) \
-"movdqu  (%rsp),%xmm"#ArgumentName"\n\t"\
-"addq $16,%rsp\n\t"
-
-
 #define PUSHYMM(ArgumentName) \
 "subq $32,%rsp\n\t" \
 "vmovdqu  %ymm"#ArgumentName" ,(%rsp)\n\t"
@@ -482,7 +473,7 @@ namespace scaler {
         fprintf(fp, "}\n");
         fclose(fp);
         //compile it
-        int sysRet = system("gcc -shared -fPIC ./testHandler.cpp -o ./testHandler.so");
+        int sysRet = system("gcc-9 -shared -fPIC ./testHandler.cpp -o ./testHandler.so");
         if (sysRet < 0) {
             throwScalerException(ErrCode::COMPILATION_FAILED, "gcc compilation handler failed");
         }
@@ -553,7 +544,7 @@ namespace scaler {
         }
         fprintf(fp, "}\n");
         fclose(fp);
-        int sysRet = system("gcc -shared -fPIC ./testPseudoPlt.cpp -o ./testPseudoPlt.so");
+        int sysRet = system("gcc-9 -shared -fPIC ./testPseudoPlt.cpp -o ./testPseudoPlt.so");
         if (sysRet < 0) {
             throwScalerException(ErrCode::COMPILATION_FAILED, "gcc compilation handler failed");
         }
@@ -658,7 +649,8 @@ namespace scaler {
         //R11 is the only register we can use. Store stack address in it. (%r11)==callerAddr. Later we'll pass this value
         //as a parameter to prehook
         "movq %rsp,%r11\n\t"
-
+        //Save flags
+        "pushf\n\t"
         // currsp=oldrsp-152
         //Save Parameter registers and RDI, RSI, RDX, RCX, R8, R9, R10
         "pushq %rdi\n\t"  // currsp=oldrsp-160
@@ -669,14 +661,6 @@ namespace scaler {
         "pushq %r9\n\t"   // currsp=oldrsp-200
         "pushq %r10\n\t"  // currsp=oldrsp-208
         //Save [XYZ]MM[0-7]
-        PUSHXMM(0) // currsp=oldrsp-224
-        PUSHXMM(1) // currsp=oldrsp-240
-        PUSHXMM(2) // currsp=oldrsp-256
-        PUSHXMM(3) // currsp=oldrsp-272
-        PUSHXMM(4) // currsp=oldrsp-288
-        PUSHXMM(5) // currsp=oldrsp-304
-        PUSHXMM(6) // currsp=oldrsp-320
-        PUSHXMM(7) // currsp=oldrsp-336
         //todo: Also save YMM0-7 and ZMM0-7
         PUSHYMM(0) // currsp=oldrsp-368
         PUSHYMM(1) // currsp=oldrsp-400
@@ -740,14 +724,6 @@ namespace scaler {
         POPYMM(2) // currsp=oldrsp-400
         POPYMM(1) // currsp=oldrsp-368
         POPYMM(0) // currsp=oldrsp-336
-        POPXMM(7) // currsp=oldrsp-320
-        POPXMM(6) // currsp=oldrsp-304
-        POPXMM(5) // currsp=oldrsp-288
-        POPXMM(4) // currsp=oldrsp-272
-        POPXMM(3) // currsp=oldrsp-256
-        POPXMM(2) // currsp=oldrsp-240
-        POPXMM(1) // currsp=oldrsp-224
-        POPXMM(0) // currsp=oldrsp-208
         "popq %r10\n\t" // currsp=oldrsp-200
         "popq %r9\n\t" // currsp=oldrsp-192
         "popq %r8\n\t" // currsp=oldrsp-184
@@ -755,6 +731,8 @@ namespace scaler {
         "popq %rdx\n\t" // currsp=oldrsp-168
         "popq %rsi\n\t" // currsp=oldrsp-160
         "popq %rdi\n\t" // currsp=oldrsp-152
+
+        "popf\n\t"
 
         // currsp=oldrsp-152
 
@@ -774,8 +752,6 @@ namespace scaler {
         //Save return value to stack
         "pushq %rax\n\t"
         "pushq %rdx\n\t"
-        PUSHXMM(0)
-        PUSHXMM(1)
         PUSHYMM(0)
         PUSHYMM(1)
         //todo: Handle ZMM
@@ -783,6 +759,8 @@ namespace scaler {
         /**
         * Save Environment
         */
+        "pushf\n\t"
+
         "pushq %rdi\n\t"  // currsp=oldrsp-160
         "pushq %rsi\n\t"  // currsp=oldrsp-168
         "pushq %rdx\n\t"  // currsp=oldrsp-176
@@ -791,14 +769,6 @@ namespace scaler {
         "pushq %r9\n\t"   // currsp=oldrsp-200
         "pushq %r10\n\t"  // currsp=oldrsp-208
         //Save [XYZ]MM[0-7]
-        PUSHXMM(0) // currsp=oldrsp-224
-        PUSHXMM(1) // currsp=oldrsp-240
-        PUSHXMM(2) // currsp=oldrsp-256
-        PUSHXMM(3) // currsp=oldrsp-272
-        PUSHXMM(4) // currsp=oldrsp-288
-        PUSHXMM(5) // currsp=oldrsp-304
-        PUSHXMM(6) // currsp=oldrsp-320
-        PUSHXMM(7) // currsp=oldrsp-336
         //todo: Also save YMM0-7 and ZMM0-7
         PUSHYMM(0) // currsp=oldrsp-368
         PUSHYMM(1) // currsp=oldrsp-400
@@ -845,14 +815,7 @@ namespace scaler {
         POPYMM(2) // currsp=oldrsp-400
         POPYMM(1) // currsp=oldrsp-368
         POPYMM(0) // currsp=oldrsp-336
-        POPXMM(7) // currsp=oldrsp-320
-        POPXMM(6) // currsp=oldrsp-304
-        POPXMM(5) // currsp=oldrsp-288
-        POPXMM(4) // currsp=oldrsp-272
-        POPXMM(3) // currsp=oldrsp-256
-        POPXMM(2) // currsp=oldrsp-240
-        POPXMM(1) // currsp=oldrsp-224
-        POPXMM(0) // currsp=oldrsp-208
+
         "popq %r10\n\t" // currsp=oldrsp-200
         "popq %r9\n\t" // currsp=oldrsp-192
         "popq %r8\n\t" // currsp=oldrsp-184
@@ -861,11 +824,10 @@ namespace scaler {
         "popq %rsi\n\t" // currsp=oldrsp-160
         "popq %rdi\n\t" // currsp=oldrsp-152
 
+        "popf\n\t"
 
         POPYMM(1)
         POPYMM(0)
-        POPXMM(1)
-        POPXMM(0)
         "popq %rdx\n\t"
         "popq %rax\n\t"
         //todo: Handle float return and XMM return

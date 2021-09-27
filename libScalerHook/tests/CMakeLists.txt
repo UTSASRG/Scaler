@@ -4,8 +4,8 @@ project(ScalerHook-Tests)
 enable_testing()
 find_package(GTest REQUIRED)
 
-add_compile_options("-fno-access-control" "-fno-stack-protector")
-
+add_compile_options("-fno-access-control" "--verbose" "-fPIC" "-fstack-protector-all")
+add_link_options("-zlazy")
 # ============================================================
 # Test libs
 # ============================================================
@@ -14,7 +14,6 @@ add_compile_options("-fno-access-control" "-fno-stack-protector")
 add_library(libScalerHook-testlib-FuncCall SHARED lib/FunctionCall/FuncWithDiffParms.cpp
         lib/FunctionCall/TenThousandFunc.cpp)
 target_include_directories(libScalerHook-testlib-FuncCall PUBLIC lib/FunctionCall/include)
-
 ## A library that calls libScalerHook-testlib-FuncCall
 
 add_library(libScalerHook-testlib-CallFuncCall SHARED lib/CallFunctionCall/CallFunctionCall.cpp)
@@ -50,8 +49,9 @@ target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHoo
 option(libScalerHook-demoapps_AUTO_INSTALL_HOOK "If ON, then ScalerHook-HookAuto will be linked. Otherwise ScalerHook-HookManualAsm will be linked" ON)
 
 add_executable(libScalerHook-demoapps-FuncCall src/demoapps/TestFuncCall.cpp)
-target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC ScalerHook-HookBrkpoint libScalerHook-testlib-FuncCall
+target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall KuBoPltHook dl)
+target_compile_options(libScalerHook-demoapps-FuncCall PRIVATE "-fstack-protector" "-zlazy")
 
 add_executable(libScalerHook-demoapps-HookEverything src/demoapps/TestHookEverything.cpp)
 target_include_directories(libScalerHook-demoapps-HookEverything PUBLIC libtest/header)

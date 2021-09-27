@@ -23,17 +23,17 @@ int main() {
         }
 
 
-
         if (fileName ==
             "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall") {
             return true;
         } else {
 //            printf("%s\n",fileName.c_str());
-            return true;
+            return false;
         }
-    }, INSTALL_TYPE::BRKPOINT);
+    }, INSTALL_TYPE::ASM);
 
     printf("Calling funcA\n");
+    funcA();
     funcA();
 
     printf("Calling funcB\n");
