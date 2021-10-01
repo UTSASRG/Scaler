@@ -868,7 +868,7 @@ size_t scaler::VMEmulator::getOp(scaler::InstrOp &op) {
     return op_value;
 }
 
-void scaler::VMEmulator::setMemory(void *address, int size, size_t value) {
+void scaler::VMEmulator::setMemory(void *address, int size, ssize_t value) {
 
 }
 

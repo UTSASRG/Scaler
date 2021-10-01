@@ -28,7 +28,7 @@ namespace scaler {
      *
      * @return An array of paired indexes.
      */
-    std::vector<size_t> findStrSplit(std::string &srcStr, char splitChar);
+    std::vector<ssize_t> findStrSplit(std::string &srcStr, char splitChar);
 
     void extractFileName_Linux(std::string absolutePath, std::string &pathName, std::string &fileName);
 }

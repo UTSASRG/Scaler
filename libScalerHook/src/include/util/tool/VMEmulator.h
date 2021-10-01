@@ -37,7 +37,7 @@ namespace scaler {
     private:
         VMEmulator();
 
-        void setMemory(void *address, int size, size_t value);
+        void setMemory(void *address, int size, ssize_t value);
 
         size_t getRegMask(InstrOp &op);
 

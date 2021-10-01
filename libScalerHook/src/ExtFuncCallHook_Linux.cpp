@@ -36,8 +36,8 @@ namespace scaler {
         for (auto iter = pmParser.procMap.begin(); iter != pmParser.procMap.end(); ++iter) {
             auto &curFileName = iter->first;
             auto &pmEntries = iter->second;
-            auto curFileiD = pmParser.fileIDMap.at(curFileName);
-            auto &curELFImgInfo = elfImgInfoMap[curFileiD];
+            FileID curFileiD = pmParser.fileIDMap.at(curFileName);
+            ELFImgInfo curELFImgInfo;
             curELFImgInfo.filePath = curFileName;
 
             if (curFileName == "") {
@@ -81,16 +81,18 @@ namespace scaler {
                 curELFImgInfo.dynStrTable = findElemPtrInDynamicSeg<char *>(elfParser, curELFImgInfo, curFileiD,
                                                                             DT_STRTAB);
 
-                curELFImgInfo.dynStrSize = findElemValInDynamicSeg<size_t>(elfParser, curELFImgInfo, curFileiD,
-                                                                           DT_STRSZ);
+                curELFImgInfo.dynStrSize = findElemValInDynamicSeg<ssize_t>(elfParser, curELFImgInfo, curFileiD,
+                                                                            DT_STRSZ);
 
                 curELFImgInfo.relaPlt = findElemPtrInDynamicSeg<ElfW(Rela) *>(elfParser, curELFImgInfo, curFileiD,
                                                                               DT_JMPREL);
 
-                curELFImgInfo.relaPltCnt = findElemValInDynamicSeg<size_t>(elfParser, curELFImgInfo, curFileiD,
-                                                                           DT_PLTRELSZ) / sizeof(ElfW(Rela));
+                curELFImgInfo.relaPltCnt = findElemValInDynamicSeg<ssize_t>(elfParser, curELFImgInfo, curFileiD,
+                                                                            DT_PLTRELSZ) / sizeof(ElfW(Rela));
 
                 parseRelaSymbol(curELFImgInfo, curFileiD);
+
+                elfImgInfoMap.put(curFileiD, curELFImgInfo);
 
             } catch (const ScalerException &e) {
                 //Remove current entry
@@ -143,7 +145,8 @@ namespace scaler {
     }
 
     ExtFuncCallHook_Linux::ExtFuncCallHook_Linux(PmParser_Linux &parser, MemoryTool_Linux &memTool) : pmParser(parser),
-                                                                                                      memTool(memTool) {
+                                                                                                      memTool(memTool),
+                                                                                                      elfImgInfoMap() {
 
     }
 
@@ -162,14 +165,14 @@ namespace scaler {
         return rltAddr;
     }
 
-    void ExtFuncCallHook_Linux::parseRelaSymbol(ELFImgInfo &curELFImgInfo, size_t curFileID) {
+    void ExtFuncCallHook_Linux::parseRelaSymbol(ELFImgInfo &curELFImgInfo, FileID curFileID) {
         std::stringstream ss;
-        for (size_t i = 0; i < curELFImgInfo.relaPltCnt; ++i) {
+        for (ssize_t i = 0; i < curELFImgInfo.relaPltCnt; ++i) {
             ElfW(Rela) *curRelaPlt = curELFImgInfo.relaPlt + i;
             //assert(ELF64_R_TYPE(curRelaPlt->r_info) == R_X86_64_JUMP_SLOT);
 
-            size_t relIdx = ELFW(R_SYM)(curRelaPlt->r_info);
-            size_t strIdx = curELFImgInfo.dynSymTable[relIdx].st_name;
+            ssize_t relIdx = ELFW(R_SYM)(curRelaPlt->r_info);
+            ssize_t strIdx = curELFImgInfo.dynSymTable[relIdx].st_name;
 
 
             if (strIdx + 1 > curELFImgInfo.dynStrSize) {
@@ -229,15 +232,15 @@ namespace scaler {
         }
 
         for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
-            auto &curFileID = iterFile->first;
-            auto &curELFImgInfo = iterFile->second;
+            auto &curFileID = iterFile.key();
+            auto &curELFImgInfo = iterFile.val();
             for (auto iter = curELFImgInfo.hookedExtSymbol.begin();
                  iter != curELFImgInfo.hookedExtSymbol.end(); ++iter) {
 
                 //DBG_LOGS("%zd %s %p %zd", iter->second.libraryFileID, iter->second.symbolName.c_str(),
                 //         iter->second.addr, iter->second.fileId);
-                outFile[std::to_string(iter->second.libraryFileID)]["funcNames"][std::to_string(int64_t(
-                        iter->second.addr))] = iter->second.symbolName;
+                outFile[std::to_string(iter.val().libraryFileID)]["funcNames"][std::to_string(int64_t(
+                        iter.val().addr))] = iter.val().symbolName;
             }
         }
 
@@ -256,17 +259,15 @@ namespace scaler {
     /**
      * This function will also update the libary fileID in ExtFuncCallHookAsm::hookedExtSymbol
      * @param callerFileID
-     * @param fileIDInCaller
+     * @param symbolIDInCaller
      * @param funcAddr
      * @param libraryFileID
      */
-    void ExtFuncCallHook_Linux::parseFuncInfo(size_t callerFileID, int64_t fileIDInCaller, void *&funcAddr,
-                                           int64_t &libraryFileID) {
+    void ExtFuncCallHook_Linux::parseFuncInfo(FileID callerFileID, FileID symbolIDInCaller, void *&funcAddr,
+                                              FileID &libraryFileID) {
 
 
     }
-
-
 
 
     ExtFuncCallHook_Linux::ELFImgInfo::~ELFImgInfo() {
@@ -278,7 +279,7 @@ namespace scaler {
         operator=(rho);
     }
 
-    ExtFuncCallHook_Linux::ELFImgInfo::ELFImgInfo() {
+    ExtFuncCallHook_Linux::ELFImgInfo::ELFImgInfo() : hookedExtSymbol() {
 
     }
 
@@ -291,7 +292,7 @@ namespace scaler {
         _DYNAMICAddr = rho._DYNAMICAddr;
         realAddrResolved = rho.realAddrResolved;
 
-       pseudoPlt = rho.pseudoPlt;
+        pseudoPlt = rho.pseudoPlt;
 
         hookedExtSymbol = rho.hookedExtSymbol;
         allExtSymbol = rho.allExtSymbol;
@@ -307,7 +308,7 @@ namespace scaler {
     }
 
 
-    bool ExtFuncCallHook_Linux::ELFImgInfo::PthreadFuncId::isFuncPthread(size_t funcID) {
+    bool ExtFuncCallHook_Linux::ELFImgInfo::PthreadFuncId::isFuncPthread(FuncID funcID) {
         return funcID == PTHREAD_CREATE ||
                funcID == PTHREAD_JOIN ||
                funcID == PTHREAD_TRYJOIN_NP ||
@@ -340,59 +341,59 @@ namespace scaler {
     std::vector<int> ExtFuncCallHook_Linux::ELFImgInfo::PthreadFuncId::getAllIds() {
         std::vector<int> result;
 
-        if (PTHREAD_CREATE !=-1)
+        if (PTHREAD_CREATE != -1)
             result.push_back(PTHREAD_CREATE);
-        if (PTHREAD_JOIN !=-1)
+        if (PTHREAD_JOIN != -1)
             result.push_back(PTHREAD_JOIN);
-        if (PTHREAD_TRYJOIN_NP !=-1)
+        if (PTHREAD_TRYJOIN_NP != -1)
             result.push_back(PTHREAD_TRYJOIN_NP);
-        if (PTHREAD_TIMEDJOIN_NP !=-1)
+        if (PTHREAD_TIMEDJOIN_NP != -1)
             result.push_back(PTHREAD_TIMEDJOIN_NP);
-        if (PTHREAD_CLOCKJOIN_NP !=-1)
+        if (PTHREAD_CLOCKJOIN_NP != -1)
             result.push_back(PTHREAD_CLOCKJOIN_NP);
-        if (PTHREAD_MUTEX_LOCK !=-1)
+        if (PTHREAD_MUTEX_LOCK != -1)
             result.push_back(PTHREAD_MUTEX_LOCK);
-        if (PTHREAD_MUTEX_TIMEDLOCK !=-1)
+        if (PTHREAD_MUTEX_TIMEDLOCK != -1)
             result.push_back(PTHREAD_MUTEX_TIMEDLOCK);
-        if (PTHREAD_MUTEX_CLOCKLOCK !=-1)
+        if (PTHREAD_MUTEX_CLOCKLOCK != -1)
             result.push_back(PTHREAD_MUTEX_CLOCKLOCK);
-        if (PTHREAD_MUTEX_UNLOCK !=-1)
+        if (PTHREAD_MUTEX_UNLOCK != -1)
             result.push_back(PTHREAD_MUTEX_UNLOCK);
-        if (PTHREAD_RWLOCK_RDLOCK !=-1)
+        if (PTHREAD_RWLOCK_RDLOCK != -1)
             result.push_back(PTHREAD_RWLOCK_RDLOCK);
-        if (PTHREAD_RWLOCK_TRYRDLOCK !=-1)
+        if (PTHREAD_RWLOCK_TRYRDLOCK != -1)
             result.push_back(PTHREAD_RWLOCK_TRYRDLOCK);
-        if (PTHREAD_RWLOCK_TIMEDRDLOCK !=-1)
+        if (PTHREAD_RWLOCK_TIMEDRDLOCK != -1)
             result.push_back(PTHREAD_RWLOCK_TIMEDRDLOCK);
-        if (PTHREAD_RWLOCK_CLOCKRDLOCK !=-1)
+        if (PTHREAD_RWLOCK_CLOCKRDLOCK != -1)
             result.push_back(PTHREAD_RWLOCK_CLOCKRDLOCK);
-        if (PTHREAD_RWLOCK_WRLOCK !=-1)
+        if (PTHREAD_RWLOCK_WRLOCK != -1)
             result.push_back(PTHREAD_RWLOCK_WRLOCK);
-        if (PTHREAD_RWLOCK_TRYWRLOCK !=-1)
+        if (PTHREAD_RWLOCK_TRYWRLOCK != -1)
             result.push_back(PTHREAD_RWLOCK_TRYWRLOCK);
-        if (PTHREAD_RWLOCK_TIMEDWRLOCK !=-1)
+        if (PTHREAD_RWLOCK_TIMEDWRLOCK != -1)
             result.push_back(PTHREAD_RWLOCK_TIMEDWRLOCK);
-        if (PTHREAD_RWLOCK_CLOCKWRLOCK !=-1)
+        if (PTHREAD_RWLOCK_CLOCKWRLOCK != -1)
             result.push_back(PTHREAD_RWLOCK_CLOCKWRLOCK);
-        if (PTHREAD_RWLOCK_UNLOCK !=-1)
+        if (PTHREAD_RWLOCK_UNLOCK != -1)
             result.push_back(PTHREAD_RWLOCK_UNLOCK);
-        if (PTHREAD_COND_SIGNAL !=-1)
+        if (PTHREAD_COND_SIGNAL != -1)
             result.push_back(PTHREAD_COND_SIGNAL);
-        if (PTHREAD_COND_BROADCAST !=-1)
+        if (PTHREAD_COND_BROADCAST != -1)
             result.push_back(PTHREAD_COND_BROADCAST);
-        if (PTHREAD_COND_WAIT !=-1)
+        if (PTHREAD_COND_WAIT != -1)
             result.push_back(PTHREAD_COND_WAIT);
-        if (PTHREAD_COND_TIMEDWAIT !=-1)
+        if (PTHREAD_COND_TIMEDWAIT != -1)
             result.push_back(PTHREAD_COND_TIMEDWAIT);
-        if (PTHREAD_COND_CLOCKWAIT !=-1)
+        if (PTHREAD_COND_CLOCKWAIT != -1)
             result.push_back(PTHREAD_COND_CLOCKWAIT);
-        if (PTHREAD_SPIN_LOCK !=-1)
+        if (PTHREAD_SPIN_LOCK != -1)
             result.push_back(PTHREAD_SPIN_LOCK);
-        if (PTHREAD_SPIN_TRYLOCK !=-1)
+        if (PTHREAD_SPIN_TRYLOCK != -1)
             result.push_back(PTHREAD_SPIN_TRYLOCK);
-        if (PTHREAD_SPIN_UNLOCK !=-1)
+        if (PTHREAD_SPIN_UNLOCK != -1)
             result.push_back(PTHREAD_SPIN_UNLOCK);
-        if (PTHREAD_BARRIER_WAIT !=-1)
+        if (PTHREAD_BARRIER_WAIT != -1)
             result.push_back(PTHREAD_BARRIER_WAIT);
 
 
@@ -400,7 +401,7 @@ namespace scaler {
     }
 
 
-    bool ExtFuncCallHook_Linux::ELFImgInfo::SemaphoreFuncId::isFuncSemaphore(size_t funcID) {
+    bool ExtFuncCallHook_Linux::ELFImgInfo::SemaphoreFuncId::isFuncSemaphore(FuncID funcID) {
         return funcID == SEM_WAIT ||
                funcID == SEM_TIMEDWAIT ||
                funcID == SEM_CLOCKWAIT ||
@@ -411,15 +412,15 @@ namespace scaler {
 
     std::vector<int> ExtFuncCallHook_Linux::ELFImgInfo::SemaphoreFuncId::getAllIds() {
         std::vector<int> result;
-        if (SEM_WAIT !=-1)
+        if (SEM_WAIT != -1)
             result.push_back(SEM_WAIT);
-        if (SEM_TIMEDWAIT !=-1)
+        if (SEM_TIMEDWAIT != -1)
             result.push_back(SEM_TIMEDWAIT);
-        if (SEM_CLOCKWAIT !=-1)
+        if (SEM_CLOCKWAIT != -1)
             result.push_back(SEM_CLOCKWAIT);
-        if (SEM_TRYWAIT !=-1)
+        if (SEM_TRYWAIT != -1)
             result.push_back(SEM_TRYWAIT);
-        if (SEM_POST !=-1)
+        if (SEM_POST != -1)
             result.push_back(SEM_POST);
         return result;
     }

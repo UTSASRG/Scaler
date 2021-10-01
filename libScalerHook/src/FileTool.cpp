@@ -3,8 +3,8 @@
 #include <exceptions/ErrCode.h>
 
 
-std::vector<size_t> scaler::findStrSplit(std::string &srcStr, char splitChar) {
-    std::vector<size_t> splitPoints;
+std::vector<ssize_t> scaler::findStrSplit(std::string &srcStr, char splitChar) {
+    std::vector<ssize_t> splitPoints;
     //Augment the first and last character in a string with splitChar.
     //This make edge cases easier to handle
     std::stringstream ss;
@@ -53,7 +53,7 @@ void scaler::extractFileName_Linux(std::string absolutePath, std::string &pathNa
     auto posi = absolutePath.find_last_of('/');
     if (posi == std::string::npos) {
         //Not found, return full string
-        throwScalerException(ErrCode::PATH_FORMAT_INCORRECT, "Path incorrect");
+        throwScalerExceptionS(ErrCode::PATH_FORMAT_INCORRECT, "Path incorrect: %s",absolutePath.c_str());
     } else {
         pathName = absolutePath.substr(0, posi);
         fileName = absolutePath.substr(posi + 1, absolutePath.length() - posi);

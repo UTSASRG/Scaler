@@ -27,7 +27,7 @@ namespace scaler {
         ~ExtFuncCallHookBrkpoint() override;
 
         void
-        parseFuncInfo(size_t callerFileID, int64_t fileIDInCaller, void *&funcAddr, int64_t &libraryFileID) override;
+        parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr, FileID &libraryFileID) override;
 
 
     protected:
@@ -42,10 +42,10 @@ namespace scaler {
          */
         explicit ExtFuncCallHookBrkpoint();
 
-        void parseRelaSymbol(ELFImgInfo &curELFImgInfo, size_t curFileID) override;
+        void parseRelaSymbol(ELFImgInfo &curELFImgInfo, FileID curFileID) override;
 
 
-        size_t findDynSymTblSize(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo);
+        ssize_t findDynSymTblSize(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo);
 
 
         static uint8_t cmp(void *const &src, void *const &dst);
@@ -57,11 +57,11 @@ namespace scaler {
         std::set<void *> brkpointPltAddr;
 
 
-        void recordBrkpointInfo(const size_t &funcID, void *addr, bool isPLT = false);
+        void recordBrkpointInfo(const FuncID &funcID, void *addr, bool isPLT = false);
 
         void insertBrkpointAt(Breakpoint &bp);
 
-        void preHookHandler(size_t curFileID, size_t extSymbolId, void *callerAddr, void *brkpointLoc,
+        void preHookHandler(FileID curFileID, SymID extSymbolId, void *callerAddr, void *brkpointLoc,
                             pthread_t childTid);
 
         void afterHookHandler(pthread_t childTid);

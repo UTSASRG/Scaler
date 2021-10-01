@@ -36,7 +36,7 @@ namespace scaler {
         //void saveCommonFuncID();
 
         void
-        parseFuncInfo(size_t callerFileID, int64_t fileIDInCaller, void *&funcAddr, int64_t &libraryFileID) override;
+        parseFuncInfo(FileID callerFileID, FuncID symbolIDInCaller, void *&funcAddr, FileID &libraryFileID) override;
 
         PmParserC_Linux pmParser;
 
@@ -65,7 +65,7 @@ namespace scaler {
         * todo: This function is machine specific
         * todo: Add assemboly code to comments to make it more clear
         */
-        std::vector<uint8_t> fillDestAddr2PseudoPltCode(size_t extSymbolId, void *funcAddr);
+        std::vector<uint8_t> fillDestAddr2PseudoPltCode(SymID extSymbolId, void *funcAddr);
 
         void *writeAndCompileHookHandler(std::vector<ExtSymInfo> &symbolToHook);
 
@@ -86,7 +86,7 @@ extern "C" {
  * @param oriRBPLoc The rsp location before saving all registers
  * @return Original function pointer
  */
-__attribute__((used)) static void *cPreHookHandlerLinux(size_t fileId, size_t extSymbolId, void *callerAddr, void *rspLoc);
+__attribute__((used)) static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc);
 
 
 __attribute__((used)) static void *cAfterHookHandlerLinux();

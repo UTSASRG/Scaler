@@ -18,7 +18,7 @@ namespace scaler {
 
     void MemoryTool_Linux::adjustMemPerm(void *startPtr, void *endPtr, int prem) {
         //Get page size
-        size_t pageSize = sysconf(_SC_PAGESIZE);
+        ssize_t pageSize = sysconf(_SC_PAGESIZE);
         //Get Page Bound
         void *startPtrBound = GET_PAGE_BOUND(startPtr, pageSize);
         void *endPtrBound = GET_PAGE_BOUND(endPtr, pageSize);
@@ -26,7 +26,7 @@ namespace scaler {
             endPtrBound = (uint8_t *) startPtrBound + pageSize;
 
         //todo:(uint8_t *) endPtrBound - (uint8_t  *) startPtrBound,
-        size_t memoryLength =
+        ssize_t memoryLength =
                 (ceil(((uint8_t *) endPtrBound - (uint8_t *) startPtrBound) / (double) pageSize)) * pageSize;
         if (mprotect(startPtrBound, memoryLength, prem) != 0) {
             throwScalerExceptionS(ErrCode::CANNOT_CHANGE_PERMISSION,

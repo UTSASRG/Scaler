@@ -12,9 +12,9 @@
 #include <util/tool/MemTool.h>
 #include <util/tool/MemoryTool_Linux.h>
 #include <exceptions/ScalerException.h>
+#include <util/datastructure/Hashmap.hh>
 
 namespace scaler {
-
 
     class ExtFuncCallHook_Linux : public Hook {
     public:
@@ -30,9 +30,26 @@ namespace scaler {
 
         virtual ~ExtFuncCallHook_Linux() override = 0;
 
-        virtual void parseFuncInfo(size_t callerFileID, int64_t fileIDInCaller, void *&funcAddr, int64_t &libraryFileID);
+        virtual void parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr, FileID &libraryFileID);
 
         virtual void saveAllSymbolId();
+
+        /**
+        * Symbol information
+        */
+        class ExtSymInfo {
+        public:
+
+
+            std::string symbolName = "";     //The name of a symbol in symbol table
+            void **gotEntry = nullptr;            //Pointer to a symbol's GOT entry. Use *gotEntry to get this symbol's real address.
+            void *pltEntry = nullptr;            //Pointer to a symbol's PLT entry.
+            void *pltSecEntry = nullptr;            //Pointer to a symbol's .plt.sec entry.
+            void *addr = nullptr;                 //The address of a symbol. After a symbol is resolved, it's equal to *gotEntry;
+            FileID fileId = -1;             //Store fileID for this symbol
+            SymID extSymbolId = -1;             //The id with respect to where this symbol is called. Store this symbol's ID (it's also called symbolID) //todo: change this to symbolID for consistency
+            FileID libraryFileID = -1;       //Store the libary file id that contains this
+        };
 
         /**
          * ELF image (ELF file in memory) information.
@@ -69,7 +86,7 @@ namespace scaler {
                 int PTHREAD_SPIN_UNLOCK = -1;
                 int PTHREAD_BARRIER_WAIT = -1;
 
-                bool isFuncPthread(size_t funcID);
+                bool isFuncPthread(FuncID funcID);
 
                 std::vector<int> getAllIds();
 
@@ -82,7 +99,7 @@ namespace scaler {
                 int SEM_TRYWAIT = -1;
                 int SEM_POST = -1;
 
-                bool isFuncSemaphore(size_t funcID);
+                bool isFuncSemaphore(FuncID funcID);
 
                 std::vector<int> getAllIds();
             };
@@ -100,18 +117,18 @@ namespace scaler {
 
             uint8_t *pseudoPlt = nullptr;                   //A pointer to pseudoPlt table
 
-            std::map<ssize_t, ExtSymInfo> hookedExtSymbol;   //External symbols that has already been hooked
+            HashMap<SymID, ExtSymInfo> hookedExtSymbol;   //External symbols that has already been hooked
 
 
-            std::map<size_t, ExtSymInfo> allExtSymbol;      //All external symbols in ELF image
-            std::map<std::string, size_t> funcIdMap;        //Mapping function name to it's id
-            std::map<size_t, std::string> idFuncMap;        //Mapping function id to it's name
+            std::map<SymID, ExtSymInfo> allExtSymbol;      //All external symbols in ELF image
+            std::map<std::string, FuncID> funcIdMap;        //Mapping function name to it's id
+            std::map<FuncID, std::string> idFuncMap;        //Mapping function id to it's name
             //todo: Check const for all variables
             ElfW(Rela) *relaPlt = nullptr;                            //The first .plt.rela entry in ELF iamge
             ElfW(Xword) relaPltCnt = 0;                         //The number of entries in relaPlt
             const ElfW(Sym) *dynSymTable = nullptr;                   //The first .dynamic entry in ELF image
             const char *dynStrTable = nullptr;                        //The starting position of dynamic symbol name
-            size_t dynStrSize = 0;                              //The size of dynamic string table
+            ssize_t dynStrSize = 0;                              //The size of dynamic string table
 
             uint8_t *baseAddrStart = nullptr;                              //The loading address of current elf image
             uint8_t *baseAddrEnd = nullptr;                              //The loading address of current elf image
@@ -131,10 +148,11 @@ namespace scaler {
 
         };
 
+
         PmParser_Linux &pmParser;
         MemoryTool_Linux &memTool;
 
-        std::map<size_t, ELFImgInfo> elfImgInfoMap;         //Mapping fileID to ELFImgInfo
+        HashMap<FileID, ELFImgInfo> elfImgInfoMap;         //Mapping fileID to ELFImgInfo
 
 
         /**
@@ -159,7 +177,7 @@ namespace scaler {
         template<typename SEGTYPE>
         SEGTYPE findElemPtrInDynamicSeg(ELFParser_Linux &elfParser,
                                         ELFImgInfo &curELFImgInfo,
-                                        size_t curFileID,
+                                        FileID curFileID,
                                         ElfW(Sxword) elemType) {
 
             const ElfW(Dyn) *dynEntryPtr = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, elemType);
@@ -174,7 +192,7 @@ namespace scaler {
         template<typename SEGTYPE>
         SEGTYPE findElemValInDynamicSeg(ELFParser_Linux &elfParser,
                                         ELFImgInfo &curELFImgInfo,
-                                        size_t curFileID,
+                                        FileID curFileID,
                                         ElfW(Sxword) elemType) {
 
             const ElfW(Dyn) *dynEntryPtr = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, elemType);
@@ -185,7 +203,7 @@ namespace scaler {
         }
 
 
-        virtual void parseRelaSymbol(ELFImgInfo &curELFImgInfo, size_t curFileID);
+        virtual void parseRelaSymbol(ELFImgInfo &curELFImgInfo, FileID curFileID);
     };
 
 }

@@ -37,7 +37,7 @@ namespace scaler {
         ~ExtFuncCallHookPtrace() override;
 
         void
-        parseFuncInfo(size_t callerFileID, int64_t fileIDInCaller, void *&funcAddr, int64_t &libraryFileID) override;
+        parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr, FileID &libraryFileID) override;
 
 
     protected:
@@ -56,7 +56,7 @@ namespace scaler {
 
             std::map<void *, unsigned long *> brkpointCodeMap; //addr: original code
 
-            std::map<void *, size_t> brkpointFuncMap; //Map plt/pltsec address to function id
+            std::map<void *, FuncID> brkpointFuncMap; //Map plt/pltsec address to function id
 
             std::set<void *> brkpointPltAddr;
 
@@ -74,29 +74,29 @@ namespace scaler {
          */
         explicit ExtFuncCallHookPtrace(pid_t childPID);
 
-        void parseRelaSymbol(ELFImgInfo &curELFImgInfo, size_t curFileID) override;
+        void parseRelaSymbol(ELFImgInfo &curELFImgInfo, FileID curFileID) override;
 
 
         pid_t childMainThreadTID;
 
 
-        size_t findDynSymTblSize(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo);
+        ssize_t findDynSymTblSize(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo);
 
 
         BrkPointInfo brkPointInfo;         //Mapping fileID to PltCodeInfo
 
-        void recordOriCode(const size_t &funcID, void *addr, bool isPLT = false);
+        void recordOriCode(const FuncID &funcID, void *addr, bool isPLT = false);
 
         void insertBrkpointAt(void *addr, int childTid);
 
         void debuggerLoop();
 
-        void preHookHandler(size_t curFileID, size_t extSymbolId, void *callerAddr, void *brkpointLoc,
+        void preHookHandler(FileID curFileID, SymID extSymbolId, void *callerAddr, void *brkpointLoc,
                             user_regs_struct &regs, int childTid);
 
         void afterHookHandler(int childTid);
 
-        bool parseSymbolInfo(size_t &curFileID, size_t &curFuncID, void *&callerAddr, void *&brkpointLoc,
+        bool parseSymbolInfo(FileID &curFileID, FuncID &curFuncID, void *&callerAddr, void *&brkpointLoc,
                              user_regs_struct &regs, int childTid);
 
         bool brkPointInstalledAt(void *addr);

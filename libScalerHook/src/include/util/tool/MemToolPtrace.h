@@ -19,7 +19,7 @@ namespace scaler {
         ~MemoryToolPtrace() override;
 
 
-        void *binCodeSearch(void *target, size_t targetSize, void *keyword, size_t keywordSize) override;
+        void *binCodeSearch(void *target, ssize_t targetSize, void *keyword, ssize_t keywordSize) override;
 
 
     protected:

@@ -77,24 +77,24 @@ namespace scaler {
             return endTimeStamp;
         }
 
-        inline void setRealFileID(size_t fileID) {
+        inline void setRealFileID(FileID fileID) {
             this->realFileID = fileID;
         }
 
-        inline ssize_t getRealFileID() {
+        inline FileID getRealFileID() {
             return realFileID;
         }
 
-        inline void setFuncAddr(int64_t funcAddr) {
-            this->funcAddr = funcAddr;
+        inline void setFuncAddr(void* funcAddr) {
+            this->funcAddr = reinterpret_cast<int64_t>(funcAddr);
         }
 
         inline int64_t getFuncAddr() {
             return funcAddr;
         }
 
-        inline void setExtFuncID(int64_t extFuncID) {
-            this->extFuncID = extFuncID;
+        inline void setExtFuncID(FuncID extFuncID) {
+            this->extFuncID = reinterpret_cast<int64_t>(extFuncID);
         }
 
         inline int64_t getExtFuncID() {

@@ -18,17 +18,18 @@ int main() {
         } else if (fileName ==
                    "/media/umass/datasystem/steven/Scaler/libScalerHook/lib/watcher/lib/xed2/lib/libxed.so") {
             return false;
-        }else if(fileName == "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/libScalerHook-HookBrkpoint.so"){
+        } else if (fileName ==
+                   "/media/umass/datasystem/steven/Scaler/libScalerHook/lib/watcher/lib/xed2/lib/libxed-ild.so") {
             return false;
-        }
-
-
-        if (fileName ==
-            "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall") {
+        } else if (fileName ==
+                   "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/libScalerHook-HookManualAsm.so") {
+            return false;
+        } else if (fileName ==
+                   "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall") {
             return true;
         } else {
-//            printf("%s\n",fileName.c_str());
-            return false;
+            printf("%s\n", fileName.c_str());
+            return true;
         }
     }, INSTALL_TYPE::ASM);
 
@@ -66,7 +67,7 @@ int main() {
     int a[] = {1, 2, 3, 4, 5};
     printf("a[]={1,2,3,4,5} starts at %p\n", a);
 
-    printf("My id is: %p\n",pthread_self());
+    printf("My id is: %lu\n", pthread_self());
 
 //    prctl(PR_SET_DUMPABLE, 1);
 

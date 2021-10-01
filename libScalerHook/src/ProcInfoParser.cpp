@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <util/tool/FileTool.h>
 #include <exceptions/ErrCode.h>
+#include <util/hook/hook.hh>
 
 
 #define PROCMAPS_LINE_MAX_LENGTH  (PATH_MAX + 100)
@@ -64,7 +65,7 @@ namespace scaler {
 
         //Sort sortedSegments by starting address
         std::sort(sortedSegments.begin(), sortedSegments.end(),
-                  [](const std::pair<size_t, PMEntry_Linux> &lhs, const std::pair<size_t, PMEntry_Linux> &rhs) {
+                  [](const std::pair<FileID, PMEntry_Linux> &lhs, const std::pair<FileID, PMEntry_Linux> &rhs) {
                       return (ElfW(Addr)) lhs.second.addrStart < (ElfW(Addr)) rhs.second.addrStart;
                   });
 
@@ -132,7 +133,7 @@ namespace scaler {
         PmParser_Linux *_this = static_cast<PmParser_Linux *>(data);
 
         if (_this->fileIDMap.count(std::string(info->dlpi_name)) != 0) {
-            size_t curFileId = _this->fileIDMap.at(std::string(info->dlpi_name));
+            FileID curFileId = _this->fileIDMap.at(std::string(info->dlpi_name));
             _this->linkedFileID.emplace_back(curFileId);
         } else {
             ERR_LOGS("%s not found in /self/proc/maps", info->dlpi_name);
@@ -148,7 +149,7 @@ namespace scaler {
 
     }
 
-    uint8_t *PmParser_Linux::autoAddBaseAddr(uint8_t *curBaseAddr, size_t curFileiD, ElfW(Addr) targetAddr) {
+    uint8_t *PmParser_Linux::autoAddBaseAddr(uint8_t *curBaseAddr, FileID curFileiD, ElfW(Addr) targetAddr) {
         ssize_t idWithBaseAddr = findExecNameByAddr(curBaseAddr + targetAddr);
         ssize_t idWithoutBaseAddr = findExecNameByAddr((void *) targetAddr);
         if (idWithBaseAddr == curFileiD) {
@@ -252,7 +253,7 @@ namespace scaler {
             fileIDMap[curEntry.pathName] = idFileMap.size() - 1;
             fileBaseAddrMap[idFileMap.size() - 1].first = (uint8_t *) (curEntry.addrStart);
         } else {
-            size_t fileID = fileIDMap.at(curEntry.pathName);
+            FileID fileID = fileIDMap.at(curEntry.pathName);
             //Assume address is incremental
             fileBaseAddrMap[fileID].second = (uint8_t *) (curEntry.addrEnd);
         }

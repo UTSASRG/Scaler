@@ -72,6 +72,11 @@ target_include_directories(libScalerHook-demoapps-Pthread PUBLIC libtest/header)
 target_link_libraries(libScalerHook-demoapps-Pthread ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall pthread dl)
 
 
+add_executable(libScalerHook-demoapps-Threadlocal src/demoapps/TestThreadLocalAssembly.cpp)
+target_include_directories(libScalerHook-demoapps-Threadlocal PUBLIC libtest/header)
+target_link_libraries(libScalerHook-demoapps-Threadlocal pthread dl)
+target_compile_options(libScalerHook-demoapps-Threadlocal PUBLIC "-mfsgsbase")
+
 add_executable(libScalerHook-demoapps-StdPthread src/demoapps/TestStdThread.cpp)
 target_include_directories(libScalerHook-demoapps-StdPthread PUBLIC libtest/header)
 target_link_libraries(libScalerHook-demoapps-StdPthread ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)

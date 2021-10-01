@@ -23,7 +23,7 @@ scaler::MemoryToolPtrace::~MemoryToolPtrace() {
 
 }
 
-void *scaler::MemoryToolPtrace::binCodeSearch(void *target, size_t targetSize, void *keyword, size_t keywordSize) {
+void *scaler::MemoryToolPtrace::binCodeSearch(void *target, ssize_t targetSize, void *keyword, ssize_t keywordSize) {
 
     void *cpyDataAddr = pmParser.readProcMem(target, targetSize);
     if (cpyDataAddr == nullptr)

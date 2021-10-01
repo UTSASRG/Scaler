@@ -38,8 +38,8 @@ namespace scaler {
     class ContextBrkpoint {
     public:
         //todo: Initialize using maximum stack size
-//        std::vector<size_t> extSymbolId;
-//        std::vector<size_t> fileId;
+//        std::vector<SymID> extSymbolId;
+//        std::vector<FileID> fileId;
         //Variables used to determine whether it's called by hook handler or not
 //        std::vector<void *> callerAddr;
 //        std::vector<int64_t> timestamp;
@@ -99,12 +99,12 @@ namespace scaler {
 
 
         //Step3: Use callback to determine which ID to hook
-        std::set<size_t> fileToHook;
+        std::set<FileID> fileToHook;
 
         for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
-            auto &curFileId = iterFile->first;
+            auto &curFileId = iterFile.key();
             auto &curFileName = pmParser.idFileMap.at(curFileId);
-            auto &curELFImgInfo = iterFile->second;
+            auto &curELFImgInfo = iterFile.val();
 
             //loop through external symbols, let user decide which symbol to hook through callback function
             for (auto iterSymbol = curELFImgInfo.idFuncMap.begin();
@@ -202,7 +202,7 @@ namespace scaler {
                     brkPointInfo.get(curSymbol.pltEntry, bp);
                     insertBrkpointAt(*bp);
 
-                    curELFImgInfo.hookedExtSymbol[curSymbol.extSymbolId] = curSymbol;
+                    curELFImgInfo.hookedExtSymbol.put(curSymbol.extSymbolId, curSymbol);
                 }
             }
         }
@@ -215,8 +215,7 @@ namespace scaler {
 
     ExtFuncCallHookBrkpoint::ExtFuncCallHookBrkpoint()
             : pmParser(), ExtFuncCallHook_Linux(pmParser, *MemoryTool_Linux::getInst()),
-              brkPointInfo(HashMap<void *, Breakpoint>(
-                      hfunc, cmp)) {
+              brkPointInfo() {
         //invocationTreeBrkpoint.libPltHook = this;
 
     }
@@ -235,7 +234,7 @@ namespace scaler {
 
     }
 
-    void ExtFuncCallHookBrkpoint::parseRelaSymbol(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo, size_t curFileID) {
+    void ExtFuncCallHookBrkpoint::parseRelaSymbol(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo, FileID curFileID) {
         //Copy memory from other process to this process. We don't need to worry about the original pointer, because those memory are allocated by the OS.
         //ELF file segments will also be automatically freed after ELFParser is deconstructed.
 
@@ -244,7 +243,7 @@ namespace scaler {
                                                                                curELFImgInfo.relaPltCnt *
                                                                                sizeof(ElfW(Rela))));
 
-        size_t maxDynSymId = findDynSymTblSize(curELFImgInfo);
+        ssize_t maxDynSymId = findDynSymTblSize(curELFImgInfo);
 
         //2.copy dynamic string table to current process
         curELFImgInfo.dynSymTable = reinterpret_cast<const Elf64_Sym *>(pmParser.readProcMem(
@@ -264,10 +263,10 @@ namespace scaler {
         free((void *) curELFImgInfo.dynStrTable);
     }
 
-    size_t ExtFuncCallHookBrkpoint::findDynSymTblSize(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo) {
+    ssize_t ExtFuncCallHookBrkpoint::findDynSymTblSize(ExtFuncCallHook_Linux::ELFImgInfo &curELFImgInfo) {
         ssize_t maxID = -1;
         //Since we don't know the size of .dynsym table, we have to use relocation table to figure it out.
-        for (size_t i = 0; i < curELFImgInfo.relaPltCnt; ++i) {
+        for (ssize_t i = 0; i < curELFImgInfo.relaPltCnt; ++i) {
             ElfW(Rela) *curRelaPlt = curELFImgInfo.relaPlt + i;
             ssize_t idx = ELFW(R_SYM)(curRelaPlt->r_info);
             if (idx > maxID)
@@ -297,7 +296,7 @@ namespace scaler {
 
 
     void
-    ExtFuncCallHookBrkpoint::preHookHandler(size_t curFileID, size_t extSymbolId, void *callerAddr, void *brkpointLoc,
+    ExtFuncCallHookBrkpoint::preHookHandler(FileID curFileID, SymID extSymbolId, void *callerAddr, void *brkpointLoc,
                                             pthread_t childTid) {
         //auto startTimeStamp = getunixtimestampms();
         brkpointCurContext.inHookHandler = true;
@@ -309,15 +308,16 @@ namespace scaler {
 //        brkpointCurContext.extSymbolId.push_back(extSymbolId);
 
 
-        ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(curFileID);
+        ELFImgInfo *curELFImgInfo;
+        elfImgInfoMap.get(curFileID, curELFImgInfo);
 
 //        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
 //            printf(" ");
 //        }
 
-        DBG_LOGS("[Prehook %lu] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(extSymbolId).c_str(),
+        DBG_LOGS("[Prehook %lu] %s in %s is called in %s", childTid, curELFImgInfo->idFuncMap.at(extSymbolId).c_str(),
                  "unknownLib",
-                 curELFImgInfo.filePath.c_str());
+                 curELFImgInfo->filePath.c_str());
 
         //Check if a breakpoint is inserted at return address
 //        if (!brkPointInstalledAt(callerAddr)) {
@@ -351,12 +351,12 @@ namespace scaler {
 //        void *callerAddr = brkpointCurContext.callerAddr.at(brkpointCurContext.callerAddr.size() - 1);
 //        brkpointCurContext.callerAddr.pop_back();
 //
-//        size_t fileId = brkpointCurContext.fileId.at(brkpointCurContext.fileId.size() - 1);
+//        FileID fileId = brkpointCurContext.fileId.at(brkpointCurContext.fileId.size() - 1);
 //        brkpointCurContext.fileId.pop_back();
 //
 //        ELFImgInfo &curELFImgInfo = elfImgInfoMap.at(fileId);
 //
-//        size_t funcId = brkpointCurContext.extSymbolId.at(brkpointCurContext.extSymbolId.size() - 1);
+//        FuncID funcId = brkpointCurContext.extSymbolId.at(brkpointCurContext.extSymbolId.size() - 1);
 //        brkpointCurContext.extSymbolId.pop_back();
 //        auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
 
@@ -444,7 +444,7 @@ namespace scaler {
         return brkPointInfo.get(addr, bp);
     }
 
-    void ExtFuncCallHookBrkpoint::recordBrkpointInfo(const size_t &funcID, void *addr, bool isPLT) {
+    void ExtFuncCallHookBrkpoint::recordBrkpointInfo(const FuncID &funcID, void *addr, bool isPLT) {
         //Get the plt data of curSymbol
         //todo: .plt size is hard coded
 
@@ -487,7 +487,7 @@ namespace scaler {
 //            //todo: Change everything to intptr
 //            relativeAddr = (xed_uint64_t) ((intptr_t) bp.addr - (intptr_t) pmParser.fileBaseAddrMap.at(bp.fileID).first);
 //        }
-        DBG_LOGS("relativeAddr=%p %p isApp=%s", relativeAddr, bp.addr, isapp ? "true" : "false");
+        DBG_LOGS("relativeAddr=%lu %p isApp=%s", relativeAddr, bp.addr, isapp ? "true" : "false");
         emulator.parseOp(bp.xedDecodedInst, relativeAddr, bp.operands, OPERAND_NUMBER, context);
 
         //Check the type of original code. If it is jmp, then we shouldn't use assembly to execute but should modify rip directly
@@ -673,7 +673,7 @@ namespace scaler {
 //            for (int i = 0; i < bp->instLen; i++) {
 //                DBG_LOGS("Here:%d", bp->oriCode[i]);
 //            }
-            DBG_LOGS("Function called within libscalerhook,addr=%p. Skip",bp->addr);
+            DBG_LOGS("Function called within libscalerhook,addr=%p. Skip", bp->addr);
             thiz->skipBrkPoint(*bp, (ucontext_t *) context);
         } else if (!thiz->brkPointInfo.get(pltPtr, bp)) {
             ERR_LOGS("Cannot find this breakpoint %p in my library. Not set by me?", pltPtr);
@@ -712,24 +712,27 @@ namespace scaler {
     }
 
 
-    void ExtFuncCallHookBrkpoint::parseFuncInfo(size_t callerFileID, int64_t fileIDInCaller, void *&funcAddr,
+    void ExtFuncCallHookBrkpoint::parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr,
                                                 int64_t &libraryFileID) {
         //Find correct symbol
-        auto &curSymbol = elfImgInfoMap.at(callerFileID).hookedExtSymbol.at(fileIDInCaller);
+        ELFImgInfo *curELFImgInfo;
+        elfImgInfoMap.get(callerFileID, curELFImgInfo);
+        ExtSymInfo *curSymbol;
+        curELFImgInfo->hookedExtSymbol.get(symbolIDInCaller, curSymbol);
 
-        if (curSymbol.symbolName == "exit") {
+        if (curSymbol->symbolName == "exit") {
             int j = 1;
         }
 
-        void **symbolAddr = (void **) pmParser.readProcMem(curSymbol.gotEntry, sizeof(curSymbol.gotEntry));
+        void **symbolAddr = (void **) pmParser.readProcMem(curSymbol->gotEntry, sizeof(curSymbol->gotEntry));
 
         //Parse address from got table
-        curSymbol.addr = *symbolAddr;
-        funcAddr = curSymbol.addr;
+        curSymbol->addr = *symbolAddr;
+        funcAddr = curSymbol->addr;
         //Search the fileID
-        libraryFileID = pmParser.findExecNameByAddr(curSymbol.addr);
+        libraryFileID = pmParser.findExecNameByAddr(curSymbol->addr);
         assert(libraryFileID != -1);
-        curSymbol.libraryFileID = libraryFileID;
+        curSymbol->libraryFileID = libraryFileID;
     }
 
     void ExtFuncCallHookBrkpoint::installSigIntHandler() {
@@ -756,6 +759,8 @@ namespace scaler {
         } else if (src < dst) {
             return -1;
         }
+        assert(false);
+        return -1;
     }
 
     ssize_t ExtFuncCallHookBrkpoint::hfunc(void *const &key) {

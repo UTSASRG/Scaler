@@ -71,8 +71,7 @@ void *getFuncAddr(std::string funcName) {
     } else if (funcName == "funcEverything") {
         return (void *) funcEverything;
     }
-
-
+    return nullptr;
 }
 
 void *findRdbg() {

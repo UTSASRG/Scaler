@@ -13,7 +13,7 @@
 
 namespace scaler {
 
-    void *MemoryTool::searchBinInMemory(void *segPtrInFile, size_t firstEntrySize,
+    void *MemoryTool::searchBinInMemory(void *segPtrInFile, ssize_t firstEntrySize,
                                         const std::vector<PMEntry_Linux> &segments, void *boundStartAddr,
                                         void *boundEndAddr) {
         void *rltAddr = nullptr;
@@ -28,7 +28,7 @@ namespace scaler {
         return rltAddr;
     }
 
-    void *MemoryTool::binCodeSearch(void *target, size_t targetSize, void *keyword, size_t keywordSize) {
+    void *MemoryTool::binCodeSearch(void *target, ssize_t targetSize, void *keyword, ssize_t keywordSize) {
         //Convert it to uint8* so that we can perform arithmetic operation on those pointers
         uint8_t *kwd = static_cast<uint8_t *>(keyword);
         uint8_t *tgt = static_cast<uint8_t *>(target);

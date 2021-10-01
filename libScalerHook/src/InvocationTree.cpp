@@ -34,7 +34,7 @@ void scaler::SerilizableInvocationTree::save(FILE *fp) {
         FILE *fp = NULL;
         fp = fopen(fileName, "w");
 
-        for (size_t i = 0; i < layerOrderedElem.size(); ++i) {
+        for (ssize_t i = 0; i < layerOrderedElem.size(); ++i) {
             auto &curElem = layerOrderedElem[i];
 
 //            if (curElem->getEndTimestamp() == -1) {
@@ -65,7 +65,7 @@ void scaler::SerilizableInvocationTree::save(FILE *fp) {
             }
         }
 
-        for (size_t i = 0; i < layerOrderedElem.size(); ++i) {
+        for (ssize_t i = 0; i < layerOrderedElem.size(); ++i) {
             layerOrderedElem[i]->save(fp);
         }
         fclose(fp);

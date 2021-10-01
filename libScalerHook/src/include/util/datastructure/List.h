@@ -9,10 +9,10 @@ namespace scaler {
      */
     template<typename T>
     class List {
-    protected:
+    public:
         /**
-         * An entry to the list
-         */
+             * An entry to the list
+             */
         class Entry {
         public:
             Entry *prev;
@@ -25,7 +25,7 @@ namespace scaler {
             }
 
             bool operator==(const Entry &rho) {
-                value == rho.value;
+                return value == rho.value;
             }
 
             Entry(const Entry &rho) {
@@ -43,6 +43,7 @@ namespace scaler {
                 return next != nullptr;
             }
         };
+    protected:
 
         Entry root;
 
@@ -67,6 +68,7 @@ namespace scaler {
         }
 
     public:
+
         inline Entry *firstEntry() {
             return head->next;
         }
@@ -97,6 +99,7 @@ namespace scaler {
 
         Entry *head;
         Entry *tail;
+
     };
 
 
