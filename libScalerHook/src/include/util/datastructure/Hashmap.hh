@@ -303,9 +303,7 @@ namespace scaler {
             }
 
             inline bool hasNext() {
-                HashMap::HashBucket *bucket;
-                typename List<typename HashMap::HashBucket::Entry>::Entry *entry;
-                return getNextEntry(bucket, entry);
+                return curBucket->index != hashMap->bucketNum;
             }
 
             inline bool hasValue() {

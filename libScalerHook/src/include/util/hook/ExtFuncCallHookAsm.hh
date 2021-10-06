@@ -12,6 +12,8 @@
 #include <util/tool/MemTool.h>
 #include "ExtFuncCallHook_Linux.hh"
 #include <util/datastructure/Stack.h>
+#include <util/tool/AssemblyTool.h>
+
 namespace scaler {
 
     class ExtFuncCallHookAsm : public ExtFuncCallHook_Linux {
@@ -86,7 +88,8 @@ extern "C" {
  * @param oriRBPLoc The rsp location before saving all registers
  * @return Original function pointer
  */
-__attribute__((used)) static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc);
+__attribute__((used)) static void *
+cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc);
 
 
 __attribute__((used)) static void *cAfterHookHandlerLinux();
@@ -96,3 +99,6 @@ __attribute__((used)) static void *cAfterHookHandlerLinux();
 #endif
 
 #endif
+
+
+void *print_message_function1(void *ptr);

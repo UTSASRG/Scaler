@@ -39,8 +39,8 @@ int main() {
     /* wait we run the risk of executing an exit which will terminate   */
     /* the process and all threads before the threads have completed.   */
 
-    printf("thread1 id=%lu\n",thread1);
-    printf("thread2 id=%lu\n",thread2);
+    printf("thread1 id=%lu\n", thread1);
+    printf("thread2 id=%lu\n", thread2);
 
     pthread_join(thread1, NULL);
     pthread_join(thread2, NULL);
@@ -53,8 +53,13 @@ int main() {
 //    libPltHook->saveAllSymbolId();
 }
 
+thread_local char asdf;
+
 void *print_message_function(void *ptr) {
     char *message;
     message = (char *) ptr;
     printf("%s \n", message);
+
+    printf("%d %lu\n",&asdf, &asdf - (char*)pthread_self());
+
 }

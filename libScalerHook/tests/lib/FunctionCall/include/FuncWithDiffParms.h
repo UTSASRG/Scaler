@@ -27,6 +27,7 @@ uint64_t funcTiming();
 
 void resolveSystemFunc();
 
+pthread_t myGetThreadID();
 typedef struct {
     int a, b;
     double d;

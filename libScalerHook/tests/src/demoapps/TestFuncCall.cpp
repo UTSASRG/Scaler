@@ -22,6 +22,9 @@ int main() {
                    "/media/umass/datasystem/steven/Scaler/libScalerHook/lib/watcher/lib/xed2/lib/libxed-ild.so") {
             return false;
         } else if (fileName ==
+                   "/lib/x86_64-linux-gnu/ld-2.27.so") {
+            return false;
+        } else if (fileName ==
                    "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/libScalerHook-HookManualAsm.so") {
             return false;
         } else if (fileName ==
@@ -32,6 +35,11 @@ int main() {
             return true;
         }
     }, INSTALL_TYPE::ASM);
+
+
+//    pthread_t pt1 = pthread_self();
+//    printf("pt1=%lu\n", pt1);
+//    printf("pt1=%lu\n", myGetThreadID());
 
     printf("Calling funcA\n");
     funcA();

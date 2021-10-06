@@ -100,6 +100,11 @@ add_executable(libScalerHook-demoapps-InlineFunc src/demoapps/TestInlineFunction
 target_include_directories(libScalerHook-demoapps-InlineFunc PUBLIC)
 target_compile_options(libScalerHook-demoapps-InlineFunc PUBLIC "-g")
 
+add_executable(libScalerHook-demoapps-TestTLS src/demoapps/TestTLS.cpp)
+target_include_directories(libScalerHook-demoapps-TestTLS PUBLIC)
+target_compile_options(libScalerHook-demoapps-TestTLS PUBLIC "-g")
+target_link_libraries(libScalerHook-demoapps-TestTLS pthread)
+
 add_executable(libScalerHook-parsecapps-aget
         src/parsecapps/aget/Aget.c
         src/parsecapps/aget/Download.c

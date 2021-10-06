@@ -108,6 +108,16 @@ float funcF(float a, float b, float c) {
     return a + b + c;
 }
 
+# define THREAD_SELF \
+  ({ pthread_t *__self;                                                      \
+     asm ("mov %%fs:%c1,%0" : "=r" (__self)                                      \
+          : "i" (0x10));                       \
+     __self;})
+
+pthread_t myGetThreadID() {
+    return reinterpret_cast<pthread_t>(THREAD_SELF);
+}
+
 int A::asdf = 1;
 
 
