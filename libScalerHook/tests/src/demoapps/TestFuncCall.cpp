@@ -22,14 +22,14 @@ int main() {
                    "/media/umass/datasystem/steven/Scaler/libScalerHook/lib/watcher/lib/xed2/lib/libxed-ild.so") {
             return false;
         } else if (fileName ==
+                   "/lib/x86_64-linux-gnu/libdl-2.27.so") {
+            return false;
+        } else if (fileName ==
                    "/lib/x86_64-linux-gnu/ld-2.27.so") {
             return false;
         } else if (fileName ==
                    "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/libScalerHook-HookManualAsm.so") {
             return false;
-        } else if (fileName ==
-                   "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall") {
-            return true;
         } else {
             printf("%s\n", fileName.c_str());
             return true;
