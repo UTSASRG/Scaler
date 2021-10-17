@@ -13,9 +13,7 @@ int main() {
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
 
-        if (fileName == "/lib/x86_64-linux-gnu/libc-2.27.so") {
-            return false;
-        } else if (fileName ==
+        if (fileName ==
                    "/media/umass/datasystem/steven/Scaler/libScalerHook/lib/watcher/lib/xed2/lib/libxed.so") {
             return false;
         } else if (fileName ==
@@ -30,9 +28,14 @@ int main() {
         } else if (fileName ==
                    "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/libScalerHook-HookManualAsm.so") {
             return false;
+        } else if (fileName == "/lib/x86_64-linux-gnu/libc-2.27.so") {
+            return false;
+        } else if (fileName ==
+                   "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall") {
+            return true;
         } else {
             printf("%s\n", fileName.c_str());
-            return true;
+            return false;
         }
     }, INSTALL_TYPE::ASM);
 
