@@ -21,15 +21,23 @@ namespace scaler {
             internalArr = (T *) calloc(sizeof(T), initialSize);
         }
 
-        Vector(const Vector &rho) = delete;
+        Vector(const Vector &rho) {
+            operator=(rho);
+        }
 
-        Vector &operator=(const Vector &rho) = delete;
+        Vector &operator=(const Vector &rho) {
+            free(internalArr);
+            internalArr = (T *) calloc(sizeof(T), rho.internalArrSize);
+            size = rho.size;
+            internalArrSize = rho.internalArrSize;
+            memcpy(internalArr, rho.internalArr, rho.internalArrSize);
+        };
 
         bool isEmpty() {
             return size == 0;
         }
 
-        inline const T &operator[](const ssize_t &index) {
+        inline T &operator[](const ssize_t &index) {
             return internalArr[index];
         }
 

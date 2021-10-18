@@ -13,6 +13,7 @@
 #include <util/tool/MemoryTool_Linux.h>
 #include <exceptions/ScalerException.h>
 #include <util/datastructure/Hashmap.hh>
+#include <util/datastructure/Vector.h>
 
 namespace scaler {
 
@@ -48,7 +49,7 @@ namespace scaler {
             SymID extSymbolId = -1;             //The id with respect to where this symbol is called. Store this symbol's ID (it's also called symbolID) //todo: change this to symbolID for consistency
             FileID libraryFileID = -1;       //Store the libary file id that contains this
             int type = -1;
-            int bind=-1;
+            int bind = -1;
         };
 
         /**
@@ -112,7 +113,7 @@ namespace scaler {
             void *pltSecEndAddr = nullptr;                  //The ending address of the PLT.SEC table
             ElfW(Dyn) *_DYNAMICAddr = nullptr;              //The staring address of _DYNAMIC
 
-            std::vector<bool> realAddrResolved;             //Whether function with id i has been resolved.
+            Vector<bool> realAddrResolved;             //Whether function with id i has been resolved.
 
 
             uint8_t *pseudoPlt = nullptr;                   //A pointer to pseudoPlt table

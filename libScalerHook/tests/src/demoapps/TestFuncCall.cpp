@@ -21,10 +21,10 @@ int main() {
             return false;
         } else if (fileName ==
                    "/lib/x86_64-linux-gnu/libdl-2.27.so") {
-            return false;
+            return true;
         } else if (fileName ==
                    "/lib/x86_64-linux-gnu/ld-2.27.so") {
-            return false;
+            return true;
         } else if (fileName ==
                    "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/libScalerHook-HookManualAsm.so") {
             return false;

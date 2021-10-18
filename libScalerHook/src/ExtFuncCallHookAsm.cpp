@@ -250,7 +250,8 @@ namespace scaler {
             //Check if address is already resolved
             FileID symbolFileId = pmParser.findExecNameByAddr(curSymbol.addr);
             //Since it's external symbol, it's address must be in another file.
-            curELFImgInfo->realAddrResolved.emplace_back(symbolFileId != curSymbol.fileId);
+            curELFImgInfo->realAddrResolved.insertAt(curELFImgInfo->realAddrResolved.getSize(),
+                                                     symbolFileId != curSymbol.fileId);
 
             curELFImgInfo->hookedExtSymbol.put(curSymbol.extSymbolId, curSymbol);
         }
@@ -276,7 +277,7 @@ namespace scaler {
                 auto binCodeArr = fillDestAddr2HookCode(pltEntryAddr);
 
                 DBG_LOGS("[%s] %s hooked (ID:%d)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
-                       curSymbol.extSymbolId);
+                         curSymbol.extSymbolId);
 
                 //Step6: Replace .plt.sec and .plt
                 //todo: 16 is bin code dependent
@@ -898,12 +899,6 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     curElfImgInfo->hookedExtSymbol.get(extSymbolId, curSymbol);
     void *retOriFuncAddr = curSymbol->addr;
 
-    if (curContext->inHookHandler) {
-        curContext->callerAddr.push(callerAddr);
-//        pthread_mutex_unlock(&lock0);
-        return retOriFuncAddr;
-    }
-
 
     if (!curElfImgInfo->realAddrResolved[extSymbolId]) {
         void *curAddr = curSymbol->addr;
@@ -917,6 +912,15 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
             retOriFuncAddr = newAddr;
         }
     }
+
+
+    if (curContext->inHookHandler) {
+        curContext->callerAddr.push(callerAddr);
+//        pthread_mutex_unlock(&lock0);
+        return retOriFuncAddr;
+    }
+
+
 
 //    if (curContext.inHookHandler) {
 //        curContext.callerAddr.push(nullptr);
@@ -946,9 +950,9 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     //ss << 1;
     // uint64_t id = std::stoull(ss.str());
 
-//    DBG_LOGS("[Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p", pthread_self(),
-//             _this->pmParser.idFileMap.at(fileId).c_str(),
-//             curElfImgInfo->idFuncMap.at(extSymbolId).c_str(), retOriFuncAddr);
+    DBG_LOGS("[Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p", pthread_self(),
+             _this->pmParser.idFileMap.at(fileId).c_str(),
+             curElfImgInfo->idFuncMap.at(extSymbolId).c_str(), retOriFuncAddr);
 
     //Parse parameter based on functions
     //todo: for debugging purpose code is not efficient.
