@@ -46,7 +46,7 @@ namespace scaler {
             T *newInternalArr = (T *) calloc(sizeof(T), internalArrSize * 2);
             memcpy((void *) newInternalArr, oldInternalArr, internalArrSize * sizeof(T));
             internalArrSize *= 2;
-            delete oldInternalArr;
+            free(oldInternalArr);
             oldInternalArr = nullptr;
             internalArr = newInternalArr;
         }

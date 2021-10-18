@@ -183,6 +183,10 @@ namespace scaler {
             try {
                 newSymbol.symbolName = std::string(curELFImgInfo.dynStrTable + strIdx);
 
+                newSymbol.type = ELF64_ST_TYPE(curELFImgInfo.dynSymTable[relIdx].st_info);
+                newSymbol.bind = ELF64_ST_BIND(curELFImgInfo.dynSymTable[relIdx].st_info);
+
+
                 //todo: PLT stub is hard coded
                 newSymbol.pltEntry = (uint8_t *) curELFImgInfo.pltStartAddr + (i + 1) * 16;
 

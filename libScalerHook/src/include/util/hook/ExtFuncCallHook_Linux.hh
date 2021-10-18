@@ -39,8 +39,6 @@ namespace scaler {
         */
         class ExtSymInfo {
         public:
-
-
             std::string symbolName = "";     //The name of a symbol in symbol table
             void **gotEntry = nullptr;            //Pointer to a symbol's GOT entry. Use *gotEntry to get this symbol's real address.
             void *pltEntry = nullptr;            //Pointer to a symbol's PLT entry.
@@ -49,6 +47,8 @@ namespace scaler {
             FileID fileId = -1;             //Store fileID for this symbol
             SymID extSymbolId = -1;             //The id with respect to where this symbol is called. Store this symbol's ID (it's also called symbolID) //todo: change this to symbolID for consistency
             FileID libraryFileID = -1;       //Store the libary file id that contains this
+            int type = -1;
+            int bind=-1;
         };
 
         /**

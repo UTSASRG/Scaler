@@ -104,6 +104,12 @@ namespace scaler {
                  iterSymbol != curElfImgInfo.idFuncMap.end(); ++iterSymbol) {
                 auto &curSymbolId = iterSymbol->first;
                 auto &curSymbolName = iterSymbol->second;
+
+                const auto &curSymbol = curElfImgInfo.allExtSymbol.at(curSymbolId);
+                if (curSymbol.type != STT_FUNC || curSymbol.bind != STB_GLOBAL) {
+                    continue;
+                }
+
                 if (filterCallB(curFileName, curSymbolName)) {
                     //The user wants this symbol
                     symbolToHook.emplace_back(curElfImgInfo.allExtSymbol.at(curSymbolId));
@@ -269,7 +275,7 @@ namespace scaler {
 
                 auto binCodeArr = fillDestAddr2HookCode(pltEntryAddr);
 
-                printf("[%s] %s hooked (ID:%d)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
+                DBG_LOGS("[%s] %s hooked (ID:%d)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
                        curSymbol.extSymbolId);
 
                 //Step6: Replace .plt.sec and .plt
@@ -628,9 +634,6 @@ namespace scaler {
 "addq $16,%rsp\n\t"
 
 
-
-
-
     /**
      * Source code version for #define IMPL_ASMHANDLER
      * We can't add comments to a macro
@@ -694,7 +697,7 @@ namespace scaler {
         "subq $8,%rsp\n\t" //8
         "fnstcw (%rsp)\n\t" // 2 Bytes(8-2)
         "stmxcsr 2(%rsp)\n\t" // 4 Bytes(6-4)
-//        "pushf\n\t" //forward flag (Store all)
+        //        "pushf\n\t" //forward flag (Store all)
         "pushq %rax\n\t" //8
         "pushq %rcx\n\t" //8
         "pushq %rdx\n\t" //8
@@ -763,7 +766,7 @@ namespace scaler {
         "popq %rdx\n\t"
         "popq %rcx\n\t"
         "popq %rax\n\t"
-//        "popf\n\t" //forward flag (Store all)
+        //        "popf\n\t" //forward flag (Store all)
 
         "addq $8,%rsp\n\t" //8
         "fldcw (%rsp)\n\t" // 2 Bytes(8-2)
@@ -796,7 +799,7 @@ namespace scaler {
         /**
         * Save Environment
         */
-//        "pushf\n\t"
+        //        "pushf\n\t"
 
         "pushq %rdi\n\t"  // currsp=oldrsp-160
         "pushq %rsi\n\t"  // currsp=oldrsp-168
