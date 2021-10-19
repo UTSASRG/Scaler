@@ -276,16 +276,23 @@ namespace scaler {
 
                 auto binCodeArr = fillDestAddr2HookCode(pltEntryAddr);
 
-                DBG_LOGS("[%s] %s hooked (ID:%d)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
+                DBG_LOGS("[%s] %s hooked (ID:%d)", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
                          curSymbol.extSymbolId);
 
                 //Step6: Replace .plt.sec and .plt
                 //todo: 16 is bin code dependent
                 void *dataPtr = binCodeArr.data();
 
+
                 if (curELFImgInfo.pltSecStartAddr != nullptr) {
                     //.plt.sec table exists
+                    //todo: adjust the permission back after this
                     try {
+                        //Save original .plt.sec code
+                        void *oriPlt = malloc(16);
+                        memcpy(oriPlt, (uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.extSymbolId, 16);
+                        curELFImgInfo.oriPltSecCode.put(curSymbol.extSymbolId, oriPlt);
+
                         memTool->adjustMemPerm((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.extSymbolId,
                                                (uint8_t *) curELFImgInfo.pltSecStartAddr +
                                                16 * (curSymbol.extSymbolId + 1),
@@ -301,6 +308,12 @@ namespace scaler {
 
 
                 try {
+                    //Save original .plt code
+                    void *oriPlt = malloc(16);
+                    memcpy(oriPlt,
+                           (uint8_t *) (uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.extSymbolId + 1), 16);
+                    curELFImgInfo.oriPltCode.put(curSymbol.extSymbolId, oriPlt);
+
                     memTool->adjustMemPerm((uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.extSymbolId + 1),
                                            (uint8_t *) curELFImgInfo.pltStartAddr +
                                            16 * (curSymbol.extSymbolId + 1 + 1),
@@ -337,7 +350,61 @@ namespace scaler {
 
 
     void ExtFuncCallHookAsm::uninstall() {
-        throwScalerException(ErrCode::FUNC_NOT_IMPLEMENTED, "Uninstall is not implemented.");
+        __curContext->inHookHandler = true;
+
+        for (auto iter = elfImgInfoMap.begin(); iter != elfImgInfoMap.end(); ++iter) {
+            auto &curELFImgInfo = iter.val();
+
+            for (auto &curSymbol: curELFImgInfo.hookedExtSymbol) {
+
+//                DBG_LOGS("[%s] %s hooked (ID:%d)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
+//                         curSymbol.extSymbolId);
+                void *oriCodePtr = nullptr;
+
+                if (curELFImgInfo.pltSecStartAddr != nullptr) {
+                    //.plt.sec table exists
+                    try {
+                        //todo: what is this doesn't exist (for example, installer failed at this symbol)
+                        void **dataPtr;
+                        curELFImgInfo.oriPltSecCode.get(curSymbol.extSymbolId, dataPtr);
+
+                        //todo: adjust the permission back after this
+                        memTool->adjustMemPerm((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.extSymbolId,
+                                               (uint8_t *) curELFImgInfo.pltSecStartAddr +
+                                               16 * (curSymbol.extSymbolId + 1),
+                                               PROT_READ | PROT_WRITE | PROT_EXEC);
+                        memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.extSymbolId, *dataPtr, 16);
+                    } catch (const ScalerException &e) {
+                        ERR_LOGS(".plt.sec replacement Failed for \"%s\":\"%s\" because %s",
+                                 pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
+                                 e.info.c_str());
+                        continue;
+                    }
+                }
+
+
+                try {
+                    //todo: what is this doesn't exist (for example, installer failed at this symbol)
+                    void **dataPtr;
+                    curELFImgInfo.oriPltCode.get(curSymbol.extSymbolId, dataPtr);
+
+                    memTool->adjustMemPerm((uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.extSymbolId + 1),
+                                           (uint8_t *) curELFImgInfo.pltStartAddr +
+                                           16 * (curSymbol.extSymbolId + 1 + 1),
+                                           PROT_READ | PROT_WRITE | PROT_EXEC);
+                    memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.extSymbolId + 1), *dataPtr, 16);
+                } catch (const ScalerException &e) {
+                    ERR_LOGS(".plt replacement Failed for \"%s\":\"%s\" because %s",
+                             pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
+                             e.info.c_str());
+                    continue;
+                }
+                //todo: release memory stored in oroginal plt code
+            }
+
+        }
+
+        __curContext->inHookHandler = false;
     }
 
     std::vector<uint8_t> ExtFuncCallHookAsm::fillDestAddr2HookCode(void *funcAddr) {
@@ -915,18 +982,9 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 
 
     if (curContext->inHookHandler) {
-        curContext->callerAddr.push(callerAddr);
-//        pthread_mutex_unlock(&lock0);
+//        curContext->callerAddr.push(callerAddr);
         return retOriFuncAddr;
     }
-
-
-
-//    if (curContext.inHookHandler) {
-//        curContext.callerAddr.push(nullptr);
-//        pthread_mutex_unlock(&lock0);
-//        return retOriFuncAddr;
-//    }
 
     //Starting from here, we could call external symbols and it won't cause any problem
     curContext->inHookHandler = true;
@@ -934,12 +992,12 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 
     auto startTimeStamp = getunixtimestampms();
     //Push callerAddr into stack
-    curContext->timestamp.push(startTimeStamp);
-    curContext->callerAddr.push(callerAddr);
+//    curContext->timestamp.push(startTimeStamp);
+//    curContext->callerAddr.push(callerAddr);
     //Push calling info to afterhook
-    curContext->fileId.push(fileId);
+//    curContext->fileId.push(fileId);
     //todo: rename this to caller function
-    curContext->extSymbolId.push(extSymbolId);
+//    curContext->extSymbolId.push(extSymbolId);
 
 
 //        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {

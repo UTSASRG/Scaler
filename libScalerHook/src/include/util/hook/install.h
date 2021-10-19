@@ -14,3 +14,5 @@ void install(scaler::Hook::SYMBOL_FILTER filterCallB);
 void install(scaler::Hook::SYMBOL_FILTER filterCallB, INSTALL_TYPE type, pid_t childPID);
 
 void install(scaler::Hook::SYMBOL_FILTER filterCallB, INSTALL_TYPE type);
+
+void uninstall(INSTALL_TYPE type);

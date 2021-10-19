@@ -119,6 +119,9 @@ namespace scaler {
             uint8_t *pseudoPlt = nullptr;                   //A pointer to pseudoPlt table
 
             HashMap<SymID, ExtSymInfo> hookedExtSymbol;   //External symbols that has already been hooked
+            //todo:memory leak
+            HashMap<SymID, void *> oriPltCode;   //External symbols that has already been hooked
+            HashMap<SymID, void *> oriPltSecCode;   //External symbols that has already been hooked
 
 
             std::map<SymID, ExtSymInfo> allExtSymbol;      //All external symbols in ELF image

@@ -85,5 +85,6 @@ int main() {
 //    while (1) {
 //        std::this_thread::sleep_for(std::chrono::seconds(1));
 //    }
+    uninstall(INSTALL_TYPE::ASM);
     return 0;
 }
