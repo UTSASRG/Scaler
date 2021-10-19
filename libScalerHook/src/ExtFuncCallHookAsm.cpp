@@ -27,8 +27,8 @@
 //todo: many functions are too long
 
 extern "C" { ;
-class Context {
-public:
+struct Context {
+    void *scalerStack = nullptr;
     //todo: Initialize using maximum stack size
     scaler::Stack<scaler::SymID> extSymbolId;
     scaler::Stack<scaler::FileID> fileId;
@@ -54,6 +54,7 @@ namespace scaler {
     public:
         CThreadlocalInitializer() {
             __curContext = new Context();
+            __curContext->scalerStack = malloc(1024);
         }
 
         ~CThreadlocalInitializer() {
