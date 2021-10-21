@@ -28,7 +28,6 @@
 
 extern "C" { ;
 struct Context {
-    void *scalerStack = nullptr;
     //todo: Initialize using maximum stack size
     scaler::Stack<scaler::SymID> extSymbolId;
     scaler::Stack<scaler::FileID> fileId;
@@ -54,7 +53,6 @@ namespace scaler {
     public:
         CThreadlocalInitializer() {
             __curContext = new Context();
-            __curContext->scalerStack = malloc(1024);
         }
 
         ~CThreadlocalInitializer() {
@@ -191,20 +189,21 @@ namespace scaler {
         //Step4: Build pseodo PLT
 
         //Allocate pseudo address
+        /*
         for (auto &curFileID:fileToHook) {
             ELFImgInfo *curELFImgInfo;
             elfImgInfoMap.get(curFileID, curELFImgInfo);
 
             //Malloc mem area for pseodo plt
-            //todo: 18 is related to binary code. I should use a global config file to store it.
-            curELFImgInfo->pseudoPlt = (uint8_t *) malloc(curELFImgInfo->allExtSymbol.size() * 18);
+            //todo: 16 is related to binary code. I should use a global config file to store it.
+            curELFImgInfo->pseudoPlt = (uint8_t *) malloc(curELFImgInfo->allExtSymbol.size() * 16);
 
             //todo: debug log
             ERR_LOGS("Pseudo PLT addr for %s is %p", curELFImgInfo->filePath.c_str(), curELFImgInfo->pseudoPlt);
 
             try {
                 memTool->adjustMemPerm(curELFImgInfo->pseudoPlt,
-                                       curELFImgInfo->pseudoPlt + curELFImgInfo->allExtSymbol.size() * 18,
+                                       curELFImgInfo->pseudoPlt + curELFImgInfo->allExtSymbol.size() * 16,
                                        PROT_READ | PROT_WRITE | PROT_EXEC);
             } catch (const ScalerException &e) {
                 ERR_LOGS("Hook Failed, cannot change heap pseudoPlt permission. Exception Info:\"%s\"", e.info.c_str());
@@ -213,13 +212,14 @@ namespace scaler {
 
 
         }
+        */
 
         //Step5: Write plt handler code to file
-        void *pltHookDl = writeAndCompileHookHandler(symbolToHook);
+        void *redzoneJumperDl = writeAndCompileRedzoneJumper(symbolToHook);
 
 
-        //todo: debug here
-        writeAndCompilePseudoPlt(symbolToHook);
+        //todo: for debug only
+        void *pseudoPltDl = writeAndCompilePseudoPlt(symbolToHook);
 
         //Step6: Replace PLT table, jmp to dll function
         for (auto &curSymbol:symbolToHook) {
@@ -240,13 +240,10 @@ namespace scaler {
             elfImgInfoMap.get(curSymbol.fileId, curELFImgInfo);
 
             //Allocate plt table
-            auto binCodeArrPseudoPLT = fillDestAddr2PseudoPltCode(curSymbol.extSymbolId,
-                                                                  curELFImgInfo->pltStartAddr);
-            //Copy array todo:18 is machine specific
-
-
-            memcpy(curELFImgInfo->pseudoPlt + 18 * curSymbol.extSymbolId, binCodeArrPseudoPLT.data(), 18);
-
+            //auto binCodeArrPseudoPLT = fillDestAddr2PseudoPltCode(curSymbol.extSymbolId,
+            //                                                      curELFImgInfo->pltStartAddr);
+            //Copy array todo:16 is machine specific
+            //memcpy(curELFImgInfo->pseudoPlt + 16 * curSymbol.extSymbolId, binCodeArrPseudoPLT.data(), 16);
 
             //Check if address is already resolved
             FileID symbolFileId = pmParser.findExecNameByAddr(curSymbol.addr);
@@ -266,24 +263,22 @@ namespace scaler {
             for (auto &curSymbol: curELFImgInfo.hookedExtSymbol) {
                 //jmp to custom handler function
                 char output[256];
-                std::string funcName = "pltHandler_%zu_%zu";
+                std::string funcName = "__%zu_%zu";
                 sprintf(output, funcName.c_str(), curSymbol.fileId, curSymbol.extSymbolId);
-                void *pltEntryAddr = dlsym(pltHookDl, output);
 
-                if (pltEntryAddr == NULL) {
+                void *redzoneJumperAddr = dlsym(redzoneJumperDl, output);
+                curSymbol.pseudoPltEntry = dlsym(pseudoPltDl, output);
 
-                    throwScalerException(ErrCode::NO_HANDLER_IN_DLL, "Failed to find pltEntry address from dll");
+                if (redzoneJumperAddr == NULL) {
+                    throwScalerException(ErrCode::NO_HANDLER_IN_DLL, "Failed to find redzone jumper address from dll");
                 }
 
-                auto binCodeArr = fillDestAddr2HookCode(pltEntryAddr);
+                auto pltRedirectorCodeArr = fillDestAddr2PltRedirectorCode(redzoneJumperAddr);
 
                 DBG_LOGS("[%s] %s hooked (ID:%d)", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
                          curSymbol.extSymbolId);
 
                 //Step6: Replace .plt.sec and .plt
-                //todo: 16 is bin code dependent
-                void *dataPtr = binCodeArr.data();
-
 
                 if (curELFImgInfo.pltSecStartAddr != nullptr) {
                     //.plt.sec table exists
@@ -298,7 +293,8 @@ namespace scaler {
                                                (uint8_t *) curELFImgInfo.pltSecStartAddr +
                                                16 * (curSymbol.extSymbolId + 1),
                                                PROT_READ | PROT_WRITE | PROT_EXEC);
-                        memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.extSymbolId, dataPtr, 16);
+                        memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.extSymbolId,
+                               pltRedirectorCodeArr.data(), 16);
                     } catch (const ScalerException &e) {
                         ERR_LOGS(".plt.sec replacement Failed for \"%s\":\"%s\" because %s",
                                  pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
@@ -319,7 +315,8 @@ namespace scaler {
                                            (uint8_t *) curELFImgInfo.pltStartAddr +
                                            16 * (curSymbol.extSymbolId + 1 + 1),
                                            PROT_READ | PROT_WRITE | PROT_EXEC);
-                    memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.extSymbolId + 1), dataPtr, 16);
+                    memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.extSymbolId + 1),
+                           pltRedirectorCodeArr.data(), 16);
                 } catch (const ScalerException &e) {
                     ERR_LOGS(".plt replacement Failed for \"%s\":\"%s\" because %s",
                              pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
@@ -327,7 +324,7 @@ namespace scaler {
                     continue;
                 }
 
-                binCodeArr.clear();
+                pltRedirectorCodeArr.clear();
 
             }
 
@@ -408,7 +405,7 @@ namespace scaler {
         __curContext->inHookHandler = false;
     }
 
-    std::vector<uint8_t> ExtFuncCallHookAsm::fillDestAddr2HookCode(void *funcAddr) {
+    std::vector<uint8_t> ExtFuncCallHookAsm::fillDestAddr2PltRedirectorCode(void *funcAddr) {
         //The following "magical" numbers are actually two instructions
         //"movq  $0xFFFFFFFF,%r11\n\t"   73, 187, 0, 0, 0, 0, 0, 0, 0, 0,
         //"callq *%r11\n\t" 65, 255, 211
@@ -447,42 +444,43 @@ namespace scaler {
         return binCodeArr;
     }
 
-    std::vector<uint8_t> ExtFuncCallHookAsm::fillDestAddr2PseudoPltCode(SymID extSymbolId, void *funcAddr) {
-        //The following "magical" numbers are actually two instructions
-        //pushq    0FFFFh   104, 00, 00, 00, 00,
-        //movq     r11, 0FFFFFFFFh 73, 187, 00, 00, 00, 00, 00, 00, 00, 00,
-        //jmpq     r11 65, 255, 227
+    //todo: add a check here to compare with compiled result. This is to make sure the generated code is correct.
+//    std::vector<uint8_t> ExtFuncCallHookAsm::fillDestAddr2PseudoPltCode(SymID extSymbolId, void *funcAddr) {
+    //The following "magical" numbers are actually two instructions
+    //pushq    0FFFFh   104, 00, 00, 00, 00,
+    //movq     r11, 0FFFFFFFFh 73, 187, 00, 00, 00, 00, 00, 00, 00, 00,
+    //jmpq     r11 65, 255, 227
 
-        std::vector<uint8_t> binCodeArr = {104, 00, 00, 00, 00, 73, 187, 00, 00, 00, 00, 00, 00, 00, 00, 65, 255, 227};
+//        char binCodeArr[] = {255, 52, 37, 00, 00, 00, 00, 73, 199, 195, 00, 00, 00, 00, 65, 255, 227, 00};
+//
+//        const uint64_t h1 = 0b00000000000000000000000011111111;
+//        const uint64_t h2 = h1 << 8;
+//        const uint64_t h3 = h1 << 16;
+//        const uint64_t h4 = h1 << 24;
+//        const uint64_t h5 = h1 << 32;
+//        const uint64_t h6 = h1 << 40;
+//        const uint64_t h7 = h1 << 48;
+//        const uint64_t h8 = h1 << 56;
+//
+//
+//        binCodeArr[1] = extSymbolId & h1;
+//        binCodeArr[2] = (extSymbolId & h2) >> 8;
+//        binCodeArr[3] = (extSymbolId & h3) >> 16;
+//        binCodeArr[4] = (extSymbolId & h4) >> 24;
+//
+//        auto _funcAddr = (ElfW(Addr)) funcAddr;
+//
+//        binCodeArr[7] = _funcAddr & h1;
+//        binCodeArr[8] = (_funcAddr & h2) >> 8;
+//        binCodeArr[9] = (_funcAddr & h3) >> 16;
+//        binCodeArr[10] = (_funcAddr & h4) >> 24;
+//        binCodeArr[11] = (_funcAddr & h5) >> 32;
+//        binCodeArr[12] = (_funcAddr & h6) >> 40;
+//        binCodeArr[13] = (_funcAddr & h7) >> 48;
+//        binCodeArr[14] = (_funcAddr & h8) >> 56;
 
-        const uint64_t h1 = 0b00000000000000000000000011111111;
-        const uint64_t h2 = h1 << 8;
-        const uint64_t h3 = h1 << 16;
-        const uint64_t h4 = h1 << 24;
-        const uint64_t h5 = h1 << 32;
-        const uint64_t h6 = h1 << 40;
-        const uint64_t h7 = h1 << 48;
-        const uint64_t h8 = h1 << 56;
-
-
-        binCodeArr[1] = extSymbolId & h1;
-        binCodeArr[2] = (extSymbolId & h2) >> 8;
-        binCodeArr[3] = (extSymbolId & h3) >> 16;
-        binCodeArr[4] = (extSymbolId & h4) >> 24;
-
-        auto _funcAddr = (ElfW(Addr)) funcAddr;
-
-        binCodeArr[7] = _funcAddr & h1;
-        binCodeArr[8] = (_funcAddr & h2) >> 8;
-        binCodeArr[9] = (_funcAddr & h3) >> 16;
-        binCodeArr[10] = (_funcAddr & h4) >> 24;
-        binCodeArr[11] = (_funcAddr & h5) >> 32;
-        binCodeArr[12] = (_funcAddr & h6) >> 40;
-        binCodeArr[13] = (_funcAddr & h7) >> 48;
-        binCodeArr[14] = (_funcAddr & h8) >> 56;
-
-        return binCodeArr;
-    }
+//        return binCodeArr;
+//    }
 
     /**
      * todo: This function can be replaced by binary code. But writing this is easier for debugging.
@@ -519,11 +517,11 @@ namespace scaler {
      *
      * oldrsp-0        caller(return) address
      */
-    void *ExtFuncCallHookAsm::writeAndCompileHookHandler(std::vector<ExtSymInfo> &symbolToHook) {
+    void *ExtFuncCallHookAsm::writeAndCompileRedzoneJumper(std::vector<ExtSymInfo> &symbolToHook) {
 
         FILE *fp = NULL;
 
-        fp = fopen("./testHandler.cpp", "w");
+        fp = fopen("./redzoneJumper.cpp", "w");
         unsigned int pos = 0;
         const char *name;
         int i;
@@ -538,7 +536,7 @@ namespace scaler {
             fprintf(fp, "//%s\n", curElfImgInfo->idFuncMap.at(curSymbol.extSymbolId).c_str());
 
             //todo: In GCC < 8, naked function wasn't supported!!
-            fprintf(fp, "void  __attribute__((naked)) pltHandler_%zu_%zu(){\n", curSymbol.fileId,
+            fprintf(fp, "void  __attribute__((naked)) __%zu_%zu(){\n", curSymbol.fileId,
                     curSymbol.extSymbolId);
             fprintf(fp, "__asm__ __volatile__ (\n");
 
@@ -565,14 +563,14 @@ namespace scaler {
         fprintf(fp, "}\n");
         fclose(fp);
         //compile it
-        int sysRet = system("gcc-9 -shared -fPIC ./testHandler.cpp -o ./testHandler.so");
+        int sysRet = system("gcc-9 -shared -fPIC ./redzoneJumper.cpp -o ./redzoneJumper.so");
         if (sysRet < 0) {
             throwScalerException(ErrCode::COMPILATION_FAILED, "gcc compilation handler failed");
         }
 
 
         std::stringstream ss;
-        ss << pmParser.curExecPath << "/testHandler.so";
+        ss << pmParser.curExecPath << "/redzoneJumper.so";
         void *handle = dlopen(ss.str().c_str(),
                               RTLD_NOW);
         if (handle == NULL) {
@@ -607,15 +605,14 @@ namespace scaler {
     }
 
     /**
-    * todo: This function can be replaced by binary code. But writing this is easier for debugging.
-    * Since it's easier to modify.
+    * This function dynamically compiles
     *
     * oldrsp-0        caller(return) address
     */
     void *ExtFuncCallHookAsm::writeAndCompilePseudoPlt(std::vector<ExtSymInfo> &symbolToHook) {
         FILE *fp = NULL;
 
-        fp = fopen("./testPseudoPlt.cpp", "w");
+        fp = fopen("./pseudoPlt.cpp", "w");
         unsigned int pos = 0;
         const char *name;
         int i;
@@ -625,14 +622,14 @@ namespace scaler {
             ELFImgInfo *curElfImgInfo;
             elfImgInfoMap.get(curSymbol.fileId, curElfImgInfo);
 
-
             fprintf(fp, "//%s\n", curElfImgInfo->filePath.c_str());
             fprintf(fp, "//%s\n", curElfImgInfo->idFuncMap.at(curSymbol.extSymbolId).c_str());
 
-            fprintf(fp, "void  __attribute__((naked)) pseudoPlt_%zu_%zu(){\n", curSymbol.fileId, curSymbol.extSymbolId);
+            fprintf(fp, "void  __attribute__((naked)) __%zu_%zu(){\n", curSymbol.fileId, curSymbol.extSymbolId);
             fprintf(fp, "__asm__ __volatile__ (\n");
 
-            fprintf(fp, "\"movq  $%p,%%r11\\n\\t\"\n", asmHookHandlerSec);
+            fprintf(fp, "\"pushq $%zd\\n\\t\"\n", curSymbol.extSymbolId);
+            fprintf(fp, "\"movq  $%p,%%r11\\n\\t\"\n", curElfImgInfo->pltStartAddr);
             fprintf(fp, "\"jmpq *%%r11\\n\\t\"\n");
 
             fprintf(fp, ");\n");
@@ -640,21 +637,20 @@ namespace scaler {
         }
         fprintf(fp, "}\n");
         fclose(fp);
-        int sysRet = system("gcc-9 -shared -fPIC ./testPseudoPlt.cpp -o ./testPseudoPlt.so");
+        int sysRet = system("gcc-9 -shared -fPIC ./pseudoPlt.cpp -o ./pseudoPlt.so");
         if (sysRet < 0) {
             throwScalerException(ErrCode::COMPILATION_FAILED, "gcc compilation handler failed");
         }
 
 
         std::stringstream ss;
-        ss << pmParser.curExecPath << "/testHandler.so";
+        ss << pmParser.curExecPath << "/pseudoPlt.so";
         void *handle = dlopen(ss.str().c_str(),
                               RTLD_NOW);
         if (handle == NULL) {
             throwScalerException(ErrCode::HANDLER_LOAD_FAILED, "dlOpen failed");
         }
         return handle;
-
     }
 
 //    void ExtFuncCallHookAsm::saveCommonFuncID() {
@@ -972,8 +968,8 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
         void *curAddr = curSymbol->addr;
         void *newAddr = *curSymbol->gotEntry;
         if (curAddr == newAddr) {
-            //todo: 18 depends on opCode array
-            retOriFuncAddr = curElfImgInfo->pseudoPlt + extSymbolId * 18;
+            //todo: 16 depends on opCode array
+            retOriFuncAddr = curSymbol->pseudoPltEntry;
         } else {
             curElfImgInfo->realAddrResolved[extSymbolId] = true;
             curSymbol->addr = newAddr;

@@ -60,16 +60,16 @@ namespace scaler {
          * todo: This function is machine specific
          * todo: Add assemboly code to comments to make it more clear
          */
-        std::vector<uint8_t> fillDestAddr2HookCode(void *funcAddr);
+        std::vector<uint8_t> fillDestAddr2PltRedirectorCode(void *funcAddr);
 
         /**
         * This function fills address into binary file  (Binary code used to store in Heap as Pseudo Plt table)
         * todo: This function is machine specific
         * todo: Add assemboly code to comments to make it more clear
         */
-        std::vector<uint8_t> fillDestAddr2PseudoPltCode(SymID extSymbolId, void *funcAddr);
+//        std::vector<uint8_t> fillDestAddr2PseudoPltCode(SymID extSymbolId, void *funcAddr);
 
-        void *writeAndCompileHookHandler(std::vector<ExtSymInfo> &symbolToHook);
+        void *writeAndCompileRedzoneJumper(std::vector<ExtSymInfo> &symbolToHook);
 
         void *writeAndCompilePseudoPlt(std::vector<ExtSymInfo> &symbolToHook);
 

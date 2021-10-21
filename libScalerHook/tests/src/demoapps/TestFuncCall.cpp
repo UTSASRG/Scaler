@@ -5,16 +5,18 @@
 #include <util/hook/install.h>
 #include <sys/prctl.h>
 #include <thread>
+#include <util/tool/MemTool.h>
 
 using namespace std;
 
 int main() {
-
+    scaler::MemoryTool *memTool = scaler::MemoryTool::getInst();
+    memTool->printStackInfo();
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
 
         if (fileName ==
-                   "/media/umass/datasystem/steven/Scaler/libScalerHook/lib/watcher/lib/xed2/lib/libxed.so") {
+            "/media/umass/datasystem/steven/Scaler/libScalerHook/lib/watcher/lib/xed2/lib/libxed.so") {
             return false;
         } else if (fileName ==
                    "/media/umass/datasystem/steven/Scaler/libScalerHook/lib/watcher/lib/xed2/lib/libxed-ild.so") {
@@ -24,12 +26,12 @@ int main() {
             return true;
         } else if (fileName ==
                    "/lib/x86_64-linux-gnu/ld-2.27.so") {
-            return true;
+            return false;
         } else if (fileName ==
                    "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/libScalerHook-HookManualAsm.so") {
             return false;
         } else if (fileName == "/lib/x86_64-linux-gnu/libc-2.27.so") {
-            return true;
+            return false;
         } else if (fileName ==
                    "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall") {
             return true;

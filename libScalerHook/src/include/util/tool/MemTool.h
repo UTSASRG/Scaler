@@ -16,6 +16,7 @@
 
 #include <sys/mman.h>
 #include "ProcInfoParser.h"
+#include "Logging.h"
 
 namespace scaler {
     class MemoryTool : public Object {
@@ -46,6 +47,34 @@ namespace scaler {
         virtual void *
         searchBinInMemory(void *segPtrInFile, ssize_t firstEntrySize, const std::vector<PMEntry_Linux> &segments,
                           void *boundStartAddr, void *boundEndAddr);
+
+        void printStackInfo() {
+
+
+            size_t stacksize = -1;
+            void *stack_addr = nullptr;
+            pthread_attr_t attr;
+            pthread_getattr_np(pthread_self(), &attr);
+
+            // 获取缺省的堆栈地址和大小
+            pthread_attr_getstack(&attr, &stack_addr, &stacksize);
+            std::cout << "default stack addr: " << stack_addr << std::endl;
+            std::cout << "default stack size: " << stacksize << std::endl;
+
+            size_t used, avail;
+
+            size_t stack_size;
+            size_t rsp_val;
+            asm("movq %%rsp, %0" : "=m"(rsp_val) :);
+            pthread_attr_getstack(&attr, &stack_addr, &stack_size);
+            pthread_attr_destroy(&attr);
+            avail = rsp_val - (size_t) stack_addr;
+            used = stack_size - avail;
+            DBG_LOGS(
+                    "Thread %lu stack info: rspVal=%p stacktop=%p stackbottom=%p  used = %zu, avail = %zuMB, total = %zuMB ",
+                    pthread_self(),rsp_val, (uint8_t*)stack_addr-(size_t)stack_size, (uint8_t*)stack_addr, used, avail/1024/1024,
+                    stack_size/1024/1024);
+        }
 
     protected:
         //Singeleton

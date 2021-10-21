@@ -27,6 +27,7 @@ namespace scaler {
 
         Vector &operator=(const Vector &rho) {
             free(internalArr);
+            internalArr = nullptr;
             internalArr = (T *) calloc(sizeof(T), rho.internalArrSize);
             size = rho.size;
             internalArrSize = rho.internalArrSize;
@@ -38,6 +39,8 @@ namespace scaler {
         }
 
         inline T &operator[](const ssize_t &index) {
+            assert(0 <= index < internalArrSize);
+            assert(internalArr != nullptr);
             return internalArr[index];
         }
 

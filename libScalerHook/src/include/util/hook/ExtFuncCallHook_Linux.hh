@@ -48,6 +48,7 @@ namespace scaler {
             FileID fileId = -1;             //Store fileID for this symbol
             SymID extSymbolId = -1;             //The id with respect to where this symbol is called. Store this symbol's ID (it's also called symbolID) //todo: change this to symbolID for consistency
             FileID libraryFileID = -1;       //Store the libary file id that contains this
+            void *pseudoPltEntry = nullptr;                   //A pointer to pseudoPltEntry
             int type = -1;
             int bind = -1;
         };
@@ -116,7 +117,7 @@ namespace scaler {
             Vector<bool> realAddrResolved;             //Whether function with id i has been resolved.
 
 
-            uint8_t *pseudoPlt = nullptr;                   //A pointer to pseudoPlt table
+//            uint8_t *pseudoPlt = nullptr;                   //A pointer to pseudoPlt table
 
             HashMap<SymID, ExtSymInfo> hookedExtSymbol;   //External symbols that has already been hooked
             //todo:memory leak
@@ -147,7 +148,7 @@ namespace scaler {
 
             ELFImgInfo(const ELFImgInfo &rho);
 
-            void operator=(const ELFImgInfo &rho);
+            ELFImgInfo &operator=(const ELFImgInfo &rho);
 
 
         };

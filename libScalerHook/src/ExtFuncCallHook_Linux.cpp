@@ -287,7 +287,7 @@ namespace scaler {
 
     }
 
-    void ExtFuncCallHook_Linux::ELFImgInfo::operator=(const ELFImgInfo &rho) {
+    ExtFuncCallHook_Linux::ELFImgInfo &ExtFuncCallHook_Linux::ELFImgInfo::operator=(const ELFImgInfo &rho) {
         filePath = rho.filePath;
         pltStartAddr = rho.pltStartAddr;
         pltEndAddr = rho.pltEndAddr;
@@ -296,7 +296,7 @@ namespace scaler {
         _DYNAMICAddr = rho._DYNAMICAddr;
         realAddrResolved = rho.realAddrResolved;
 
-        pseudoPlt = rho.pseudoPlt;
+        //pseudoPlt = rho.pseudoPlt;
 
         hookedExtSymbol = rho.hookedExtSymbol;
         allExtSymbol = rho.allExtSymbol;
@@ -309,6 +309,11 @@ namespace scaler {
         dynStrTable = rho.dynStrTable;
         dynStrSize = rho.dynStrSize;
         baseAddrStart = rho.baseAddrStart;
+
+        oriPltCode = rho.oriPltCode;
+        oriPltSecCode = rho.oriPltSecCode;
+
+        return *this;
     }
 
 

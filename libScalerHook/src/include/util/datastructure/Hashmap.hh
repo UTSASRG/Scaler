@@ -287,7 +287,7 @@ namespace scaler {
                 return !operator==(rho);
             }
 
-            const TpVal &operator*() {
+            TpVal &operator*() {
                 return val();
             }
 
