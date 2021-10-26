@@ -4398,7 +4398,7 @@ fprintf(stderr, " in the beginning of main\n");
 					{
 						if (do_remove(InFilename) == -1)
 						{
-							handle_error(EF_NOQUIT, 1, "Can't remove input file [%s]!", InFilename);
+							handle_error(EF_NOQUIT, 1, "Can't erase input file [%s]!", InFilename);
 						}	
 					}
 				}
@@ -4615,7 +4615,7 @@ fprintf(stderr, " in the beginning of main\n");
 			{
 				if (do_remove(InFilename) == -1)
 				{
-					handle_error(EF_NOQUIT, 1, "Can't remove input file [%s]!", InFilename);
+					handle_error(EF_NOQUIT, 1, "Can't erase input file [%s]!", InFilename);
 				}	
 			}
 		}

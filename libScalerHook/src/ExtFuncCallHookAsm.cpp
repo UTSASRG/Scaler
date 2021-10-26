@@ -36,9 +36,9 @@ struct Context {
     scaler::Stack<void *> callerAddr;
     scaler::Stack<int64_t> timestamp;
     scaler::Stack<pthread_t *> pthreadIdPtr;
-    scaler::ExtFuncCallHookAsm *thiz = nullptr;
-
 };
+
+scaler::ExtFuncCallHookAsm *scaler_extFuncCallHookAsm_thiz = nullptr;
 
 __thread Context *__curContext = nullptr;
 
@@ -53,6 +53,7 @@ namespace scaler {
     public:
         CThreadlocalInitializer() {
             __curContext = new Context();
+            DBG_LOGS("CThreadlocalInitializer tid=%zd",pthread_self());
         }
 
         ~CThreadlocalInitializer() {
@@ -85,7 +86,7 @@ namespace scaler {
 
 
         memTool = MemoryTool_Linux::getInst();
-        __curContext->thiz = this;
+        scaler_extFuncCallHookAsm_thiz = this;
 
         //Step1: Locating table in memory
         locateRequiredSecAndSeg();
@@ -95,9 +96,9 @@ namespace scaler {
         std::set<FileID> fileToHook;
 
         for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
-            auto &curFileId = iterFile.key();
+            auto &curFileId = iterFile.getKey();
             auto &curFileName = pmParser.idFileMap.at(curFileId);
-            auto &curElfImgInfo = iterFile.val();
+            auto &curElfImgInfo = iterFile.getVal();
             //loop through external symbols, let user decide which symbol to hook through callback function
             for (auto iterSymbol = curElfImgInfo.idFuncMap.begin();
                  iterSymbol != curElfImgInfo.idFuncMap.end(); ++iterSymbol) {
@@ -258,7 +259,7 @@ namespace scaler {
          * Replace PLT (.plt, .plt.sec) entries
          */
         for (auto iter = elfImgInfoMap.begin(); iter != elfImgInfoMap.end(); ++iter) {
-            auto &curELFImgInfo = iter.val();
+            auto &curELFImgInfo = iter.getVal();
 
             for (auto &curSymbol: curELFImgInfo.hookedExtSymbol) {
                 //jmp to custom handler function
@@ -351,7 +352,7 @@ namespace scaler {
         __curContext->inHookHandler = true;
 
         for (auto iter = elfImgInfoMap.begin(); iter != elfImgInfoMap.end(); ++iter) {
-            auto &curELFImgInfo = iter.val();
+            auto &curELFImgInfo = iter.getVal();
 
             for (auto &curSymbol: curELFImgInfo.hookedExtSymbol) {
 
@@ -760,8 +761,8 @@ namespace scaler {
         "pushq %r14\n\t" //8
         "pushq %r15\n\t" //8
         "subq $8,%rsp\n\t" //8
-        "fnstcw (%rsp)\n\t" // 2 Bytes(8-2)
-        "stmxcsr 2(%rsp)\n\t" // 4 Bytes(6-4)
+//        "stmxcsr (%rsp)\n\t" // 4 Bytes(8-4)
+//        "fnstcw 4(%rsp)\n\t" // 2 Bytes(4-2)
         //        "pushf\n\t" //forward flag (Store all)
         "pushq %rax\n\t" //8
         "pushq %rcx\n\t" //8
@@ -834,8 +835,8 @@ namespace scaler {
         //        "popf\n\t" //forward flag (Store all)
 
         "addq $8,%rsp\n\t" //8
-        "fldcw (%rsp)\n\t" // 2 Bytes(8-2)
-        "ldmxcsr 2(%rsp)\n\t" // 4 Bytes(6-4)
+//        "ldmxcsr (%rsp)\n\t" // 2 Bytes(8-4)
+//        "fldcw 4(%rsp)\n\t" // 4 Bytes(4-2)
 
         "popq %r15\n\t"
         "popq %r14\n\t"
@@ -938,14 +939,13 @@ extern "C" {
  */
 inline Context *getContext() {
     auto tid = reinterpret_cast<pthread_t>(THREAD_SELF);
-    return (Context *) (Context *) (threadLocalOffsetToTCB + (long long) tid);
+    return (Context *) (threadLocalOffsetToTCB + (long long) tid);
 }
 
 //pthread_mutex_t lock0 = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
 static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc) {
 
-    Context *curContext = getContext();
 
     //    pthread_mutex_lock(&lock0);
     //todo: The following two values are highly dependent on assembly code
@@ -954,7 +954,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 
     //Calculate fileID
 //    assert(curContext->thiz != nullptr);
-    auto &_this = curContext->thiz;
+    auto &_this = scaler_extFuncCallHookAsm_thiz;
 
     scaler::ExtFuncCallHookAsm::ELFImgInfo *curElfImgInfo;
     _this->elfImgInfoMap.get(fileId, curElfImgInfo);
@@ -977,6 +977,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
         }
     }
 
+    Context *curContext = getContext();
 
     if (curContext->inHookHandler) {
 //        curContext->callerAddr.push(callerAddr);
@@ -1005,9 +1006,9 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     //ss << 1;
     // uint64_t id = std::stoull(ss.str());
 
-    DBG_LOGS("[Pre Hook] Thread:%lu File:%s, Func: %s RetAddr:%p", pthread_self(),
-             _this->pmParser.idFileMap.at(fileId).c_str(),
-             curElfImgInfo->idFuncMap.at(extSymbolId).c_str(), retOriFuncAddr);
+    DBG_LOGS("[Pre Hook] Thread:%lu File(%ld):%s, Func(%ld): %s RetAddr:%p", pthread_self(),
+             fileId,_this->pmParser.idFileMap.at(fileId).c_str(),
+             extSymbolId,curElfImgInfo->idFuncMap.at(extSymbolId).c_str(), retOriFuncAddr);
 
     //Parse parameter based on functions
     //todo: for debugging purpose code is not efficient.
@@ -1261,8 +1262,8 @@ void *cAfterHookHandlerLinux() {
     }
     curContext->inHookHandler = true;
 
-    assert(curContext->thiz != nullptr);
-    auto &_this = curContext->thiz;
+    assert(scaler_extFuncCallHookAsm_thiz != nullptr);
+    auto &_this = scaler_extFuncCallHookAsm_thiz;
 
 //        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
 //            printf(" ");

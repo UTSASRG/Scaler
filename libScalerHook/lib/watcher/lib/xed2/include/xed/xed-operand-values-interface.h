@@ -93,7 +93,7 @@ XED_DLL_EXPORT xed_bool_t
 xed_operand_values_has_repne_prefix(const xed_operand_values_t* p);
 
 /// @ingroup OPERANDS    
-/// DO NOT USE - DEPRECATED. The  correct way to do remove a rep prefix is by changing the iclass
+/// DO NOT USE - DEPRECATED. The  correct way to do erase a rep prefix is by changing the iclass
 XED_DLL_EXPORT void xed_operand_values_clear_rep(xed_operand_values_t* p);
 
 //@}

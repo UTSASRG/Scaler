@@ -18,7 +18,6 @@ namespace scaler {
                                                    void *endAddr, void *boundStartAddr, void *boundEndAddr) {
         auto pltHdr = elfParser.getSecHdrByName(std::move(secName));
 
-
         void *pltAddrInFile = elfParser.getSecContent(pltHdr);
         startAddr = memTool.searchBinInMemory(pltAddrInFile, sizeof(pltHdr.secHdr.sh_entsize),
                                               pmParser.executableSegments, boundStartAddr, boundEndAddr);
@@ -236,15 +235,15 @@ namespace scaler {
         }
 
         for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
-            auto &curFileID = iterFile.key();
-            auto &curELFImgInfo = iterFile.val();
+            const auto &curFileID = iterFile.getKey();
+            auto &curELFImgInfo = iterFile.getVal();
             for (auto iter = curELFImgInfo.hookedExtSymbol.begin();
                  iter != curELFImgInfo.hookedExtSymbol.end(); ++iter) {
 
                 //DBG_LOGS("%zd %s %p %zd", iter->second.libraryFileID, iter->second.symbolName.c_str(),
                 //         iter->second.addr, iter->second.fileId);
-                outFile[std::to_string(iter.val().libraryFileID)]["funcNames"][std::to_string(int64_t(
-                        iter.val().addr))] = iter.val().symbolName;
+                outFile[std::to_string(iter.getVal().libraryFileID)]["funcNames"][std::to_string(int64_t(
+                        iter.getVal().addr))] = iter.getVal().symbolName;
             }
         }
 
@@ -284,6 +283,9 @@ namespace scaler {
     }
 
     ExtFuncCallHook_Linux::ELFImgInfo::ELFImgInfo() : hookedExtSymbol() {
+        for (int i = 0; i < realAddrResolved.getSize(); ++i) {
+            realAddrResolved[i] = false;
+        }
 
     }
 

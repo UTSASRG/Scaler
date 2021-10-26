@@ -66,9 +66,9 @@ namespace scaler {
         std::set<FileID> fileToHook;
 
         for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
-            auto &curFileId = iterFile.key();
+            auto &curFileId = iterFile.getKey();
             auto &curFileName = pmParser.idFileMap.at(curFileId);
-            auto &curELFImgInfo = iterFile.val();
+            auto &curELFImgInfo = iterFile.getVal();
 
             //loop through external symbols, let user decide which symbol to hook through callback function
             for (auto iterSymbol = curELFImgInfo.idFuncMap.begin();
@@ -280,7 +280,7 @@ namespace scaler {
                 // DBG_LOGS("Child %d got stop signal: %s", childTid, strsignal(WSTOPSIG(waitStatus)));
                 brkpointEmitted(childTid);
             } else if (WIFEXITED(waitStatus)) {
-                DBG_LOGS("Child %d exited. remove it from list, exitStatus %d", childTid, WEXITSTATUS(waitStatus));
+                DBG_LOGS("Child %d exited. erase it from list, exitStatus %d", childTid, WEXITSTATUS(waitStatus));
                 threadExited(childTid);
             } else {
                 throwScalerException(ErrCode::UNKNOWN_SIGNAL, "Unexpected signal");

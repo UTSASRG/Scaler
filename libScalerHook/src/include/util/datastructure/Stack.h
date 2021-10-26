@@ -19,10 +19,6 @@ namespace scaler {
 
         }
 
-        Stack(const Stack &rho) = delete;
-
-        Stack &operator=(const Stack &rho) = delete;
-
         bool isEmpty() {
             return internalVec.size == 0;
         }

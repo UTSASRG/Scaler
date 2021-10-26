@@ -36,7 +36,7 @@ typedef struct
 XED_DLL_EXPORT void
 xed_get_chip_features(xed_chip_features_t* p, xed_chip_enum_t chip);
 
-/// present = 1 to turn the feature on. present=0 to remove the feature.
+/// present = 1 to turn the feature on. present=0 to erase the feature.
 XED_DLL_EXPORT void
 xed_modify_chip_features(xed_chip_features_t* p,
                          xed_isa_set_enum_t isa_set,

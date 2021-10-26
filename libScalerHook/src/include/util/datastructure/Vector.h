@@ -18,20 +18,27 @@ namespace scaler {
     public:
         //todo: Check initialized
         Vector(const ssize_t &initialSize = 2) : internalArrSize(initialSize), size(0) {
-            internalArr = (T *) calloc(sizeof(T), initialSize);
+            internalArr = new T[initialSize];
         }
 
         Vector(const Vector &rho) {
             operator=(rho);
         }
 
+        ~Vector() {
+            if (internalArr)
+                delete[] internalArr;
+        }
+
         Vector &operator=(const Vector &rho) {
-            free(internalArr);
+            delete[] internalArr;
             internalArr = nullptr;
-            internalArr = (T *) calloc(sizeof(T), rho.internalArrSize);
+            internalArr = new T[rho.internalArrSize];
             size = rho.size;
             internalArrSize = rho.internalArrSize;
-            memcpy(internalArr, rho.internalArr, rho.internalArrSize);
+            for (int i = 0; i < rho.size; ++i) {
+                internalArr[i] = rho.internalArr[i];
+            }
         };
 
         bool isEmpty() {
@@ -54,10 +61,12 @@ namespace scaler {
 
         void expand() {
             T *oldInternalArr = internalArr;
-            T *newInternalArr = (T *) calloc(sizeof(T), internalArrSize * 2);
-            memcpy((void *) newInternalArr, oldInternalArr, internalArrSize * sizeof(T));
+            T *newInternalArr = new T[internalArrSize * 2];
+            for (int i = 0; i < internalArrSize; ++i) {
+                newInternalArr[i] = oldInternalArr[i];
+            }
             internalArrSize *= 2;
-            free(oldInternalArr);
+            delete[] oldInternalArr;
             oldInternalArr = nullptr;
             internalArr = newInternalArr;
         }

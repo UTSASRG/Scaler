@@ -80,7 +80,7 @@ struct hashtable;
  * @name                    create_hashtable
  * @param   minsize         minimum initial size of hashtable
  * @param   hashfunction    function for hashing keys
- * @param   key_eq_fn       function for determining key equality
+ * @param   key_eq_fn       function for determining getKey equality
  * @return                  newly created hashtable or NULL on failure
  */
 
@@ -113,18 +113,18 @@ hashtable_getlock(struct hashtable *h, void *k);
    
  * @name        hashtable_insert
  * @param   h   the hashtable to insert into
- * @param   k   the key - hashtable claims ownership and will free on removal
+ * @param   k   the getKey - hashtable claims ownership and will free on removal
  * @param   v   the value - does not claim ownership
  * @return      non-zero for successful insertion
  *
  * This function will cause the table to expand if the insertion would take
  * the ratio of entries to table size over the maximum load factor.
  *
- * This function does not check for repeated insertions with a duplicate key.
- * The value returned when using a duplicate key is undefined -- when
- * the hashtable changes size, the order of retrieval of duplicate key
+ * This function does not check for repeated insertions with a duplicate getKey.
+ * The value returned when using a duplicate getKey is undefined -- when
+ * the hashtable changes size, the order of retrieval of duplicate getKey
  * entries is reversed.
- * If in doubt, remove before insert.
+ * If in doubt, erase before insert.
  */
 
 int 
@@ -141,8 +141,8 @@ int fnname (struct hashtable *h, keytype *k, valuetype *v) \
    
  * @name        hashtable_search
  * @param   h   the hashtable to search
- * @param   k   the key to search for  - does not claim ownership
- * @return      the value associated with the key, or NULL if none found
+ * @param   k   the getKey to search for  - does not claim ownership
+ * @return      the value associated with the getKey, or NULL if none found
  */
 
 struct hash_entry *
@@ -161,9 +161,9 @@ valuetype * fnname (struct hashtable *h, keytype *k) \
  * hashtable_remove
    
  * @name        hashtable_remove
- * @param   h   the hashtable to remove the item from
- * @param   k   the key to search for  - does not claim ownership
- * @return      the value associated with the key, or NULL if none found
+ * @param   h   the hashtable to erase the item from
+ * @param   k   the getKey to search for  - does not claim ownership
+ * @return      the value associated with the getKey, or NULL if none found
  */
 
 void * /* returns value */

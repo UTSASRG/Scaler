@@ -9,28 +9,22 @@ main_fn_t real_main;
 std::string execFileName;
 
 int doubletake_main(int argc, char **argv, char **envp) {
-    //Initialization
-    scaler::ExtFuncCallHookBrkpoint *libPltHook = scaler::ExtFuncCallHookBrkpoint::getInst();
-
-    scaler::PmParserC_Linux pmParser;
-    execFileName = pmParser.curExecAbsolutePath;
-
-    //Hook all symbols except certain files
-    //todo:Merged from asmSimpleCase. Only hook current executable for testing
-    libPltHook->install([](std::string fileName, std::string funcName) -> bool {
+    //todo: support different running modes
+    DBG_LOG("Installing plthook");
+    install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
-        if (fileName == "/lib/x86_64-linux-gnu/libc-2.27.so") {
+
+        if (fileName ==
+            "/media/umass/datasystem/steven/Scaler/libScalerHook/lib/watcher/lib/xed2/lib/libxed.so") {
             return false;
         } else if (fileName ==
-                   "/media/umass/datasystem/steven/Scaler/libScalerHook/lib/watcher/lib/xed2/lib/libxed.so") {
+                   "/media/umass/datasystem/steven/Scaler/libScalerHook/lib/watcher/lib/xed2/lib/libxed-ild.so") {
             return false;
-        }else if(fileName == "/media/umass/datasystem/steven/Scaler/cmake-build-debug/libScalerHook/libScalerHook-HookBrkpoint.so"){
-            return false;
-        }else{
+        } else {
+//            printf("%s\n", fileName.c_str());
             return true;
         }
-    });
-
+    }, INSTALL_TYPE::ASM);
 
 //    //Initialization
 //    scaler::ExtFuncCallHookAsm *libPltHook = scaler::ExtFuncCallHookAsm::getInst();
@@ -61,7 +55,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
 //        }  else {
 //            return true;
 //        }
-        //todo: User should be able to specify name here. Since they can change filename
+    //todo: User should be able to specify name here. Since they can change filename
 //        if (funcName == "") {
 //            return false;
 //        } else if (fileName.length() >= 16 && fileName.substr(fileName.length() - 16, 16) == "libscalerhook.so") {
@@ -76,6 +70,8 @@ int doubletake_main(int argc, char **argv, char **envp) {
 
     // Call the program's main function
     int ret = real_main(argc, argv, envp);
+    DBG_LOG("Uninstalling plthook");
+    uninstall(INSTALL_TYPE::ASM);
 
     return ret;
 }

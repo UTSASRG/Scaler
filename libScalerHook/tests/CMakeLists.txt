@@ -38,7 +38,9 @@ add_executable(libScalerHook-unittests
         src/unittests/TestLog.cpp
         src/unittests/TestConfig.cpp
         src/unittests/TestTimer.cpp
-        src/unittests/TestInvocationTree.cpp)
+        src/unittests/TestInvocationTree.cpp
+        src/unittests/util/datastructure/TestList.cpp
+        src/unittests/util/datastructure/TestList.cpp)
 target_link_libraries(libScalerHook-unittests PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread)
 target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHook-Tests_SOURCE_DIR}/linkerscripts/mylinker.ld")
 
@@ -49,27 +51,27 @@ target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHoo
 option(libScalerHook-demoapps_AUTO_INSTALL_HOOK "If ON, then ScalerHook-HookAuto will be linked. Otherwise ScalerHook-HookManualAsm will be linked" ON)
 
 add_executable(libScalerHook-demoapps-FuncCall src/demoapps/TestFuncCall.cpp)
-target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall
+target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC ScalerHook-HookAuto libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall KuBoPltHook dl)
 target_compile_options(libScalerHook-demoapps-FuncCall PRIVATE "-fstack-protector" "-zlazy")
 
 add_executable(libScalerHook-demoapps-HookEverything src/demoapps/TestHookEverything.cpp)
 target_include_directories(libScalerHook-demoapps-HookEverything PUBLIC libtest/header)
-target_link_libraries(libScalerHook-demoapps-HookEverything PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall
+target_link_libraries(libScalerHook-demoapps-HookEverything PUBLIC ScalerHook-HookAuto libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall KuBoPltHook dl)
 
 add_executable(libScalerHook-demoapps-FuncCallDelay src/demoapps/TestFuncCallDelay.cpp)
-target_link_libraries(libScalerHook-demoapps-FuncCallDelay PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall
+target_link_libraries(libScalerHook-demoapps-FuncCallDelay PUBLIC ScalerHook-HookAuto libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall dl pthread)
 
 add_executable(libScalerHook-demoapps-FuncNestedCall src/demoapps/TestNestedFuncCallPthread.cpp)
-target_link_libraries(libScalerHook-demoapps-FuncNestedCall PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall
+target_link_libraries(libScalerHook-demoapps-FuncNestedCall PUBLIC ScalerHook-HookAuto libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall dl pthread)
 
 
 add_executable(libScalerHook-demoapps-Pthread src/demoapps/TestPthread.cpp)
 target_include_directories(libScalerHook-demoapps-Pthread PUBLIC libtest/header)
-target_link_libraries(libScalerHook-demoapps-Pthread ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall pthread dl)
+target_link_libraries(libScalerHook-demoapps-Pthread ScalerHook-HookAuto ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall pthread dl)
 
 
 add_executable(libScalerHook-demoapps-Threadlocal src/demoapps/TestThreadLocalAssembly.cpp)
@@ -161,9 +163,6 @@ add_executable(libScalerHook-unittests-Hashmap
         src/unittests/TestHashmap.cpp)
 target_link_libraries(libScalerHook-unittests-Hashmap ScalerHook-HookManualAsm pthread)
 
-add_executable(libScalerHook-unittests-Stack
-        src/unittests/TestStack.cpp)
-target_link_libraries(libScalerHook-unittests-Stack ScalerHook-HookManualAsm pthread)
 #
 #add_executable(TestNestingCall TestNestingCall.cpp)
 #target_include_directories(TestNestingCall PUBLIC libtest/header)

@@ -102,9 +102,9 @@ namespace scaler {
         std::set<FileID> fileToHook;
 
         for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
-            auto &curFileId = iterFile.key();
+            auto &curFileId = iterFile.getKey();
             auto &curFileName = pmParser.idFileMap.at(curFileId);
-            auto &curELFImgInfo = iterFile.val();
+            auto &curELFImgInfo = iterFile.getVal();
 
             //loop through external symbols, let user decide which symbol to hook through callback function
             for (auto iterSymbol = curELFImgInfo.idFuncMap.begin();

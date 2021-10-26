@@ -82,7 +82,7 @@ int read_log(struct hist_data *h)
 
 	/* Unlinking logfile after we've read it	*/
 	if ((unlink(logfile)) == -1) 
-		fprintf(stderr, "read_log: cannot remove stale log file %s: %s\n", logfile, strerror(errno));
+		fprintf(stderr, "read_log: cannot erase stale log file %s: %s\n", logfile, strerror(errno));
 		
 	free(logfile);
 

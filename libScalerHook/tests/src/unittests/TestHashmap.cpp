@@ -1,6 +1,6 @@
 #include <util/datastructure/Hashmap.hh>
 
-uint8_t cmp(const int &src, const int &dst) {
+char cmp(const int &src, const int &dst) {
     if (src == dst) {
         return 0;
     } else if (src > dst) {
@@ -29,7 +29,7 @@ void test1() {
     auto iterBeg = hashMap.begin();
     auto iterEnd = hashMap.end();
     while (iterBeg != iterEnd) {
-        fprintf(stderr, "%d iterBag!=iterENd=%s\n", iterBeg.val(), iterBeg == iterEnd ? "true" : "false");
+        fprintf(stderr, "%d iterBag!=iterENd=%s\n", iterBeg.getVal(), iterBeg == iterEnd ? "true" : "false");
 
         iterBeg++;
     }
@@ -47,7 +47,7 @@ void test2() {
     auto iterEnd = hashMap.end();
 
     while (iterBeg != iterEnd) {
-        fprintf(stderr, "%d iterBag!=iterENd=%s\n", iterBeg.val(), iterBeg == iterEnd ? "true" : "false");
+        fprintf(stderr, "%d iterBag!=iterENd=%s\n", iterBeg.getVal(), iterBeg == iterEnd ? "true" : "false");
 
         iterBeg++;
     }
@@ -66,7 +66,7 @@ void test3() {
     auto iterEnd = hashMap.end();
 
     while (iterBeg != iterEnd) {
-        fprintf(stderr, "%d iterBag!=iterENd=%s\n", iterBeg.val(), iterBeg == iterEnd ? "true" : "false");
+        fprintf(stderr, "%d iterBag!=iterENd=%s\n", iterBeg.getVal(), iterBeg == iterEnd ? "true" : "false");
 
         iterBeg++;
     }
@@ -83,7 +83,7 @@ void test4() {
     auto iterEnd = hashMap.end();
 
     while (iterBeg != iterEnd) {
-        fprintf(stderr, "%d iterBag!=iterENd=%s\n", iterBeg.val(), iterBeg == iterEnd ? "true" : "false");
+        fprintf(stderr, "%d iterBag!=iterENd=%s\n", iterBeg.getVal(), iterBeg == iterEnd ? "true" : "false");
         iterBeg++;
     }
 
@@ -100,7 +100,7 @@ void test5() {
     auto iterEnd = hashMap.end();
 
     while (iterBeg != iterEnd) {
-        fprintf(stderr, "%d iterBag!=iterENd=%s\n", iterBeg.val(), iterBeg == iterEnd ? "true" : "false");
+        fprintf(stderr, "%d iterBag!=iterENd=%s\n", iterBeg.getVal(), iterBeg == iterEnd ? "true" : "false");
 
         iterBeg++;
     }
@@ -116,7 +116,7 @@ void test6() {
     auto iterEnd = hashMap.end();
 
     while (iterBeg != iterEnd) {
-        fprintf(stderr, "%d iterBag!=iterENd=%s\n", iterBeg.val(), iterBeg == iterEnd ? "true" : "false");
+        fprintf(stderr, "%d iterBag!=iterENd=%s\n", iterBeg.getVal(), iterBeg == iterEnd ? "true" : "false");
 
         iterBeg++;
     }
@@ -124,7 +124,7 @@ void test6() {
 }
 
 
-uint8_t cmp(void *const &src, void *const &dst) {
+char cmp(void *const &src, void *const &dst) {
     if (src > dst) {
         return 1;
     } else if (src == dst) {
