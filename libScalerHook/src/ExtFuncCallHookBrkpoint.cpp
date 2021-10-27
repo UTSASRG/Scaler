@@ -198,9 +198,8 @@ namespace scaler {
                              curSymbol.pltEntry);
 
                     //todo: confusing API interface, addr or brkpointinfo?
-                    Breakpoint *bp;
-                    brkPointInfo.get(curSymbol.pltEntry, bp);
-                    insertBrkpointAt(*bp);
+                    Breakpoint& bp = brkPointInfo.get(curSymbol.pltEntry);
+                    insertBrkpointAt(bp);
 
                     curELFImgInfo.hookedExtSymbol.put(curSymbol.extSymbolId, curSymbol);
                 }
@@ -308,16 +307,15 @@ namespace scaler {
 //        brkpointCurContext.extSymbolId.push_back(extSymbolId);
 
 
-        ELFImgInfo *curELFImgInfo;
-        elfImgInfoMap.get(curFileID, curELFImgInfo);
+        ELFImgInfo& curELFImgInfo = elfImgInfoMap.get(curFileID);
 
 //        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
 //            printf(" ");
 //        }
 
-        DBG_LOGS("[Prehook %lu] %s in %s is called in %s", childTid, curELFImgInfo->idFuncMap.at(extSymbolId).c_str(),
+        DBG_LOGS("[Prehook %lu] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(extSymbolId).c_str(),
                  "unknownLib",
-                 curELFImgInfo->filePath.c_str());
+                 curELFImgInfo.filePath.c_str());
 
         //Check if a breakpoint is inserted at return address
 //        if (!brkPointInstalledAt(callerAddr)) {
@@ -421,7 +419,7 @@ namespace scaler {
         void *brkpointLoc = (void *) (regRip - 1); // address of breakpoint
 
         Breakpoint *bp;
-        if (!thiz->brkPointInfo.get(brkpointLoc, bp)) {
+        if ((bp = thiz->brkPointInfo.getPtr(brkpointLoc)) == nullptr) {
             ERR_LOGS("Unexpected stop because rip=%p doesn't seem to be caused by hook", brkpointLoc);
             return false;
         }
@@ -440,8 +438,7 @@ namespace scaler {
 
     bool ExtFuncCallHookBrkpoint::brkPointInstalledAt(void *addr) {
         //If a breakpoint is installed, then it must be in pltCodeInfoMap::addrFuncMap
-        Breakpoint *bp;
-        return brkPointInfo.get(addr, bp);
+        return brkPointInfo.has(addr);
     }
 
     void ExtFuncCallHookBrkpoint::recordBrkpointInfo(const FuncID &funcID, void *addr, bool isPLT) {
@@ -666,19 +663,16 @@ namespace scaler {
 
         void *pltPtr = (void *) ((uint64_t) regRip - 1); //The plt address where we applied breakpoint to
 
-        Breakpoint *bp;
+        Breakpoint *bp = thiz->brkPointInfo.getPtr(pltPtr);
         if (brkpointCurContext.inHookHandler) {
-            thiz->brkPointInfo.get(pltPtr, bp);
-
 //            for (int i = 0; i < bp->instLen; i++) {
 //                DBG_LOGS("Here:%d", bp->oriCode[i]);
 //            }
             DBG_LOGS("Function called within libscalerhook,addr=%p. Skip", bp->addr);
             thiz->skipBrkPoint(*bp, (ucontext_t *) context);
-        } else if (!thiz->brkPointInfo.get(pltPtr, bp)) {
+        } else if (bp == nullptr) {
             ERR_LOGS("Cannot find this breakpoint %p in my library. Not set by me?", pltPtr);
         } else {
-            thiz->brkPointInfo.get(pltPtr, bp);
             brkpointCurContext.inHookHandler = true;
             //Parse information
             void *callerAddr = nullptr;
@@ -715,24 +709,22 @@ namespace scaler {
     void ExtFuncCallHookBrkpoint::parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr,
                                                 int64_t &libraryFileID) {
         //Find correct symbol
-        ELFImgInfo *curELFImgInfo;
-        elfImgInfoMap.get(callerFileID, curELFImgInfo);
-        ExtSymInfo *curSymbol;
-        curELFImgInfo->hookedExtSymbol.get(symbolIDInCaller, curSymbol);
+        ELFImgInfo& curELFImgInfo = elfImgInfoMap.get(callerFileID);
+        ExtSymInfo& curSymbol = curELFImgInfo.hookedExtSymbol.get(symbolIDInCaller);
 
-        if (curSymbol->symbolName == "exit") {
+        if (curSymbol.symbolName == "exit") {
             int j = 1;
         }
 
-        void **symbolAddr = (void **) pmParser.readProcMem(curSymbol->gotEntry, sizeof(curSymbol->gotEntry));
+        void **symbolAddr = (void **) pmParser.readProcMem(curSymbol.gotEntry, sizeof(curSymbol.gotEntry));
 
         //Parse address from got table
-        curSymbol->addr = *symbolAddr;
-        funcAddr = curSymbol->addr;
+        curSymbol.addr = *symbolAddr;
+        funcAddr = curSymbol.addr;
         //Search the fileID
-        libraryFileID = pmParser.findExecNameByAddr(curSymbol->addr);
+        libraryFileID = pmParser.findExecNameByAddr(curSymbol.addr);
         assert(libraryFileID != -1);
-        curSymbol->libraryFileID = libraryFileID;
+        curSymbol.libraryFileID = libraryFileID;
     }
 
     void ExtFuncCallHookBrkpoint::installSigIntHandler() {

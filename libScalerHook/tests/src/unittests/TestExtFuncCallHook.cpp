@@ -43,20 +43,20 @@ TEST(ExtFuncCallHook, locSecAndSegInMem) {
             locateRequiredSecAndSeg();
 
 
-    scaler::ExtFuncCallHookAsm::ELFImgInfo *curElfImgInfo;
-    hook->elfImgInfoMap.get(hook->pmParser.fileIDMap[hook->pmParser.curExecAbsolutePath], curElfImgInfo);
+    scaler::ExtFuncCallHookAsm::ELFImgInfo curElfImgInfo = hook->elfImgInfoMap.get(
+            hook->pmParser.fileIDMap[hook->pmParser.curExecAbsolutePath]);
 
 
-    EXPECT_EQ(curElfImgInfo->pltStartAddr, &__startplt);
-    EXPECT_EQ(curElfImgInfo->pltEndAddr, &__endplt);
-    EXPECT_EQ(curElfImgInfo->pltSecStartAddr, &__startpltsec);
+    EXPECT_EQ(curElfImgInfo.pltStartAddr, &__startplt);
+    EXPECT_EQ(curElfImgInfo.pltEndAddr, &__endplt);
+    EXPECT_EQ(curElfImgInfo.pltSecStartAddr, &__startpltsec);
 //    EXPECT_EQ(curElfImgInfo.pltSecEndAddr, &__endpltsec);
 //    EXPECT_EQ(curElfImgInfo._DYNAMICAddr, _DYNAMIC);
-    for (int i = 0; i < curElfImgInfo->idFuncMap.size(); ++i) {
-        EXPECT_EQ(curElfImgInfo->idFuncMap[i], funcNameArr[i]);
+    for (int i = 0; i < curElfImgInfo.idFuncMap.size(); ++i) {
+        EXPECT_EQ(curElfImgInfo.idFuncMap[i], funcNameArr[i]);
     }
-    for (int i = 0; i < curElfImgInfo->idFuncMap.size(); ++i) {
-        EXPECT_EQ(curElfImgInfo->allExtSymbol[i].gotEntry, addrArr[i]);
+    for (int i = 0; i < curElfImgInfo.idFuncMap.size(); ++i) {
+        EXPECT_EQ(curElfImgInfo.allExtSymbol[i].gotEntry, addrArr[i]);
     }
 
 
@@ -99,31 +99,29 @@ TEST(ExtFuncCallHook, compareAddressAndFuncName) {
     //todo:fix
     //hook->install();
 
-    scaler::ExtFuncCallHookAsm::ELFImgInfo* curElfImgInfo;
-    hook->elfImgInfoMap.get(hook->pmParser.fileIDMap[hook->pmParser.curExecAbsolutePath],curElfImgInfo);
+    scaler::ExtFuncCallHookAsm::ELFImgInfo curElfImgInfo = hook->elfImgInfoMap.get(
+            hook->pmParser.fileIDMap[hook->pmParser.curExecAbsolutePath]);
 
 
-    EXPECT_EQ(curElfImgInfo->pltStartAddr, &__startplt);
-    EXPECT_EQ(curElfImgInfo->pltEndAddr, &__endplt);
-    EXPECT_EQ(curElfImgInfo->pltSecStartAddr, &__startpltsec);
+    EXPECT_EQ(curElfImgInfo.pltStartAddr, &__startplt);
+    EXPECT_EQ(curElfImgInfo.pltEndAddr, &__endplt);
+    EXPECT_EQ(curElfImgInfo.pltSecStartAddr, &__startpltsec);
 //    EXPECT_EQ(curElfImgInfo.pltSecEndAddr, &__endpltsec);
 //    EXPECT_EQ(curElfImgInfo._DYNAMICAddr, _DYNAMIC);
 
-    for (int i = 0; i < curElfImgInfo->idFuncMap.size(); ++i) {
-        EXPECT_EQ(curElfImgInfo->allExtSymbol[i].symbolName, funcNameArr[i]);
-        EXPECT_EQ(curElfImgInfo->allExtSymbol[i].gotEntry, addrArr[i]);
+    for (int i = 0; i < curElfImgInfo.idFuncMap.size(); ++i) {
+        EXPECT_EQ(curElfImgInfo.allExtSymbol[i].symbolName, funcNameArr[i]);
+        EXPECT_EQ(curElfImgInfo.allExtSymbol[i].gotEntry, addrArr[i]);
 //printf("%s:%p:%p\n", curElfImgInfo.allExtSymbol[i].symbolName.c_str(),
 //       *curElfImgInfo.allExtSymbol[i].gotTableAddr, addrArr[i]);
     }
 //printf("FuncA: %p\n", getFuncAddr("funcA"));
 //todo: relative path
 
-    scaler::ExtFuncCallHookAsm::ELFImgInfo* libTestELFInfo;
-
-   hook->elfImgInfoMap.get(hook->pmParser.fileIDMap.at(
-            "/home/st/Projects/scaler/cmake-build-debug/tests/libFuncCallTest.so"),libTestELFInfo);
-    auto systemFuncId = libTestELFInfo->funcIdMap.at("system");
-    void **gotTableAddr = libTestELFInfo->allExtSymbol.at(systemFuncId).gotEntry;
+    scaler::ExtFuncCallHookAsm::ELFImgInfo &libTestELFInfo = hook->elfImgInfoMap.get(hook->pmParser.fileIDMap.at(
+            "/home/st/Projects/scaler/cmake-build-debug/tests/libFuncCallTest.so"));
+    auto systemFuncId = libTestELFInfo.funcIdMap.at("system");
+    void **gotTableAddr = libTestELFInfo.allExtSymbol.at(systemFuncId).gotEntry;
 
     EXPECT_EQ(*gotTableAddr,
               (void *) system);

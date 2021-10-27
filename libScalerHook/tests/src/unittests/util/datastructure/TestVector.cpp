@@ -119,5 +119,32 @@ TEST(Vector, Iteration) {
     --rbegin;
     EXPECT_TRUE(rbegin == myVec.rend());
 
+}
 
+TEST(Vector, copyconstruct) {
+    Vector<int> myVec;
+    for (int i = 1; i <= 5; ++i)
+        myVec.pushBack(i);
+
+    for (int i = 1; i <= 5; ++i) {
+        ASSERT_EQ(myVec[i-1], i);
+    }
+
+    Vector<int> myVec1(myVec);
+    for (int i = 1; i <= 5; ++i) {
+        ASSERT_EQ(myVec1[i-1], i);
+    }
+
+
+    Vector<int> myVec2 = myVec;
+    myVec2.pushBack(6);
+    for (int i = 0; i < 6; ++i) {
+        ASSERT_EQ(myVec2[i], i+1);
+    }
+
+    //copy self
+    myVec2 = myVec2;
+    for (int i = 0; i < 6; ++i) {
+        ASSERT_EQ(myVec2[i], i+1);
+    }
 }

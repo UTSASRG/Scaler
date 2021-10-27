@@ -87,13 +87,15 @@ namespace scaler {
         }
 
         Vector &operator=(const Vector &rho) {
-            delete[] internalArr;
-            internalArr = nullptr;
-            internalArr = new T[rho.internalArrSize];
-            size = rho.size;
-            internalArrSize = rho.internalArrSize;
-            for (int i = 0; i < rho.size; ++i) {
-                internalArr[i] = rho.internalArr[i];
+            if (&rho != this) {
+                delete[] internalArr;
+                internalArr = nullptr;
+                internalArr = new T[rho.internalArrSize];
+                size = rho.size;
+                internalArrSize = rho.internalArrSize;
+                for (int i = 0; i < rho.size; ++i) {
+                    internalArr[i] = rho.internalArr[i];
+                }
             }
             return *this;
         };

@@ -84,29 +84,20 @@ namespace scaler {
     public:
         using HashEntry_ = HashEntry<TpKey, TpVal>;
 
-        List<HashEntry_> entryList; //There are always a head node
         // Each entry has a separate lock
-        const ssize_t index;
+        ssize_t index;
 
-        explicit HashBucket() : index(0) {
+        explicit HashBucket(const ssize_t &index = 0) : index(index) {
         }
 
-        List<HashEntry<TpKey, TpVal>> &operator=(const List<HashEntry<TpKey, TpVal>> &rho) {
-            if (this != &rho) {
-                //Different object
-                List<HashEntry<TpKey, TpVal>>::operator=(rho);
-                if (dynamic_cast<HashBucket<TpKey, TpVal> *>(&rho)) {
-                    //Sub-class
-                    index = rho.index;
-                }
-            }
-            return *this;
-        }
+        HashBucket(const HashBucket<TpKey, TpVal> &rho) {
+            operator=(rho);
+        };
 
-        HashBucket &operator=(const HashBucket &rho) {
+        HashBucket &operator=(const HashBucket<TpKey, TpVal> &rho) {
             List<HashEntry<TpKey, TpVal>>::operator=(rho);
+            index = rho.index;
         }
-
 
     };
 
@@ -128,7 +119,6 @@ namespace scaler {
             return *this;
         }
 
-
         const HashMapIterator operator++(int) override {
             return operator++();
         }
@@ -144,6 +134,7 @@ namespace scaler {
 
 
         TpVal &operator*() override {
+            assert(curBucketEntry != curBucket->getTail());
             return curBucketEntry->getVal().getVal();
         }
 
@@ -156,8 +147,8 @@ namespace scaler {
         }
 
 
-        explicit HashMapIterator(HashMap_ *hashMap) : hashMap(hashMap), curBucket(&hashMap->buckets[0]),
-                                                      curBucketEntry(curBucket->entryList.getHead()) {
+        explicit HashMapIterator(HashMap_ *hashMap = nullptr) : hashMap(hashMap), curBucket(nullptr),
+                                                                curBucketEntry(nullptr) {
 
         }
 
@@ -171,26 +162,29 @@ namespace scaler {
         BucketEntry_ *curBucketEntry;
 
         inline bool getNextEntry(HashBucket_ *&bucket, BucketEntry_ *&entry) {
-            bool hasNext = false;
+            bool success = false;
             entry = curBucketEntry;
             bucket = curBucket;
             while (true) {
-                if (entry->getNext() != curBucket->entryList.getTail()) {
+                if (entry->getNext() != curBucket->getTail()) {
+                    //Not tail, go to next element.
                     entry = entry->getNext();
-                    hasNext = true;
-                } else if (bucket->index + 1 < hashMap->bucketNum) {
-                    //Reached the end of the list, try next bucket
-                    bucket = &hashMap->buckets[bucket->index + 1];
-                    entry = bucket->entryList.getHead();
-                } else {
+                    success = true;
                     break;
+                } else if (bucket->index == hashMap->bucketNum - 1) {
+                    //Last bucket and tail node, this is valid for end iterator
+                    entry = entry->getNext();
+                    success = true;
+                    break;
+                } else {
+                    //Not last bucket but is tail node
+                    bucket = &hashMap->buckets[bucket->index + 1];
+                    entry = bucket->getHead();
                 }
             }
-
-            return hasNext;
+            return success;
         }
 
-        HashMap<TpKey, TpVal> *hashmap;
     };
 
     template<class TpKey, class TpVal>
@@ -213,39 +207,45 @@ namespace scaler {
 
 
         HashMap &operator=(const HashMap &rho) {
-            hfunc = rho.hfunc;
-            kcmp = rho.kcmp;
-            bucketNum = rho.bucketNum;
-            //The extra two buckets are used for forward and backward end() iterator
-            buckets = new HashBucket_[bucketNum];
-            *buckets = *rho.buckets;
-            initialized = rho.initialized;
+            if(&rho != this)
+            {
+                hfunc = rho.hfunc;
+                kcmp = rho.kcmp;
+                bucketNum = rho.bucketNum;
+                //The extra two buckets are used for forward and backward end() iterator
+                buckets = new HashBucket_[bucketNum];
+                for (int i = 0; i < bucketNum; ++i) {
+                    buckets[i] = rho.buckets[i];
+                }
+            }
             return *this;
         }
         //todo: Implement right value copy
 
-        HashMap(const HashFunc &hfunc = hfuncPassThrough<TpKey>, const Comparator &kcmp = cmpWeq<TpKey>,
-                const ssize_t bucketNum = 4096) : hfunc(hfunc),
-                                                  kcmp(kcmp),
-                                                  initialized(false),
-                                                  buckets(nullptr),
-                                                  bucketNum(bucketNum),
-                                                  beginIter(this),
-                                                  endIter(this) {
+        HashMap(const ssize_t bucketNum = 4096, const HashFunc &hfunc = hfuncPassThrough<TpKey>,
+                const Comparator &kcmp = cmpWeq<TpKey>) : hfunc(hfunc),
+                                                          kcmp(kcmp),
+                                                          buckets(nullptr),
+                                                          bucketNum(bucketNum) {
+            assert(bucketNum >= 1);
             assert(hfunc != nullptr && kcmp != nullptr);
             // Initialize all of these _entries.
             buckets = new HashBucket_[bucketNum];
-            initialized = true;
-            beginIter.curBucket = &buckets[0];
-            beginIter.curBucketEntry = beginIter.curBucket->getHead()->getNext();
-
+            for (int i = 0; i < bucketNum; ++i) {
+                buckets[i].index = i;
+            }
+            beginIter.hashMap = this;
+            endIter.hashMap = this;
             endIter.curBucket = &buckets[bucketNum - 1];
             endIter.curBucketEntry = endIter.curBucket->getTail();
-
         }
 
         HashMap(const HashMap &rho) {
             operator=(rho);
+            beginIter.hashMap = this;
+            endIter.hashMap = this;
+            endIter.curBucket = &buckets[bucketNum - 1];
+            endIter.curBucketEntry = endIter.curBucket->getTail();
         }
 
         inline ssize_t hashIndex(const TpKey &key) {
@@ -256,17 +256,27 @@ namespace scaler {
         // Look up whether an entry is existing or not.
         // If existing, return true. *value should be carried specific value for this key.
         // Otherwise, return false.
-        bool get(const TpKey &key, TpVal *&value) {
-            assert(initialized);
+        TpVal &get(const TpKey &key) {
+            TpVal *rltPtr = getPtr(key);
+            assert(rltPtr != nullptr);
+            return *rltPtr;
+        }
+
+
+        TpVal *getPtr(const TpKey &key) {
             ssize_t hindex = hashIndex(key);
 
             HashEntry_ *hashEntry;
             HashBucket_ *bucket = getHashBucket(hindex);
             bool found = getHashEntry(key, bucket, hashEntry);
-            if (found) {
-                value = &hashEntry->getVal();
-            }
-            return found;
+            return found ? &hashEntry->getVal() : nullptr;
+        }
+
+        bool has(const TpKey &key) {
+            ssize_t hindex = hashIndex(key);
+            HashEntry_ *hashEntry;
+            HashBucket_ *bucket = getHashBucket(hindex);
+            return getHashEntry(key, bucket, hashEntry);
         }
 
         /**
@@ -277,26 +287,23 @@ namespace scaler {
          * @param val
          * @return
          */
-        bool put(const TpKey &key, const TpVal &val) {
-            assert(initialized);
+        void put(const TpKey &key, const TpVal &val, bool replace = true) {
             ssize_t hindex = hashIndex(key);
 
             HashBucket_ *bucket = getHashBucket(hindex);
             HashEntry_ *hashEntry;
 
             if (getHashEntry(key, bucket, hashEntry)) {
+                assert(replace);
                 hashEntry->setVal(val);
             } else {
                 HashEntry_ newEntry(key, val);
-
-                bucket->entryList.insertAfter(bucket->entryList.getHead(), newEntry);
+                bucket->insertAfter(bucket->getHead(), newEntry);
             }
-            return true;
         }
 
         // Free an entry with specified
-        bool erase(const TpKey &key) {
-            assert(initialized);
+        void erase(const TpKey &key) {
             ssize_t hindex = hashIndex(key);
 
             auto *curBucket = getHashBucket(hindex);
@@ -304,11 +311,8 @@ namespace scaler {
             BucketEntry_ *entry;
             bool isFound = getBucketEntry(key, curBucket, entry);
 
-            if (isFound) {
-                curBucket->entryList.erase(entry);
-            }
-
-            return isFound;
+            assert(isFound);
+            curBucket->erase(entry);
         }
 
 
@@ -318,7 +322,9 @@ namespace scaler {
          * @return
          */
         const HashMapIterator<TpKey, TpVal> &begin() {
-            return beginIter;
+            beginIter.curBucket = &buckets[0];
+            beginIter.curBucketEntry = beginIter.curBucket->getHead();
+            return ++beginIter;
         }
 
         const HashMapIterator<TpKey, TpVal> &end() {
@@ -329,7 +335,6 @@ namespace scaler {
 
         }
 
-        bool initialized = false;
         HashBucket_ *buckets = nullptr; //There are bucketNum+1 nodes. The last node indicates the end of bucket.
         ssize_t bucketNum = -1;     // How many buckets in total
         HashFunc hfunc = nullptr;
@@ -361,9 +366,9 @@ namespace scaler {
             bool found = false;
             if (bucket != nullptr) {
                 //Start with the first node
-                auto *listEntry = bucket->entryList.getHead()->getNext();
+                auto *listEntry = bucket->getHead()->getNext();
 
-                while (listEntry != bucket->entryList.getTail()) {
+                while (listEntry != bucket->getTail()) {
                     if (kcmp(listEntry->getVal().getKey(), key) == 0) {
                         found = true;
                         break;

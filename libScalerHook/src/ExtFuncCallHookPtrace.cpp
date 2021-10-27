@@ -348,16 +348,15 @@ namespace scaler {
         curContext.extSymbolId.push_back(extSymbolId);
 
 
-        ELFImgInfo *curELFImgInfo;
-        elfImgInfoMap.get(curFileID, curELFImgInfo);
+        ELFImgInfo &curELFImgInfo = elfImgInfoMap.get(curFileID);
 
 //        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
 //            printf(" ");
 //        }
 
-        DBG_LOGS("[Prehook %d] %s in %s is called in %s", childTid, curELFImgInfo->idFuncMap.at(extSymbolId).c_str(),
+        DBG_LOGS("[Prehook %d] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(extSymbolId).c_str(),
                  "unknownLib",
-                 curELFImgInfo->filePath.c_str());
+                 curELFImgInfo.filePath.c_str());
 
         //Check if a breakpoint is inserted at return address
         if (!brkPointInstalledAt(callerAddr)) {
@@ -369,7 +368,7 @@ namespace scaler {
             insertBrkpointAt(callerAddr, childTid);
         }
 
-        if (curELFImgInfo->pthreadExtSymbolId.isFuncPthread(extSymbolId)) {
+        if (curELFImgInfo.pthreadExtSymbolId.isFuncPthread(extSymbolId)) {
             //Add a tree node
             auto *newNode = new PthreadInvocationTreeNode();
             newNode->setExtFuncID(extSymbolId);
@@ -377,132 +376,132 @@ namespace scaler {
             //Insert at back
             curNodePtrace = curNodePtrace->addChild(newNode);
 
-            if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_CREATE) {
+            if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_CREATE) {
                 //todo: A better way is to compare function id rather than name. This is more efficient.
                 //todo: A better way is to also compare library id because a custom library will also implement pthread_create.
                 pthread_t *newThread;
                 parm_pthread_create(newThread, pmParser, regs.rdi);
                 curContext.pthreadIdPtr.emplace_back(newThread);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_JOIN) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_JOIN) {
                 pthread_t joinThread;
                 parm_pthread_join(joinThread, pmParser, regs.rdi);
                 newNode->extraField1 = joinThread;
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_join tid=%lu", childTid,
                          joinThread);
 
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_TRYJOIN_NP) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_TRYJOIN_NP) {
                 pthread_t joinThread;
                 parm_pthread_tryjoin_np(joinThread, pmParser, regs.rdi);
                 newNode->extraField1 = joinThread;
                 DBG_LOGS("[Pre Hook Param Parser]   callingthread=%d pthread_tryjoin_np tid=%lu", childTid,
                          joinThread);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_TIMEDJOIN_NP) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_TIMEDJOIN_NP) {
                 pthread_t joinThread;
                 parm_pthread_timedjoin_np(joinThread, pmParser, regs.rdi);
                 newNode->extraField1 = joinThread;
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_timedjoin_np tid=%lu", childTid,
                          joinThread);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_CLOCKJOIN_NP) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_CLOCKJOIN_NP) {
                 pthread_t joinThread;
                 parm_pthread_clockjoin_np(joinThread, pmParser, regs.rdi);
                 newNode->extraField1 = joinThread;
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_clockjoin_np tid=%lu", childTid,
                          joinThread);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_MUTEX_LOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_LOCK) {
                 pthread_mutex_t *mutex_t;
                 parm_pthread_mutex_lock(mutex_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_mutex_lock lID=%p", childTid,
                          mutex_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_MUTEX_TIMEDLOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_TIMEDLOCK) {
                 pthread_mutex_t *mutex_t;
                 parm_pthread_mutex_timedlock(mutex_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_mutex_timedlock lID=%p", childTid,
                          mutex_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_MUTEX_CLOCKLOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_CLOCKLOCK) {
                 pthread_mutex_t *mutex_t;
                 parm_pthread_mutex_clocklock(mutex_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_mutex_clocklock lID=%p", childTid,
                          mutex_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_MUTEX_UNLOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_UNLOCK) {
                 pthread_mutex_t *mutex_t;
                 parm_pthread_mutex_unlock(mutex_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  parm_pthread_mutex_unlock lID=%p",
                          childTid,
                          mutex_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_RWLOCK_RDLOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_RDLOCK) {
                 pthread_rwlock_t *mutex_t;
                 parm_pthread_rwlock_rdlock(mutex_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_rwlock_rdlock lID=%p", childTid,
                          mutex_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_RWLOCK_TRYRDLOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TRYRDLOCK) {
                 pthread_rwlock_t *mutex_t;
                 parm_pthread_rwlock_tryrdlock(mutex_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_rwlock_tryrdlock lID=%p",
                          childTid,
                          mutex_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_RWLOCK_TIMEDRDLOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TIMEDRDLOCK) {
                 pthread_rwlock_t *mutex_t;
                 parm_pthread_rwlock_timedrdlock(mutex_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_rwlock_timedrdlock lID=%p",
                          childTid, mutex_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_RWLOCK_CLOCKRDLOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_CLOCKRDLOCK) {
                 pthread_rwlock_t *mutex_t;
                 parm_pthread_rwlock_clockrdlock(mutex_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_rwlock_clockrdlock lID=%p",
                          childTid, mutex_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_RWLOCK_WRLOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_WRLOCK) {
                 pthread_rwlock_t *mutex_t;
                 parm_pthread_rwlock_wrlock(mutex_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_rwlock_wrlock lID=%p", childTid,
                          mutex_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_RWLOCK_TRYWRLOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TRYWRLOCK) {
                 pthread_rwlock_t *mutex_t;
                 parm_pthread_rwlock_trywrlock(mutex_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_rwlock_trywrlock lID=%p",
                          childTid,
                          mutex_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_RWLOCK_TIMEDWRLOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TIMEDWRLOCK) {
                 pthread_rwlock_t *mutex_t;
                 parm_pthread_rwlock_timedwrlock(mutex_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_rwlock_timedwrlock lID=%p",
                          childTid, mutex_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_RWLOCK_CLOCKWRLOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_CLOCKWRLOCK) {
                 pthread_rwlock_t *mutex_t;
                 parm_pthread_rwlock_clockwrlock(mutex_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_rwlock_clockwrlock lID=%p",
                          childTid, mutex_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_RWLOCK_UNLOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_UNLOCK) {
                 pthread_rwlock_t *mutex_t;
                 parm_pthread_rwlock_unlock(mutex_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_rwlock_unlock lID=%p", childTid,
                          mutex_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_COND_SIGNAL) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_COND_SIGNAL) {
                 pthread_cond_t *cond_t;
                 parm_pthread_cond_signal(cond_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(cond_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_cond_signal condID=%p", childTid,
                          cond_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_COND_BROADCAST) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_COND_BROADCAST) {
                 pthread_cond_t *cond_t;
                 parm_pthread_cond_broadcast(cond_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(cond_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_cond_broadcast condID=%p",
                          childTid,
                          cond_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_COND_WAIT) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_COND_WAIT) {
                 pthread_cond_t *cond_t;
                 pthread_mutex_t *mutex_t;
                 parm_pthread_cond_wait(cond_t, mutex_t, pmParser, regs.rdi, regs.rsi);
@@ -510,7 +509,7 @@ namespace scaler {
                 newNode->extraField2 = reinterpret_cast<int64_t>(mutex_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_cond_wait condID=%p", childTid,
                          cond_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_COND_TIMEDWAIT) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_COND_TIMEDWAIT) {
                 pthread_cond_t *cond_t;
                 pthread_mutex_t *mutex_t;
                 parm_pthread_cond_timedwait(cond_t, mutex_t, pmParser, regs.rdi, regs.rsi);
@@ -519,7 +518,7 @@ namespace scaler {
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_cond_timedwait condID=%p",
                          childTid,
                          cond_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_COND_CLOCKWAIT) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_COND_CLOCKWAIT) {
                 pthread_cond_t *cond_t;
                 pthread_mutex_t *mutex_t;
                 parm_pthread_cond_clockwait(cond_t, mutex_t, pmParser, regs.rdi, regs.rsi);
@@ -528,32 +527,32 @@ namespace scaler {
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_cond_clockwait condId=%p",
                          childTid,
                          cond_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_SPIN_LOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_LOCK) {
                 pthread_spinlock_t *spinlock_t;
                 parm_pthread_spin_lock(spinlock_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(spinlock_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_spin_lock lID=%p", childTid,
                          spinlock_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_SPIN_TRYLOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_TRYLOCK) {
                 pthread_spinlock_t *spinlock_t;
                 parm_pthread_spin_trylock(spinlock_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(spinlock_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_spin_trylock lID=%p", childTid,
                          spinlock_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_SPIN_UNLOCK) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_UNLOCK) {
                 pthread_spinlock_t *spinlock_t;
                 parm_pthread_spin_unlock(spinlock_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(spinlock_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_spin_unlock lID=%p", childTid,
                          spinlock_t);
-            } else if (extSymbolId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_BARRIER_WAIT) {
+            } else if (extSymbolId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_BARRIER_WAIT) {
                 pthread_barrier_t *barrier_t;
                 parm_pthread_barrier_wait(barrier_t, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(barrier_t);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  pthread_barrier_wait barrierId=%p",
                          childTid, barrier_t);
             }
-        } else if (curELFImgInfo->semaphoreExtSymbolId.isFuncSemaphore(extSymbolId)) {
+        } else if (curELFImgInfo.semaphoreExtSymbolId.isFuncSemaphore(extSymbolId)) {
             //Add a tree node
             auto *newNode = new SemaphoreInvocationTreeNode();
             newNode->setExtFuncID(extSymbolId);
@@ -561,27 +560,27 @@ namespace scaler {
             //Insert at back
             curNodePtrace = curNodePtrace->addChild(newNode);
 
-            if (extSymbolId == curELFImgInfo->semaphoreExtSymbolId.SEM_WAIT) {
+            if (extSymbolId == curELFImgInfo.semaphoreExtSymbolId.SEM_WAIT) {
                 sem_t *__sem;
                 parm_sem_wait(__sem, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(__sem);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  sem_wait sID=%p", childTid, __sem);
-            } else if (extSymbolId == curELFImgInfo->semaphoreExtSymbolId.SEM_TIMEDWAIT) {
+            } else if (extSymbolId == curELFImgInfo.semaphoreExtSymbolId.SEM_TIMEDWAIT) {
                 sem_t *__sem;
                 parm_sem_timedwait(__sem, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(__sem);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  sem_timedwait sID=%p", childTid, __sem);
-            } else if (extSymbolId == curELFImgInfo->semaphoreExtSymbolId.SEM_CLOCKWAIT) {
+            } else if (extSymbolId == curELFImgInfo.semaphoreExtSymbolId.SEM_CLOCKWAIT) {
                 sem_t *__sem;
                 parm_sem_clockwait(__sem, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(__sem);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  sem_clockwait sID=%p", childTid, __sem);
-            } else if (extSymbolId == curELFImgInfo->semaphoreExtSymbolId.SEM_TRYWAIT) {
+            } else if (extSymbolId == curELFImgInfo.semaphoreExtSymbolId.SEM_TRYWAIT) {
                 sem_t *__sem;
                 parm_sem_trywait(__sem, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(__sem);
                 DBG_LOGS("[Pre Hook Param Parser]    callingthread=%d  sem_trywait sID=%p", childTid, __sem);
-            } else if (extSymbolId == curELFImgInfo->semaphoreExtSymbolId.SEM_POST) {
+            } else if (extSymbolId == curELFImgInfo.semaphoreExtSymbolId.SEM_POST) {
                 sem_t *__sem;
                 parm_sem_post(__sem, pmParser, regs.rdi);
                 newNode->extraField1 = reinterpret_cast<int64_t>(__sem);
@@ -622,12 +621,11 @@ namespace scaler {
         FileID fileId = curContext.fileId.at(curContext.fileId.size() - 1);
         curContext.fileId.pop_back();
 
-        ELFImgInfo *curELFImgInfo;
-        elfImgInfoMap.get(fileId, curELFImgInfo);
+        ELFImgInfo& curELFImgInfo = elfImgInfoMap.get(fileId);
 
         FuncID funcId = curContext.extSymbolId.at(curContext.extSymbolId.size() - 1);
         curContext.extSymbolId.pop_back();
-        auto &funcName = curELFImgInfo->idFuncMap.at(funcId);
+        auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
 
         //if (curELFImgInfo.hookedExtSymbol.find(funcId) == curELFImgInfo.hookedExtSymbol.end()) {
         //    DBG_LOGS("%d %lu", curELFImgInfo.hookedExtSymbol.find(0) == curELFImgInfo.hookedExtSymbol.end(),
@@ -641,29 +639,28 @@ namespace scaler {
 
         int64_t endTimestamp = getunixtimestampms();
 
-        ExtSymInfo *curSymbol;
-        curELFImgInfo->hookedExtSymbol.get(funcId, curSymbol);
-        if (curSymbol->addr == nullptr) {
+        ExtSymInfo& curSymbol = curELFImgInfo.hookedExtSymbol.get(funcId);
+        if (curSymbol.addr == nullptr) {
             //Fill addr with the resolved address from GOT
-            void **remoteData = static_cast<void **>(pmParser.readProcMem(curSymbol->gotEntry, sizeof(void *)));
-            curSymbol->addr = *remoteData;
+            void **remoteData = static_cast<void **>(pmParser.readProcMem(curSymbol.gotEntry, sizeof(void *)));
+            curSymbol.addr = *remoteData;
             free(remoteData);
         }
-        auto libraryFileId = pmParser.findExecNameByAddr(curSymbol->addr);
+        auto libraryFileId = pmParser.findExecNameByAddr(curSymbol.addr);
         auto &libraryFileName = pmParser.idFileMap.at(libraryFileId);
 
-        curSymbol->libraryFileID = libraryFileId;
+        curSymbol.libraryFileID = libraryFileId;
         curNodePtrace->setRealFileID(libraryFileId);
-        curNodePtrace->setFuncAddr(curSymbol->addr);
+        curNodePtrace->setFuncAddr(curSymbol.addr);
         curNodePtrace->setEndTimestamp(endTimestamp);
         curNodePtrace = curNodePtrace->getParent();
 
 
-        DBG_LOGS("[Afterhook %d] %s in %s is called in %s", childTid, curSymbol->symbolName.c_str(),
+        DBG_LOGS("[Afterhook %d] %s in %s is called in %s", childTid, curSymbol.symbolName.c_str(),
                  libraryFileName.c_str(),
-                 curELFImgInfo->filePath.c_str());
+                 curELFImgInfo.filePath.c_str());
 
-        if (funcId == curELFImgInfo->pthreadExtSymbolId.PTHREAD_CREATE) {
+        if (funcId == curELFImgInfo.pthreadExtSymbolId.PTHREAD_CREATE) {
             //todo: A better way is to compare function id rather than name. This is more efficient.
             //todo: A better way is to also compare library id because a custom library will also implement pthread_create.
             pthread_t *pthreadIdPtr = curContext.pthreadIdPtr.at(curContext.pthreadIdPtr.size() - 1);
@@ -920,24 +917,18 @@ namespace scaler {
     void ExtFuncCallHookPtrace::parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr,
                                               int64_t &libraryFileID) {
         //Find correct symbol
-        ELFImgInfo *curElfImg;
-        elfImgInfoMap.get(callerFileID, curElfImg);
-        ExtSymInfo *curSymbol;
-        curElfImg->hookedExtSymbol.get(symbolIDInCaller, curSymbol);
+        ELFImgInfo& curElfImg = elfImgInfoMap.get(callerFileID);
+        ExtSymInfo& curSymbol = curElfImg.hookedExtSymbol.get(symbolIDInCaller);
 
-        if (curSymbol->symbolName == "exit") {
-            int j = 1;
-        }
-
-        void **symbolAddr = (void **) pmParser.readProcMem(curSymbol->gotEntry, sizeof(curSymbol->gotEntry));
+        void **symbolAddr = (void **) pmParser.readProcMem(curSymbol.gotEntry, sizeof(curSymbol.gotEntry));
 
         //Parse address from got table
-        curSymbol->addr = *symbolAddr;
-        funcAddr = curSymbol->addr;
+        curSymbol.addr = *symbolAddr;
+        funcAddr = curSymbol.addr;
         //Search the fileID
-        libraryFileID = pmParser.findExecNameByAddr(curSymbol->addr);
+        libraryFileID = pmParser.findExecNameByAddr(curSymbol.addr);
         assert(libraryFileID != -1);
-        curSymbol->libraryFileID = libraryFileID;
+        curSymbol.libraryFileID = libraryFileID;
     }
 
 

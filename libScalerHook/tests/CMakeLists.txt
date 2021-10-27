@@ -40,7 +40,9 @@ add_executable(libScalerHook-unittests
         src/unittests/TestTimer.cpp
         src/unittests/TestInvocationTree.cpp
         src/unittests/util/datastructure/TestList.cpp
-        src/unittests/util/datastructure/TestStack.cpp src/unittests/util/datastructure/TestVector.cpp)
+        src/unittests/util/datastructure/TestStack.cpp
+        src/unittests/util/datastructure/TestVector.cpp
+        src/unittests/util/datastructure/TestHashmap.cpp)
 target_link_libraries(libScalerHook-unittests PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread)
 target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHook-Tests_SOURCE_DIR}/linkerscripts/mylinker.ld")
 
@@ -158,10 +160,6 @@ target_link_libraries(libScalerHook-parsecapps-pbzip2 ScalerHook-HookManualAsm p
 #target_include_directories(TestInstall PUBLIC libtest/header)
 #target_link_libraries(TestInstall scalerhook FuncCallTest InstallTest dl)
 #target_link_options(TestInstall PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/unittests/libScalerHook/oldexperiments/mylinker.ld")
-
-add_executable(libScalerHook-unittests-Hashmap
-        src/unittests/TestHashmap.cpp)
-target_link_libraries(libScalerHook-unittests-Hashmap ScalerHook-HookManualAsm pthread)
 
 #
 #add_executable(TestNestingCall TestNestingCall.cpp)
