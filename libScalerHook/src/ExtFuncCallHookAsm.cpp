@@ -248,8 +248,7 @@ namespace scaler {
             //Check if address is already resolved
             FileID symbolFileId = pmParser.findExecNameByAddr(curSymbol.addr);
             //Since it's external symbol, it's address must be in another file.
-            curELFImgInfo.realAddrResolved.insertAt(curELFImgInfo.realAddrResolved.getSize(),
-                                                    symbolFileId != curSymbol.fileId);
+            curELFImgInfo.realAddrResolved[curSymbol.extSymbolId] = (symbolFileId != curSymbol.fileId);
 
             curELFImgInfo.hookedExtSymbol.put(curSymbol.extSymbolId, curSymbol);
             DBG_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd",

@@ -90,7 +90,7 @@ namespace scaler {
                                                                             DT_PLTRELSZ) / sizeof(ElfW(Rela));
 
                 parseRelaSymbol(curELFImgInfo, curFileiD);
-                DBG_LOGS("%d\n",curFileiD);
+                DBG_LOGS("%d\n", curFileiD);
                 elfImgInfoMap.put(curFileiD, curELFImgInfo);
 
             } catch (const ScalerException &e) {
@@ -213,6 +213,7 @@ namespace scaler {
                 curELFImgInfo.idFuncMap[i] = newSymbol.symbolName;
                 curELFImgInfo.funcIdMap[newSymbol.symbolName] = i;
                 curELFImgInfo.allExtSymbol[i] = newSymbol;
+                curELFImgInfo.realAddrResolved.insertAt(i, false);
             } catch (const ScalerException &e) {
                 //Remove current entry
                 elfImgInfoMap.erase(curFileID);
@@ -273,8 +274,6 @@ namespace scaler {
     }
 
 
-
-
     ExtFuncCallHook_Linux::ELFImgInfo::ELFImgInfo() : hookedExtSymbol() {
         for (int i = 0; i < realAddrResolved.getSize(); ++i) {
             realAddrResolved[i] = false;
@@ -315,7 +314,7 @@ namespace scaler {
 
     std::vector<int> ExtFuncCallHook_Linux::ELFImgInfo::PthreadFuncId::getAllIds() {
         std::vector<int> result;
-result.begin()++;
+        result.begin()++;
         if (PTHREAD_CREATE != -1)
             result.push_back(PTHREAD_CREATE);
         if (PTHREAD_JOIN != -1)
