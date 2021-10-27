@@ -56,6 +56,10 @@ namespace scaler {
             return next;
         }
 
+        inline const ListEntry<T> *getNextC() const {
+            return next;
+        }
+
 
     protected:
         ListEntry *prev;
@@ -148,16 +152,16 @@ namespace scaler {
             rendIter.curNode = &head;
         };
 
-        List(List<T> &rho) : List() {
+        List(const List<T> &rho) : List() {
             operator=(rho);
         };
 
-        List &operator=(List<T> &rho) {
+        List &operator=(const List<T> &rho) {
             if (this != &rho) {
-                ListEntry<T> *curEntry = rho.getHead()->getNext();
-                while (curEntry != rho.getTail()) {
+                const ListEntry<T> *curEntry = rho.getHeadC()->getNextC();
+                while (curEntry != rho.getTailC()) {
                     pushBack(curEntry->value);
-                    curEntry = curEntry->getNext();
+                    curEntry = curEntry->getNextC();
                 }
             }
         }
@@ -168,6 +172,7 @@ namespace scaler {
         }
 
         virtual void insertAfter(ListEntry_ *node, const T &val) {
+
             //Cannot insert value in a null node
             assert(node != nullptr);
             //Cannot insert after tail
@@ -220,11 +225,19 @@ namespace scaler {
             return &head;
         }
 
+        virtual const ListEntry_ *getHeadC() const {
+            return &head;
+        }
+
         virtual inline ListEntry_ *getTail() {
             return &tail;
         }
 
-        virtual inline ssize_t getSize() const {
+        virtual const ListEntry_ *getTailC() const {
+            return &tail;
+        }
+
+        virtual inline const ssize_t &getSize() const {
             return size;
         }
 

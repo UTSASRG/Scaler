@@ -129,7 +129,7 @@ char cmp(void *const &src, void *const &dst) {
         return 1;
     } else if (src == dst) {
         return 0;
-    } else if (src < dst) {
+    } else {
         return -1;
     }
 }
@@ -164,7 +164,7 @@ void test7() {
     assert(b->oriCode[2] == 3);
     assert(b->oriCode[3] == 4);
     assert(b->instLen == 4);
-    assert(a==*b);
+    assert(a == *b);
 
 }
 

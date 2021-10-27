@@ -5,8 +5,67 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <util/datastructure/ForwardIterator.h>
 
 namespace scaler {
+    template<typename T>
+    class Vector;
+
+    template<typename T>
+    class VectorIterator : public ForwardIterator<T>, ReverseIterator<T> {
+    public:
+        using Vector_ = Vector<T>;
+
+        explicit VectorIterator(Vector_ *vector) : vector(vector), index(0) {
+        }
+
+        VectorIterator &operator++() override {
+            //End iterator points to index==size()
+            assert(index < vector->getSize());
+            ++index;
+            return *this;
+        }
+
+        VectorIterator &operator++(int) override {
+            return operator++();
+        }
+
+        VectorIterator &operator--() override {
+            //rend iterator points index==-1
+            assert(index > -1);
+            --index;
+            return *this;
+        }
+
+        VectorIterator &operator--(int i) override {
+            return operator--();
+        }
+
+        bool operator!=(const Iterator &rho) const override {
+            return !operator==(rho);
+        }
+
+        bool operator==(const Iterator &rho) const override {
+            auto *rhoPtr = dynamic_cast<const VectorIterator<T> *>(&rho);
+            if (rhoPtr) {
+                return vector == rhoPtr->vector && index == rhoPtr->index;
+            } else {
+                return false;
+            }
+        }
+
+        T &operator*() override {
+            assert(0 <= index && index <= vector->getSize());
+            return vector->operator[](index);
+        }
+
+    protected:
+        friend class Vector<T>;
+
+        // which bucket at the moment? [0, nbucket-1]
+        Vector_ *vector;
+        ssize_t index;
+    };
 
     /**
      * Auto expansion array, similar to STL
@@ -14,14 +73,16 @@ namespace scaler {
      * @tparam T Value type
      */
     template<typename T>
-    class Vector {
+    class Vector : public Iteratable<VectorIterator<T>>, ReverseIteratable<VectorIterator<T>> {
     public:
+
         //todo: Check initialized
-        Vector(const ssize_t &initialSize = 2) : internalArrSize(initialSize), size(0) {
+        explicit Vector(const ssize_t &initialSize = 2) : internalArrSize(initialSize), size(0), beginIter(this),
+                                                          endIter(this), rbeginIter(this), rendIter(this) {
             internalArr = new T[initialSize];
         }
 
-        Vector(const Vector &rho) {
+        Vector(const Vector &rho) : Vector() {
             operator=(rho);
         }
 
@@ -39,6 +100,7 @@ namespace scaler {
             for (int i = 0; i < rho.size; ++i) {
                 internalArr[i] = rho.internalArr[i];
             }
+            return *this;
         };
 
         bool isEmpty() {
@@ -71,7 +133,7 @@ namespace scaler {
             internalArr = newInternalArr;
         }
 
-        inline void insertAt(const ssize_t &index, const T &newElem) {
+        void insertAt(const ssize_t &index, const T &newElem) {
             assert(0 <= index && index <= size);
             if (size == internalArrSize)
                 expand();
@@ -82,15 +144,45 @@ namespace scaler {
             size += 1;
         }
 
+        inline void pushBack(const T &newElem) {
+            insertAt(size, newElem);
+        }
+
+
         inline ssize_t getSize() {
             return size;
         }
 
 
+        const VectorIterator<T> &begin() override {
+            beginIter.index = size == 0 ? -1 : 0;
+            return beginIter;
+        }
+
+        const VectorIterator<T> &end() override {
+            endIter.index = size == 0 ? -1 : size;
+            return endIter;
+        }
+
+        const VectorIterator<T> &rbegin() override {
+            rbeginIter.index = size == 0 ? -1 : size - 1;
+            return rbeginIter;
+        }
+
+        const VectorIterator<T> &rend() override {
+            rendIter.index = -1;
+            return rendIter;
+        }
+
     protected:
-        ssize_t internalArrSize;
-        ssize_t size;
-        T *internalArr;
+        ssize_t internalArrSize = 0;
+        ssize_t size = 0;
+        T *internalArr = nullptr;
+
+        VectorIterator<T> beginIter;
+        VectorIterator<T> endIter;
+        VectorIterator<T> rbeginIter;
+        VectorIterator<T> rendIter;
     };
 
 
