@@ -133,7 +133,7 @@ TEST(List, copyconstruct) {
 
 }
 
-TEST(List, forwardIterator) {
+TEST(List, Iteration) {
     List<int> myList;
     ASSERT_TRUE(myList.isEmpty());
     auto beg = myList.begin();

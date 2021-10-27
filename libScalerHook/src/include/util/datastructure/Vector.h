@@ -103,12 +103,12 @@ namespace scaler {
         }
 
         inline T &operator[](const ssize_t &index) {
-            assert(0 <= index && index < internalArrSize);
+            assert(0 <= index && index < size);
             assert(internalArr != nullptr);
             return internalArr[index];
         }
 
-        inline void remove(const ssize_t &index) {
+        inline void erase(const ssize_t &index) {
             assert(0 <= index && index < size);
             for (int i = index + 1; i < size; ++i) {
                 internalArr[i - 1] = internalArr[i];
@@ -148,6 +148,9 @@ namespace scaler {
             return size;
         }
 
+        void clear() {
+            size = 0;
+        }
 
         const VectorIterator<T> &begin() override {
             beginIter.index = size == 0 ? -1 : 0;

@@ -28,7 +28,7 @@ namespace scaler {
 
         inline void pop() {
             assert(internalVec.getSize() > 0);
-            internalVec.remove(internalVec.getSize() - 1);
+            internalVec.erase(internalVec.getSize() - 1);
         }
 
         inline const T peekpop() {

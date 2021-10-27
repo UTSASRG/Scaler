@@ -6,41 +6,118 @@ using namespace scaler;
 TEST(Vector, insert) {
     Vector<int> myVec;
     //Insert after nullptr
-    ASSERT_DEATH(myVec.insertAt(-1,0), ".*node != nullptr.*");
+    ASSERT_DEATH(myVec.insertAt(-1, 0), ".*0 <= index && index <= size.*");
 
-//    //Insert after tail
-//    ASSERT_DEATH(myVec.insertAfter(myVec.getTail(), 0), ".*node != &tail.*");
-//
-//    //Insert at top
-//    for (int i = 1; i <= 5; ++i)
-//        myVec.insertAfter(myVec.getHead(), i);
-//    ASSERT_EQ(myVec.getSize(), 5);
-//
-//    ListEntry<int> *curEntry = myVec.getHead();
-//    for (int i = 5; i >= 1; --i) {
-//        curEntry = curEntry->getNext();
-//        ASSERT_EQ(curEntry->getVal(), i);
-//    }
-//
-//    //Pushback
-//    for (int i = 1; i <= 5; ++i)
-//        myVec.pushBack(i);
-//
-//    for (int i = 1; i <= 5; ++i) {
-//        curEntry = curEntry->getNext();
-//        ASSERT_EQ(curEntry->getVal(), i);
-//    }
-//    curEntry = curEntry->getNext();
-//    ASSERT_EQ(curEntry, myVec.getTail());
-//
-//
-//
-//    //Insert in the middle
-//    myVec.insertAfter(curEntry->getPrev()->getPrev()->getPrev()->getPrev()->getPrev()->getPrev()->getPrev(), 0);
-//
-//    curEntry = myVec.getHead();
-//    for (int i = 6; i <= 0; ++i) {
-//        curEntry = curEntry->getNext();
-//        ASSERT_EQ(i, curEntry->getVal());
-//    }
+    //Insert at top
+    for (int i = 1; i <= 5; ++i)
+        myVec.insertAt(0, i);
+    ASSERT_EQ(myVec.getSize(), 5);
+
+    for (int i = 0; i < 5; ++i) {
+        ASSERT_EQ(myVec[i], 5 - i);
+    }
+    ASSERT_EQ(myVec.getSize(), 5);
+
+
+    myVec.clear();
+
+    ASSERT_EQ(myVec.getSize(), 0);
+
+    //Pushback
+    for (int i = 1; i <= 5; ++i)
+        myVec.pushBack(i);
+
+    for (int i = 0; i < 5; ++i) {
+        ASSERT_EQ(myVec[i], i + 1);
+    }
+
+    ASSERT_EQ(myVec.getSize(), 5);
+
+    myVec.clear();
+    ASSERT_EQ(myVec.getSize(), 0);
+
+
+}
+
+
+TEST(Vector, erase) {
+    Vector<int> myVec;
+
+    //Erase nullptr
+    ASSERT_DEATH(myVec.erase(-1), ".*0 <= index && index < size.*");
+    ASSERT_DEATH(myVec.erase(0), ".*0 <= index && index < size.*");
+
+
+    //Erase one element
+    myVec.pushBack(0);
+    myVec.erase(myVec.getSize() - 1);
+    ASSERT_TRUE(myVec.isEmpty());
+
+    //Erase multiple lements
+    for (int i = 1; i <= 5; ++i)
+        myVec.pushBack(i);
+    for (int i = 4; i >= 0; --i) {
+        if (myVec[i] % 2 == 0){
+            myVec.erase(i);
+        }
+    }
+    ASSERT_EQ(myVec.getSize(), 3);
+
+    for (int i = 1; i <= 5; i += 2) {
+        ASSERT_EQ(i, myVec[i / 2]);
+    }
+
+}
+
+TEST(Vector, getVal) {
+    Vector<int> myVec;
+
+    for (int i = 1; i <= 5; ++i)
+        myVec.pushBack(i);
+    ASSERT_EQ(myVec[2], 3);
+    ASSERT_DEATH(myVec[6], ".*0 <= index && index < size.*");
+
+}
+
+TEST(Vector, Iteration) {
+    Vector<int> myVec;
+    ASSERT_TRUE(myVec.isEmpty());
+    auto beg = myVec.begin();
+    auto end = myVec.end();
+    ASSERT_TRUE(beg == beg);
+    ASSERT_TRUE(end == end);
+    ASSERT_TRUE(beg == end);
+
+    for (int i = 1; i <= 7; ++i)
+        myVec.pushBack(i);
+
+    ASSERT_TRUE(myVec.begin() != myVec.end());
+
+    int index = 1;
+    for (auto elem = myVec.begin(); elem != myVec.end(); ++elem) {
+        ASSERT_EQ(*elem, index++);
+    }
+    index = 1;
+
+    for (int i =  myVec.getSize()-1; i >= 0; --i) {
+        if (myVec[i] % 2 == 0){
+            myVec.erase(i);
+        }
+    }
+    ASSERT_EQ(myVec.getSize(), 4);
+    auto rbegin = myVec.rbegin();
+    ASSERT_EQ(*rbegin, 7);
+    EXPECT_FALSE(rbegin == myVec.rend());
+    --rbegin;
+    ASSERT_EQ(*rbegin, 5);
+    EXPECT_FALSE(rbegin == myVec.rend());
+    rbegin--;
+    ASSERT_EQ(*rbegin, 3);
+    EXPECT_FALSE(rbegin == myVec.rend());
+    rbegin--;
+    ASSERT_EQ(*rbegin, 1);
+    --rbegin;
+    EXPECT_TRUE(rbegin == myVec.rend());
+
+
 }
