@@ -1,5 +1,6 @@
 #include <util/hook/install.h>
 #include <util/hook/ExtFuncCallHookBrkpoint.h>
+#include <util/tool/StringTool.h>
 
 
 typedef int (*main_fn_t)(int, char **, char **);
@@ -14,13 +15,13 @@ int doubletake_main(int argc, char **argv, char **envp) {
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
 
-        if (fileName ==
-            "/media/umass/datasystem/steven/Scaler/libScalerHook/lib/watcher/lib/xed2/lib/libxed.so") {
+        if (scaler::strEndsWith(fileName, "libxed.so")) {
             return false;
-        } else if (fileName ==
-                   "/media/umass/datasystem/steven/Scaler/libScalerHook/lib/watcher/lib/xed2/lib/libxed-ild.so") {
+        } else if (scaler::strEndsWith(fileName, "libxed-ild.so")) {
             return false;
-        } else {
+        } else if (scaler::strEndsWith(fileName, "libScalerHook-HookManualAsm.so")) {
+            return false;
+        }else {
 //            printf("%s\n", fileName.c_str());
             return true;
         }

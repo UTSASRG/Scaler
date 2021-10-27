@@ -51,6 +51,14 @@ namespace scaler {
             void *pseudoPltEntry = nullptr;                   //A pointer to pseudoPltEntry
             int type = -1;
             int bind = -1;
+
+            bool operator==(const ExtSymInfo &rho) const {
+                if (&rho != this) {
+                    return fileId == rho.fileId && extSymbolId == rho.extSymbolId;
+                } else {
+                    return true;
+                }
+            }
         };
 
         /**
@@ -142,13 +150,8 @@ namespace scaler {
 
             SemaphoreFuncId semaphoreExtSymbolId;
 
-            ~ELFImgInfo();
 
             ELFImgInfo();
-
-            ELFImgInfo(const ELFImgInfo &rho);
-
-            ELFImgInfo &operator=(const ELFImgInfo &rho);
 
 
         };

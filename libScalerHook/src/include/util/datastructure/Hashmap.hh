@@ -166,7 +166,7 @@ namespace scaler {
             entry = curBucketEntry;
             bucket = curBucket;
             while (true) {
-                if (entry->getNext() != curBucket->getTail()) {
+                if (entry->getNext() != bucket->getTail()) {
                     //Not tail, go to next element.
                     entry = entry->getNext();
                     success = true;
@@ -207,8 +207,7 @@ namespace scaler {
 
 
         HashMap &operator=(const HashMap &rho) {
-            if(&rho != this)
-            {
+            if (&rho != this) {
                 hfunc = rho.hfunc;
                 kcmp = rho.kcmp;
                 bucketNum = rho.bucketNum;
@@ -222,7 +221,7 @@ namespace scaler {
         }
         //todo: Implement right value copy
 
-        HashMap(const ssize_t bucketNum = 4096, const HashFunc &hfunc = hfuncPassThrough<TpKey>,
+        HashMap(const ssize_t bucketNum = 16, const HashFunc &hfunc = hfuncPassThrough<TpKey>,
                 const Comparator &kcmp = cmpWeq<TpKey>) : hfunc(hfunc),
                                                           kcmp(kcmp),
                                                           buckets(nullptr),
@@ -236,8 +235,6 @@ namespace scaler {
             }
             beginIter.hashMap = this;
             endIter.hashMap = this;
-            endIter.curBucket = &buckets[bucketNum - 1];
-            endIter.curBucketEntry = endIter.curBucket->getTail();
         }
 
         HashMap(const HashMap &rho) {
@@ -289,7 +286,6 @@ namespace scaler {
          */
         void put(const TpKey &key, const TpVal &val, bool replace = true) {
             ssize_t hindex = hashIndex(key);
-
             HashBucket_ *bucket = getHashBucket(hindex);
             HashEntry_ *hashEntry;
 
@@ -303,7 +299,7 @@ namespace scaler {
         }
 
         // Free an entry with specified
-        void erase(const TpKey &key) {
+        void erase(const TpKey &key, bool mustExist = false) {
             ssize_t hindex = hashIndex(key);
 
             auto *curBucket = getHashBucket(hindex);
@@ -311,8 +307,10 @@ namespace scaler {
             BucketEntry_ *entry;
             bool isFound = getBucketEntry(key, curBucket, entry);
 
-            assert(isFound);
-            curBucket->erase(entry);
+            if (mustExist)
+                assert(isFound);
+            if (isFound)
+                curBucket->erase(entry);
         }
 
 
@@ -328,7 +326,15 @@ namespace scaler {
         }
 
         const HashMapIterator<TpKey, TpVal> &end() {
+            endIter.curBucket = &buckets[bucketNum - 1];
+            endIter.curBucketEntry = endIter.curBucket->getTail();
             return endIter;
+        }
+
+        void print() {
+            for (int i = 0; i < bucketNum; ++i) {
+                DBG_LOGS("Bucket %d has %d numbers\n", i, buckets[i].getSize());
+            }
         }
 
         ~HashMap() {

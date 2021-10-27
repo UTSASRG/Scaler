@@ -237,7 +237,7 @@ namespace scaler {
             //Resolve current address
             curSymbol.addr = *curSymbol.gotEntry;
 
-            ELFImgInfo curELFImgInfo = elfImgInfoMap.get(curSymbol.fileId);
+            ELFImgInfo &curELFImgInfo = elfImgInfoMap.get(curSymbol.fileId);
 
             //Allocate plt table
             //auto binCodeArrPseudoPLT = fillDestAddr2PseudoPltCode(curSymbol.extSymbolId,
@@ -252,6 +252,10 @@ namespace scaler {
                                                     symbolFileId != curSymbol.fileId);
 
             curELFImgInfo.hookedExtSymbol.put(curSymbol.extSymbolId, curSymbol);
+            DBG_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd",
+                     curELFImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.extSymbolId,
+                     curSymbol.extSymbolId);
+
         }
 
         /**
@@ -259,6 +263,7 @@ namespace scaler {
          */
         for (auto iter = elfImgInfoMap.begin(); iter != elfImgInfoMap.end(); ++iter) {
             auto &curELFImgInfo = iter.getVal();
+
 
             for (auto &curSymbol: curELFImgInfo.hookedExtSymbol) {
                 //jmp to custom handler function
@@ -583,8 +588,8 @@ namespace scaler {
     void ExtFuncCallHookAsm::parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr,
                                            FileID &libraryFileID) {
         //Find correct symbol
-        ELFImgInfo& curELfImgInfo = elfImgInfoMap.get(callerFileID);
-        ExtSymInfo& curSymbol = curELfImgInfo.hookedExtSymbol.get(symbolIDInCaller);
+        ELFImgInfo &curELfImgInfo = elfImgInfoMap.get(callerFileID);
+        ExtSymInfo &curSymbol = curELfImgInfo.hookedExtSymbol.get(symbolIDInCaller);
 
         if (curSymbol.symbolName == "exit") {
             int j = 1;
@@ -614,7 +619,7 @@ namespace scaler {
         fprintf(fp, "extern \"C\"{\n");
 
         for (auto &curSymbol:symbolToHook) {
-            ELFImgInfo& curElfImgInfo = elfImgInfoMap.get(curSymbol.fileId);
+            ELFImgInfo &curElfImgInfo = elfImgInfoMap.get(curSymbol.fileId);
 
             fprintf(fp, "//%s\n", curElfImgInfo.filePath.c_str());
             fprintf(fp, "//%s\n", curElfImgInfo.idFuncMap.at(curSymbol.extSymbolId).c_str());
@@ -949,9 +954,9 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 //    assert(curContext->thiz != nullptr);
     auto &_this = scaler_extFuncCallHookAsm_thiz;
 
-    scaler::ExtFuncCallHookAsm::ELFImgInfo& curElfImgInfo = _this->elfImgInfoMap.get(fileId);
+    scaler::ExtFuncCallHookAsm::ELFImgInfo &curElfImgInfo = _this->elfImgInfoMap.get(fileId);
 
-    scaler::ExtFuncCallHookAsm::ExtSymInfo& curSymbol = curElfImgInfo.hookedExtSymbol.get(extSymbolId);
+    scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = curElfImgInfo.hookedExtSymbol.get(extSymbolId);
     void *retOriFuncAddr = curSymbol.addr;
 
 
@@ -1262,7 +1267,7 @@ void *cAfterHookHandlerLinux() {
 
     scaler::FileID fileId = curContext->fileId.peekpop();
 
-    scaler::ExtFuncCallHookAsm::ELFImgInfo& curELFImgInfo = _this->elfImgInfoMap.get(fileId);
+    scaler::ExtFuncCallHookAsm::ELFImgInfo &curELFImgInfo = _this->elfImgInfoMap.get(fileId);
 
     auto &fileName = curELFImgInfo.filePath;
 
@@ -1279,7 +1284,7 @@ void *cAfterHookHandlerLinux() {
     // To improve efficiency, we could sotre this value
     void *callerAddr = curContext->callerAddr.peekpop();
 
-    scaler::ExtFuncCallHookAsm::ExtSymInfo& curSymbol = curELFImgInfo.hookedExtSymbol.get(extSymbolID);
+    scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = curELFImgInfo.hookedExtSymbol.get(extSymbolID);
     auto libraryFileId = _this->pmParser.findExecNameByAddr(curSymbol.addr);
     auto &libraryFileName = _this->pmParser.idFileMap.at(libraryFileId);
     assert(libraryFileId != -1);

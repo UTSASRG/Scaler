@@ -90,7 +90,7 @@ namespace scaler {
                                                                             DT_PLTRELSZ) / sizeof(ElfW(Rela));
 
                 parseRelaSymbol(curELFImgInfo, curFileiD);
-
+                DBG_LOGS("%d\n",curFileiD);
                 elfImgInfoMap.put(curFileiD, curELFImgInfo);
 
             } catch (const ScalerException &e) {
@@ -273,49 +273,13 @@ namespace scaler {
     }
 
 
-    ExtFuncCallHook_Linux::ELFImgInfo::~ELFImgInfo() {
 
-    }
-
-
-    ExtFuncCallHook_Linux::ELFImgInfo::ELFImgInfo(const ELFImgInfo &rho) {
-        operator=(rho);
-    }
 
     ExtFuncCallHook_Linux::ELFImgInfo::ELFImgInfo() : hookedExtSymbol() {
         for (int i = 0; i < realAddrResolved.getSize(); ++i) {
             realAddrResolved[i] = false;
         }
 
-    }
-
-    ExtFuncCallHook_Linux::ELFImgInfo &ExtFuncCallHook_Linux::ELFImgInfo::operator=(const ELFImgInfo &rho) {
-        filePath = rho.filePath;
-        pltStartAddr = rho.pltStartAddr;
-        pltEndAddr = rho.pltEndAddr;
-        pltSecStartAddr = rho.pltSecStartAddr;
-        pltSecEndAddr = rho.pltSecEndAddr;
-        _DYNAMICAddr = rho._DYNAMICAddr;
-        realAddrResolved = rho.realAddrResolved;
-
-        //pseudoPlt = rho.pseudoPlt;
-
-        hookedExtSymbol = rho.hookedExtSymbol;
-        allExtSymbol = rho.allExtSymbol;
-        funcIdMap = rho.funcIdMap;
-        idFuncMap = rho.idFuncMap;
-
-        relaPlt = rho.relaPlt;
-        relaPltCnt = rho.relaPltCnt;
-        dynSymTable = rho.dynSymTable;
-        dynStrTable = rho.dynStrTable;
-        dynStrSize = rho.dynStrSize;
-        baseAddrStart = rho.baseAddrStart;
-
-        oriPltCode = rho.oriPltCode;
-        oriPltSecCode = rho.oriPltSecCode;
-
-        return *this;
     }
 
 

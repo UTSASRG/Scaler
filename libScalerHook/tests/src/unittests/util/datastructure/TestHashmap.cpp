@@ -136,11 +136,21 @@ TEST(HashMap, Iteration) {
     for (auto elem = hashMap1.begin(); elem != hashMap1.end(); ++elem) {
         ASSERT_EQ(*elem, rlt[index++]);
     }
+    index = 0;
+    for (auto &elem:hashMap1) {
+        ASSERT_EQ(elem, rlt[index++]);
+    }
 
     char rlt1[] = {12, 14, 16, 18};
+
     index = 0;
     for (auto elem = hashMap20.begin(); elem != hashMap20.end(); ++elem) {
         ASSERT_EQ(*elem, rlt1[index++]);
+    }
+
+    index = 0;
+    for (auto& elem:hashMap20) {
+        ASSERT_EQ(elem, rlt1[index++]);
     }
 
     //Iterator copy
