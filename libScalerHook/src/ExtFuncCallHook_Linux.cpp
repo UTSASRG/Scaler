@@ -90,7 +90,6 @@ namespace scaler {
                                                                             DT_PLTRELSZ) / sizeof(ElfW(Rela));
 
                 parseRelaSymbol(curELFImgInfo, curFileiD);
-                DBG_LOGS("%d\n", curFileiD);
                 elfImgInfoMap.put(curFileiD, curELFImgInfo);
 
             } catch (const ScalerException &e) {
