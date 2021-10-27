@@ -351,7 +351,7 @@ namespace scaler {
 
     std::vector<int> ExtFuncCallHook_Linux::ELFImgInfo::PthreadFuncId::getAllIds() {
         std::vector<int> result;
-
+result.begin()++;
         if (PTHREAD_CREATE != -1)
             result.push_back(PTHREAD_CREATE);
         if (PTHREAD_JOIN != -1)

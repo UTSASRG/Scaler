@@ -12,7 +12,7 @@ namespace scaler {
     class Vector;
 
     template<typename T>
-    class VectorIterator : public ForwardIterator<T>, ReverseIterator<T> {
+    class VectorIterator : public ForwardIterator<T, VectorIterator<T>>, ReverseIterator<T, VectorIterator<T>> {
     public:
         using Vector_ = Vector<T>;
 
@@ -21,7 +21,7 @@ namespace scaler {
 
         VectorIterator &operator++() override {
             //End iterator points to index==size()
-            assert(index < vector->getSize());
+            assert(index <= vector->getSize());
             ++index;
             return *this;
         }
@@ -32,7 +32,7 @@ namespace scaler {
 
         VectorIterator &operator--() override {
             //rend iterator points index==-1
-            assert(index > -1);
+            assert(index >= -1);
             --index;
             return *this;
         }
@@ -41,17 +41,12 @@ namespace scaler {
             return operator--();
         }
 
-        bool operator!=(const Iterator &rho) const override {
+        bool operator!=(const VectorIterator<T> &rho) const override {
             return !operator==(rho);
         }
 
-        bool operator==(const Iterator &rho) const override {
-            auto *rhoPtr = dynamic_cast<const VectorIterator<T> *>(&rho);
-            if (rhoPtr) {
-                return vector == rhoPtr->vector && index == rhoPtr->index;
-            } else {
-                return false;
-            }
+        bool operator==(const VectorIterator<T> &rho) const override {
+            return vector == rho.vector && index == rho.index;
         }
 
         T &operator*() override {

@@ -114,7 +114,7 @@ namespace scaler {
     class HashMap;
 
     template<class TpKey, class TpVal>
-    class HashMapIterator : public ForwardIterator<TpVal> {
+    class HashMapIterator : public ForwardIterator<TpVal, HashMapIterator<TpKey, TpVal>> {
     public:
         using HashMap_ = HashMap<TpKey, TpVal>;
         using HashBucket_ = HashBucket<TpKey, TpVal>;
@@ -129,21 +129,16 @@ namespace scaler {
         }
 
 
-        const HashMapIterator<TpKey, TpVal> operator++(int) override {
+        const HashMapIterator operator++(int) override {
             return operator++();
         }
 
-        bool operator==(const Iterator &rho) const override {
-            const HashMapIterator<TpKey, TpVal> *rhoPtr = dynamic_cast<const HashMapIterator<TpKey, TpVal> *>(&rho);
-            if (rhoPtr) {
-                return curBucketEntry == rhoPtr->curBucketEntry && curBucket == rhoPtr->curBucket &&
-                       hashMap == rhoPtr->hashMap;
-            } else {
-                return false;
-            }
+        bool operator==(const HashMapIterator &rho) const override {
+            return curBucketEntry == rho.curBucketEntry && curBucket == rho.curBucket &&
+                   hashMap == rho.hashMap;
         }
 
-        inline bool operator!=(const Iterator &rho) const override {
+        inline bool operator!=(const HashMapIterator &rho) const override {
             return !operator==(rho);
         }
 

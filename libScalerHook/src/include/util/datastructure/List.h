@@ -76,7 +76,7 @@ namespace scaler {
 
 
     template<typename T>
-    class ListIterator : public ForwardIterator<T>, ReverseIterator<T> {
+    class ListIterator : public ForwardIterator<T, ListIterator<T>>, ReverseIterator<T, ListIterator<T>> {
     public:
         using List_ = List<T>;
         using ListEntry_ = ListEntry<T>;
@@ -105,17 +105,12 @@ namespace scaler {
             return operator--();
         }
 
-        bool operator!=(const Iterator &rho) const override {
+        bool operator!=(const ListIterator &rho) const override {
             return !operator==(rho);
         }
 
-        bool operator==(const Iterator &rho) const override {
-            auto *rhoPtr = dynamic_cast<const ListIterator<T> *>(&rho);
-            if (rhoPtr) {
-                return list == rhoPtr->list && curNode == rhoPtr->curNode;
-            } else {
-                return false;
-            }
+        bool operator==(const ListIterator &rho) const override {
+            return list == rho.list && curNode == rho.curNode;
         }
 
         T &operator*() override {
@@ -244,7 +239,7 @@ namespace scaler {
             return size;
         }
 
-        const ListIterator<T> &begin() override{
+        const ListIterator<T> &begin() override {
             beginIter.curNode = head.next;
             return beginIter;
         }
