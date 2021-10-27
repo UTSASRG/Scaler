@@ -7,9 +7,9 @@ namespace scaler {
     class Iterator {
     public:
 
-        virtual bool operator==(const Iterator &rho) = 0;
+        virtual bool operator==(const Iterator &rho) const= 0;
 
-        virtual bool operator!=(const Iterator &rho) = 0;
+        virtual bool operator!=(const Iterator &rho) const= 0;
     };
 
     template<typename T>
@@ -36,17 +36,17 @@ namespace scaler {
 
     template<typename T>
     class Iteratable {
-        virtual T begin() = 0;
+        virtual const T& begin() = 0;
 
-        virtual T end() = 0;
+        virtual const T& end() = 0;
     };
 
     template<typename T>
     class ReverseIteratable {
 
-        virtual T rbegin() = 0;
+        virtual const T& rbegin() = 0;
 
-        virtual T rend() = 0;
+        virtual const T& rend() = 0;
     };
 }
 

@@ -133,7 +133,7 @@ namespace scaler {
             return operator++();
         }
 
-        bool operator==(const Iterator &rho) override {
+        bool operator==(const Iterator &rho) const override {
             const HashMapIterator<TpKey, TpVal> *rhoPtr = dynamic_cast<const HashMapIterator<TpKey, TpVal> *>(&rho);
             if (rhoPtr) {
                 return curBucketEntry == rhoPtr->curBucketEntry && curBucket == rhoPtr->curBucket &&
@@ -143,7 +143,7 @@ namespace scaler {
             }
         }
 
-        inline bool operator!=(const Iterator &rho) override {
+        inline bool operator!=(const Iterator &rho) const override {
             return !operator==(rho);
         }
 
@@ -322,11 +322,11 @@ namespace scaler {
          * If there is no entry, then begin()==end()==head of the first bucket
          * @return
          */
-        HashMapIterator<TpKey, TpVal> begin() {
+        const HashMapIterator<TpKey, TpVal>& begin() {
             return beginIter;
         }
 
-        HashMapIterator<TpKey, TpVal> end() {
+        const HashMapIterator<TpKey, TpVal>& end() {
             return endIter;
         }
 

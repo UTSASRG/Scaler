@@ -79,7 +79,7 @@ namespace scaler {
         }
 
         ListIterator &operator++() override {
-            assert(curNode->next != nullptr && curNode->next != &list->tail);
+            assert(curNode != &list->tail);
             curNode = curNode->next;
             return *this;
         }
@@ -89,7 +89,7 @@ namespace scaler {
         }
 
         ListIterator &operator--() override {
-            assert(curNode->prev != nullptr && curNode->prev != &list->head);
+            assert(curNode != &list->head);
             curNode = curNode->prev;
             return *this;
         }
@@ -98,11 +98,11 @@ namespace scaler {
             return operator--();
         }
 
-        bool operator!=(const Iterator &rho) override {
+        bool operator!=(const Iterator &rho) const override {
             return !operator==(rho);
         }
 
-        bool operator==(const Iterator &rho) override {
+        bool operator==(const Iterator &rho) const override {
             auto *rhoPtr = dynamic_cast<const ListIterator<T> *>(&rho);
             if (rhoPtr) {
                 return list == rhoPtr->list && curNode == rhoPtr->curNode;
@@ -138,7 +138,7 @@ namespace scaler {
     public:
         using ListEntry_ = ListEntry<T>;
 
-        List() : beginIter(this), endIter(this), rbeginIter(this), rendIter(this),size(0) {
+        List() : beginIter(this), endIter(this), rbeginIter(this), rendIter(this), size(0) {
             head.next = &tail;
             tail.prev = &head;
 
@@ -148,18 +148,17 @@ namespace scaler {
             rendIter.curNode = &head;
         };
 
-        List(const List<T> &rho) {
+        List(List<T> &rho) : List() {
             operator=(rho);
         };
 
-        List &operator=(List &rho) {
-            beginIter = rho.beginIter;
-            endIter = rho.endIter;
-            rbeginIter = rho.rbeginIter;
-            rendIter = rho.rendIter;
-
-            for (auto &elem:rho) {
-                insertAfter(tail.prev, elem);
+        List &operator=(List<T> &rho) {
+            if (this != &rho) {
+                ListEntry<T> *curEntry = rho.getHead()->getNext();
+                while (curEntry != rho.getTail()) {
+                    pushBack(curEntry->value);
+                    curEntry = curEntry->getNext();
+                }
             }
         }
 
@@ -188,22 +187,23 @@ namespace scaler {
             ++size;
         }
 
+        virtual void pushBack(const T &val) {
+            insertAfter(tail.prev, val);
+        }
+
         virtual void erase(ListEntry_ *node) {
+            assert(node != nullptr);
             assert(node != &head);
             assert(node != &tail);
 
             auto prev = node->prev;
-            auto next = node->prev;
+            auto next = node->next;
             prev->next = node->next;
             next->prev = node->prev;
             delete node;
             node = nullptr;
 
             --size;
-        }
-
-        virtual void pushBack( const T &val) {
-            insertAfter(tail.prev, val);
         }
 
 
@@ -216,7 +216,7 @@ namespace scaler {
             }
         }
 
-        virtual inline ListEntry_ *getHead() {
+        virtual ListEntry_ *getHead() {
             return &head;
         }
 
@@ -224,23 +224,25 @@ namespace scaler {
             return &tail;
         }
 
-        virtual inline ssize_t getSize() {
+        virtual inline ssize_t getSize() const {
             return size;
         }
 
-        ListIterator<T> begin() override {
+        const ListIterator<T> &begin() override {
+            beginIter.curNode = head.next;
             return beginIter;
         }
 
-        ListIterator<T> end() override {
+        const ListIterator<T> &end() override {
             return endIter;
         }
 
-        ListIterator<T> rbegin() override {
+        const ListIterator<T> &rbegin() override {
+            rbeginIter.curNode = tail.prev;
             return rbeginIter;
         }
 
-        ListIterator<T> rend() override {
+        const ListIterator<T> &rend() override {
             return rendIter;
         }
 
