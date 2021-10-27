@@ -69,8 +69,9 @@ void scaler::SerilizableInvocationTree::save(FILE *fp) {
             layerOrderedElem[i]->save(fp);
         }
         fclose(fp);
-
-        libPltHook->saveAllSymbolId();
+        if (libPltHook) {
+            libPltHook->saveAllSymbolId();
+        }
     }
 }
 

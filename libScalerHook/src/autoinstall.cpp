@@ -21,12 +21,6 @@ int doubletake_main(int argc, char **argv, char **envp) {
             return false;
         } else if (scaler::strEndsWith(fileName, "libScalerHook-HookManualAsm.so")) {
             return false;
-        } else if (funcName == "__ctype_init") {
-            return false;
-        } else if (funcName == "_setjmp") {
-            return false;
-        } else if (funcName == "pthread_mutex_lock") {
-            return false;
         } else {
 //            printf("%s\n", fileName.c_str());
             return true;

@@ -32,7 +32,6 @@ struct Context {
     scaler::Stack<scaler::SymID> extSymbolId;
     scaler::Stack<scaler::FileID> fileId;
     //Variables used to determine whether it's called by hook handler or not
-    bool inHookHandler = false;
     scaler::Stack<void *> callerAddr;
     scaler::Stack<int64_t> timestamp;
     scaler::Stack<pthread_t *> pthreadIdPtr;
@@ -40,30 +39,13 @@ struct Context {
 
 scaler::ExtFuncCallHookAsm *scaler_extFuncCallHookAsm_thiz = nullptr;
 
-__thread Context *__curContext = nullptr;
+thread_local Context curContext;
+__thread bool inhookHandler = false;
 
 long long threadLocalOffsetToTCB = 0;
 
 }
 namespace scaler {
-
-    //todo: memory leak
-
-    class CThreadlocalInitializer {
-    public:
-        CThreadlocalInitializer() {
-            __curContext = new Context();
-            DBG_LOGS("CThreadlocalInitializer tid=%zd", pthread_self());
-        }
-
-        ~CThreadlocalInitializer() {
-            //todo: memory leak here
-            // delete[] __curContext;
-        }
-    };
-
-    thread_local CThreadlocalInitializer __curContextInitializer;
-
 
     //Declare hook handler written in assembly code
 
@@ -79,10 +61,9 @@ namespace scaler {
 
     void ExtFuncCallHookAsm::install(Hook::SYMBOL_FILTER filterCallB) {
         //Calcualte the offset between context variable and tid
-        __curContext->inHookHandler = true;
+        inhookHandler = true;
         //todo: Maybe long is enough?
         auto tid = (pthread_t) THREAD_SELF;
-        threadLocalOffsetToTCB = (long long) __curContext - (long long) tid;
 
 
         memTool = MemoryTool_Linux::getInst();
@@ -333,7 +314,7 @@ namespace scaler {
             }
 
         }
-        __curContext->inHookHandler = false;
+        inhookHandler = false;
     }
 
     thread_local SerilizableInvocationTree invocationTree;
@@ -352,7 +333,7 @@ namespace scaler {
 
 
     void ExtFuncCallHookAsm::uninstall() {
-        __curContext->inHookHandler = true;
+        inhookHandler = true;
 
         for (auto iter = elfImgInfoMap.begin(); iter != elfImgInfoMap.end(); ++iter) {
             auto &curELFImgInfo = iter.getVal();
@@ -404,7 +385,7 @@ namespace scaler {
 
         }
 
-        __curContext->inHookHandler = false;
+        inhookHandler = false;
     }
 
     std::vector<uint8_t> ExtFuncCallHookAsm::fillDestAddr2PltRedirectorCode(void *funcAddr) {
@@ -936,7 +917,7 @@ extern "C" {
  */
 inline Context *getContext() {
     auto tid = reinterpret_cast<pthread_t>(THREAD_SELF);
-    return (Context *) (threadLocalOffsetToTCB + (long long) tid);
+    return *(Context **) (threadLocalOffsetToTCB + (long long) tid);
 }
 
 //pthread_mutex_t lock0 = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
@@ -972,15 +953,19 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
         }
     }
 
-    Context *curContext = getContext();
-
-    if (curContext->inHookHandler) {
-//        curContext->callerAddr.push(callerAddr);
+    if (inhookHandler) {
         return retOriFuncAddr;
     }
+    //
+//    Context *curContext = getContext();
+//
+//    if (curContext->inHookHandler) {
+////        curContext->callerAddr.push(callerAddr);
+//        return retOriFuncAddr;
+//    }
 
     //Starting from here, we could call external symbols and it won't cause any problem
-    curContext->inHookHandler = true;
+    inhookHandler = true;
 
 
     auto startTimeStamp = getunixtimestampms();
@@ -1021,7 +1006,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
             //todo: A better way is to also compare library id because a custom library will also implement pthread_create.
             pthread_t **newThread;
             scaler::parm_pthread_create(&newThread, rdiLoc);
-            curContext->pthreadIdPtr.push(*newThread);
+            curContext.pthreadIdPtr.push(*newThread);
         } else if (extSymbolId == curElfImgInfo.pthreadExtSymbolId.PTHREAD_JOIN) {
             pthread_t *joinThread;
             scaler::parm_pthread_join(&joinThread, rdiLoc);
@@ -1239,7 +1224,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     //fp = fopen("./testHandler.cpp", "w");
     //fclose(fp);
 
-    curContext->inHookHandler = false;
+    inhookHandler = false;
 //    pthread_mutex_unlock(&lock0);
     return retOriFuncAddr;
 }
@@ -1247,15 +1232,16 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 pthread_mutex_t lock1 = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
 void *cAfterHookHandlerLinux() {
-    Context *curContext = getContext();
+//    Context *curContext = getContext();
 
 //    pthread_mutex_lock(&lock1);
-    if (curContext->inHookHandler) {
-        void *callerAddr = curContext->callerAddr.peekpop();
+    if (inhookHandler) {
+        //todo: Need to bypass this
+        void *callerAddr = curContext.callerAddr.peekpop();
 //        pthread_mutex_unlock(&lock1);
         return callerAddr;
     }
-    curContext->inHookHandler = true;
+    inhookHandler = true;
 
     assert(scaler_extFuncCallHookAsm_thiz != nullptr);
     auto &_this = scaler_extFuncCallHookAsm_thiz;
@@ -1264,24 +1250,24 @@ void *cAfterHookHandlerLinux() {
 //            printf(" ");
 //        }
 
-    scaler::FileID fileId = curContext->fileId.peekpop();
+    scaler::FileID fileId = curContext.fileId.peekpop();
 
     scaler::ExtFuncCallHookAsm::ELFImgInfo &curELFImgInfo = _this->elfImgInfoMap.get(fileId);
 
     auto &fileName = curELFImgInfo.filePath;
 
-    scaler::SymID extSymbolID = curContext->extSymbolId.peekpop();
+    scaler::SymID extSymbolID = curContext.extSymbolId.peekpop();
 
     auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID);
 
 
-    int64_t startTimestamp = curContext->timestamp.peekpop();
+    int64_t startTimestamp = curContext.timestamp.peekpop();
 
     int64_t endTimestamp = getunixtimestampms();
 
     // When after hook is called. Library address is resolved. We use searching mechanism to find the file name.
     // To improve efficiency, we could sotre this value
-    void *callerAddr = curContext->callerAddr.peekpop();
+    void *callerAddr = curContext.callerAddr.peekpop();
 
     scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = curELFImgInfo.hookedExtSymbol.get(extSymbolID);
     auto libraryFileId = _this->pmParser.findExecNameByAddr(curSymbol.addr);
@@ -1300,7 +1286,7 @@ void *cAfterHookHandlerLinux() {
     if (extSymbolID == curELFImgInfo.pthreadExtSymbolId.PTHREAD_CREATE) {
         //todo: A better way is to compare function id rather than name. This is more efficient.
         //todo: A better way is to also compare library id because a custom library will also implement pthread_create.
-        pthread_t *pthreadIdPtr = curContext->pthreadIdPtr.peekpop();
+        pthread_t *pthreadIdPtr = curContext.pthreadIdPtr.peekpop();
         DBG_LOGS("[After Hook Param Parser]    pthread_create tid=%lu", *pthreadIdPtr);
     }
 
@@ -1319,7 +1305,7 @@ void *cAfterHookHandlerLinux() {
 //        if (*curContext.released && curContext.funcId.size() == 0)
 //            curContext.realDeconstructor();
 //    pthread_mutex_unlock(&lock1);
-    curContext->inHookHandler = false;
+    inhookHandler = false;
     return callerAddr;
 }
 
