@@ -129,7 +129,7 @@ namespace scaler {
         }
 
 
-        HashMapIterator<TpKey, TpVal> &operator++(int) override {
+        const HashMapIterator<TpKey, TpVal> operator++(int) override {
             return operator++();
         }
 
@@ -322,11 +322,11 @@ namespace scaler {
          * If there is no entry, then begin()==end()==head of the first bucket
          * @return
          */
-        const HashMapIterator<TpKey, TpVal>& begin() {
+        const HashMapIterator<TpKey, TpVal> &begin() {
             return beginIter;
         }
 
-        const HashMapIterator<TpKey, TpVal>& end() {
+        const HashMapIterator<TpKey, TpVal> &end() {
             return endIter;
         }
 

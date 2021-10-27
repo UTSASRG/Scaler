@@ -26,11 +26,11 @@ namespace scaler {
             return *this;
         }
 
-        VectorIterator &operator++(int) override {
+        const VectorIterator operator++(int) override {
             return operator++();
         }
 
-        VectorIterator &operator--() override {
+        const VectorIterator operator--() override {
             //rend iterator points index==-1
             assert(index > -1);
             --index;

@@ -18,7 +18,7 @@ namespace scaler {
 
         virtual ForwardIterator<T> &operator++() = 0;
 
-        virtual ForwardIterator<T> &operator++(int) = 0;
+        virtual const ForwardIterator<T> operator++(int) = 0;
 
         virtual T &operator*() = 0;
 
@@ -29,7 +29,7 @@ namespace scaler {
     public:
         virtual ReverseIterator<T> &operator--() = 0;
 
-        virtual ReverseIterator<T> &operator--(int) = 0;
+        virtual const ReverseIterator<T> operator--(int) = 0;
 
         virtual T &operator*() = 0;
     };

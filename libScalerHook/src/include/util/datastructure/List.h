@@ -11,7 +11,6 @@ namespace scaler {
     template<typename T>
     class ListIterator;
 
-
     template<typename T>
     class ListEntry {
     public:
@@ -19,11 +18,11 @@ namespace scaler {
 
         }
 
-        bool operator==(const ListEntry &rho) {
+        bool operator==(const ListEntry &rho) const {
             return value == rho.value;
         }
 
-        bool operator!=(const ListEntry &rho) {
+        bool operator!=(const ListEntry &rho) const {
             return !operator==();
         }
 
@@ -49,6 +48,10 @@ namespace scaler {
         }
 
         inline ListEntry<T> *getPrev() {
+            return prev;
+        }
+
+        inline const ListEntry<T> *getPrevC() const {
             return prev;
         }
 
@@ -88,7 +91,7 @@ namespace scaler {
             return *this;
         }
 
-        ListIterator &operator++(int) override {
+        const ListIterator operator++(int) override {
             return operator++();
         }
 
@@ -98,7 +101,7 @@ namespace scaler {
             return *this;
         }
 
-        ListIterator &operator--(int i) override {
+        const ListIterator<T> operator--(int) override {
             return operator--();
         }
 
