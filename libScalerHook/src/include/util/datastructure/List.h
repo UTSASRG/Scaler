@@ -244,7 +244,7 @@ namespace scaler {
             return size;
         }
 
-        const ListIterator<T> &begin() override {
+        const ListIterator<T> &begin() override{
             beginIter.curNode = head.next;
             return beginIter;
         }

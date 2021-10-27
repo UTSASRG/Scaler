@@ -6,20 +6,14 @@
 
 namespace scaler {
 
-    /**
-     * Auto expansion array, similar to STL
-     * Won't call any external function for read-only operation
-     * @tparam T Value type
-     */
     template<typename T>
     class Stack {
     public:
-        //todo: Check initialized
         Stack(const ssize_t &initialSize = 2) : internalVec(initialSize) {
 
         }
 
-        bool isEmpty() {
+        bool isEmpty() const {
             return internalVec.size == 0;
         }
 
@@ -43,7 +37,7 @@ namespace scaler {
             return rlt;
         }
 
-        inline ssize_t getSize() {
+        inline const ssize_t getSize() const{
             return internalVec.getSize();
         }
 

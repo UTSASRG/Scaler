@@ -30,14 +30,14 @@ namespace scaler {
             return operator++();
         }
 
-        const VectorIterator operator--() override {
+        VectorIterator &operator--() override {
             //rend iterator points index==-1
             assert(index > -1);
             --index;
             return *this;
         }
 
-        VectorIterator &operator--(int i) override {
+        const VectorIterator operator--(int i) override {
             return operator--();
         }
 
@@ -103,12 +103,12 @@ namespace scaler {
             return *this;
         };
 
-        bool isEmpty() {
+        bool isEmpty() const {
             return size == 0;
         }
 
         inline T &operator[](const ssize_t &index) {
-            assert(0 <= index < internalArrSize);
+            assert(0 <= index && index < internalArrSize);
             assert(internalArr != nullptr);
             return internalArr[index];
         }
