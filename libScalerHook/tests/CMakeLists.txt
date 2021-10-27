@@ -40,7 +40,7 @@ add_executable(libScalerHook-unittests
         src/unittests/TestTimer.cpp
         src/unittests/TestInvocationTree.cpp
         src/unittests/util/datastructure/TestList.cpp
-        src/unittests/util/datastructure/TestList.cpp)
+        src/unittests/util/datastructure/TestStack.cpp)
 target_link_libraries(libScalerHook-unittests PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread)
 target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHook-Tests_SOURCE_DIR}/linkerscripts/mylinker.ld")
 

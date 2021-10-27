@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <util/datastructure/Stack.h>
 
-TEST(Stack, EmptyList) {
+TEST(Stack, PushPop) {
     scaler::Stack<int> myStack(5);
     myStack.push(1);
     myStack.push(2);
@@ -43,14 +43,9 @@ TEST(Stack, StackCopy) {
     myStack->pop();
     delete myStack;
 
-    ASSERT_EQ(myStack21.peek(),5);
-    myStack21.pop();
-    ASSERT_EQ(myStack21.peek(),4);
-    myStack21.pop();
-    ASSERT_EQ(myStack21.peek(),3);
-    myStack21.pop();
-    ASSERT_EQ(myStack21.peek(),2);
-    myStack21.pop();
-    ASSERT_EQ(myStack21.peek(),1);
-    myStack21.pop();
+    ASSERT_EQ(myStack21.peekpop(),5);
+    ASSERT_EQ(myStack21.peekpop(),4);
+    ASSERT_EQ(myStack21.peekpop(),3);
+    ASSERT_EQ(myStack21.peekpop(),2);
+    ASSERT_EQ(myStack21.peekpop(),1);
 }

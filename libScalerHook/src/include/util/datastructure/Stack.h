@@ -28,10 +28,12 @@ namespace scaler {
         }
 
         inline const T &peek() {
+            assert(internalVec.getSize() > 0);
             return internalVec[internalVec.getSize() - 1];
         }
 
         inline void pop() {
+            assert(internalVec.getSize() > 0);
             internalVec.remove(internalVec.getSize() - 1);
         }
 
@@ -41,8 +43,12 @@ namespace scaler {
             return rlt;
         }
 
+        inline ssize_t getSize() {
+            return internalVec.getSize();
+        }
+
     protected:
-        Vector<T> internalVec;
+        Vector <T> internalVec;
     };
 
 
