@@ -134,7 +134,7 @@ add_executable(libScalerHook-parsecapps-dedup
         src/parsecapps/dedup/util.c)
 target_include_directories(libScalerHook-parsecapps-dedup PUBLIC src/parsecapps/dedup/include)
 target_link_directories(libScalerHook-parsecapps-dedup PRIVATE src/parsecapps/dedup/lib)
-target_link_libraries(libScalerHook-parsecapps-dedup ScalerHook-HookManualAsm pthread dl
+target_link_libraries(libScalerHook-parsecapps-dedup  ScalerHook-HookAuto pthread dl
         libcrypto.a
         libssl.a
         libz.a)

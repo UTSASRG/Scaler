@@ -960,12 +960,12 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     }
 
 
-    if (true) {
+    if (inhookHandler) {
         return retOriFuncAddr;
     }
-    if (getInHookBoolThreadLocal()) {
-        return retOriFuncAddr;
-    }
+//    if (getInHookBoolThreadLocal()) {
+//        return retOriFuncAddr;
+//    }
     //
 //    Context *curContext = getContext();
 //
@@ -1000,6 +1000,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
              fileId, _this->pmParser.idFileMap.at(fileId).c_str(),
              extSymbolId, curElfImgInfo.idFuncMap.at(extSymbolId).c_str(), retOriFuncAddr);
 
+    /**
     //Parse parameter based on functions
     //todo: for debugging purpose code is not efficient.
     //todo: shorten this
@@ -1233,7 +1234,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     //FILE *fp = NULL;
     //fp = fopen("./testHandler.cpp", "w");
     //fclose(fp);
-
+**/
     inhookHandler = false;
 //    pthread_mutex_unlock(&lock0);
     return retOriFuncAddr;

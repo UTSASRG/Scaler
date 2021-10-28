@@ -14,7 +14,9 @@ int doubletake_main(int argc, char **argv, char **envp) {
     DBG_LOG("Installing plthook");
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
-        if (scaler::strEndsWith(fileName, "libxed.so")) {
+        if (funcName == "__tls_get_addr") {
+            return false;
+        } else if (scaler::strEndsWith(fileName, "libxed.so")) {
             return false;
         } else if (scaler::strEndsWith(fileName, "libxed-ild.so")) {
             return false;
