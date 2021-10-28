@@ -739,8 +739,8 @@ namespace scaler {
         "pushq %r14\n\t" //8
         "pushq %r15\n\t" //8
         "subq $8,%rsp\n\t" //8
-        //"stmxcsr (%rsp)\n\t" // 4 Bytes(8-4)
-        //"fnstcw 4(%rsp)\n\t" // 2 Bytes(4-2)
+        "stmxcsr (%rsp)\n\t" // 4 Bytes(8-4)
+        "fnstcw 4(%rsp)\n\t" // 2 Bytes(4-2)
         //        "pushf\n\t" //forward flag (Store all)
         "pushq %rax\n\t" //8
         "pushq %rcx\n\t" //8
@@ -812,9 +812,9 @@ namespace scaler {
         "popq %rax\n\t"
         //        "popf\n\t" //forward flag (Store all)
 
+        "ldmxcsr (%rsp)\n\t" // 2 Bytes(8-4)
+        "fldcw 4(%rsp)\n\t" // 4 Bytes(4-2)
         "addq $8,%rsp\n\t" //8
-        //"ldmxcsr (%rsp)\n\t" // 2 Bytes(8-4)
-        //"fldcw 4(%rsp)\n\t" // 4 Bytes(4-2)
 
         "popq %r15\n\t"
         "popq %r14\n\t"
@@ -823,7 +823,7 @@ namespace scaler {
         "popq %rbp\n\t"
         "popq %rbx\n\t"
 
-        //Restore rsp to original value (Uncomment the following to only test prehook)
+        //Restore rsp to original value (Uncomment the following to only enable prehook)
         "addq $152,%rsp\n\t"
         "jmpq *%r11\n\t"
 
@@ -834,36 +834,20 @@ namespace scaler {
         "addq $8,%rsp\n\t"
         "callq *%r11\n\t"
 
-
-        //Save return value to stack
-        "pushq %rax\n\t"
-        "pushq %rdx\n\t"
-        //todo: Handle ZMM
-
         /**
-        * Save Environment
-        */
-        //        "pushf\n\t"
+         * Save return value
+         */
+        //Save return value to stack
+        "pushq %rax\n\t" //8
+        "pushq %rdx\n\t" //8
+        PUSHXMM(0) //16
+        PUSHXMM(1) //16
+        //Save st0
+        "subq $16,%rsp\n\t" //8
+        "fstp (%rsp)\n\t"
+        "subq $16,%rsp\n\t" //8
+        "fstp (%rsp)\n\t"
 
-        "pushq %rdi\n\t"  // currsp=oldrsp-160
-        "pushq %rsi\n\t"  // currsp=oldrsp-168
-        "pushq %rdx\n\t"  // currsp=oldrsp-176
-        "pushq %rcx\n\t"  // currsp=oldrsp-184
-        "pushq %r8\n\t"   // currsp=oldrsp-192
-        "pushq %r9\n\t"   // currsp=oldrsp-200
-        "pushq %r10\n\t"  // currsp=oldrsp-208
-        //Save [XYZ]MM[0-7]
-        //todo: Also save YMM0-7 and ZMM0-7
-
-        //Save RBX, RSP, RBP, and R12–R15
-        "pushq %rbx\n\t" // currsp=oldrsp-600
-        "pushq %rsp\n\t" // currsp=oldrsp-608
-        "pushq %rbp\n\t" // currsp=oldrsp-616
-        "pushq %r12\n\t" // currsp=oldrsp-624
-        "pushq %r13\n\t" // currsp=oldrsp-632
-        "pushq %r14\n\t" // currsp=oldrsp-640
-        "pushq %r15\n\t" // currsp=oldrsp-648
-        "pushq %rax\n\t" // currsp=oldrsp-656
 
         /**
          * Call After Hook
@@ -874,31 +858,12 @@ namespace scaler {
         "movq %rax,%r11\n\t"
 
         /**
-        * Restore Environment
+        * Restore return value
         */
-        "popq %rax\n\t" // currsp=oldrsp-656
-        "popq %r15\n\t" // currsp=oldrsp-640
-        "popq %r14\n\t" // currsp=oldrsp-632
-        "popq %r13\n\t" // currsp=oldrsp-624
-        "popq %r12\n\t" // currsp=oldrsp-616
-        "popq %rbp\n\t" // currsp=oldrsp-608
-        "popq %rsp\n\t" // currsp=oldrsp-600
-        "popq %rbx\n\t" // currsp=oldrsp-592
-
-
-        "popq %r10\n\t" // currsp=oldrsp-200
-        "popq %r9\n\t" // currsp=oldrsp-192
-        "popq %r8\n\t" // currsp=oldrsp-184
-        "popq %rcx\n\t" // currsp=oldrsp-176
-        "popq %rdx\n\t" // currsp=oldrsp-168
-        "popq %rsi\n\t" // currsp=oldrsp-160
-        "popq %rdi\n\t" // currsp=oldrsp-152
-
-
-
-        "popq %rdx\n\t"
-        "popq %rax\n\t"
-        //todo: Handle float return and XMM return
+//        "fldp (%rsp)\n\t"
+//        "addq $16,%rsp\n\t" //8
+//        "fldp (%rsp)\n\t"
+//        "subq $16,%rsp\n\t" //8
 
 
         //Retrun to caller
