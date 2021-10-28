@@ -64,7 +64,7 @@ namespace scaler {
         inhookHandler = true;
         //todo: Maybe long is enough?
         auto tid = (pthread_t) THREAD_SELF;
-
+        threadLocalOffsetToTCB = (long long) &inhookHandler - (long long) tid;
 
         memTool = MemoryTool_Linux::getInst();
         scaler_extFuncCallHookAsm_thiz = this;
@@ -739,8 +739,8 @@ namespace scaler {
         "pushq %r14\n\t" //8
         "pushq %r15\n\t" //8
         "subq $8,%rsp\n\t" //8
-        //        "stmxcsr (%rsp)\n\t" // 4 Bytes(8-4)
-        //        "fnstcw 4(%rsp)\n\t" // 2 Bytes(4-2)
+        //"stmxcsr (%rsp)\n\t" // 4 Bytes(8-4)
+        //"fnstcw 4(%rsp)\n\t" // 2 Bytes(4-2)
         //        "pushf\n\t" //forward flag (Store all)
         "pushq %rax\n\t" //8
         "pushq %rcx\n\t" //8
@@ -813,8 +813,8 @@ namespace scaler {
         //        "popf\n\t" //forward flag (Store all)
 
         "addq $8,%rsp\n\t" //8
-        //        "ldmxcsr (%rsp)\n\t" // 2 Bytes(8-4)
-        //        "fldcw 4(%rsp)\n\t" // 4 Bytes(4-2)
+        //"ldmxcsr (%rsp)\n\t" // 2 Bytes(8-4)
+        //"fldcw 4(%rsp)\n\t" // 4 Bytes(4-2)
 
         "popq %r15\n\t"
         "popq %r14\n\t"
@@ -920,6 +920,12 @@ inline Context *getContext() {
     return *(Context **) (threadLocalOffsetToTCB + (long long) tid);
 }
 
+inline bool getInHookBoolThreadLocal() {
+    auto tid = reinterpret_cast<pthread_t>(THREAD_SELF);
+    return *(bool *) (threadLocalOffsetToTCB + (long long) tid);
+}
+
+
 //pthread_mutex_t lock0 = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
 static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc) {
@@ -953,7 +959,11 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
         }
     }
 
-    if (inhookHandler) {
+
+    if (true) {
+        return retOriFuncAddr;
+    }
+    if (getInHookBoolThreadLocal()) {
         return retOriFuncAddr;
     }
     //

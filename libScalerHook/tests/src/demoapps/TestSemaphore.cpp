@@ -23,19 +23,6 @@ void *thread(void *arg) {
 
 
 int main() {
-//    install([](std::string fileName, std::string funcName) -> bool {
-//        //todo: User should be able to specify name here. Since they can change filename
-//
-//        if (fileName ==
-//            "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-Semaphore") {
-//            fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
-//            return true;
-//        } else {
-//            return false;
-//        }
-//
-//    });
-
     sem_init(&mutex, 0, 1);
     pthread_t t1, t2;
     pthread_create(&t1, NULL, thread, NULL);

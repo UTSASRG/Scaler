@@ -15,34 +15,6 @@ void threadB() {
 }
 
 int main() {
-//    install([](std::string fileName, std::string funcName) -> bool {
-//        //todo: User should be able to specify name here. Since they can change filename
-//        if (scaler::strContains(fileName, "/ld-")) {
-//            return false;
-//        } else if (scaler::strContains(fileName, "/libScalerHook-HookManualAsm")) {
-//            return false;
-//        } else if (scaler::strContains(fileName, "/libstdc++")) {
-//            return false;
-//        } else if (scaler::strContains(fileName, "/libdl-")) {
-//            return false;
-//        } else {
-//            //fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
-//            return true;
-//        }
-//    });
-
-//    install([](std::string fileName, std::string funcName) -> bool {
-//        //todo: User should be able to specify name here. Since they can change filename
-//
-//        if (fileName ==
-//            "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-StdPthread") {
-//            fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
-//            return true;
-//        } else {
-//            return false;
-//        }
-//    });
-
 
     printf("Hello\n");
     funcA();

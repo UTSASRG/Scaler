@@ -10,9 +10,9 @@
 using namespace std;
 
 int main() {
-    //    pthread_t pt1 = pthread_self();
-//    printf("pt1=%lu\n", pt1);
-//    printf("pt1=%lu\n", myGetThreadID());
+    pthread_t pt1 = pthread_self();
+    printf("pt1=%lu\n", pt1);
+    printf("pt1=%lu\n", myGetThreadID());
 
     printf("Calling funcA\n");
     funcA();

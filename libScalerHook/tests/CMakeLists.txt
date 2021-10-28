@@ -73,7 +73,7 @@ target_link_libraries(libScalerHook-demoapps-FuncNestedCall PUBLIC ScalerHook-Ho
 
 add_executable(libScalerHook-demoapps-Pthread src/demoapps/TestPthread.cpp)
 target_include_directories(libScalerHook-demoapps-Pthread PUBLIC libtest/header)
-target_link_libraries(libScalerHook-demoapps-Pthread ScalerHook-HookAuto ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall pthread dl)
+target_link_libraries(libScalerHook-demoapps-Pthread ScalerHook-HookAuto libScalerHook-testlib-FuncCall pthread dl)
 
 
 add_executable(libScalerHook-demoapps-Threadlocal src/demoapps/TestThreadLocalAssembly.cpp)
@@ -83,26 +83,27 @@ target_compile_options(libScalerHook-demoapps-Threadlocal PUBLIC "-mfsgsbase")
 
 add_executable(libScalerHook-demoapps-StdPthread src/demoapps/TestStdThread.cpp)
 target_include_directories(libScalerHook-demoapps-StdPthread PUBLIC libtest/header)
-target_link_libraries(libScalerHook-demoapps-StdPthread ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
+target_link_libraries(libScalerHook-demoapps-StdPthread ScalerHook-HookAuto libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
 
 
 add_executable(libScalerHook-demoapps-ComplexThreadop src/demoapps/TestComplexThreadOps.cpp)
 target_include_directories(libScalerHook-demoapps-ComplexThreadop PUBLIC libtest/header)
-target_link_libraries(libScalerHook-demoapps-ComplexThreadop ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
+target_link_libraries(libScalerHook-demoapps-ComplexThreadop ScalerHook-HookAuto libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
 
 
 add_executable(libScalerHook-demoapps-Semaphore src/demoapps/TestSemaphore.cpp)
 target_include_directories(libScalerHook-demoapps-Semaphore PUBLIC)
-target_link_libraries(libScalerHook-demoapps-Semaphore ScalerHook-HookManualAsm pthread dl)
+target_link_libraries(libScalerHook-demoapps-Semaphore ScalerHook-HookAuto pthread dl)
 
 
 add_executable(libScalerHook-demoapps-Signal src/demoapps/TestSingalHandler.cpp)
 target_include_directories(libScalerHook-demoapps-Signal PUBLIC)
-target_link_libraries(libScalerHook-demoapps-Signal pthread dl)
+target_link_libraries(libScalerHook-demoapps-Signal ScalerHook-HookAuto pthread dl)
 
 add_executable(libScalerHook-demoapps-InlineFunc src/demoapps/TestInlineFunction.cpp)
 target_include_directories(libScalerHook-demoapps-InlineFunc PUBLIC)
 target_compile_options(libScalerHook-demoapps-InlineFunc PUBLIC "-g")
+target_link_libraries(libScalerHook-demoapps-InlineFunc ScalerHook-HookAuto)
 
 add_executable(libScalerHook-demoapps-TestTLS src/demoapps/TestTLS.cpp)
 target_include_directories(libScalerHook-demoapps-TestTLS PUBLIC)
@@ -140,7 +141,7 @@ target_link_libraries(libScalerHook-parsecapps-dedup ScalerHook-HookManualAsm pt
 
 add_executable(libScalerHook-parsecapps-blackscholes src/parsecapps/blackscholes/blackscholes-pthread.cpp)
 target_compile_options(libScalerHook-parsecapps-blackscholes PRIVATE "-DENABLE_THREADS" "-DPARALLEL" "-DNCO=2" "-DN=960")
-target_link_libraries(libScalerHook-parsecapps-blackscholes ScalerHook-HookAuto-Brkpoint)
+target_link_libraries(libScalerHook-parsecapps-blackscholes ScalerHook-HookAuto)
 
 
 find_package(BZip2 REQUIRED)
