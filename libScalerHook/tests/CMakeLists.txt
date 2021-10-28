@@ -76,10 +76,10 @@ target_include_directories(libScalerHook-demoapps-Pthread PUBLIC libtest/header)
 target_link_libraries(libScalerHook-demoapps-Pthread ScalerHook-HookAuto libScalerHook-testlib-FuncCall pthread dl)
 
 
-add_executable(libScalerHook-demoapps-Threadlocal src/demoapps/TestThreadLocalAssembly.cpp)
-target_include_directories(libScalerHook-demoapps-Threadlocal PUBLIC libtest/header)
-target_link_libraries(libScalerHook-demoapps-Threadlocal pthread dl)
-target_compile_options(libScalerHook-demoapps-Threadlocal PUBLIC "-mfsgsbase")
+add_executable(libScalerHook-proof-Threadlocal src/demoapps/TestThreadLocalAssembly.cpp)
+target_include_directories(libScalerHook-proof-Threadlocal PUBLIC libtest/header)
+target_link_libraries(libScalerHook-proof-Threadlocal pthread dl)
+target_compile_options(libScalerHook-proof-Threadlocal PUBLIC "-mfsgsbase")
 
 add_executable(libScalerHook-demoapps-StdPthread src/demoapps/TestStdThread.cpp)
 target_include_directories(libScalerHook-demoapps-StdPthread PUBLIC libtest/header)
@@ -105,10 +105,10 @@ target_include_directories(libScalerHook-demoapps-InlineFunc PUBLIC)
 target_compile_options(libScalerHook-demoapps-InlineFunc PUBLIC "-g")
 target_link_libraries(libScalerHook-demoapps-InlineFunc ScalerHook-HookAuto)
 
-add_executable(libScalerHook-demoapps-TestTLS src/demoapps/TestTLS.cpp)
-target_include_directories(libScalerHook-demoapps-TestTLS PUBLIC)
-target_compile_options(libScalerHook-demoapps-TestTLS PUBLIC "-g")
-target_link_libraries(libScalerHook-demoapps-TestTLS pthread)
+add_executable(libScalerHook-proof-TestTLS src/demoapps/TestTLS.cpp)
+target_include_directories(libScalerHook-proof-TestTLS PUBLIC)
+target_compile_options(libScalerHook-proof-TestTLS PUBLIC "-g")
+target_link_libraries(libScalerHook-proof-TestTLS pthread)
 
 add_executable(libScalerHook-parsecapps-aget
         src/parsecapps/aget/Aget.c
