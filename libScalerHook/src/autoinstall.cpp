@@ -14,6 +14,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
     DBG_LOG("Installing plthook");
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
+
         if (funcName == "__tls_get_addr") {
             return false;
         } else if (scaler::strEndsWith(fileName, "libxed.so")) {
@@ -22,10 +23,15 @@ int doubletake_main(int argc, char **argv, char **envp) {
             return false;
         } else if (scaler::strEndsWith(fileName, "libScalerHook-HookManualAsm.so")) {
             return false;
+        } else if (scaler::strEndsWith(fileName, "libScalerHook-HookBrkpoint.so")) {
+            return false;
+        } else if (scaler::strEndsWith(fileName, "libScalerHook-HookAuto.so")) {
+            return false;
         } else {
 //            printf("%s\n", fileName.c_str());
             return true;
         }
+
     }, INSTALL_TYPE::ASM);
 
 //    //Initialization

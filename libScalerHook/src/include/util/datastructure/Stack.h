@@ -9,7 +9,7 @@ namespace scaler {
     template<typename T>
     class Stack {
     public:
-        Stack(const ssize_t &initialSize = 2) : internalVec(initialSize) {
+        Stack(const ssize_t &initialSize = 16384) : internalVec(initialSize) {
 
         }
 

@@ -150,7 +150,7 @@ add_executable(libScalerHook-parsecapps-pbzip2
         src/parsecapps/pbzip2/ErrorContext.cpp
         src/parsecapps/pbzip2/pbzip2.cpp)
 target_include_directories(libScalerHook-parsecapps-pbzip2 PUBLIC src/parsecapps/pbzip2/include)
-target_link_libraries(libScalerHook-parsecapps-pbzip2 ScalerHook-HookManualAsm pthread BZip2::BZip2)
+target_link_libraries(libScalerHook-parsecapps-pbzip2 ScalerHook-HookAuto pthread BZip2::BZip2)
 
 
 #add_library(InstallTest SHARED libInstalltest/src/installTest.cpp)

@@ -72,7 +72,7 @@ namespace scaler {
     public:
 
         //todo: Check initialized
-        explicit Vector(const ssize_t &initialSize = 2) : internalArrSize(initialSize), size(0), beginIter(this),
+        explicit Vector(const ssize_t &initialSize = 4096) : internalArrSize(initialSize), size(0), beginIter(this),
                                                           endIter(this), rbeginIter(this), rendIter(this) {
             internalArr = new T[initialSize];
         }
@@ -119,6 +119,7 @@ namespace scaler {
         }
 
         void expand() {
+            assert(false);
             T *oldInternalArr = internalArr;
             T *newInternalArr = new T[internalArrSize * 2];
             for (int i = 0; i < internalArrSize; ++i) {

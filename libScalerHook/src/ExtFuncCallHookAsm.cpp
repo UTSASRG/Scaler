@@ -831,7 +831,7 @@ namespace scaler {
          * Call actual function
          */
         "addq $152,%rsp\n\t"
-        "addq $8,%rsp\n\t"
+        "addq $8,%rsp\n\t" //Override caller address
         "callq *%r11\n\t"
 
         /**
@@ -844,10 +844,9 @@ namespace scaler {
         PUSHXMM(1) //16
         //Save st0
         "subq $16,%rsp\n\t" //8
-        "fstp (%rsp)\n\t"
+        "fstpt (%rsp)\n\t"
         "subq $16,%rsp\n\t" //8
-        "fstp (%rsp)\n\t"
-
+        "fstpt (%rsp)\n\t"
 
         /**
          * Call After Hook
@@ -860,12 +859,15 @@ namespace scaler {
         /**
         * Restore return value
         */
-//        "fldp (%rsp)\n\t"
-//        "addq $16,%rsp\n\t" //8
-//        "fldp (%rsp)\n\t"
-//        "subq $16,%rsp\n\t" //8
-
-
+        "fldt (%rsp)\n\t"
+        "addq $16,%rsp\n\t" //16
+        "fldt (%rsp)\n\t"
+        "addq $16,%rsp\n\t" //16
+        POPXMM(1) //16
+        POPXMM(0) //16
+        "popq %rdx\n\t" //8
+        "popq %rax\n\t" //8
+        "CLD\n\t"
         //Retrun to caller
         "jmpq *%r11\n\t"
         );
@@ -926,18 +928,10 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 
 
     if (inhookHandler) {
+        curContext.callerAddr.push(callerAddr);
+        curContext.callerAddr.pop();
         return retOriFuncAddr;
     }
-//    if (getInHookBoolThreadLocal()) {
-//        return retOriFuncAddr;
-//    }
-    //
-//    Context *curContext = getContext();
-//
-//    if (curContext->inHookHandler) {
-////        curContext->callerAddr.push(callerAddr);
-//        return retOriFuncAddr;
-//    }
 
     //Starting from here, we could call external symbols and it won't cause any problem
     inhookHandler = true;
@@ -945,12 +939,12 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 
     auto startTimeStamp = getunixtimestampms();
     //Push callerAddr into stack
-//    curContext->timestamp.push(startTimeStamp);
-//    curContext->callerAddr.push(callerAddr);
+//    curContext.timestamp.push(startTimeStamp);
+//    curContext.callerAddr.push(callerAddr);
     //Push calling info to afterhook
-//    curContext->fileId.push(fileId);
+//    curContext.fileId.push(fileId);
     //todo: rename this to caller function
-//    curContext->extSymbolId.push(extSymbolId);
+//    curContext.extSymbolId.push(extSymbolId);
 
 
 //        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
@@ -1212,7 +1206,6 @@ void *cAfterHookHandlerLinux() {
 
 //    pthread_mutex_lock(&lock1);
     if (inhookHandler) {
-        //todo: Need to bypass this
         void *callerAddr = curContext.callerAddr.peekpop();
 //        pthread_mutex_unlock(&lock1);
         return callerAddr;
@@ -1250,15 +1243,15 @@ void *cAfterHookHandlerLinux() {
     auto &libraryFileName = _this->pmParser.idFileMap.at(libraryFileId);
     assert(libraryFileId != -1);
     curSymbol.libraryFileID = libraryFileId;
-    scaler::curNode->setRealFileID(libraryFileId);
-    scaler::curNode->setFuncAddr(curSymbol.addr);
-    scaler::curNode->setEndTimestamp(endTimestamp);
-    scaler::curNode = scaler::curNode->getParent();
+//    scaler::curNode->setRealFileID(libraryFileId);
+//    scaler::curNode->setFuncAddr(curSymbol.addr);
+//    scaler::curNode->setEndTimestamp(endTimestamp);
+//    scaler::curNode = scaler::curNode->getParent();
 
     DBG_LOGS("[After Hook] Thread ID:%lu Library:%s, Func: %s Start: %ld End: %ld", pthread_self(),
              libraryFileName.c_str(),
              funcName.c_str(), startTimestamp, endTimestamp);
-
+/*
     if (extSymbolID == curELFImgInfo.pthreadExtSymbolId.PTHREAD_CREATE) {
         //todo: A better way is to compare function id rather than name. This is more efficient.
         //todo: A better way is to also compare library id because a custom library will also implement pthread_create.
@@ -1281,6 +1274,7 @@ void *cAfterHookHandlerLinux() {
 //        if (*curContext.released && curContext.funcId.size() == 0)
 //            curContext.realDeconstructor();
 //    pthread_mutex_unlock(&lock1);
+*/
     inhookHandler = false;
     return callerAddr;
 }
