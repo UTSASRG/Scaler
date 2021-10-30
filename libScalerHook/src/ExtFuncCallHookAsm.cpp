@@ -721,7 +721,7 @@ namespace scaler {
         //beneath the stack pointer of the function. The space is called the red zone. This zone will not be clobbered
         //by any signal or interrupt handlers. Compilers can thus utilize this zone to save local variables.
         //gcc and clang offer the -mno-red-zone flag to disable red-zone optimizations.
-        //todo: inefficient code
+        //todo: inefficient assembly code
         //R11 is the only register we can use. Store stack address in it. (%r11)==callerAddr. Later we'll pass this value
         //as a parameter to prehook
         "movq %rsp,%r11\n\t"
@@ -808,7 +808,7 @@ namespace scaler {
         "popq %rdx\n\t"
         "popq %rcx\n\t"
         "popq %rax\n\t"
-        //        "popf\n\t" //forward flag (Store all)
+        //"popf\n\t" //forward flag (Store all)
 
         "ldmxcsr (%rsp)\n\t" // 2 Bytes(8-4)
         "fldcw 4(%rsp)\n\t" // 4 Bytes(4-2)
@@ -822,8 +822,8 @@ namespace scaler {
         "popq %rbx\n\t"
 
         //Restore rsp to original value (Uncomment the following to only enable prehook)
-        //     "addq $152,%rsp\n\t"
-        //     "jmpq *%r11\n\t"
+        //"addq $152,%rsp\n\t"
+        //"jmpq *%r11\n\t"
 
         /**
          * Call actual function
@@ -956,7 +956,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     }
 
 
-    if (inhookHandler || true) {
+    if (inhookHandler) {
         curContext.callerAddr.push(callerAddr);
         return retOriFuncAddr;
     }
@@ -973,15 +973,6 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     curContext.fileId.push(fileId);
     //todo: rename this to caller function
     curContext.extSymbolId.push(extSymbolId);
-
-
-//        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
-//            printf(" ");
-//        }
-
-    //std::stringstream ss;
-    //ss << 1;
-    // uint64_t id = std::stoull(ss.str());
 
     DBG_LOGS("[Pre Hook] Thread:%lu File(%ld):%s, Func(%ld): %s RetAddr:%p", pthread_self(),
              fileId, _this->pmParser.idFileMap.at(fileId).c_str(),
@@ -1223,20 +1214,14 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     //fclose(fp);
 **/
     inhookHandler = false;
-//    pthread_mutex_unlock(&lock0);
     return retOriFuncAddr;
 }
 
 pthread_mutex_t lock1 = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
 void *cAfterHookHandlerLinux() {
-//    Context *curContext = getContext();
-
-//    pthread_mutex_lock(&lock1);
-    if (inhookHandler || true) {
-
+    if (inhookHandler) {
         void *callerAddr = curContext.callerAddr.peekpop();
-//        pthread_mutex_unlock(&lock1);
         return callerAddr;
     }
     inhookHandler = true;
@@ -1244,25 +1229,13 @@ void *cAfterHookHandlerLinux() {
     assert(scaler_extFuncCallHookAsm_thiz != nullptr);
     auto &_this = scaler_extFuncCallHookAsm_thiz;
 
-//        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
-//            printf(" ");
-//        }
-
     scaler::FileID fileId = curContext.fileId.peekpop();
-//
     scaler::ExtFuncCallHookAsm::ELFImgInfo &curELFImgInfo = _this->elfImgInfoMap.get(fileId);
-//
-//    auto &fileName = curELFImgInfo.filePath;
-//
+    auto &fileName = curELFImgInfo.filePath;
     scaler::SymID extSymbolID = curContext.extSymbolId.peekpop();
-//
     auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID);
-//
-//
     int64_t startTimestamp = curContext.timestamp.peekpop();
-
     int64_t endTimestamp = getunixtimestampms();
-
     // When after hook is called. Library address is resolved. We use searching mechanism to find the file name.
     // To improve efficiency, we could sotre this value
     void *callerAddr = curContext.callerAddr.peekpop();

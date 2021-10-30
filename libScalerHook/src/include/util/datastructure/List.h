@@ -157,9 +157,21 @@ namespace scaler {
         List &operator=(const List<T> &rho) {
             if (this != &rho) {
                 const ListEntry<T> *curEntry = rho.getHeadC()->getNextC();
+                printf("here curEntry=%p\n", curEntry);
                 while (curEntry != rho.getTailC()) {
+                    if(curEntry != rho.getTailC()){
+                        printf("aha\n");
+                    }else{
+                        printf("oho\n");
+                    }
+                    printf("here1 curEntry=%p rho.getTailC=%p eq=%s\n", curEntry, rho.getTailC(),
+                           curEntry != rho.getTailC() ? "true" : "false");
                     pushBack(curEntry->value);
+                    printf("here2 curEntry=%p rho.getTailC=%p eq=%s\n", curEntry, curEntry, rho.getTailC(),
+                           curEntry != rho.getTailC() ? "true" : "false");
                     curEntry = curEntry->getNextC();
+                    printf("here3 curEntry=%p rho.getTailC=%p eq=%s\n", curEntry, curEntry, rho.getTailC(),
+                           curEntry != rho.getTailC() ? "true" : "false");
                 }
             }
         }
