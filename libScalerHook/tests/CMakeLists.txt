@@ -119,7 +119,7 @@ add_executable(libScalerHook-parsecapps-aget
         src/parsecapps/aget/Resume.c
         src/parsecapps/aget/Signal.c)
 target_include_directories(libScalerHook-parsecapps-aget PUBLIC src/parsecapps/aget/include)
-target_link_libraries(libScalerHook-parsecapps-aget ScalerHook-HookAuto-Brkpoint pthread dl)
+target_link_libraries(libScalerHook-parsecapps-aget ScalerHook-HookAuto pthread dl)
 
 
 add_executable(libScalerHook-parsecapps-dedup

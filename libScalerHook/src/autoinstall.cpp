@@ -17,6 +17,10 @@ int doubletake_main(int argc, char **argv, char **envp) {
 
         if (funcName == "__tls_get_addr") {
             return false;
+        }else if (funcName == "_setjmp") {
+            return false;
+        } else if (funcName == "__libc_longjmp") {
+            return false;
         } else if (scaler::strEndsWith(fileName, "libxed.so")) {
             return false;
         } else if (scaler::strEndsWith(fileName, "libxed-ild.so")) {

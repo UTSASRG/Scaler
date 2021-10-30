@@ -315,8 +315,8 @@ namespace scaler {
         inhookHandler = false;
     }
 
-        //thread_local SerilizableInvocationTree invocationTree;
-        //thread_local InvocationTreeNode *curNode = &invocationTree.treeRoot;
+    //thread_local SerilizableInvocationTree invocationTree;
+    //thread_local InvocationTreeNode *curNode = &invocationTree.treeRoot;
 
     ExtFuncCallHookAsm::ExtFuncCallHookAsm() : ExtFuncCallHook_Linux(pmParser,
                                                                      *MemoryTool_Linux::getInst()) {
@@ -822,8 +822,8 @@ namespace scaler {
         "popq %rbx\n\t"
 
         //Restore rsp to original value (Uncomment the following to only enable prehook)
-//                "addq $152,%rsp\n\t"
-//                "jmpq *%r11\n\t"
+        //     "addq $152,%rsp\n\t"
+        //     "jmpq *%r11\n\t"
 
         /**
          * Call actual function
@@ -865,7 +865,7 @@ namespace scaler {
          * Call After Hook
          */
         //todo: This line has compilation error on the server
-        "call  cAfterHookHandlerLinux\n\t"
+        "call cAfterHookHandlerLinux\n\t"
         //Save return value to R11. R11 now has the address of caller.
         "movq %rax,%r11\n\t"
 
@@ -896,7 +896,7 @@ namespace scaler {
         "addq $16,%rsp\n\t" //16
 
 
-        "CLD\n\t"
+        //"CLD\n\t"
         //Retrun to caller
         "jmpq *%r11\n\t"
         );
@@ -927,7 +927,7 @@ inline bool getInHookBoolThreadLocal() {
 static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc) {
 
 
-    //    pthread_mutex_lock(&lock0);
+    //pthread_mutex_lock(&lock0);
     //todo: The following two values are highly dependent on assembly code
     void *rdiLoc = (uint8_t *) rspLoc - 8;
     void *rsiLoc = (uint8_t *) rspLoc - 16;
@@ -956,7 +956,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     }
 
 
-    if (inhookHandler||true) {
+    if (inhookHandler || true) {
         curContext.callerAddr.push(callerAddr);
         return retOriFuncAddr;
     }
@@ -1233,7 +1233,7 @@ void *cAfterHookHandlerLinux() {
 //    Context *curContext = getContext();
 
 //    pthread_mutex_lock(&lock1);
-    if (inhookHandler||true) {
+    if (inhookHandler || true) {
 
         void *callerAddr = curContext.callerAddr.peekpop();
 //        pthread_mutex_unlock(&lock1);
@@ -1280,8 +1280,8 @@ void *cAfterHookHandlerLinux() {
 //    DBG_LOG("[After Hook] Thread ID:%lu");
 
     DBG_LOGS("[After Hook] Thread ID:%lu Library(%d):%s, Func(%d): %s Start: %ld End: %ld", pthread_self(),
-             libraryFileId,libraryFileName.c_str(),
-             extSymbolID,funcName.c_str(), startTimestamp, endTimestamp);
+             libraryFileId, libraryFileName.c_str(),
+             extSymbolID, funcName.c_str(), startTimestamp, endTimestamp);
 /*
     if (extSymbolID == curELFImgInfo.pthreadExtSymbolId.PTHREAD_CREATE) {
         //todo: A better way is to compare function id rather than name. This is more efficient.
