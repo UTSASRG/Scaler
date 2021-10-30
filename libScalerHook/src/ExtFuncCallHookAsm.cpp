@@ -24,17 +24,16 @@
 #include <type/InvocationTree.h>
 #include <util/tool/StringTool.h>
 #include <nlohmann/json.hpp>
+#include <util/datastructure/FStack.h>
 //todo: many functions are too long
 
-extern "C" { ;
 struct Context {
     //todo: Initialize using maximum stack size
-    scaler::Stack<scaler::SymID> extSymbolId;
-    scaler::Stack<scaler::FileID> fileId;
+    scaler::FStack<scaler::SymID, 8192> extSymbolId;
+    scaler::FStack<scaler::FileID, 8192> fileId;
     //Variables used to determine whether it's called by hook handler or not
-    scaler::Stack<void *> callerAddr;
-    scaler::Stack<int64_t> timestamp;
-    scaler::Stack<pthread_t *> pthreadIdPtr;
+    scaler::FStack<void *, 8192> callerAddr;
+    scaler::FStack<int64_t, 8192> timestamp;
 };
 
 scaler::ExtFuncCallHookAsm *scaler_extFuncCallHookAsm_thiz = nullptr;
@@ -44,7 +43,6 @@ __thread bool inhookHandler = false;
 
 long long threadLocalOffsetToTCB = 0;
 
-}
 namespace scaler {
 
     //Declare hook handler written in assembly code
@@ -317,12 +315,12 @@ namespace scaler {
         inhookHandler = false;
     }
 
-    thread_local SerilizableInvocationTree invocationTree;
-    thread_local InvocationTreeNode *curNode = &invocationTree.treeRoot;
+        //thread_local SerilizableInvocationTree invocationTree;
+        //thread_local InvocationTreeNode *curNode = &invocationTree.treeRoot;
 
     ExtFuncCallHookAsm::ExtFuncCallHookAsm() : ExtFuncCallHook_Linux(pmParser,
                                                                      *MemoryTool_Linux::getInst()) {
-        invocationTree.libPltHook = this;
+        //invocationTree.libPltHook = this;
     }
 
     ExtFuncCallHookAsm *ExtFuncCallHookAsm::getInst() {
@@ -824,8 +822,8 @@ namespace scaler {
         "popq %rbx\n\t"
 
         //Restore rsp to original value (Uncomment the following to only enable prehook)
-        "addq $152,%rsp\n\t"
-        "jmpq *%r11\n\t"
+//                "addq $152,%rsp\n\t"
+//                "jmpq *%r11\n\t"
 
         /**
          * Call actual function
@@ -833,6 +831,21 @@ namespace scaler {
         "addq $152,%rsp\n\t"
         "addq $8,%rsp\n\t" //Override caller address
         "callq *%r11\n\t"
+
+
+        /**
+         * Save callee saved register
+         */
+        "subq $16,%rsp\n\t" //16
+        "stmxcsr (%rsp)\n\t" // 4 Bytes(8-4)
+        "fnstcw 4(%rsp)\n\t" // 2 Bytes(4-2)
+        "pushq %rbx\n\t" //8
+        "pushq %rbp\n\t" //8
+        "pushq %r12\n\t" //8
+        "pushq %r13\n\t" //8
+        "pushq %r14\n\t" //8
+        "pushq %r15\n\t" //8
+
 
         /**
          * Save return value
@@ -843,9 +856,9 @@ namespace scaler {
         PUSHXMM(0) //16
         PUSHXMM(1) //16
         //Save st0
-        "subq $16,%rsp\n\t" //8
+        "subq $16,%rsp\n\t" //16
         "fstpt (%rsp)\n\t"
-        "subq $16,%rsp\n\t" //8
+        "subq $16,%rsp\n\t" //16
         "fstpt (%rsp)\n\t"
 
         /**
@@ -867,6 +880,22 @@ namespace scaler {
         POPXMM(0) //16
         "popq %rdx\n\t" //8
         "popq %rax\n\t" //8
+
+
+        /**
+         * Restore callee saved register
+         */
+        "popq %r15\n\t" //8
+        "popq %r14\n\t" //8
+        "popq %r13\n\t" //8
+        "popq %r12\n\t" //8
+        "popq %rbp\n\t" //8
+        "popq %rbx\n\t" //8
+        "ldmxcsr (%rsp)\n\t" // 2 Bytes(8-4)
+        "fldcw 4(%rsp)\n\t" // 4 Bytes(4-2)
+        "addq $16,%rsp\n\t" //16
+
+
         "CLD\n\t"
         //Retrun to caller
         "jmpq *%r11\n\t"
@@ -927,9 +956,8 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     }
 
 
-    if (inhookHandler) {
+    if (inhookHandler||true) {
         curContext.callerAddr.push(callerAddr);
-        curContext.callerAddr.pop();
         return retOriFuncAddr;
     }
 
@@ -939,12 +967,12 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 
     auto startTimeStamp = getunixtimestampms();
     //Push callerAddr into stack
-//    curContext.timestamp.push(startTimeStamp);
-//    curContext.callerAddr.push(callerAddr);
+    curContext.timestamp.push(startTimeStamp);
+    curContext.callerAddr.push(callerAddr);
     //Push calling info to afterhook
-//    curContext.fileId.push(fileId);
+    curContext.fileId.push(fileId);
     //todo: rename this to caller function
-//    curContext.extSymbolId.push(extSymbolId);
+    curContext.extSymbolId.push(extSymbolId);
 
 
 //        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
@@ -1205,7 +1233,8 @@ void *cAfterHookHandlerLinux() {
 //    Context *curContext = getContext();
 
 //    pthread_mutex_lock(&lock1);
-    if (inhookHandler) {
+    if (inhookHandler||true) {
+
         void *callerAddr = curContext.callerAddr.peekpop();
 //        pthread_mutex_unlock(&lock1);
         return callerAddr;
@@ -1220,16 +1249,16 @@ void *cAfterHookHandlerLinux() {
 //        }
 
     scaler::FileID fileId = curContext.fileId.peekpop();
-
+//
     scaler::ExtFuncCallHookAsm::ELFImgInfo &curELFImgInfo = _this->elfImgInfoMap.get(fileId);
-
-    auto &fileName = curELFImgInfo.filePath;
-
+//
+//    auto &fileName = curELFImgInfo.filePath;
+//
     scaler::SymID extSymbolID = curContext.extSymbolId.peekpop();
-
+//
     auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID);
-
-
+//
+//
     int64_t startTimestamp = curContext.timestamp.peekpop();
 
     int64_t endTimestamp = getunixtimestampms();
@@ -1241,16 +1270,18 @@ void *cAfterHookHandlerLinux() {
     scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = curELFImgInfo.hookedExtSymbol.get(extSymbolID);
     auto libraryFileId = _this->pmParser.findExecNameByAddr(curSymbol.addr);
     auto &libraryFileName = _this->pmParser.idFileMap.at(libraryFileId);
-    assert(libraryFileId != -1);
-    curSymbol.libraryFileID = libraryFileId;
+//    assert(libraryFileId != -1);
+//    curSymbol.libraryFileID = libraryFileId;
 //    scaler::curNode->setRealFileID(libraryFileId);
 //    scaler::curNode->setFuncAddr(curSymbol.addr);
 //    scaler::curNode->setEndTimestamp(endTimestamp);
 //    scaler::curNode = scaler::curNode->getParent();
 
-    DBG_LOGS("[After Hook] Thread ID:%lu Library:%s, Func: %s Start: %ld End: %ld", pthread_self(),
-             libraryFileName.c_str(),
-             funcName.c_str(), startTimestamp, endTimestamp);
+//    DBG_LOG("[After Hook] Thread ID:%lu");
+
+    DBG_LOGS("[After Hook] Thread ID:%lu Library(%d):%s, Func(%d): %s Start: %ld End: %ld", pthread_self(),
+             libraryFileId,libraryFileName.c_str(),
+             extSymbolID,funcName.c_str(), startTimestamp, endTimestamp);
 /*
     if (extSymbolID == curELFImgInfo.pthreadExtSymbolId.PTHREAD_CREATE) {
         //todo: A better way is to compare function id rather than name. This is more efficient.

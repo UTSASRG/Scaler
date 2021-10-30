@@ -9,8 +9,7 @@ namespace scaler {
     template<typename T>
     class Stack {
     public:
-        Stack(const ssize_t &initialSize = 16384) : internalVec(initialSize) {
-
+        Stack(ssize_t initialSize = 0) : internalVec(initialSize) {
         }
 
         bool isEmpty() const {
@@ -22,12 +21,12 @@ namespace scaler {
         }
 
         inline const T &peek() {
-            assert(internalVec.getSize() > 0);
+            //assert(internalVec.getSize() > 0);
             return internalVec[internalVec.getSize() - 1];
         }
 
         inline void pop() {
-            assert(internalVec.getSize() > 0);
+            //assert(internalVec.getSize() > 0);
             internalVec.erase(internalVec.getSize() - 1);
         }
 

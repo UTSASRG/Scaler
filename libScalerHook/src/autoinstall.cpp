@@ -28,7 +28,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
         } else if (scaler::strEndsWith(fileName, "libScalerHook-HookAuto.so")) {
             return false;
         } else {
-//            printf("%s\n", fileName.c_str());
+            //printf("%s\n", fileName.c_str());
             return true;
         }
 
