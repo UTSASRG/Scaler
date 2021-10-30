@@ -39,7 +39,7 @@ add_library(ScalerHook-HookManualAsm SHARED
 target_include_directories(ScalerHook-HookManualAsm PUBLIC src/include lib/inireader)
 target_link_libraries(ScalerHook-HookManualAsm PUBLIC pthread dl nlohmann_json::nlohmann_json xed2 xed2-ild)
 target_compile_definitions(ScalerHook-HookManualAsm PUBLIC XED_ENCODER)
-target_compile_options(ScalerHook-HookManualAsm PRIVATE "--verbose" "-O2" "-g")
+target_compile_options(ScalerHook-HookManualAsm PRIVATE "--verbose" "-O2" "-g" "-Werror=return-type")
 
 add_executable(ScalerHook-HookManualPtrace
         src/PtraceHookMain.cpp
@@ -48,7 +48,7 @@ add_executable(ScalerHook-HookManualPtrace
 target_include_directories(ScalerHook-HookManualPtrace PUBLIC src/include lib/inireader)
 target_link_libraries(ScalerHook-HookManualPtrace PUBLIC pthread dl nlohmann_json::nlohmann_json xed2 xed2-ild)
 target_compile_definitions(ScalerHook-HookManualPtrace PUBLIC XED_ENCODER)
-target_compile_options(ScalerHook-HookManualPtrace PRIVATE "--verbose" "-O2" "-g")
+target_compile_options(ScalerHook-HookManualPtrace PRIVATE "--verbose" "-O2" "-g" "-Werror=return-type")
 
 
 add_library(ScalerHook-HookBrkpoint SHARED
@@ -66,7 +66,7 @@ target_compile_options(ScalerHook-HookAuto PRIVATE "--verbose")
 target_link_libraries(ScalerHook-HookAuto PUBLIC ScalerHook-HookManualAsm)
 
 add_library(ScalerHook-HookAuto-Brkpoint SHARED src/autoinstall.cpp)
-target_compile_options(ScalerHook-HookAuto-Brkpoint PRIVATE "-O2" "-g")
+target_compile_options(ScalerHook-HookAuto-Brkpoint PRIVATE "-O2" "-g"  "-Werror=return-type")
 target_link_libraries(ScalerHook-HookAuto-Brkpoint PUBLIC ScalerHook-HookBrkpoint)
 
 #Add tests

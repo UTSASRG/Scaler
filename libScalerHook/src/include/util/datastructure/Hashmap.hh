@@ -97,6 +97,7 @@ namespace scaler {
         HashBucket &operator=(const HashBucket<TpKey, TpVal> &rho) {
             List<HashEntry<TpKey, TpVal>>::operator=(rho);
             index = rho.index;
+            return *this;
         }
 
     };

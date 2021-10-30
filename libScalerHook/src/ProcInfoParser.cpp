@@ -161,6 +161,7 @@ namespace scaler {
         } else {
             ERR_LOGS("Not found, id1=%zu, id2=%zu, curFileID=%zu\n", idWithBaseAddr, idWithoutBaseAddr, curFileiD);
             assert(false);
+            return nullptr;
         }
     }
 
