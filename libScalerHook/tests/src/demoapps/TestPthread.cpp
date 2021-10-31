@@ -61,5 +61,6 @@ void *print_message_function(void *ptr) {
     printf("%s \n", message);
 
     printf("%d %lu\n",&asdf, &asdf - (char*)pthread_self());
+    return nullptr;
 
 }

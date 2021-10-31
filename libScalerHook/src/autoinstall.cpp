@@ -21,6 +21,8 @@ int doubletake_main(int argc, char **argv, char **envp) {
             return false;
         } else if (funcName == "__libc_longjmp") {
             return false;
+        }else if (funcName == "pthread_exit") {
+            return false;
         } else if (scaler::strEndsWith(fileName, "libxed.so")) {
             return false;
         } else if (scaler::strEndsWith(fileName, "libxed-ild.so")) {

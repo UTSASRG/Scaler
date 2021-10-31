@@ -3,7 +3,7 @@
 
 #include <cstdio>
 
-#define PRINT_DBG_LOG false
+#define PRINT_DBG_LOG true
 
 #if PRINT_DBG_LOG
 
