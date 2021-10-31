@@ -71,7 +71,7 @@ namespace scaler {
             avail = rsp_val - (size_t) stack_addr;
             used = stack_size - avail;
             DBG_LOGS(
-                    "Thread %lu stack info: rspVal=%p stacktop=%p stackbottom=%p  used = %zu, avail = %zuMB, total = %zuMB ",
+                    "Thread %lu stack info: rspVal=%zu stacktop=%p stackbottom=%p  used = %zu, avail = %zuMB, total = %zuMB ",
                     pthread_self(),rsp_val, (uint8_t*)stack_addr-(size_t)stack_size, (uint8_t*)stack_addr, used, avail/1024/1024,
                     stack_size/1024/1024);
         }

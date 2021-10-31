@@ -35,7 +35,9 @@ namespace scaler {
         if (!elfHdr) {
             throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to allocate memory for elfHdr");
         }
-        fread(elfHdr, 1, sizeof(ElfW(Ehdr)), file);
+        if (!fread(elfHdr, 1, sizeof(ElfW(Ehdr)), file)) {
+            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to read elfHdr");
+        }
 
         //Check whether ELF file is valid through magic number
         //This ELF Parser is only used for X86_64
@@ -56,7 +58,9 @@ namespace scaler {
             throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to allocate memory for secHdr");
         }
         fseek(file, elfHdr->e_shoff, SEEK_SET);
-        fread(secHdr, sizeof(ElfW(Shdr)), elfHdr->e_shnum, file);
+        if (!fread(secHdr, sizeof(ElfW(Shdr)), elfHdr->e_shnum, file)) {
+            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to read secHdr");
+        }
 
         //Read section name string table
         ElfW(Shdr) *strTblSecHdr = secHdr + elfHdr->e_shstrndx;
@@ -65,7 +69,9 @@ namespace scaler {
             throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to allocate memory for secStrtbl");
         }
         fseek(file, strTblSecHdr->sh_offset, SEEK_SET);
-        fread((void *) secStrtbl, 1, strTblSecHdr->sh_size, file);
+        if (!fread((void *) secStrtbl, 1, strTblSecHdr->sh_size, file)) {
+            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to read secStrtbl");
+        }
 
         //Store section header into secNameIndexMap for faster lookup
         shnum = elfHdr->e_shnum;
@@ -86,7 +92,9 @@ namespace scaler {
             throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to allocate memory for progHdr");
         }
         fseek(file, elfHdr->e_phoff, SEEK_SET);
-        fread(progHdr, sizeof(ElfW(Phdr)), elfHdr->e_phnum, file);
+        if (!fread(progHdr, sizeof(ElfW(Phdr)), elfHdr->e_phnum, file)) {
+            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to allocate memory for e_phnum");
+        }
 
         //Store program header into segTypeIndexMap for faster lookup
         phnum = elfHdr->e_phnum;
@@ -153,7 +161,9 @@ namespace scaler {
 
             targetSecHdrContent = malloc(targetSecInfo.secHdr.sh_size);
             fseek(file, targetSecInfo.secHdr.sh_offset, SEEK_SET);
-            fread(targetSecHdrContent, targetSecInfo.secHdr.sh_size, 1, file);
+            if (!fread(targetSecHdrContent, targetSecInfo.secHdr.sh_size, 1, file)) {
+                throwScalerException(ErrCode::ELF_SECTION_NOT_FOUND, "Faild to parse sh_size");
+            }
             //Store address for faster lookup
             secIdContentMap[targetSecInfo.secId] = targetSecHdrContent;
         } else {
@@ -174,7 +184,9 @@ namespace scaler {
 
             targetSegHdrContent = malloc(targetSegInfo.progHdr.p_filesz);
             fseek(file, targetSegInfo.progHdr.p_offset, SEEK_SET);
-            fread(targetSegHdrContent, targetSegInfo.progHdr.p_filesz, 1, file);
+            if(!fread(targetSegHdrContent, targetSegInfo.progHdr.p_filesz, 1, file)){
+                throwScalerException(ErrCode::ELF_SECTION_NOT_FOUND, "Faild to parse p_filesz");
+            }
             //Store address for faster lookup
             segIdContentMap[targetSegInfo.segId] = targetSegHdrContent;
         } else {

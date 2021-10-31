@@ -390,7 +390,7 @@ int main (int argc, char **argv)
         otime[i]      = data[i].t;
     }
 
-    printf("Size of data: %d\n", numOptions * (sizeof(OptionData) + sizeof(int)));
+    printf("Size of data: %lu\n", numOptions * (sizeof(OptionData) + sizeof(int)));
 
 #ifdef ENABLE_PARSEC_HOOKS
     __parsec_roi_begin();

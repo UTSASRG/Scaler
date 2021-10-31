@@ -32,7 +32,7 @@ int main() {
     long data = ptrace(PTRACE_PEEKTEXT, pid, (void*)address1, 0);
     perror("error reason");
     int *address2 = reinterpret_cast<int *>(0x601070);
-    printf("%d\n", data);
+    printf("%ld\n", data);
 //    printf("%d\n", get_value(address2, pid));
     return 0;
 }

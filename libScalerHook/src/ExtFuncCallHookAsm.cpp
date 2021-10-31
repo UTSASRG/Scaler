@@ -231,8 +231,7 @@ namespace scaler {
 
             curELFImgInfo.hookedExtSymbol.put(curSymbol.extSymbolId, curSymbol);
             DBG_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd",
-                     curELFImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.extSymbolId,
-                     curSymbol.extSymbolId);
+                     curELFImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.extSymbolId);
 
         }
 
@@ -258,8 +257,7 @@ namespace scaler {
 
                 auto pltRedirectorCodeArr = fillDestAddr2PltRedirectorCode(redzoneJumperAddr);
 
-                DBG_LOGS("[%s] %s hooked (ID:%d)", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
-                         curSymbol.extSymbolId);
+                DBG_LOGS("[%s] %s hooked (ID:%zd)", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),curSymbol.extSymbolId);
 
                 //Step6: Replace .plt.sec and .plt
 
@@ -1252,7 +1250,7 @@ void *cAfterHookHandlerLinux() {
 
 //    DBG_LOG("[After Hook] Thread ID:%lu");
 
-    DBG_LOGS("[After Hook] Thread ID:%lu Library(%d):%s, Func(%d): %s Start: %ld End: %ld", pthread_self(),
+    DBG_LOGS("[After Hook] Thread ID:%lu Library(%d):%s, Func(%ld): %s Start: %ld End: %ld", pthread_self(),
              libraryFileId, libraryFileName.c_str(),
              extSymbolID, funcName.c_str(), startTimestamp, endTimestamp);
 /*

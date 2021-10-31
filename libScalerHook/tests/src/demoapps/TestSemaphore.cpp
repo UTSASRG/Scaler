@@ -19,6 +19,7 @@ void *thread(void *arg) {
     printf("\nJust Exiting...\n");
     printf("threadID=%lu sem_post sID=%p\n", pthread_self(), &mutex);
     sem_post(&mutex);
+    return nullptr;
 }
 
 

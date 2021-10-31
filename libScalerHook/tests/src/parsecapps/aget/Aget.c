@@ -88,7 +88,7 @@ void get(struct request *req)
 		exit(1);
 	}
 
-	fprintf(stderr, "total clength %d\n", req->clength);
+	fprintf(stderr, "total clength %lld\n", req->clength);
 	/* Get the starting time, prepare GET format string, and start the threads */
 	fmt = (char *)calloc(GETREQSIZ + 2, sizeof(char));
 	time(&t_start);

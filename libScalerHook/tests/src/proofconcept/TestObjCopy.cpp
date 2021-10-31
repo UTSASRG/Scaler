@@ -8,11 +8,14 @@ class A{
     ObjData objData;
     int parm1=1;
     int parm2=1;
+
+public:
     A(){
         objData.parm1=-1;
         objData.parm1=-1;
         objData.parm2=-1;
     }
+
     A(int testP){
         objData.parm1=testP;
         objData.parm2=testP;

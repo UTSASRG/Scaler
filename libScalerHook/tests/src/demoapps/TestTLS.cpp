@@ -21,7 +21,7 @@ int main() {
 //    pthread_t;
     pthread_t pt1 = pthread_self();
     printf("pt1=%lu\n", pt1);
-    printf("pt1=%lu\n", THREAD_SELF);
+    printf("pt1=%lu\n", (long unsigned int) THREAD_SELF);
 
 //    pthread_t thread1, thread2;
 //    char *message1 = "Thread 1";

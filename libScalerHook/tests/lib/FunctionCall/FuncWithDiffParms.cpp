@@ -45,9 +45,16 @@ uint64_t funcTiming() {
 }
 
 void resolveSystemFunc() {
-    system("");
-    system("");
-    system("");
+    int success = 0;
+    if (system("")) {
+        ++success;
+    }
+    if (system("")) {
+        ++success;
+    }
+    if (system("")) {
+        ++success;
+    }
 }
 
 void funcEverything(int e, int f, structparm s, int g, int h, long double ld,

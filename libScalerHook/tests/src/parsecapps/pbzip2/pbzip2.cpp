@@ -4382,7 +4382,7 @@ fprintf(stderr, " in the beginning of main\n");
 				}
 				if (QuietMode != 1)
 				{
-					fprintf(stderr, "    Output Size: %"PRIu64" bytes\n", (unsigned long long)sizeof(Bz2HeaderZero));
+					fprintf(stderr, "    Output Size: %" PRIu64" bytes\n", (unsigned long long)sizeof(Bz2HeaderZero));
 					fprintf(stderr, "-------------------------------------------\n");
 				}
 				// remove input file unless requested not to by user or error occurred
