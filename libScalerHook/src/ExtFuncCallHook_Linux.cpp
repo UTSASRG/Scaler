@@ -32,11 +32,11 @@ namespace scaler {
     void ExtFuncCallHook_Linux::locateRequiredSecAndSeg() {
         pmParser.printPM();
         //Get segment info from /proc/self/maps
-        for (auto iter = pmParser.procMap.begin(); iter != pmParser.procMap.end(); ++iter) {
-            auto &curFileName = iter->first;
-            auto &pmEntries = iter->second;
-            FileID curFileiD = pmParser.fileIDMap.at(curFileName);
-            ELFImgInfo curELFImgInfo;
+        for (FileID curFileiD=0; curFileiD<pmParser.idFileMap.size();++curFileiD) {
+            auto &curFileName = pmParser.idFileMap.at(curFileiD);
+            auto &pmEntries = pmParser.procMap.at(curFileName);
+            elfImgInfoMap.pushBack(ELFImgInfo());
+            auto &curELFImgInfo = elfImgInfoMap[elfImgInfoMap.getSize() - 1];
             curELFImgInfo.filePath = curFileName;
 
             if (curFileName == "") {
@@ -90,11 +90,9 @@ namespace scaler {
                                                                             DT_PLTRELSZ) / sizeof(ElfW(Rela));
 
                 parseRelaSymbol(curELFImgInfo, curFileiD);
-                elfImgInfoMap.put(curFileiD, curELFImgInfo);
-
             } catch (const ScalerException &e) {
                 //Remove current entry
-                elfImgInfoMap.erase(curFileiD);
+                elfImgInfoMap[curFileiD].elfImgValid = false;
                 ERR_LOGS("Hook Failed for \"%s\" because %s", curFileName.c_str(), e.info.c_str());
             }
         }
@@ -209,13 +207,14 @@ namespace scaler {
                     ss << "func" << i;
                     newSymbol.symbolName = ss.str();
                 }
-                curELFImgInfo.idFuncMap[i] = newSymbol.symbolName;
+                curELFImgInfo.idFuncMap[newSymbol.extSymbolId] = newSymbol.symbolName;
                 curELFImgInfo.funcIdMap[newSymbol.symbolName] = i;
-                curELFImgInfo.allExtSymbol[i] = newSymbol;
+                curELFImgInfo.allExtSymbol[newSymbol.extSymbolId] = newSymbol;
                 curELFImgInfo.realAddrResolved.insertAt(i, false);
+
             } catch (const ScalerException &e) {
                 //Remove current entry
-                elfImgInfoMap.erase(curFileID);
+                elfImgInfoMap[curFileID].elfImgValid = false;
                 ERR_LOGS("Hook Failed for \"%s\":\"%s\" because %s", curELFImgInfo.filePath.c_str(),
                          newSymbol.symbolName.c_str(), e.info.c_str());
             }
@@ -234,16 +233,17 @@ namespace scaler {
             outFile[std::to_string(i)]["funcNames"] = Json();
         }
 
-        for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
-            const auto &curFileID = iterFile.getKey();
-            auto &curELFImgInfo = iterFile.getVal();
-            for (auto iter = curELFImgInfo.hookedExtSymbol.begin();
-                 iter != curELFImgInfo.hookedExtSymbol.end(); ++iter) {
+        for (FileID curFileID = 0; curFileID < elfImgInfoMap.getSize(); ++curFileID) {
+            auto &curELFImgInfo = elfImgInfoMap[curFileID];
+            if (curELFImgInfo.elfImgValid) {
+                for (auto iter = curELFImgInfo.hookedExtSymbol.begin();
+                     iter != curELFImgInfo.hookedExtSymbol.end(); ++iter) {
 
-                //DBG_LOGS("%zd %s %p %zd", iter->second.libraryFileID, iter->second.symbolName.c_str(),
-                //         iter->second.addr, iter->second.fileId);
-                outFile[std::to_string(iter.getVal().libraryFileID)]["funcNames"][std::to_string(int64_t(
-                        iter.getVal().addr))] = iter.getVal().symbolName;
+                    //DBG_LOGS("%zd %s %p %zd", iter->second.libraryFileID, iter->second.symbolName.c_str(),
+                    //         iter->second.addr, iter->second.fileId);
+                    outFile[std::to_string(iter.getVal().libraryFileID)]["funcNames"][std::to_string(int64_t(
+                            iter.getVal().addr))] = iter.getVal().symbolName;
+                }
             }
         }
 

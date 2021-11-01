@@ -101,107 +101,109 @@ namespace scaler {
         //Step3: Use callback to determine which ID to hook
         std::set<FileID> fileToHook;
 
-        for (auto iterFile = elfImgInfoMap.begin(); iterFile != elfImgInfoMap.end(); ++iterFile) {
-            auto &curFileId = iterFile.getKey();
-            auto &curFileName = pmParser.idFileMap.at(curFileId);
-            auto &curELFImgInfo = iterFile.getVal();
 
-            //loop through external symbols, let user decide which symbol to hook through callback function
-            for (auto iterSymbol = curELFImgInfo.idFuncMap.begin();
-                 iterSymbol != curELFImgInfo.idFuncMap.end(); ++iterSymbol) {
-                auto &curSymbolId = iterSymbol->first;
-                auto &curSymbolName = iterSymbol->second;
-                if (filterCallB(curFileName, curSymbolName)) {
-                    //The user wants this symbol
-                    fileToHook.emplace(curFileId);
+        for (FileID curFileId = 0; curFileId < elfImgInfoMap.getSize(); ++curFileId) {
+            auto &curELFImgInfo = elfImgInfoMap[curFileId];
+            if (curELFImgInfo.elfImgValid) {
+                auto &curFileName = pmParser.idFileMap.at(curFileId);
 
-                    //If the function name matches common pthread functions. Store the function id in advance
-                    if (curSymbolName == "pthread_create") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_CREATE = curSymbolId;
-                    } else if (curSymbolName == "pthread_join") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_JOIN = curSymbolId;
-                    } else if (curSymbolName == "pthread_tryjoin_np") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_TRYJOIN_NP = curSymbolId;
-                    } else if (curSymbolName == "pthread_timedjoin_np") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_TIMEDJOIN_NP = curSymbolId;
-                    } else if (curSymbolName == "pthread_clockjoin_np") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_CLOCKJOIN_NP = curSymbolId;
-                    } else if (curSymbolName == "pthread_mutex_lock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_LOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_mutex_timedlock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_TIMEDLOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_mutex_clocklock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_CLOCKLOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_mutex_unlock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_UNLOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_rwlock_rdlock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_RDLOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_rwlock_tryrdlock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TRYRDLOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_rwlock_timedrdlock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TIMEDRDLOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_rwlock_clockrdlock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_CLOCKRDLOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_rwlock_wrlock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_WRLOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_rwlock_trywrlock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TRYWRLOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_rwlock_timedwrlock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TIMEDWRLOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_rwlock_clockwrlock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_CLOCKWRLOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_rwlock_unlock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_UNLOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_cond_signal") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_COND_SIGNAL = curSymbolId;
-                    } else if (curSymbolName == "pthread_cond_broadcast") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_COND_BROADCAST = curSymbolId;
-                    } else if (curSymbolName == "pthread_cond_wait") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_COND_WAIT = curSymbolId;
-                    } else if (curSymbolName == "pthread_cond_timedwait") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_COND_TIMEDWAIT = curSymbolId;
-                    } else if (curSymbolName == "pthread_cond_clockwait") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_COND_CLOCKWAIT = curSymbolId;
-                    } else if (curSymbolName == "pthread_spin_lock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_LOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_spin_trylock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_TRYLOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_spin_unlock") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_UNLOCK = curSymbolId;
-                    } else if (curSymbolName == "pthread_barrier_wait") {
-                        curELFImgInfo.pthreadExtSymbolId.PTHREAD_BARRIER_WAIT = curSymbolId;
+                //loop through external symbols, let user decide which symbol to hook through callback function
+                for (auto iterSymbol = curELFImgInfo.idFuncMap.begin();
+                     iterSymbol != curELFImgInfo.idFuncMap.end(); ++iterSymbol) {
+                    auto &curSymbolId = iterSymbol->first;
+                    auto &curSymbolName = iterSymbol->second;
+                    if (filterCallB(curFileName, curSymbolName)) {
+                        //The user wants this symbol
+                        fileToHook.emplace(curFileId);
+
+                        //If the function name matches common pthread functions. Store the function id in advance
+                        if (curSymbolName == "pthread_create") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_CREATE = curSymbolId;
+                        } else if (curSymbolName == "pthread_join") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_JOIN = curSymbolId;
+                        } else if (curSymbolName == "pthread_tryjoin_np") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_TRYJOIN_NP = curSymbolId;
+                        } else if (curSymbolName == "pthread_timedjoin_np") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_TIMEDJOIN_NP = curSymbolId;
+                        } else if (curSymbolName == "pthread_clockjoin_np") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_CLOCKJOIN_NP = curSymbolId;
+                        } else if (curSymbolName == "pthread_mutex_lock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_LOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_mutex_timedlock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_TIMEDLOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_mutex_clocklock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_CLOCKLOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_mutex_unlock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_UNLOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_rwlock_rdlock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_RDLOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_rwlock_tryrdlock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TRYRDLOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_rwlock_timedrdlock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TIMEDRDLOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_rwlock_clockrdlock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_CLOCKRDLOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_rwlock_wrlock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_WRLOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_rwlock_trywrlock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TRYWRLOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_rwlock_timedwrlock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TIMEDWRLOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_rwlock_clockwrlock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_CLOCKWRLOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_rwlock_unlock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_UNLOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_cond_signal") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_COND_SIGNAL = curSymbolId;
+                        } else if (curSymbolName == "pthread_cond_broadcast") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_COND_BROADCAST = curSymbolId;
+                        } else if (curSymbolName == "pthread_cond_wait") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_COND_WAIT = curSymbolId;
+                        } else if (curSymbolName == "pthread_cond_timedwait") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_COND_TIMEDWAIT = curSymbolId;
+                        } else if (curSymbolName == "pthread_cond_clockwait") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_COND_CLOCKWAIT = curSymbolId;
+                        } else if (curSymbolName == "pthread_spin_lock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_LOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_spin_trylock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_TRYLOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_spin_unlock") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_UNLOCK = curSymbolId;
+                        } else if (curSymbolName == "pthread_barrier_wait") {
+                            curELFImgInfo.pthreadExtSymbolId.PTHREAD_BARRIER_WAIT = curSymbolId;
+                        }
+
+                        if (curSymbolName == "sem_wait") {
+                            curELFImgInfo.semaphoreExtSymbolId.SEM_WAIT = curSymbolId;
+                        } else if (curSymbolName == "sem_timedwait") {
+                            curELFImgInfo.semaphoreExtSymbolId.SEM_TIMEDWAIT = curSymbolId;
+                        } else if (curSymbolName == "sem_clockwait") {
+                            curELFImgInfo.semaphoreExtSymbolId.SEM_CLOCKWAIT = curSymbolId;
+                        } else if (curSymbolName == "sem_trywait") {
+                            curELFImgInfo.semaphoreExtSymbolId.SEM_TRYWAIT = curSymbolId;
+                        } else if (curSymbolName == "sem_post") {
+                            curELFImgInfo.semaphoreExtSymbolId.SEM_POST = curSymbolId;
+                        }
+
+
+                        auto &curSymbol = curELFImgInfo.allExtSymbol.at(curSymbolId);
+
+                        //Step6: Insert breakpoint at .plt entry
+                        //todo: we only use one of them. If ,plt.sec exists, hook .plt.sec rather than plt
+                        recordBrkpointInfo(curSymbol.extSymbolId, curSymbol.pltEntry, true);
+
+                        assert(pmParser.fileBaseAddrMap.at(curFileId).first <= curSymbol.pltEntry &&
+                               curSymbol.pltEntry < pmParser.fileBaseAddrMap.at(curFileId).second);
+                        DBG_LOGS("Instrumented plt code for symbol: %s:%s at:%p",
+                                 pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
+                                 curSymbol.pltEntry);
+
+                        //todo: confusing API interface, addr or brkpointinfo?
+                        Breakpoint &bp = brkPointInfo.get(curSymbol.pltEntry);
+                        insertBrkpointAt(bp);
+
+                        curELFImgInfo.hookedExtSymbol.put(curSymbol.extSymbolId, curSymbol);
                     }
-
-                    if (curSymbolName == "sem_wait") {
-                        curELFImgInfo.semaphoreExtSymbolId.SEM_WAIT = curSymbolId;
-                    } else if (curSymbolName == "sem_timedwait") {
-                        curELFImgInfo.semaphoreExtSymbolId.SEM_TIMEDWAIT = curSymbolId;
-                    } else if (curSymbolName == "sem_clockwait") {
-                        curELFImgInfo.semaphoreExtSymbolId.SEM_CLOCKWAIT = curSymbolId;
-                    } else if (curSymbolName == "sem_trywait") {
-                        curELFImgInfo.semaphoreExtSymbolId.SEM_TRYWAIT = curSymbolId;
-                    } else if (curSymbolName == "sem_post") {
-                        curELFImgInfo.semaphoreExtSymbolId.SEM_POST = curSymbolId;
-                    }
-
-
-                    auto &curSymbol = curELFImgInfo.allExtSymbol.at(curSymbolId);
-
-                    //Step6: Insert breakpoint at .plt entry
-                    //todo: we only use one of them. If ,plt.sec exists, hook .plt.sec rather than plt
-                    recordBrkpointInfo(curSymbol.extSymbolId, curSymbol.pltEntry, true);
-
-                    assert(pmParser.fileBaseAddrMap.at(curFileId).first <= curSymbol.pltEntry &&
-                           curSymbol.pltEntry < pmParser.fileBaseAddrMap.at(curFileId).second);
-                    DBG_LOGS("Instrumented plt code for symbol: %s:%s at:%p",
-                             pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
-                             curSymbol.pltEntry);
-
-                    //todo: confusing API interface, addr or brkpointinfo?
-                    Breakpoint& bp = brkPointInfo.get(curSymbol.pltEntry);
-                    insertBrkpointAt(bp);
-
-                    curELFImgInfo.hookedExtSymbol.put(curSymbol.extSymbolId, curSymbol);
                 }
             }
         }
@@ -307,7 +309,7 @@ namespace scaler {
 //        brkpointCurContext.extSymbolId.push_back(extSymbolId);
 
 
-        ELFImgInfo& curELFImgInfo = elfImgInfoMap.get(curFileID);
+        ELFImgInfo &curELFImgInfo = elfImgInfoMap[curFileID];
 
 //        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
 //            printf(" ");
@@ -709,8 +711,8 @@ namespace scaler {
     void ExtFuncCallHookBrkpoint::parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr,
                                                 int64_t &libraryFileID) {
         //Find correct symbol
-        ELFImgInfo& curELFImgInfo = elfImgInfoMap.get(callerFileID);
-        ExtSymInfo& curSymbol = curELFImgInfo.hookedExtSymbol.get(symbolIDInCaller);
+        ELFImgInfo &curELFImgInfo = elfImgInfoMap[callerFileID];
+        ExtSymInfo &curSymbol = curELFImgInfo.hookedExtSymbol.get(symbolIDInCaller);
 
         if (curSymbol.symbolName == "exit") {
             int j = 1;

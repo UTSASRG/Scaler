@@ -116,6 +116,7 @@ namespace scaler {
 
 
             std::string filePath = "";                           //The absolute path of an ELF image (It's consistent with /proc/{pid}/maps)
+            bool elfImgValid = true;
             void *pltStartAddr = nullptr;                   //The starting address of the PLT table
             void *pltEndAddr = nullptr;                     //The ending address of the PLT table
             void *pltSecStartAddr = nullptr;                //The starting address of the PLT.SEC table
@@ -160,7 +161,7 @@ namespace scaler {
         PmParser_Linux &pmParser;
         MemoryTool_Linux &memTool;
 
-        HashMap<FileID, ELFImgInfo> elfImgInfoMap;         //Mapping fileID to ELFImgInfo
+        Vector<ELFImgInfo> elfImgInfoMap;         //Mapping fileID to ELFImgInfo
 
 
         /**

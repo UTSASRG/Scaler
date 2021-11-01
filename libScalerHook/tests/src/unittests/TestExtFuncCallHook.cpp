@@ -43,8 +43,8 @@ TEST(ExtFuncCallHook, locSecAndSegInMem) {
             locateRequiredSecAndSeg();
 
 
-    scaler::ExtFuncCallHookAsm::ELFImgInfo curElfImgInfo = hook->elfImgInfoMap.get(
-            hook->pmParser.fileIDMap[hook->pmParser.curExecAbsolutePath]);
+    scaler::ExtFuncCallHookAsm::ELFImgInfo curElfImgInfo = hook->elfImgInfoMap[
+            hook->pmParser.fileIDMap[hook->pmParser.curExecAbsolutePath]];
 
 
     EXPECT_EQ(curElfImgInfo.pltStartAddr, &__startplt);
@@ -99,8 +99,8 @@ TEST(ExtFuncCallHook, compareAddressAndFuncName) {
     //todo:fix
     //hook->install();
 
-    scaler::ExtFuncCallHookAsm::ELFImgInfo curElfImgInfo = hook->elfImgInfoMap.get(
-            hook->pmParser.fileIDMap[hook->pmParser.curExecAbsolutePath]);
+    scaler::ExtFuncCallHookAsm::ELFImgInfo curElfImgInfo = hook->elfImgInfoMap[
+            hook->pmParser.fileIDMap[hook->pmParser.curExecAbsolutePath]];
 
 
     EXPECT_EQ(curElfImgInfo.pltStartAddr, &__startplt);
@@ -118,8 +118,8 @@ TEST(ExtFuncCallHook, compareAddressAndFuncName) {
 //printf("FuncA: %p\n", getFuncAddr("funcA"));
 //todo: relative path
 
-    scaler::ExtFuncCallHookAsm::ELFImgInfo &libTestELFInfo = hook->elfImgInfoMap.get(hook->pmParser.fileIDMap.at(
-            "/home/st/Projects/scaler/cmake-build-debug/tests/libFuncCallTest.so"));
+    scaler::ExtFuncCallHookAsm::ELFImgInfo &libTestELFInfo = hook->elfImgInfoMap[hook->pmParser.fileIDMap.at(
+            "/home/st/Projects/scaler/cmake-build-debug/tests/libFuncCallTest.so")];
     auto systemFuncId = libTestELFInfo.funcIdMap.at("system");
     void **gotTableAddr = libTestELFInfo.allExtSymbol.at(systemFuncId).gotEntry;
 
