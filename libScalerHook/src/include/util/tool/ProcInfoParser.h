@@ -122,7 +122,7 @@ namespace scaler {
         std::map<std::string, FileID> fileIDMap;
 
         //The base address of an executable
-        std::map<FileID, std::pair<uint8_t *,uint8_t *>> fileBaseAddrMap;
+        std::vector<std::pair<uint8_t *,uint8_t *>> fileBaseAddrMap;
 
         std::map<uint8_t *, FileID> startAddrFileMap;
 

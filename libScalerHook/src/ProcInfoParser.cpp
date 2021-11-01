@@ -251,8 +251,10 @@ namespace scaler {
         if (fileIDMap.count(curEntry.pathName) == 0) {
             //Only add if it is a new file. New File, add it to fileId idFile map. Fill it's starting address as base address
             idFileMap.emplace_back(curEntry.pathName);
+
+            fileBaseAddrMap.emplace_back(std::make_pair<uint8_t *, uint8_t *>((uint8_t *) curEntry.addrStart, nullptr));
+
             fileIDMap[curEntry.pathName] = idFileMap.size() - 1;
-            fileBaseAddrMap[idFileMap.size() - 1].first = (uint8_t *) (curEntry.addrStart);
         } else {
             FileID fileID = fileIDMap.at(curEntry.pathName);
             //Assume address is incremental

@@ -931,7 +931,6 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     void *rsiLoc = (uint8_t *) rspLoc - 16;
 
     //Calculate fileID
-//    assert(curContext->thiz != nullptr);
     auto &_this = scaler_extFuncCallHookAsm_thiz;
 
     scaler::ExtFuncCallHookAsm::ELFImgInfo &curElfImgInfo = _this->elfImgInfoMap.get(fileId);
