@@ -46,6 +46,10 @@ void *findRdbg();
 
 void *findDYNAMIC();
 
+__m256 funcRetm256();
+
+__m512 funcRetm512();
+
 class A {
 public:
     static int asdf;

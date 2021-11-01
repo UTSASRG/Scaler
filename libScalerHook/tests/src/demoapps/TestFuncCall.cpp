@@ -32,16 +32,6 @@ int main() {
     printf("Calling funcE\n");
     funcE(1, 2, 3);
 
-    printf("Calling funcEverything\n");
-    structparm strP;
-    structparm s;
-    int e, f, g, h, i, j, k;
-    long double ld;
-    double m, n;
-    __m256 y;
-    __m512 z;
-    funcEverything(e, f, s, g, h, ld, m, y, z, n, i, j, k);
-
     printf("Calling callFuncA\n");
     callFuncA();
 

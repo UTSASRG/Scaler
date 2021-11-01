@@ -3,7 +3,7 @@ project(ScalerHook)
 
 # Set global (Relative this folder until reset) compiler options
 set(CMAKE_C_STANDARD 11)
-set(SCALER_HOOK_COMPILATION_FLAGS "-O2" "-g" "-Werror")
+set(SCALER_HOOK_COMPILATION_FLAGS "-O2" "-g" "-mavx" "-mavx512f" "-mavx512vl" "-Werror")
 # https://json.nlohmann.me/integration/cmake/
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(lib/json)

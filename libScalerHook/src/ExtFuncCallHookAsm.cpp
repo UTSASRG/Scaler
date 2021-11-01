@@ -676,13 +676,13 @@ namespace scaler {
 
 //    IMPL_ASMHANDLER(Sec, _ZN6scaler21ExtFuncCallHookAsm23cPreHookHandlerLinuxSecEPvS1_)
 
-#define PUSHXMM(ArgumentName) \
-"subq $16,%rsp\n\t" \
-"vmovdqu  %xmm"#ArgumentName" ,(%rsp)\n\t"
+#define PUSHZMM(ArgumentName) \
+"subq $64,%rsp\n\t" \
+"vmovdqu64  %zmm"#ArgumentName" ,(%rsp)\n\t"
 
-#define POPXMM(ArgumentName) \
-"vmovdqu  (%rsp),%xmm"#ArgumentName"\n\t"\
-"addq $16,%rsp\n\t"
+#define POPZMM(ArgumentName) \
+"vmovdqu64  (%rsp),%zmm"#ArgumentName"\n\t"\
+"addq $64,%rsp\n\t"
 
 
     /**
@@ -761,14 +761,14 @@ namespace scaler {
         "subq $8,%rsp\n\t" //8  (16-byte allignment)
 
         //rsp%10h=0
-        PUSHXMM(0) //16
-        PUSHXMM(1) //16
-        PUSHXMM(2) //16
-        PUSHXMM(3) //16
-        PUSHXMM(4) //16
-        PUSHXMM(5) //16
-        PUSHXMM(6) //16
-        PUSHXMM(7) //16
+        PUSHZMM(0) //16
+        PUSHZMM(1) //16
+        PUSHZMM(2) //16
+        PUSHZMM(3) //16
+        PUSHZMM(4) //16
+        PUSHZMM(5) //16
+        PUSHZMM(6) //16
+        PUSHZMM(7) //16
 
         /**
          * Getting PLT entry address and caller address from stack
@@ -798,14 +798,14 @@ namespace scaler {
         /**
         * Restore Registers
         */
-        POPXMM(7)
-        POPXMM(6)
-        POPXMM(5)
-        POPXMM(4)
-        POPXMM(3)
-        POPXMM(2)
-        POPXMM(1)
-        POPXMM(0)
+        POPZMM(7)
+        POPZMM(6)
+        POPZMM(5)
+        POPZMM(4)
+        POPZMM(3)
+        POPZMM(2)
+        POPZMM(1)
+        POPZMM(0)
 
         "addq $8,%rsp\n\t" //8  (16-byte allignment)
 
@@ -862,8 +862,8 @@ namespace scaler {
         //Save return value to stack
         "pushq %rax\n\t" //8
         "pushq %rdx\n\t" //8
-        PUSHXMM(0) //16
-        PUSHXMM(1) //16
+        PUSHZMM(0) //16
+        PUSHZMM(1) //16
         //Save st0
         "subq $16,%rsp\n\t" //16
         "fstpt (%rsp)\n\t"
@@ -885,8 +885,8 @@ namespace scaler {
         "addq $16,%rsp\n\t" //16
         "fldt (%rsp)\n\t"
         "addq $16,%rsp\n\t" //16
-        POPXMM(1) //16
-        POPXMM(0) //16
+        POPZMM(1) //16
+        POPZMM(0) //16
         "popq %rdx\n\t" //8
         "popq %rax\n\t" //8
 
@@ -1259,9 +1259,9 @@ void *cAfterHookHandlerLinux() {
 
 //    DBG_LOG("[After Hook] Thread ID:%lu");
 
-    DBG_LOGS("[After Hook] Thread ID:%lu Library(%d):%s, Func(%ld): %s Start: %ld End: %ld", pthread_self(),
-             libraryFileId, libraryFileName.c_str(),
-             extSymbolID, funcName.c_str(), startTimestamp, endTimestamp);
+//    DBG_LOGS("[After Hook] Thread ID:%lu Library(%d):%s, Func(%ld): %s Start: %ld End: %ld", pthread_self(),
+//             libraryFileId, libraryFileName.c_str(),
+//             extSymbolID, funcName.c_str(), startTimestamp, endTimestamp);
 /*
     if (extSymbolID == curELFImgInfo.pthreadExtSymbolId.PTHREAD_CREATE) {
         //todo: A better way is to compare function id rather than name. This is more efficient.
