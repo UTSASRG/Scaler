@@ -8,7 +8,7 @@ find_package(GTest REQUIRED)
 # Test libs
 # ============================================================
 
-set(TEST_FLAGS "-mavx" "-mavx512f" "-fstack-protector-all")
+set(TEST_FLAGS "-mavx" "-mavx512f" "-mavx512vl" "-fstack-protector-all")
 
 
 ## A library that does a range of function call

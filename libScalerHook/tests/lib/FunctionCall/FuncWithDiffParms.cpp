@@ -3,6 +3,7 @@
 #include <string>
 #include <link.h>
 #include <thread>
+#include <cassert>
 
 extern "C" {
 
@@ -57,11 +58,30 @@ void resolveSystemFunc() {
     }
 }
 
+#include <immintrin.h>
 void funcEverything(int e, int f, structparm s, int g, int h, long double ld,
                     double m, __m256 y, __m512 z, double n, int i, int j, int k) {
+    assert(e == 565);
+    assert(f == 11256);
+    assert(s.a == 25);
+    assert(s.d == 325823.21121251);
+    assert(g == 121894);
+    assert(h == 69783);
+    assert(i == 245);
+    assert(j == 12357);
+    assert(k == 88776);
+    assert(ld = 8371652.2765257);
+    assert(m == 2871.2746362);
+    assert(n == 271232.3782);
+    __m256 y1 = _mm256_set_ps(1278611.1225, 21852.576284, 21124566.78088, 921734562.23, 0.28914970, 12.021315,
+                              214.52160,
+                              162.0242);
+    __m512 z1 = _mm512_set_ps(224152.215680, 89794.021145, 89065436.213, 883.340, 10251.0122, 121234.025251, 14567.0567,
+                              16567.0567, 2234.607, 482.03, 653.02, 879.03, 46310.07, 12342.07376, 142.021412, 16.022);
 
-    printf("Inside Function Everything\n");
-
+    uint8_t rlt=_mm256_cmp_ps_mask(y, y1, _CMP_EQ_OS);
+    assert(_mm256_cmp_ps_mask(y, y1, _CMP_EQ_OS)== 0b11111111);
+    assert(_mm512_cmp_ps_mask(z, z1, _CMP_EQ_OS) == 0b1111111111111111);
 }
 
 void *getFuncAddr(std::string funcName) {
