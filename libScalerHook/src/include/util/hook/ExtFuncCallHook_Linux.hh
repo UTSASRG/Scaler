@@ -20,10 +20,10 @@ namespace scaler {
     class ExtFuncCallHook_Linux : public Hook {
     public:
 
-        virtual void install(SYMBOL_FILTER filterCallB) = 0;
+        virtual void install(SYMBOL_FILTER filterCallB) override = 0;
 
 
-        virtual void uninstall() = 0;
+        virtual void uninstall() override = 0;
 
         ExtFuncCallHook_Linux(ExtFuncCallHook_Linux &) = delete;
 

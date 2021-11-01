@@ -6,11 +6,13 @@
 #include <sys/prctl.h>
 #include <thread>
 #include <util/tool/MemTool.h>
+#include <cassert>
 
 using namespace std;
 
 int main() {
     pthread_t pt1 = pthread_self();
+    assert(pt1!=-1);
     printf("pt1=%lu\n", pt1);
     printf("pt1=%lu\n", myGetThreadID());
 
