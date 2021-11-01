@@ -1234,23 +1234,22 @@ void *cAfterHookHandlerLinux() {
     }
     inhookHandler = true;
 
-    assert(scaler_extFuncCallHookAsm_thiz != nullptr);
     auto &_this = scaler_extFuncCallHookAsm_thiz;
 
     scaler::FileID fileId = curContext.fileId.peekpop();
-    scaler::ExtFuncCallHookAsm::ELFImgInfo &curELFImgInfo = _this->elfImgInfoMap[fileId];
-    auto &fileName = curELFImgInfo.filePath;
+    //scaler::ExtFuncCallHookAsm::ELFImgInfo &curELFImgInfo = _this->elfImgInfoMap[fileId];
+    //auto &fileName = curELFImgInfo.filePath;
     scaler::SymID extSymbolID = curContext.extSymbolId.peekpop();
-    auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID);
+    //auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID);
     int64_t startTimestamp = curContext.timestamp.peekpop();
     int64_t endTimestamp = getunixtimestampms();
     // When after hook is called. Library address is resolved. We use searching mechanism to find the file name.
     // To improve efficiency, we could sotre this value
     void *callerAddr = curContext.callerAddr.peekpop();
 
-    scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = curELFImgInfo.hookedExtSymbol.get(extSymbolID);
-    auto libraryFileId = _this->pmParser.findExecNameByAddr(curSymbol.addr);
-    auto &libraryFileName = _this->pmParser.idFileMap.at(libraryFileId);
+    //scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = curELFImgInfo.hookedExtSymbol.get(extSymbolID);
+    //auto libraryFileId = _this->pmParser.findExecNameByAddr(curSymbol.addr);
+    //auto &libraryFileName = _this->pmParser.idFileMap.at(libraryFileId);
 //    assert(libraryFileId != -1);
 //    curSymbol.libraryFileID = libraryFileId;
 //    scaler::curNode->setRealFileID(libraryFileId);
