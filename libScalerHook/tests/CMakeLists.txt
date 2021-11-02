@@ -171,6 +171,12 @@ target_link_libraries(libScalerHook-parsecapps-pbzip2 ScalerHook-HookAuto pthrea
 target_compile_options(libScalerHook-parsecapps-pbzip2 PRIVATE ${TEST_FLAGS} )
 
 
+#add_executable(libScalerHook-parsecapps-sradv1
+#        src/parsecapps/srad_v1/main.c
+#        )
+#target_link_libraries(libScalerHook-parsecapps-sradv1  ScalerHook-HookAuto pthread m)
+#target_link_options(libScalerHook-parsecapps-sradv1 PRIVATE "-fopenmp")
+
 #add_library(InstallTest SHARED libInstalltest/src/installTest.cpp)
 #target_include_directories(InstallTest PUBLIC libInstalltest/header)
 #target_link_libraries(InstallTest PUBLIC FuncCallTest)

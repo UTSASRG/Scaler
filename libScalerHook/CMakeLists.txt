@@ -29,7 +29,7 @@ set(ScalerHookSrc
         src/StringTool.cpp
         src/breakpoint.cpp)
 
-list(APPEND CMAKE_PREFIX_PATH "/media/umass/datasystem/steven/Downloads/intel/build/kits/xed-install-base-2021-08-26-lin-x86-64")
+list(APPEND CMAKE_PREFIX_PATH "/media/umass/datasystem/steven/lib/intel/build/kits/xed-install-base-2021-08-26-lin-x86-64")
 find_package(XED REQUIRED)
 
 
