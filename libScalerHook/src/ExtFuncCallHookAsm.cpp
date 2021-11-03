@@ -518,7 +518,7 @@ namespace scaler {
         fprintf(fp, "extern \"C\"{\n");
 
         for (auto &curSymbol:symbolToHook) {
-            ELFImgInfo& curElfImgInfo = elfImgInfoMap[curSymbol.fileId];
+            ELFImgInfo &curElfImgInfo = elfImgInfoMap[curSymbol.fileId];
 
 
             fprintf(fp, "//%s\n", curElfImgInfo.filePath.c_str());
@@ -831,8 +831,8 @@ namespace scaler {
         "popq %rbx\n\t"
 
         //Restore rsp to original value (Uncomment the following to only enable prehook)
-        //"addq $152,%rsp\n\t"
-        //"jmpq *%r11\n\t"
+        "addq $152,%rsp\n\t"
+        "jmpq *%r11\n\t"
 
         /**
          * Call actual function
@@ -956,16 +956,30 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
         if (curAddr == newAddr) {
             //todo: 16 depends on opCode array
             retOriFuncAddr = curSymbol.pseudoPltEntry;
+            if (reinterpret_cast<long>(retOriFuncAddr) == 140737343297846) {
+                puts("Exit25\n");
+                exit(-25);
+            }
         } else {
             curElfImgInfo.realAddrResolved[extSymbolId] = true;
             curSymbol.addr = newAddr;
             retOriFuncAddr = newAddr;
+
+            if (reinterpret_cast<long>(retOriFuncAddr) == 140737343297846) {
+                puts("Exit34\n");
+                exit(-34);
+            }
         }
     }
 
 
+
     if (inhookHandler) {
-        curContext.callerAddr.push(callerAddr);
+        //curContext.callerAddr.push(callerAddr);
+        if (reinterpret_cast<long>(retOriFuncAddr) == 140737343297846) {
+            puts("Exit37\n");
+            exit(-37);
+        }
         return retOriFuncAddr;
     }
 
@@ -975,12 +989,12 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 
     auto startTimeStamp = getunixtimestampms();
     //Push callerAddr into stack
-    curContext.timestamp.push(startTimeStamp);
-    curContext.callerAddr.push(callerAddr);
+    //curContext.timestamp.push(startTimeStamp);
+    //curContext.callerAddr.push(callerAddr);
     //Push calling info to afterhook
-    curContext.fileId.push(fileId);
+    //curContext.fileId.push(fileId);
     //todo: rename this to caller function
-    curContext.extSymbolId.push(extSymbolId);
+    //curContext.extSymbolId.push(extSymbolId);
 
     DBG_LOGS("[Pre Hook] Thread:%lu File(%ld):%s, Func(%ld): %s RetAddr:%p", pthread_self(),
              fileId, _this->pmParser.idFileMap.at(fileId).c_str(),
@@ -1221,6 +1235,11 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     //fp = fopen("./testHandler.cpp", "w");
     //fclose(fp);
 **/
+
+    if (reinterpret_cast<long>(retOriFuncAddr) == 140737343297846) {
+        puts("Exit38\n");
+        exit(-38);
+    }
     inhookHandler = false;
     return retOriFuncAddr;
 }

@@ -15,13 +15,17 @@ int doubletake_main(int argc, char **argv, char **envp) {
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
 
-        if (funcName == "__tls_get_addr") {
+        if (funcName == "puts") {
             return false;
-        }else if (funcName == "_setjmp") {
+        }if (funcName == "__tls_get_addr") {
+            return false;
+        } else if (funcName == "__tls_init") {
+            return false;
+        } else if (funcName == "_setjmp") {
             return false;
         } else if (funcName == "__libc_longjmp") {
             return false;
-        }else if (funcName == "pthread_exit") {
+        } else if (funcName == "pthread_exit") {
             return false;
         } else if (scaler::strEndsWith(fileName, "libxed.so")) {
             return false;
