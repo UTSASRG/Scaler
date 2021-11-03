@@ -956,7 +956,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
         if (curAddr == newAddr) {
             //todo: 16 depends on opCode array
             retOriFuncAddr = curSymbol.pseudoPltEntry;
-            if (reinterpret_cast<long>(retOriFuncAddr) == 140737343297846) {
+            if (reinterpret_cast<long>(retOriFuncAddr) == 140737343297846 || reinterpret_cast<long>(retOriFuncAddr) == 140737343298182) {
                 puts("Exit25\n");
                 exit(-25);
             }
@@ -965,13 +965,12 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
             curSymbol.addr = newAddr;
             retOriFuncAddr = newAddr;
 
-            if (reinterpret_cast<long>(retOriFuncAddr) == 140737343297846) {
+            if (reinterpret_cast<long>(retOriFuncAddr) == 140737343297846 || reinterpret_cast<long>(retOriFuncAddr) == 140737343298182) {
                 puts("Exit34\n");
                 exit(-34);
             }
         }
     }
-
 
 
     if (inhookHandler) {
@@ -1236,8 +1235,9 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     //fclose(fp);
 **/
 
-    if (reinterpret_cast<long>(retOriFuncAddr) == 140737343297846) {
+    if (reinterpret_cast<long>(retOriFuncAddr) == 140737343297846 || reinterpret_cast<long>(retOriFuncAddr) == 140737343298182) {
         puts("Exit38\n");
+        puts(curElfImgInfo.realAddrResolved[extSymbolId] ? "resolved\n" : "unresolved\n");
         exit(-38);
     }
     inhookHandler = false;
