@@ -89,7 +89,7 @@ namespace scaler {
     void ExtFuncCallHookBrkpoint::install(Hook::SYMBOL_FILTER filterCallB) {
         brkpointCurContext.inHookHandler = true;
         memTool = MemoryTool_Linux::getInst();
-        pmParser.parsePMMap();
+        //pmParser.parsePMMap();
 
         //Step1: Locating table in memory
         locateRequiredSecAndSeg();
