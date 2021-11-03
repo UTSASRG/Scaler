@@ -213,6 +213,14 @@ namespace scaler {
 
 
         virtual void parseRelaSymbol(ELFImgInfo &curELFImgInfo, FileID curFileID);
+
+        bool isSymbolAddrResolved(ELFImgInfo &curImgInfo, ExtSymInfo &symInfo) {
+            //Check whether its value has 6 bytes offset as its plt entry start address
+            uint8_t *myPltStartAddr = (uint8_t *) curImgInfo.pltStartAddr + 16 * (symInfo.extSymbolId + 1);
+            uint8_t *curGotAddr = (uint8_t *) *symInfo.gotEntry;
+            return (curGotAddr - myPltStartAddr) > 6;
+
+        }
     };
 
 }

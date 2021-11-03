@@ -30,7 +30,7 @@ namespace scaler {
     }
 
     void ExtFuncCallHook_Linux::locateRequiredSecAndSeg() {
-        //pmParser.printPM();
+        pmParser.printPM();
         //Get segment info from /proc/self/maps
         for (FileID curFileiD=0; curFileiD<pmParser.idFileMap.size();++curFileiD) {
             auto &curFileName = pmParser.idFileMap.at(curFileiD);
