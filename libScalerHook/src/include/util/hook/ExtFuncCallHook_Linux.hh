@@ -44,13 +44,16 @@ namespace scaler {
             void **gotEntry = nullptr;            //Pointer to a symbol's GOT entry. Use *gotEntry to get this symbol's real address.
             void *pltEntry = nullptr;            //Pointer to a symbol's PLT entry.
             void *pltSecEntry = nullptr;            //Pointer to a symbol's .plt.sec entry.
-            void *addr = nullptr;                 //The address of a symbol. After a symbol is resolved, it's equal to *gotEntry;
+            void *addr = nullptr;                 //The address of a symbol. After a symbol is resolved, it's equal to *gotEntry; If the symbol is not resolve, it equals nullptr
             FileID fileId = -1;             //Store fileID for this symbol
             SymID extSymbolId = -1;             //The id with respect to where this symbol is called. Store this symbol's ID (it's also called symbolID) //todo: change this to symbolID for consistency
             FileID libraryFileID = -1;       //Store the libary file id that contains this
             void *pseudoPltEntry = nullptr;                   //A pointer to pseudoPltEntry
             int type = -1;
             int bind = -1;
+
+            void* oriPltSecCode=nullptr;
+            void* oriPltCode=nullptr;
 
             bool operator==(const ExtSymInfo &rho) const {
                 if (&rho != this) {
@@ -61,57 +64,58 @@ namespace scaler {
             }
         };
 
-        /**
+
+         /**
          * ELF image (ELF file in memory) information.
          */
         class ELFImgInfo {
         public:
 
             struct PthreadFuncId {
-                int PTHREAD_CREATE = -1;
-                int PTHREAD_JOIN = -1;
-                int PTHREAD_TRYJOIN_NP = -1;
-                int PTHREAD_TIMEDJOIN_NP = -1;
-                int PTHREAD_CLOCKJOIN_NP = -1;
-                int PTHREAD_MUTEX_LOCK = -1;
-                int PTHREAD_MUTEX_TIMEDLOCK = -1;
-                int PTHREAD_MUTEX_CLOCKLOCK = -1;
-                int PTHREAD_MUTEX_UNLOCK = -1;
-                int PTHREAD_RWLOCK_RDLOCK = -1;
-                int PTHREAD_RWLOCK_TRYRDLOCK = -1;
-                int PTHREAD_RWLOCK_TIMEDRDLOCK = -1;
-                int PTHREAD_RWLOCK_CLOCKRDLOCK = -1;
-                int PTHREAD_RWLOCK_WRLOCK = -1;
-                int PTHREAD_RWLOCK_TRYWRLOCK = -1;
-                int PTHREAD_RWLOCK_TIMEDWRLOCK = -1;
-                int PTHREAD_RWLOCK_CLOCKWRLOCK = -1;
-                int PTHREAD_RWLOCK_UNLOCK = -1;
-                int PTHREAD_COND_SIGNAL = -1;
-                int PTHREAD_COND_BROADCAST = -1;
-                int PTHREAD_COND_WAIT = -1;
-                int PTHREAD_COND_TIMEDWAIT = -1;
-                int PTHREAD_COND_CLOCKWAIT = -1;
-                int PTHREAD_SPIN_LOCK = -1;
-                int PTHREAD_SPIN_TRYLOCK = -1;
-                int PTHREAD_SPIN_UNLOCK = -1;
-                int PTHREAD_BARRIER_WAIT = -1;
+                SymID PTHREAD_CREATE = -1;
+                SymID PTHREAD_JOIN = -1;
+                SymID PTHREAD_TRYJOIN_NP = -1;
+                SymID PTHREAD_TIMEDJOIN_NP = -1;
+                SymID PTHREAD_CLOCKJOIN_NP = -1;
+                SymID PTHREAD_MUTEX_LOCK = -1;
+                SymID PTHREAD_MUTEX_TIMEDLOCK = -1;
+                SymID PTHREAD_MUTEX_CLOCKLOCK = -1;
+                SymID PTHREAD_MUTEX_UNLOCK = -1;
+                SymID PTHREAD_RWLOCK_RDLOCK = -1;
+                SymID PTHREAD_RWLOCK_TRYRDLOCK = -1;
+                SymID PTHREAD_RWLOCK_TIMEDRDLOCK = -1;
+                SymID PTHREAD_RWLOCK_CLOCKRDLOCK = -1;
+                SymID PTHREAD_RWLOCK_WRLOCK = -1;
+                SymID PTHREAD_RWLOCK_TRYWRLOCK = -1;
+                SymID PTHREAD_RWLOCK_TIMEDWRLOCK = -1;
+                SymID PTHREAD_RWLOCK_CLOCKWRLOCK = -1;
+                SymID PTHREAD_RWLOCK_UNLOCK = -1;
+                SymID PTHREAD_COND_SIGNAL = -1;
+                SymID PTHREAD_COND_BROADCAST = -1;
+                SymID PTHREAD_COND_WAIT = -1;
+                SymID PTHREAD_COND_TIMEDWAIT = -1;
+                SymID PTHREAD_COND_CLOCKWAIT = -1;
+                SymID PTHREAD_SPIN_LOCK = -1;
+                SymID PTHREAD_SPIN_TRYLOCK = -1;
+                SymID PTHREAD_SPIN_UNLOCK = -1;
+                SymID PTHREAD_BARRIER_WAIT = -1;
 
                 bool isFuncPthread(FuncID funcID);
 
-                std::vector<int> getAllIds();
+                std::vector<SymID> getAllIds();
 
             };
 
             struct SemaphoreFuncId {
-                int SEM_WAIT = -1;
-                int SEM_TIMEDWAIT = -1;
-                int SEM_CLOCKWAIT = -1;
-                int SEM_TRYWAIT = -1;
-                int SEM_POST = -1;
+                SymID SEM_WAIT = -1;
+                SymID SEM_TIMEDWAIT = -1;
+                SymID SEM_CLOCKWAIT = -1;
+                SymID SEM_TRYWAIT = -1;
+                SymID SEM_POST = -1;
 
                 bool isFuncSemaphore(FuncID funcID);
 
-                std::vector<int> getAllIds();
+                std::vector<SymID> getAllIds();
             };
 
 
@@ -123,20 +127,13 @@ namespace scaler {
             void *pltSecEndAddr = nullptr;                  //The ending address of the PLT.SEC table
             ElfW(Dyn) *_DYNAMICAddr = nullptr;              //The staring address of _DYNAMIC
 
-            Vector<bool> realAddrResolved;             //Whether function with id i has been resolved.
+            // uint8_t *pseudoPlt = nullptr;                   //A pointer to pseudoPlt table
 
-
-//            uint8_t *pseudoPlt = nullptr;                   //A pointer to pseudoPlt table
-
-            HashMap<SymID, ExtSymInfo> hookedExtSymbol;   //External symbols that has already been hooked
+            Vector<SymID> hookedExtSymbol;   //External symbol ids that has already been hooked
             //todo:memory leak
-            HashMap<SymID, void *> oriPltCode;   //External symbols that has already been hooked
-            HashMap<SymID, void *> oriPltSecCode;   //External symbols that has already been hooked
 
-
-            std::map<SymID, ExtSymInfo> allExtSymbol;      //All external symbols in ELF image
+            Vector<ExtSymInfo> allExtSymbol;      //All external symbols in ELF image
             std::map<std::string, FuncID> funcIdMap;        //Mapping function name to it's id
-            std::map<FuncID, std::string> idFuncMap;        //Mapping function id to it's name
             //todo: Check const for all variables
             ElfW(Rela) *relaPlt = nullptr;                            //The first .plt.rela entry in ELF iamge
             ElfW(Xword) relaPltCnt = 0;                         //The number of entries in relaPlt
@@ -214,13 +211,7 @@ namespace scaler {
 
         virtual void parseRelaSymbol(ELFImgInfo &curELFImgInfo, FileID curFileID);
 
-        bool isSymbolAddrResolved(ELFImgInfo &curImgInfo, ExtSymInfo &symInfo) {
-            //Check whether its value has 6 bytes offset as its plt entry start address
-            uint8_t *myPltStartAddr = (uint8_t *) curImgInfo.pltStartAddr + 16 * (symInfo.extSymbolId + 1);
-            uint8_t *curGotAddr = (uint8_t *) *symInfo.gotEntry;
-            return (curGotAddr - myPltStartAddr) > 6;
-
-        }
+        bool isSymbolAddrResolved(ELFImgInfo &curImgInfo, ExtSymInfo &symInfo);
     };
 
 }

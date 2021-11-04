@@ -32,7 +32,7 @@ namespace scaler {
     void ExtFuncCallHook_Linux::locateRequiredSecAndSeg() {
         pmParser.printPM();
         //Get segment info from /proc/self/maps
-        for (FileID curFileiD=0; curFileiD<pmParser.idFileMap.size();++curFileiD) {
+        for (FileID curFileiD = 0; curFileiD < pmParser.idFileMap.size(); ++curFileiD) {
             auto &curFileName = pmParser.idFileMap.at(curFileiD);
             auto &pmEntries = pmParser.procMap.at(curFileName);
             elfImgInfoMap.pushBack(ELFImgInfo());
@@ -207,11 +207,8 @@ namespace scaler {
                     ss << "func" << i;
                     newSymbol.symbolName = ss.str();
                 }
-                curELFImgInfo.idFuncMap[newSymbol.extSymbolId] = newSymbol.symbolName;
                 curELFImgInfo.funcIdMap[newSymbol.symbolName] = i;
-                curELFImgInfo.allExtSymbol[newSymbol.extSymbolId] = newSymbol;
-                curELFImgInfo.realAddrResolved.insertAt(i, false);
-
+                curELFImgInfo.allExtSymbol.pushBack(newSymbol);
             } catch (const ScalerException &e) {
                 //Remove current entry
                 elfImgInfoMap[curFileID].elfImgValid = false;
@@ -236,13 +233,10 @@ namespace scaler {
         for (FileID curFileID = 0; curFileID < elfImgInfoMap.getSize(); ++curFileID) {
             auto &curELFImgInfo = elfImgInfoMap[curFileID];
             if (curELFImgInfo.elfImgValid) {
-                for (auto iter = curELFImgInfo.hookedExtSymbol.begin();
-                     iter != curELFImgInfo.hookedExtSymbol.end(); ++iter) {
-
-                    //DBG_LOGS("%zd %s %p %zd", iter->second.libraryFileID, iter->second.symbolName.c_str(),
-                    //         iter->second.addr, iter->second.fileId);
-                    outFile[std::to_string(iter.getVal().libraryFileID)]["funcNames"][std::to_string(int64_t(
-                            iter.getVal().addr))] = iter.getVal().symbolName;
+                for (SymID hookedSymId:curELFImgInfo.hookedExtSymbol) {
+                    const auto &curSymbol = curELFImgInfo.allExtSymbol[hookedSymId];
+                    outFile[std::to_string(curSymbol.libraryFileID)]["funcNames"][std::to_string(int64_t(
+                            curSymbol.addr))] = curSymbol.symbolName;
                 }
             }
         }
@@ -272,11 +266,16 @@ namespace scaler {
 
     }
 
+    bool ExtFuncCallHook_Linux::isSymbolAddrResolved(ExtFuncCallHook_Linux::ELFImgInfo &curImgInfo,
+                                                     ExtFuncCallHook_Linux::ExtSymInfo &symInfo) {
+        //Check whether its value has 6 bytes offset as its plt entry start address
+        uint8_t *myPltStartAddr = (uint8_t *) curImgInfo.pltStartAddr + 16 * (symInfo.extSymbolId + 1);
+        uint8_t *curGotAddr = (uint8_t *) *symInfo.gotEntry;
+        return (curGotAddr - myPltStartAddr) > 6;
+    }
+
 
     ExtFuncCallHook_Linux::ELFImgInfo::ELFImgInfo() : hookedExtSymbol() {
-        for (int i = 0; i < realAddrResolved.getSize(); ++i) {
-            realAddrResolved[i] = false;
-        }
 
     }
 
@@ -311,8 +310,8 @@ namespace scaler {
                funcID == PTHREAD_BARRIER_WAIT;
     }
 
-    std::vector<int> ExtFuncCallHook_Linux::ELFImgInfo::PthreadFuncId::getAllIds() {
-        std::vector<int> result;
+    std::vector<SymID> ExtFuncCallHook_Linux::ELFImgInfo::PthreadFuncId::getAllIds() {
+        std::vector<SymID> result;
         result.begin()++;
         if (PTHREAD_CREATE != -1)
             result.push_back(PTHREAD_CREATE);
@@ -383,8 +382,8 @@ namespace scaler {
 
     }
 
-    std::vector<int> ExtFuncCallHook_Linux::ELFImgInfo::SemaphoreFuncId::getAllIds() {
-        std::vector<int> result;
+    std::vector<SymID> ExtFuncCallHook_Linux::ELFImgInfo::SemaphoreFuncId::getAllIds() {
+        std::vector<SymID> result;
         if (SEM_WAIT != -1)
             result.push_back(SEM_WAIT);
         if (SEM_TIMEDWAIT != -1)

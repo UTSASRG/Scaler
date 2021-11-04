@@ -70,11 +70,10 @@ namespace scaler {
             auto &curFileName = pmParser.idFileMap.at(curFileId);
             if (curELFImgInfo.elfImgValid) {
                 //loop through external symbols, let user decide which symbol to hook through callback function
-                for (auto iterSymbol = curELFImgInfo.idFuncMap.begin();
-                     iterSymbol != curELFImgInfo.idFuncMap.end(); ++iterSymbol) {
-                    auto &curSymbolId = iterSymbol->first;
-                    auto &curSymbolName = iterSymbol->second;
-                    if (filterCallB(curFileName, curSymbolName)) {
+                for (SymID curSymbolId = 0; curSymbolId < curELFImgInfo.allExtSymbol.getSize(); ++curSymbolId) {
+                    auto &curSymbol = curELFImgInfo.allExtSymbol[curSymbolId];
+                    const auto &curSymbolName = curSymbol.symbolName;
+                    if (filterCallB(curFileName, curSymbol.symbolName)) {
                         //The user wants this symbol
                         fileToHook.emplace(curFileId);
 
@@ -148,8 +147,6 @@ namespace scaler {
                         }
 
 
-                        auto &curSymbol = curELFImgInfo.allExtSymbol.at(curSymbolId);
-
                         //Step6: Insert breakpoint at .plt entrybrkpointEmitted
                         //todo: we only use one of them. If ,plt.sec exists, hook .plt.sec rather than plt
                         recordOriCode(curSymbol.extSymbolId, curSymbol.pltEntry, true);
@@ -164,10 +161,8 @@ namespace scaler {
                                  curSymbol.pltSecEntry);
                         insertBrkpointAt(curSymbol.pltSecEntry, childMainThreadTID);
 
-                        curELFImgInfo.hookedExtSymbol.put(curSymbol.extSymbolId, curSymbol);
+                        curELFImgInfo.hookedExtSymbol.pushBack(curSymbol.extSymbolId);
                     }
-
-
                 }
             }
         }
@@ -351,8 +346,9 @@ namespace scaler {
 //        for (int i = 0; i < curContext.fileId.size() * 4; ++i) {
 //            printf(" ");
 //        }
+        ExtSymInfo &curExtSymbol = curELFImgInfo.allExtSymbol[extSymbolId];
 
-        DBG_LOGS("[Prehook %d] %s in %s is called in %s", childTid, curELFImgInfo.idFuncMap.at(extSymbolId).c_str(),
+        DBG_LOGS("[Prehook %d] %s in %s is called in %s", childTid, curExtSymbol.symbolName.c_str(),
                  "unknownLib",
                  curELFImgInfo.filePath.c_str());
 
@@ -623,7 +619,6 @@ namespace scaler {
 
         FuncID funcId = curContext.extSymbolId.at(curContext.extSymbolId.size() - 1);
         curContext.extSymbolId.pop_back();
-        auto &funcName = curELFImgInfo.idFuncMap.at(funcId);
 
         //if (curELFImgInfo.hookedExtSymbol.find(funcId) == curELFImgInfo.hookedExtSymbol.end()) {
         //    DBG_LOGS("%d %lu", curELFImgInfo.hookedExtSymbol.find(0) == curELFImgInfo.hookedExtSymbol.end(),
@@ -637,7 +632,7 @@ namespace scaler {
 
         int64_t endTimestamp = getunixtimestampms();
 
-        ExtSymInfo &curSymbol = curELFImgInfo.hookedExtSymbol.get(funcId);
+        ExtSymInfo &curSymbol = curELFImgInfo.allExtSymbol[funcId];
         if (curSymbol.addr == nullptr) {
             //Fill addr with the resolved address from GOT
             void **remoteData = static_cast<void **>(pmParser.readProcMem(curSymbol.gotEntry, sizeof(void *)));
@@ -916,7 +911,7 @@ namespace scaler {
                                               int64_t &libraryFileID) {
         //Find correct symbol
         ELFImgInfo &curElfImg = elfImgInfoMap[callerFileID];
-        ExtSymInfo &curSymbol = curElfImg.hookedExtSymbol.get(symbolIDInCaller);
+        ExtSymInfo &curSymbol = curElfImg.allExtSymbol[symbolIDInCaller];
 
         void **symbolAddr = (void **) pmParser.readProcMem(curSymbol.gotEntry, sizeof(curSymbol.gotEntry));
 

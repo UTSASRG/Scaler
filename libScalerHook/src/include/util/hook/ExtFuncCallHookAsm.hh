@@ -69,9 +69,9 @@ namespace scaler {
         */
 //        std::vector<uint8_t> fillDestAddr2PseudoPltCode(SymID extSymbolId, void *funcAddr);
 
-        void *writeAndCompileRedzoneJumper(std::vector<ExtSymInfo> &symbolToHook);
+        void *writeAndCompileRedzoneJumper();
 
-        void *writeAndCompilePseudoPlt(std::vector<ExtSymInfo> &symbolToHook);
+        void *writeAndCompilePseudoPlt();
 
     };
 
