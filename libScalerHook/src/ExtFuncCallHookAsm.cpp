@@ -108,6 +108,12 @@ namespace scaler {
                         if (isSymbolAddrResolved(curElfImgInfo, curSymbol)) {
                             DBG_LOGS("%s:%s *%p=%p resolved=%s",curElfImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),curSymbol.gotEntry,*curSymbol.gotEntry,"true");
                             curSymbol.addr = *curSymbol.gotEntry;
+
+                            if(reinterpret_cast<long>(curSymbol.addr) == 0x7ffff72118a6){
+                                puts("Incorrect result 15 retoriFuncAddr==0x7ffff6d31b10\n");
+                                exit(-1);
+                            }
+
                         } else {
                             DBG_LOGS("%s:%s  *%p=%p resolved=%s",curElfImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),curSymbol.gotEntry,*curSymbol.gotEntry,"false");
                             curSymbol.addr = nullptr;
@@ -545,7 +551,6 @@ namespace scaler {
             int j = 1;
         }
         //Parse address from got table
-        curSymbol.addr = *curSymbol.gotEntry;
         funcAddr = curSymbol.addr;
         //Search the fileID
         libraryFileID = pmParser.findExecNameByAddr(curSymbol.addr);
@@ -913,21 +918,33 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 
     scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = curElfImgInfo.allExtSymbol[extSymbolId];
     void *retOriFuncAddr = curSymbol.addr;
-
+    if(reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6){
+        puts("Incorrect result 3 retoriFuncAddr==0x7ffff6d31b10\n");
+    }
 
     if (curSymbol.addr == nullptr) {
         //Unresolved
         if (!_this->isSymbolAddrResolved(curElfImgInfo, curSymbol)) {
             //Use ld to resolve
             retOriFuncAddr = curSymbol.pseudoPltEntry;
+
+            if(reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6){
+                puts("Incorrect result 2 retoriFuncAddr==0x7ffff6d31b10\n");
+            }
         } else {
             //Already resolved, but address not updated
             curSymbol.addr = *curSymbol.gotEntry;
             retOriFuncAddr = curSymbol.addr;
+
+            if(reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6){
+                puts("Incorrect result 1 retoriFuncAddr==0x7ffff6d31b10\n");
+            }
         }
     }
 
-
+    if(reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6){
+        puts("Incorrect result retoriFuncAddr==0x7ffff6d31b10\n");
+    }
     if (inhookHandler) {
         //curContext.callerAddr.push(callerAddr);
         return retOriFuncAddr;
@@ -946,9 +963,9 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     //todo: rename this to caller function
     //curContext.extSymbolId.push(extSymbolId);
 
-    DBG_LOGS("[Pre Hook] Thread:%lu File(%ld):%s, Func(%ld): %s RetAddr:%p", pthread_self(),
-             fileId, _this->pmParser.idFileMap.at(fileId).c_str(),
-             extSymbolId, curSymbol.symbolName.c_str(), retOriFuncAddr);
+//    DBG_LOGS("[Pre Hook] Thread:%lu File(%ld):%s, Func(%ld): %s RetAddr:%p", pthread_self(),
+//             fileId, _this->pmParser.idFileMap.at(fileId).c_str(),
+//             extSymbolId, curSymbol.symbolName.c_str(), retOriFuncAddr);
 
     /**
     //Parse parameter based on functions

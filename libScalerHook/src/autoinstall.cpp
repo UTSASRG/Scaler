@@ -16,17 +16,10 @@ int doubletake_main(int argc, char **argv, char **envp) {
 //        return false;
         //todo: User should be able to specify name here. Since they can change filename
 
-        if(funcName=="malloc"){
+        if (funcName == "puts") {
             return false;
         }
-
-        if(fileName=="/media/umass/datasystem/steven/benchmark/multithreadingtests/parsec/tests/facesim/facesim-libscalerhook"){
-            return false;
-        }
-
-        if (scaler::strEndsWith(fileName, "libc-2.27.so")) {
-            return false;
-        } else if (funcName == "__tls_get_addr") {
+        if (funcName == "__tls_get_addr") {
             return false;
         } else if (funcName == "__tls_init") {
             return false;
@@ -48,7 +41,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
             return false;
         } else {
             //printf("%s\n", fileName.c_str());
-            return false;
+            return true;
         }
 
     }, INSTALL_TYPE::ASM);

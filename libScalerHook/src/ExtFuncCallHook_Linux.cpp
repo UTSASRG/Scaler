@@ -269,8 +269,16 @@ namespace scaler {
     bool ExtFuncCallHook_Linux::isSymbolAddrResolved(ExtFuncCallHook_Linux::ELFImgInfo &curImgInfo,
                                                      ExtFuncCallHook_Linux::ExtSymInfo &symInfo) {
         //Check whether its value has 6 bytes offset as its plt entry start address
-        uint8_t *myPltStartAddr = (uint8_t *) curImgInfo.pltStartAddr + 16 * (symInfo.extSymbolId + 1);
-        uint8_t *curGotAddr = (uint8_t *) *symInfo.gotEntry;
+        int64_t myPltStartAddr = (int64_t) curImgInfo.pltStartAddr + 16 * (symInfo.extSymbolId + 1);
+        int64_t curGotAddr = (int64_t) *symInfo.gotEntry;
+
+        if(reinterpret_cast<long>(curGotAddr) == 0x7ffff72118a6){
+            puts("Incorrect result 16 retoriFuncAddr==0x7ffff6d31b10\n");
+            printf("abs(curGotAddr - myPltStartAddr)=%ld\n",abs(curGotAddr - myPltStartAddr));
+            printf("curGotAddr=%p, myPltStartAddr=%p\n",(void*)curGotAddr, (void*)myPltStartAddr);
+            exit(-1);
+        }
+
         return abs(curGotAddr - myPltStartAddr) > 6;
     }
 
