@@ -74,6 +74,8 @@ namespace scaler {
 
         for (FileID curFileId = 0; curFileId < elfImgInfoMap.getSize(); ++curFileId) {
             auto &curElfImgInfo = elfImgInfoMap[curFileId];
+            DBG_LOGS("PLT start addr for %s is %p",curElfImgInfo.filePath.c_str(), curElfImgInfo.pltStartAddr);
+
             if (curElfImgInfo.elfImgValid) {
                 auto &curFileName = pmParser.idFileMap.at(curFileId);
                 //loop through external symbols, let user decide which symbol to hook through callback function
@@ -104,8 +106,10 @@ namespace scaler {
 
                         //Since it's external symbol, it's address must be in another file.
                         if (isSymbolAddrResolved(curElfImgInfo, curSymbol)) {
+                            DBG_LOGS("%s:%s *%p=%p resolved=%s",curElfImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),curSymbol.gotEntry,*curSymbol.gotEntry,"true");
                             curSymbol.addr = *curSymbol.gotEntry;
                         } else {
+                            DBG_LOGS("%s:%s  *%p=%p resolved=%s",curElfImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),curSymbol.gotEntry,*curSymbol.gotEntry,"false");
                             curSymbol.addr = nullptr;
                         }
 
@@ -933,7 +937,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     inhookHandler = true;
 
 
-    auto startTimeStamp = getunixtimestampms();
+    //auto startTimeStamp = getunixtimestampms();
     //Push callerAddr into stack
     //curContext.timestamp.push(startTimeStamp);
     //curContext.callerAddr.push(callerAddr);

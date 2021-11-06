@@ -58,7 +58,7 @@ namespace scaler {
                 findELFSecInMemory(elfParser, ".plt", curELFImgInfo.pltStartAddr, curELFImgInfo.pltEndAddr,
                                    curELFImgInfo.baseAddrStart, curELFImgInfo.baseAddrEnd);
 
-
+                DBG_LOGS(".plt section for %s starts at %p",curFileName.c_str(),curELFImgInfo.pltStartAddr);
                 //Get .plt.sec (may not exist)
                 try {
                     findELFSecInMemory(elfParser, ".plt.sec", curELFImgInfo.pltSecStartAddr,
@@ -271,7 +271,7 @@ namespace scaler {
         //Check whether its value has 6 bytes offset as its plt entry start address
         uint8_t *myPltStartAddr = (uint8_t *) curImgInfo.pltStartAddr + 16 * (symInfo.extSymbolId + 1);
         uint8_t *curGotAddr = (uint8_t *) *symInfo.gotEntry;
-        return (curGotAddr - myPltStartAddr) > 6;
+        return abs(curGotAddr - myPltStartAddr) > 6;
     }
 
 
