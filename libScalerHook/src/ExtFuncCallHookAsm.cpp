@@ -25,6 +25,9 @@
 #include <util/tool/StringTool.h>
 #include <nlohmann/json.hpp>
 #include <util/datastructure/FStack.h>
+extern "C" {
+#include "xed/xed-interface.h"
+}
 //todo: many functions are too long
 
 struct Context {
@@ -71,10 +74,9 @@ namespace scaler {
         locateRequiredSecAndSeg();
 
         //Step3: Use callback to determine which ID to hook
-
         for (FileID curFileId = 0; curFileId < elfImgInfoMap.getSize(); ++curFileId) {
             auto &curElfImgInfo = elfImgInfoMap[curFileId];
-            DBG_LOGS("PLT start addr for %s is %p",curElfImgInfo.filePath.c_str(), curElfImgInfo.pltStartAddr);
+            DBG_LOGS("PLT start addr for %s is %p", curElfImgInfo.filePath.c_str(), curElfImgInfo.pltStartAddr);
 
             if (curElfImgInfo.elfImgValid) {
                 auto &curFileName = pmParser.idFileMap.at(curFileId);
@@ -99,23 +101,27 @@ namespace scaler {
                             memTool->adjustMemPerm(curSymbol.gotEntry, curSymbol.gotEntry + 1,
                                                    PROT_READ | PROT_WRITE | PROT_EXEC);
                         } catch (const ScalerException &e) {
-                            ERR_LOGS("Hook Failed for \"%s\":\"%s\" because %s", pmParser.idFileMap.at(curSymbol.fileId).c_str(),
+                            ERR_LOGS("Hook Failed for \"%s\":\"%s\" because %s",
+                                     pmParser.idFileMap.at(curSymbol.fileId).c_str(),
                                      curSymbol.symbolName.c_str(), e.info.c_str());
                             continue;
                         }
 
                         //Since it's external symbol, it's address must be in another file.
                         if (isSymbolAddrResolved(curElfImgInfo, curSymbol)) {
-                            DBG_LOGS("%s:%s *%p=%p resolved=%s",curElfImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),curSymbol.gotEntry,*curSymbol.gotEntry,"true");
+                            DBG_LOGS("%s(%zd):%s(%zd) *%p=%p resolved=%s", curElfImgInfo.filePath.c_str(), curFileId,
+                                     curSymbol.symbolName.c_str(), curSymbol.extSymbolId, curSymbol.gotEntry,
+                                     *curSymbol.gotEntry, "true");
                             curSymbol.addr = *curSymbol.gotEntry;
 
-                            if(reinterpret_cast<long>(curSymbol.addr) == 0x7ffff72118a6){
+                            if (reinterpret_cast<long>(curSymbol.addr) == 0x7ffff72118a6) {
                                 puts("Incorrect result 15 retoriFuncAddr==0x7ffff6d31b10\n");
                                 exit(-1);
                             }
 
                         } else {
-                            DBG_LOGS("%s:%s  *%p=%p resolved=%s",curElfImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),curSymbol.gotEntry,*curSymbol.gotEntry,"false");
+                            DBG_LOGS("%s:%s  *%p=%p resolved=%s", curElfImgInfo.filePath.c_str(),
+                                     curSymbol.symbolName.c_str(), curSymbol.gotEntry, *curSymbol.gotEntry, "false");
                             curSymbol.addr = nullptr;
                         }
 
@@ -196,6 +202,8 @@ namespace scaler {
         void *pseudoPltDl = writeAndCompilePseudoPlt();
         //Step5: Write redzone jumper code to file
         void *redzoneJumperDl = writeAndCompileRedzoneJumper();
+
+        parsePltStub();
 
         //Step6: Replace PLT table, jmp to dll function
         /**
@@ -609,6 +617,23 @@ namespace scaler {
         return handle;
     }
 
+    void ExtFuncCallHookAsm::parsePltStub() {
+        for (FileID curFileID = 0; curFileID < elfImgInfoMap.getSize(); ++curFileID) {
+            auto &curELFImgInfo = elfImgInfoMap[curFileID];
+            if (curELFImgInfo.elfImgValid) {
+                char * pltAddr= static_cast<char *>(curELFImgInfo.pltStartAddr);
+                char * curAddr=pltAddr;
+                int counter=0;
+                while(counter<curELFImgInfo.allExtSymbol.getSize()){
+                    curAddr+=16;
+                    ++counter;
+                    int* pltStubId= reinterpret_cast<int *>(curAddr + 7);
+                    DBG_LOGS("%s pltStub=%d",curELFImgInfo.filePath.c_str(),*pltStubId);
+                }
+            }
+        }
+    }
+
 //    void ExtFuncCallHookAsm::saveCommonFuncID() {
 //        using Json = nlohmann::json;
 //
@@ -918,7 +943,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 
     scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = curElfImgInfo.allExtSymbol[extSymbolId];
     void *retOriFuncAddr = curSymbol.addr;
-    if(reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6){
+    if (reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6) {
         puts("Incorrect result 3 retoriFuncAddr==0x7ffff6d31b10\n");
     }
 
@@ -928,7 +953,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
             //Use ld to resolve
             retOriFuncAddr = curSymbol.pseudoPltEntry;
 
-            if(reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6){
+            if (reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6) {
                 puts("Incorrect result 2 retoriFuncAddr==0x7ffff6d31b10\n");
             }
         } else {
@@ -936,13 +961,13 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
             curSymbol.addr = *curSymbol.gotEntry;
             retOriFuncAddr = curSymbol.addr;
 
-            if(reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6){
+            if (reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6) {
                 puts("Incorrect result 1 retoriFuncAddr==0x7ffff6d31b10\n");
             }
         }
     }
 
-    if(reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6){
+    if (reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6) {
         puts("Incorrect result retoriFuncAddr==0x7ffff6d31b10\n");
     }
     if (inhookHandler) {

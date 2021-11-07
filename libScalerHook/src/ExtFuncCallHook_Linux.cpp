@@ -274,6 +274,10 @@ namespace scaler {
 
         if(reinterpret_cast<long>(curGotAddr) == 0x7ffff72118a6){
             puts("Incorrect result 16 retoriFuncAddr==0x7ffff6d31b10\n");
+            printf("pltstart addr=%p entry=%p\n",(void*)curImgInfo.pltStartAddr,(void*)((int64_t)curImgInfo.pltStartAddr + 16 * (symInfo.extSymbolId + 1)));
+            printf("symbol name %s\n",symInfo.symbolName.c_str());
+            printf("symbol id %zd\n",symInfo.extSymbolId);
+
             printf("abs(curGotAddr - myPltStartAddr)=%ld\n",abs(curGotAddr - myPltStartAddr));
             printf("curGotAddr=%p, myPltStartAddr=%p\n",(void*)curGotAddr, (void*)myPltStartAddr);
             exit(-1);
