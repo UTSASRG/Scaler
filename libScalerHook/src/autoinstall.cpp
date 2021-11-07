@@ -16,9 +16,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
 //        return false;
         //todo: User should be able to specify name here. Since they can change filename
 
-        if (funcName == "puts") {
-            return false;
-        }
+
         if (funcName == "__tls_get_addr") {
             return false;
         } else if (funcName == "__tls_init") {

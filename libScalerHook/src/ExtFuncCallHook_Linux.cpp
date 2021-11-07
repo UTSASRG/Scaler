@@ -58,7 +58,7 @@ namespace scaler {
                 findELFSecInMemory(elfParser, ".plt", curELFImgInfo.pltStartAddr, curELFImgInfo.pltEndAddr,
                                    curELFImgInfo.baseAddrStart, curELFImgInfo.baseAddrEnd);
 
-                DBG_LOGS(".plt section for %s starts at %p",curFileName.c_str(),curELFImgInfo.pltStartAddr);
+                //DBG_LOGS(".plt section for %s starts at %p",curFileName.c_str(),curELFImgInfo.pltStartAddr);
                 //Get .plt.sec (may not exist)
                 try {
                     findELFSecInMemory(elfParser, ".plt.sec", curELFImgInfo.pltSecStartAddr,
@@ -183,10 +183,10 @@ namespace scaler {
                 newSymbol.bind = ELF64_ST_BIND(curELFImgInfo.dynSymTable[relIdx].st_info);
 
 
-                //todo: PLT stub is hard coded
-                newSymbol.pltEntry = (uint8_t *) curELFImgInfo.pltStartAddr + (i + 1) * 16;
+                //todo: PLT stub is parsed in "ParsePltEntryAddress"
+                newSymbol.pltEntry = nullptr;
 
-                newSymbol.pltSecEntry = (uint8_t *) curELFImgInfo.pltSecStartAddr + i * 16;
+                newSymbol.pltSecEntry = nullptr;
 
                 //DBG_LOGS("pltEntryCheck: %s:%s entry is %p", curELFImgInfo.filePath.c_str(),
                 //         newSymbol.symbolName.c_str(), newSymbol.pltSecEntry);
@@ -269,20 +269,9 @@ namespace scaler {
     bool ExtFuncCallHook_Linux::isSymbolAddrResolved(ExtFuncCallHook_Linux::ELFImgInfo &curImgInfo,
                                                      ExtFuncCallHook_Linux::ExtSymInfo &symInfo) {
         //Check whether its value has 6 bytes offset as its plt entry start address
-        int64_t myPltStartAddr = (int64_t) curImgInfo.pltStartAddr + 16 * (symInfo.extSymbolId + 1);
+        int64_t myPltStartAddr = (int64_t) symInfo.pltEntry;
         int64_t curGotAddr = (int64_t) *symInfo.gotEntry;
-
-        if(reinterpret_cast<long>(curGotAddr) == 0x7ffff72118a6){
-            puts("Incorrect result 16 retoriFuncAddr==0x7ffff6d31b10\n");
-            printf("pltstart addr=%p entry=%p\n",(void*)curImgInfo.pltStartAddr,(void*)((int64_t)curImgInfo.pltStartAddr + 16 * (symInfo.extSymbolId + 1)));
-            printf("symbol name %s\n",symInfo.symbolName.c_str());
-            printf("symbol id %zd\n",symInfo.extSymbolId);
-
-            printf("abs(curGotAddr - myPltStartAddr)=%ld\n",abs(curGotAddr - myPltStartAddr));
-            printf("curGotAddr=%p, myPltStartAddr=%p\n",(void*)curGotAddr, (void*)myPltStartAddr);
-            exit(-1);
-        }
-
+        assert(symInfo.pltEntry!= nullptr);
         return abs(curGotAddr - myPltStartAddr) > 6;
     }
 

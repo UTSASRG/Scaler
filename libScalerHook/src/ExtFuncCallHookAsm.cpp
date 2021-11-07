@@ -25,6 +25,7 @@
 #include <util/tool/StringTool.h>
 #include <nlohmann/json.hpp>
 #include <util/datastructure/FStack.h>
+
 extern "C" {
 #include "xed/xed-interface.h"
 }
@@ -76,7 +77,7 @@ namespace scaler {
         //Step3: Use callback to determine which ID to hook
         for (FileID curFileId = 0; curFileId < elfImgInfoMap.getSize(); ++curFileId) {
             auto &curElfImgInfo = elfImgInfoMap[curFileId];
-            DBG_LOGS("PLT start addr for %s is %p", curElfImgInfo.filePath.c_str(), curElfImgInfo.pltStartAddr);
+            //DBG_LOGS("PLT start addr for %s is %p", curElfImgInfo.filePath.c_str(), curElfImgInfo.pltStartAddr);
 
             if (curElfImgInfo.elfImgValid) {
                 auto &curFileName = pmParser.idFileMap.at(curFileId);
@@ -84,7 +85,7 @@ namespace scaler {
                 for (SymID curSymbolId = 0; curSymbolId < curElfImgInfo.allExtSymbol.getSize(); ++curSymbolId) {
                     auto &curSymbol = curElfImgInfo.allExtSymbol[curSymbolId];
 
-                    if (curSymbol.type != STT_FUNC || curSymbol.bind != STB_GLOBAL) {
+                    if (curSymbol.type != STT_FUNC) {
                         continue;
                     }
 
@@ -92,8 +93,8 @@ namespace scaler {
                         //The user wants this symbol
                         curElfImgInfo.hookedExtSymbol.pushBack(curSymbolId);
 
-                        ERR_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd",
-                                 curElfImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.extSymbolId);
+                        //ERR_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd",
+                        //         curElfImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.extSymbolId);
 
                         //todo: adjust for all symbols in advance, rather than do them individually
                         //Adjust permiss for this current entry
@@ -108,22 +109,7 @@ namespace scaler {
                         }
 
                         //Since it's external symbol, it's address must be in another file.
-                        if (isSymbolAddrResolved(curElfImgInfo, curSymbol)) {
-                            DBG_LOGS("%s(%zd):%s(%zd) *%p=%p resolved=%s", curElfImgInfo.filePath.c_str(), curFileId,
-                                     curSymbol.symbolName.c_str(), curSymbol.extSymbolId, curSymbol.gotEntry,
-                                     *curSymbol.gotEntry, "true");
-                            curSymbol.addr = *curSymbol.gotEntry;
 
-                            if (reinterpret_cast<long>(curSymbol.addr) == 0x7ffff72118a6) {
-                                puts("Incorrect result 15 retoriFuncAddr==0x7ffff6d31b10\n");
-                                exit(-1);
-                            }
-
-                        } else {
-                            DBG_LOGS("%s:%s  *%p=%p resolved=%s", curElfImgInfo.filePath.c_str(),
-                                     curSymbol.symbolName.c_str(), curSymbol.gotEntry, *curSymbol.gotEntry, "false");
-                            curSymbol.addr = nullptr;
-                        }
 
                         //If the function name matches common pthread functions. Store the function id in advance
                         if (curSymbol.symbolName == "pthread_create") {
@@ -203,7 +189,7 @@ namespace scaler {
         //Step5: Write redzone jumper code to file
         void *redzoneJumperDl = writeAndCompileRedzoneJumper();
 
-        parsePltStub();
+        parsePltEntryAddress();
 
         //Step6: Replace PLT table, jmp to dll function
         /**
@@ -240,15 +226,15 @@ namespace scaler {
                             //Save original .plt.sec code
 
                             curSymbol.oriPltSecCode = malloc(16);
-                            memcpy(curSymbol.oriPltSecCode,
-                                   (uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.extSymbolId, 16);
+                            memcpy(curSymbol.oriPltSecCode, curSymbol.pltSecEntry, 16);
 
                             memTool->adjustMemPerm(
-                                    (uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.extSymbolId,
-                                    (uint8_t *) curELFImgInfo.pltSecStartAddr +
-                                    16 * (curSymbol.extSymbolId + 1),
+                                    curSymbol.pltSecEntry,
+                                    (uint8_t *) curSymbol.pltSecEntry + 16,
                                     PROT_READ | PROT_WRITE | PROT_EXEC);
-                            memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.extSymbolId,
+
+                            //Install hook code
+                            memcpy(curSymbol.pltSecEntry,
                                    pltRedirectorCodeArr.data(), 16);
                         } catch (const ScalerException &e) {
                             ERR_LOGS(".plt.sec replacement Failed for \"%s\":\"%s\" because %s",
@@ -263,16 +249,15 @@ namespace scaler {
                         //Save original .plt code
 
                         curSymbol.oriPltCode = malloc(16);
-                        memcpy(curSymbol.oriPltCode,
-                               (uint8_t *) (uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.extSymbolId + 1),
-                               16);
+                        memcpy(curSymbol.oriPltCode, curSymbol.pltEntry, 16);
 
                         memTool->adjustMemPerm(
-                                (uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.extSymbolId + 1),
-                                (uint8_t *) curELFImgInfo.pltStartAddr +
-                                16 * (curSymbol.extSymbolId + 1 + 1),
+                                (uint8_t *) curSymbol.pltEntry,
+                                (uint8_t *) curSymbol.pltEntry+16,
                                 PROT_READ | PROT_WRITE | PROT_EXEC);
-                        memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.extSymbolId + 1),
+
+                        //Install hook code
+                        memcpy((uint8_t *) curSymbol.pltEntry,
                                pltRedirectorCodeArr.data(), 16);
                     } catch (const ScalerException &e) {
                         ERR_LOGS(".plt replacement Failed for \"%s\":\"%s\" because %s",
@@ -288,6 +273,7 @@ namespace scaler {
 
         }
         inhookHandler = false;
+
     }
 
     //thread_local SerilizableInvocationTree invocationTree;
@@ -324,11 +310,10 @@ namespace scaler {
                         try {
                             //todo: adjust the permission back after this
                             memTool->adjustMemPerm(
-                                    (uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.extSymbolId,
-                                    (uint8_t *) curELFImgInfo.pltSecStartAddr +
-                                    16 * (curSymbol.extSymbolId + 1),
+                                    (uint8_t *) curSymbol.pltSecEntry,
+                                    (uint8_t *) curSymbol.pltSecEntry+16,
                                     PROT_READ | PROT_WRITE | PROT_EXEC);
-                            memcpy((uint8_t *) curELFImgInfo.pltSecStartAddr + 16 * curSymbol.extSymbolId,
+                            memcpy((uint8_t *) curSymbol.pltSecEntry,
                                    curSymbol.oriPltSecCode, 16);
                             free(curSymbol.oriPltSecCode);
                             curSymbol.oriPltSecCode = nullptr;
@@ -344,11 +329,10 @@ namespace scaler {
                         try {
                             //todo: what is this doesn't exist (for example, installer failed at this symbol)
                             memTool->adjustMemPerm(
-                                    (uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.extSymbolId + 1),
-                                    (uint8_t *) curELFImgInfo.pltStartAddr +
-                                    16 * (curSymbol.extSymbolId + 1 + 1),
+                                    (uint8_t *) curSymbol.pltEntry,
+                                    (uint8_t *) curSymbol.pltEntry+16,
                                     PROT_READ | PROT_WRITE | PROT_EXEC);
-                            memcpy((uint8_t *) curELFImgInfo.pltStartAddr + 16 * (curSymbol.extSymbolId + 1),
+                            memcpy((uint8_t *) curSymbol.pltEntry,
                                    curSymbol.oriPltCode, 16);
                             free(curSymbol.oriPltCode);
                             curSymbol.oriPltCode = nullptr;
@@ -617,19 +601,46 @@ namespace scaler {
         return handle;
     }
 
-    void ExtFuncCallHookAsm::parsePltStub() {
+    void ExtFuncCallHookAsm::parsePltEntryAddress() {
         for (FileID curFileID = 0; curFileID < elfImgInfoMap.getSize(); ++curFileID) {
             auto &curELFImgInfo = elfImgInfoMap[curFileID];
             if (curELFImgInfo.elfImgValid) {
-                char * pltAddr= static_cast<char *>(curELFImgInfo.pltStartAddr);
-                char * curAddr=pltAddr;
-                int counter=0;
-                while(counter<curELFImgInfo.allExtSymbol.getSize()){
-                    curAddr+=16;
+                char *pltAddr = static_cast<char *>(curELFImgInfo.pltStartAddr);
+                char *curAddr = pltAddr;
+                int counter = 0;
+                for (int symId = 0; symId < curELFImgInfo.allExtSymbol.getSize(); ++symId) {
+                    curAddr += 16;
                     ++counter;
-                    int* pltStubId= reinterpret_cast<int *>(curAddr + 7);
-                    DBG_LOGS("%s pltStub=%d",curELFImgInfo.filePath.c_str(),*pltStubId);
+                    //todo: use xed to parse operators
+                    int *pltStubId = reinterpret_cast<int *>(curAddr + 7);
+                    auto &curSymbol = curELFImgInfo.allExtSymbol[*pltStubId];
+                    curSymbol.pltEntry = curAddr;
+                    curSymbol.pltSecEntry = (char *) curELFImgInfo.pltSecStartAddr + *pltStubId;
+                    //DBG_LOGS("%s pltStub=%d", curELFImgInfo.filePath.c_str(), *pltStubId);
+
+                    if (isSymbolAddrResolved(curELFImgInfo, curSymbol)) {
+//                        DBG_LOGS("%s(%zd):%s(%zd) plt=%p *%p=%p resolved=%s", curELFImgInfo.filePath.c_str(), curFileID,
+//                                 curSymbol.symbolName.c_str(), curSymbol.extSymbolId,
+//                                 curSymbol.pltEntry,
+//                                 curSymbol.gotEntry,
+//                                 *curSymbol.gotEntry, "true");
+                        curSymbol.addr = *curSymbol.gotEntry;
+
+                    } else {
+//                        DBG_LOGS("%s:%s  *%p=%p resolved=%s", curELFImgInfo.filePath.c_str(),
+//                                 curSymbol.symbolName.c_str(), curSymbol.gotEntry, *curSymbol.gotEntry, "false");
+                        curSymbol.addr = nullptr;
+                    }
+
+
                 }
+            }
+        }
+
+        for (FileID curFileID = 0; curFileID < elfImgInfoMap.getSize(); ++curFileID) {
+            auto &curELFImgInfo = elfImgInfoMap[curFileID];
+            for(auto& curSymbol:curELFImgInfo.allExtSymbol){
+                assert(curSymbol.pltEntry!=nullptr);
             }
         }
     }
@@ -943,33 +954,19 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 
     scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = curElfImgInfo.allExtSymbol[extSymbolId];
     void *retOriFuncAddr = curSymbol.addr;
-    if (reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6) {
-        puts("Incorrect result 3 retoriFuncAddr==0x7ffff6d31b10\n");
-    }
 
     if (curSymbol.addr == nullptr) {
         //Unresolved
         if (!_this->isSymbolAddrResolved(curElfImgInfo, curSymbol)) {
             //Use ld to resolve
             retOriFuncAddr = curSymbol.pseudoPltEntry;
-
-            if (reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6) {
-                puts("Incorrect result 2 retoriFuncAddr==0x7ffff6d31b10\n");
-            }
         } else {
             //Already resolved, but address not updated
             curSymbol.addr = *curSymbol.gotEntry;
             retOriFuncAddr = curSymbol.addr;
-
-            if (reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6) {
-                puts("Incorrect result 1 retoriFuncAddr==0x7ffff6d31b10\n");
-            }
         }
     }
 
-    if (reinterpret_cast<long>(retOriFuncAddr) == 0x7ffff72118a6) {
-        puts("Incorrect result retoriFuncAddr==0x7ffff6d31b10\n");
-    }
     if (inhookHandler) {
         //curContext.callerAddr.push(callerAddr);
         return retOriFuncAddr;

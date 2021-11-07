@@ -73,7 +73,8 @@ namespace scaler {
 
         void *writeAndCompilePseudoPlt();
 
-        void parsePltStub();
+        void parsePltEntryAddress();
+
     };
 
 }
