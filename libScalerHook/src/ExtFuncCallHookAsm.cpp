@@ -33,11 +33,11 @@ extern "C" {
 
 struct Context {
     //todo: Initialize using maximum stack size
-    scaler::FStack<scaler::SymID, 8192> extSymbolId;
-    scaler::FStack<scaler::FileID, 8192> fileId;
+    scaler::FStack<scaler::SymID, 81920> extSymbolId;
+    scaler::FStack<scaler::FileID, 81920> fileId;
     //Variables used to determine whether it's called by hook handler or not
-    scaler::FStack<void *, 8192> callerAddr;
-    scaler::FStack<int64_t, 8192> timestamp;
+    scaler::FStack<void *, 81920> callerAddr;
+    scaler::FStack<int64_t, 81920> timestamp;
 };
 
 scaler::ExtFuncCallHookAsm *scaler_extFuncCallHookAsm_thiz = nullptr;
@@ -839,7 +839,7 @@ namespace scaler {
         //Restore rsp to original value (Uncomment the following to only enable prehook)
         "addq $152,%rsp\n\t"
         "jmpq *%r11\n\t"
-
+//
         /**
          * Call actual function
          */
@@ -968,7 +968,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     }
 
     if (inhookHandler) {
-        //curContext.callerAddr.push(callerAddr);
+        curContext.callerAddr.push(callerAddr);
         return retOriFuncAddr;
     }
 
@@ -979,11 +979,11 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     //auto startTimeStamp = getunixtimestampms();
     //Push callerAddr into stack
     //curContext.timestamp.push(startTimeStamp);
-    //curContext.callerAddr.push(callerAddr);
+    curContext.callerAddr.push(callerAddr);
     //Push calling info to afterhook
-    //curContext.fileId.push(fileId);
+    curContext.fileId.push(fileId);
     //todo: rename this to caller function
-    //curContext.extSymbolId.push(extSymbolId);
+    curContext.extSymbolId.push(extSymbolId);
 
 //    DBG_LOGS("[Pre Hook] Thread:%lu File(%ld):%s, Func(%ld): %s RetAddr:%p", pthread_self(),
 //             fileId, _this->pmParser.idFileMap.at(fileId).c_str(),
@@ -1245,8 +1245,8 @@ void *cAfterHookHandlerLinux() {
     //auto &fileName = curELFImgInfo.filePath;
     scaler::SymID extSymbolID = curContext.extSymbolId.peekpop();
     //auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID);
-    int64_t startTimestamp = curContext.timestamp.peekpop();
-    int64_t endTimestamp = getunixtimestampms();
+    //int64_t startTimestamp = curContext.timestamp.peekpop();
+    //int64_t endTimestamp = getunixtimestampms();
     // When after hook is called. Library address is resolved. We use searching mechanism to find the file name.
     // To improve efficiency, we could sotre this value
     void *callerAddr = curContext.callerAddr.peekpop();

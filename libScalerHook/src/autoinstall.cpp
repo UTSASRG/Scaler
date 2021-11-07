@@ -13,10 +13,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
     //todo: support different running modes
     DBG_LOG("Installing plthook");
     install([](std::string fileName, std::string funcName) -> bool {
-//        return false;
         //todo: User should be able to specify name here. Since they can change filename
-
-
         if (funcName == "__tls_get_addr") {
             return false;
         } else if (funcName == "__tls_init") {

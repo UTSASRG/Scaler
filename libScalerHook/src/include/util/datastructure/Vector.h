@@ -119,7 +119,7 @@ namespace scaler {
         }
 
         void expand() {
-            assert(false);
+            exit(-15);
             T *oldInternalArr = internalArr;
             T *newInternalArr = new T[internalArrSize * 2];
             for (int i = 0; i < internalArrSize; ++i) {
