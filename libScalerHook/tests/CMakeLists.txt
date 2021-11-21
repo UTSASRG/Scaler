@@ -57,6 +57,11 @@ target_compile_options(libScalerHook-unittests PRIVATE "-fno-access-control" ${T
 
 option(libScalerHook-demoapps_AUTO_INSTALL_HOOK "If ON, then ScalerHook-HookAuto will be linked. Otherwise ScalerHook-HookManualAsm will be linked" ON)
 
+add_executable(libScalerHook-demoapps-Exceptions src/demoapps/TestExceptions.cpp)
+target_link_libraries(libScalerHook-demoapps-Exceptions PUBLIC ScalerHook-HookAuto libScalerHook-testlib-FuncCall
+        libScalerHook-testlib-CallFuncCall KuBoPltHook dl)
+target_compile_options(libScalerHook-demoapps-Exceptions PRIVATE ${TEST_FLAGS} -Werror)
+
 add_executable(libScalerHook-demoapps-FuncCall src/demoapps/TestFuncCall.cpp)
 target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC ScalerHook-HookAuto libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall KuBoPltHook dl)
