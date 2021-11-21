@@ -14,13 +14,23 @@ int doubletake_main(int argc, char **argv, char **envp) {
     DBG_LOG("Installing plthook");
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
-        if (funcName == "__tls_get_addr") {
+        if (funcName=="_Unwind_RaiseException") {
             return false;
-        } else if (funcName == "__tls_init") {
+        }else if (funcName=="_ZSt13get_terminatev") {
             return false;
-        } else if (funcName == "_setjmp") {
+        }else if (funcName=="__cxa_throw") {
             return false;
-        } else if (funcName == "__libc_longjmp") {
+        }else if (funcName=="__cxa_rethrow") {
+            return false;
+        }else if (funcName=="__cxa_rethrow") {
+            return false;
+        }else if (funcName=="__cxa_init_primary_exception") {
+            return false;
+        }else if (funcName=="__cxa_begin_catch") {
+            return false;
+        }else if (funcName=="__cxa_bad_cast") {
+            return false;
+        }  else if (funcName == "__libc_longjmp") {
             return false;
         } else if (funcName == "pthread_exit") {
             return false;

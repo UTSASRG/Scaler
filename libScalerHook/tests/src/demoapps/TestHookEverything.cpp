@@ -6,6 +6,16 @@
 
 using namespace std;
 
+class Father {
+public:
+    float fValFather;
+};
+
+class Son : public Father {
+public:
+    float fValSon;
+};
+
 int main() {
     printf("Calling funcA\n");
     funcA();
@@ -42,6 +52,16 @@ int main() {
     __m512 z = _mm512_set_ps(224152.215680, 89794.021145, 89065436.213, 883.340, 10251.0122, 121234.025251, 14567.0567,
                              16567.0567, 2234.607, 482.03, 653.02, 879.03, 46310.07, 12342.07376, 142.021412, 16.022);
     funcEverything(e, f, s, g, h, ld, m, y, z, n, i, j, k);
+
+    float srcFloat = 1.75;
+    Son son;
+    son.fValFather = 3.141;
+    son.fValSon = 6.283;
+
+    Father *fatherPtr = dynamic_cast<Father *>(&son);
+    assert(fatherPtr->fValFather - 3.141 < 1e-5);
+    assert(son.fValFather - 3.141 < 1e-5);
+    assert(son.fValSon - 6.283 < 1e-5);
 
 
     printf("Calling funcRetm256();\n");

@@ -31,13 +31,15 @@ extern "C" {
 }
 //todo: many functions are too long
 
+//#define PREHOOK_ONLY
+
 struct Context {
     //todo: Initialize using maximum stack size
-    scaler::FStack<scaler::SymID, 81920> extSymbolId;
-    scaler::FStack<scaler::FileID, 81920> fileId;
+    scaler::FStack<scaler::SymID, 8192> extSymbolId;
+    scaler::FStack<scaler::FileID, 8192> fileId;
     //Variables used to determine whether it's called by hook handler or not
-    scaler::FStack<void *, 81920> callerAddr;
-    scaler::FStack<int64_t, 81920> timestamp;
+    scaler::FStack<void *, 8192> callerAddr;
+    scaler::FStack<int64_t, 8192> timestamp;
 };
 
 scaler::ExtFuncCallHookAsm *scaler_extFuncCallHookAsm_thiz = nullptr;
@@ -253,7 +255,7 @@ namespace scaler {
 
                         memTool->adjustMemPerm(
                                 (uint8_t *) curSymbol.pltEntry,
-                                (uint8_t *) curSymbol.pltEntry+16,
+                                (uint8_t *) curSymbol.pltEntry + 16,
                                 PROT_READ | PROT_WRITE | PROT_EXEC);
 
                         //Install hook code
@@ -311,7 +313,7 @@ namespace scaler {
                             //todo: adjust the permission back after this
                             memTool->adjustMemPerm(
                                     (uint8_t *) curSymbol.pltSecEntry,
-                                    (uint8_t *) curSymbol.pltSecEntry+16,
+                                    (uint8_t *) curSymbol.pltSecEntry + 16,
                                     PROT_READ | PROT_WRITE | PROT_EXEC);
                             memcpy((uint8_t *) curSymbol.pltSecEntry,
                                    curSymbol.oriPltSecCode, 16);
@@ -330,7 +332,7 @@ namespace scaler {
                             //todo: what is this doesn't exist (for example, installer failed at this symbol)
                             memTool->adjustMemPerm(
                                     (uint8_t *) curSymbol.pltEntry,
-                                    (uint8_t *) curSymbol.pltEntry+16,
+                                    (uint8_t *) curSymbol.pltEntry + 16,
                                     PROT_READ | PROT_WRITE | PROT_EXEC);
                             memcpy((uint8_t *) curSymbol.pltEntry,
                                    curSymbol.oriPltCode, 16);
@@ -639,8 +641,8 @@ namespace scaler {
 
         for (FileID curFileID = 0; curFileID < elfImgInfoMap.getSize(); ++curFileID) {
             auto &curELFImgInfo = elfImgInfoMap[curFileID];
-            for(auto& curSymbol:curELFImgInfo.allExtSymbol){
-                assert(curSymbol.pltEntry!=nullptr);
+            for (auto &curSymbol:curELFImgInfo.allExtSymbol) {
+                assert(curSymbol.pltEntry != nullptr);
             }
         }
     }
@@ -836,10 +838,11 @@ namespace scaler {
         "popq %rbp\n\t"
         "popq %rbx\n\t"
 
+        #ifdef PREHOOK_ONLY
         //Restore rsp to original value (Uncomment the following to only enable prehook)
         "addq $152,%rsp\n\t"
         "jmpq *%r11\n\t"
-//
+        #endif
         /**
          * Call actual function
          */
@@ -938,6 +941,7 @@ inline bool getInHookBoolThreadLocal() {
 
 
 //pthread_mutex_t lock0 = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
+static bool GDB_CTL_LOG = false;
 
 static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc) {
 
@@ -968,26 +972,32 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     }
 
     if (inhookHandler) {
+#ifndef PREHOOK_ONLY
         curContext.callerAddr.push(callerAddr);
+#endif
         return retOriFuncAddr;
     }
 
     //Starting from here, we could call external symbols and it won't cause any problem
     inhookHandler = true;
 
-
-    //auto startTimeStamp = getunixtimestampms();
+#ifndef PREHOOK_ONLY
+    auto startTimeStamp = getunixtimestampms();
     //Push callerAddr into stack
-    //curContext.timestamp.push(startTimeStamp);
+    curContext.timestamp.push(startTimeStamp);
     curContext.callerAddr.push(callerAddr);
     //Push calling info to afterhook
     curContext.fileId.push(fileId);
     //todo: rename this to caller function
     curContext.extSymbolId.push(extSymbolId);
 
-//    DBG_LOGS("[Pre Hook] Thread:%lu File(%ld):%s, Func(%ld): %s RetAddr:%p", pthread_self(),
-//             fileId, _this->pmParser.idFileMap.at(fileId).c_str(),
-//             extSymbolId, curSymbol.symbolName.c_str(), retOriFuncAddr);
+    if (GDB_CTL_LOG) {
+        printf("%zd:%zd %s\n", curSymbol.fileId, curSymbol.extSymbolId, curSymbol.symbolName.c_str());
+    }
+    DBG_LOGS("[Pre Hook] Thread:%lu File(%ld):%s, Func(%ld): %s RetAddr:%p", pthread_self(),
+             fileId, _this->pmParser.idFileMap.at(fileId).c_str(),
+             extSymbolId, curSymbol.symbolName.c_str(), retOriFuncAddr);
+#endif
 
     /**
     //Parse parameter based on functions
@@ -1242,11 +1252,11 @@ void *cAfterHookHandlerLinux() {
 
     scaler::FileID fileId = curContext.fileId.peekpop();
     //scaler::ExtFuncCallHookAsm::ELFImgInfo &curELFImgInfo = _this->elfImgInfoMap[fileId];
-    //auto &fileName = curELFImgInfo.filePath;
+//    auto &fileName = curELFImgInfo.filePath;
     scaler::SymID extSymbolID = curContext.extSymbolId.peekpop();
     //auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID);
-    //int64_t startTimestamp = curContext.timestamp.peekpop();
-    //int64_t endTimestamp = getunixtimestampms();
+    int64_t startTimestamp = curContext.timestamp.peekpop();
+//    int64_t endTimestamp = getunixtimestampms();
     // When after hook is called. Library address is resolved. We use searching mechanism to find the file name.
     // To improve efficiency, we could sotre this value
     void *callerAddr = curContext.callerAddr.peekpop();
