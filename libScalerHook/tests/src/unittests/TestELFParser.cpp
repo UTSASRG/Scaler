@@ -28,7 +28,6 @@ vector<string> getFuncNameRetByKuboPlthook(plthook_t *plthook) {
 TEST(ELFParser_Linux, parseFuncName) {
     //Invoke libTest, and several system functions
     void *a = malloc(1);
-    system("");
 
     PmParser_Linux pmParser;
 

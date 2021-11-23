@@ -1,9 +1,10 @@
 #include <util/tool/FileTool.h>
 #include <exceptions/ScalerException.h>
+#include <exceptions/ErrCode.h>
 
 
-std::vector<size_t> scaler::findStrSplit(std::string &srcStr, char splitChar) {
-    std::vector<size_t> splitPoints;
+std::vector<ssize_t> scaler::findStrSplit(std::string &srcStr, char splitChar) {
+    std::vector<ssize_t> splitPoints;
     //Augment the first and last character in a string with splitChar.
     //This make edge cases easier to handle
     std::stringstream ss;
@@ -40,32 +41,6 @@ std::vector<size_t> scaler::findStrSplit(std::string &srcStr, char splitChar) {
     return splitPoints;
 }
 
-void *scaler::binCodeSearch(void *target, size_t targetSize, void *keyword, size_t keywordSize) {
-    //Convert it to uint8* so that we can perform arithmetic operation on those pointers
-    uint8_t *kwd = static_cast<uint8_t *>(keyword);
-    uint8_t *tgt = static_cast<uint8_t *>(target);
-
-    int i = 0, j = 0; //i is the index in target and j is the index in keyword
-    uint8_t *beg = nullptr; //Markes the begging of the match
-
-    while (i < targetSize && j < keywordSize) {
-        if (tgt[i] == kwd[j]) {
-            if (beg == nullptr) {
-                //First match. It's a potential starting position.
-                beg = tgt + i;
-            }
-            ++j;
-        } else {
-            //If tgt[i] != kwd[j] it means this is not the correct keyword. Reset beg and j.
-            beg = nullptr;
-            j = 0;
-        }
-        ++i;
-    }
-    // If j==keywordSize it means the previous loop exit because of this. Then it means a match if found.
-    return j == keywordSize ? beg : nullptr;
-}
-
 long int scaler::getFileSize(FILE *file) {
     //The type of this return value is used by ftell. So it should be universal
     fseek(file, 0L, SEEK_END);
@@ -74,11 +49,11 @@ long int scaler::getFileSize(FILE *file) {
     return fileSize;
 }
 
-void scaler::extractFileName_Linux(std::string absolutePath,std::string &pathName, std::string &fileName) {
+void scaler::extractFileName_Linux(std::string absolutePath, std::string &pathName, std::string &fileName) {
     auto posi = absolutePath.find_last_of('/');
     if (posi == std::string::npos) {
         //Not found, return full string
-        throwScalerExceptionWithCode("Path incorrect", ErrCode::PATH_ERROR)
+        throwScalerExceptionS(ErrCode::PATH_FORMAT_INCORRECT, "Path incorrect: %s",absolutePath.c_str());
     } else {
         pathName = absolutePath.substr(0, posi);
         fileName = absolutePath.substr(posi + 1, absolutePath.length() - posi);

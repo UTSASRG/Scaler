@@ -6,20 +6,14 @@
 #include <string>
 
 namespace scaler {
+
+    typedef ssize_t FileID;
+    typedef ssize_t SymID;
+    typedef ssize_t FuncID;
+
+
     class Hook : Object {
     public:
-
-        /**
-         * Symbol information
-         */
-        class ExtSymInfo {
-        public:
-            std::string symbolName;     //The name of a symbol in symbol table
-            void **gotEntry;            //Pointer to a symbol's GOT entry. Use *gotEntry to get this symbol's real address.
-            void *addr;                 //The address of a symbol. After a symbol is resolved, it's equal to *gotEntry;
-            size_t fileId;             //Store fileID for this symbol
-            size_t funcId;             //Store this symbol's ID (it's also called symbolID)
-        };
 
         /**
          * Determine whether a symbol should be hooked

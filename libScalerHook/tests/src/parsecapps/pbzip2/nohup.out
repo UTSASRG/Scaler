@@ -1,0 +1,406 @@
+time ./pbzip2-pthread -p4 -r -5 gcc-3.3.tar 
+ in the beginning of main
+main in line 3554
+main in line 3571
+argv[1]: -p4   Len: 3
+-p4
+argv[2]: -r   Len: 2
+argv[3]: -5   Len: 2
+pbzip2: *ERROR: File [gcc-3.3.tar] NOT found!  Skipping...
+-------------------------------------------
+
+ Start Time: 1386171727 + 952408
+ Stop Time : 1386171727 + 952770
+0.00user 0.00system 0:00.00elapsed 0%CPU (0avgtext+0avgdata 4896maxresident)k
+0inputs+0outputs (0major+337minor)pagefaults 0swaps
+make: *** [eval-pthread] Error 1
+time ./pbzip2-pthread -p4 -r -5 gcc-3.3.tar 
+ in the beginning of main
+main in line 3554
+main in line 3571
+argv[1]: -p4   Len: 3
+-p4
+argv[2]: -r   Len: 2
+argv[3]: -5   Len: 2
+# Blocks: 4
+pbzip2: maxMemory: 100000000    blockSize: 38218240
+pbzip2: NumBufferedBlocksMax: 1
+consumer: queue EMPTY.
+consumer:  waitTimer.tv_sec: 1386171805  waitTimer.tv_nsec: 755317000
+consumer: queue EMPTY.
+ -> Bytes To Read: 38218240 bytes...
+consumer:  waitTimer.tv_sec: 1386171805  waitTimer.tv_nsec: 755439000
+fileWriter function started
+consumer: queue EMPTY.
+consumer:  waitTimer.tv_sec: 1386171805  waitTimer.tv_nsec: 755532000
+consumer: queue EMPTY.
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 0, producerDone: 0, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386171805  waitTimer.tv_nsec: 755590000
+consumer:  waitTimer.tv_sec: 1386171805  waitTimer.tv_nsec: 755582000
+ -> Total Bytes Read: 38218240 bytes...
+
+producer:  Going into fifo-mut lock (NumBlocks: 0)
+producer:  Buffer: f1570010  Size: 38218240   Block: 0
+queue::add: elem=6134e0
+  queue::add: seq=0; blk=0; islast=1
+ -> Bytes To Read: 38218240 bytes...
+queue::remove: head=6134e0; elem=0; count=1
+  queue::remove: head: seq=0; blk=0; islast=1
+consumer:  Buffer: f1570010  Size: 38218240   Block: 0
+consumer: received 0.
+ -> Total Bytes Read: 38218240 bytes...
+
+producer:  Going into fifo-mut lock (NumBlocks: 1)
+producer:  Buffer: ef0fd010  Size: 38218240   Block: 1
+queue::add: elem=613510
+  queue::add: seq=0; blk=1; islast=1
+ -> Bytes To Read: 38218240 bytes...
+queue::remove: head=613510; elem=0; count=1
+  queue::remove: head: seq=0; blk=1; islast=1
+consumer:  Buffer: ef0fd010  Size: 38218240   Block: 1
+consumer: received 1.
+ -> Total Bytes Read: 38218240 bytes...
+
+producer:  Going into fifo-mut lock (NumBlocks: 2)
+producer:  Buffer: ec877010  Size: 38218240   Block: 2
+queue::add: elem=613540
+  queue::add: seq=0; blk=2; islast=1
+ -> Bytes To Read: 38218240 bytes...
+queue::remove: head=613540; elem=0; count=1
+  queue::remove: head: seq=0; blk=2; islast=1
+consumer:  Buffer: ec877010  Size: 38218240   Block: 2
+consumer: received 2.
+ -> Total Bytes Read: 38218240 bytes...
+
+producer:  Going into fifo-mut lock (NumBlocks: 3)
+producer:  Buffer: e5b8d010  Size: 38218240   Block: 3
+queue::add: elem=613c50
+  queue::add: seq=0; blk=3; islast=1
+ -> Bytes To Read: 38218240 bytes...
+queue::remove: head=613c50; elem=0; count=1
+  queue::remove: head: seq=0; blk=3; islast=1
+ -> Total Bytes Read: 0 bytes...
+
+consumer:  Buffer: e5b8d010  Size: 38218240   Block: 3
+consumer: received 3.
+producer:  Done - exiting. Num Blocks: 4
+fileWriter: pthread_cond_timedwait returned with non-fatal error [110]
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386171806  waitTimer.tv_nsec: 755718000
+fileWriter: pthread_cond_timedwait returned with non-fatal error [110]
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386171808  waitTimer.tv_nsec: 227850000
+fileWriter: pthread_cond_timedwait returned with non-fatal error [110]
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386171809  waitTimer.tv_nsec: 227955000
+fileWriter: pthread_cond_timedwait returned with non-fatal error [110]
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386171810  waitTimer.tv_nsec: 228103000
+
+   Original Block Size: 38218240
+ Compressed Block Size: 6505266
+consumer: queue EMPTY.
+consumer: exiting2
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  Buffer: e80008c0  Size: 6505266   Block: 0, Seq: 0, isLast: 1
+
+ -> Total Bytes Written[0:0]: 6505266 bytes...
+fileWriter:  Block: 1 Size: 4 Next File Block: 1, outBufferPos: 1, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386171810  waitTimer.tv_nsec: 760823000
+
+   Original Block Size: 38218240
+ Compressed Block Size: 6265963
+consumer: queue EMPTY.
+consumer: exiting2
+
+   Original Block Size: 38218240
+ Compressed Block Size: 7193857
+consumer: queue EMPTY.
+consumer: exiting2
+fileWriter:  Block: 1 Size: 4 Next File Block: 1, outBufferPos: 1, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  Buffer: e00008c0  Size: 7193857   Block: 1, Seq: 0, isLast: 1
+
+ -> Total Bytes Written[1:0]: 7193857 bytes...
+fileWriter:  Block: 2 Size: 4 Next File Block: 2, outBufferPos: 2, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  Buffer: dc0008c0  Size: 6265963   Block: 2, Seq: 0, isLast: 1
+
+ -> Total Bytes Written[2:0]: 6265963 bytes...
+fileWriter:  Block: 3 Size: 4 Next File Block: 3, outBufferPos: 3, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386171811  waitTimer.tv_nsec: 576675000
+
+   Original Block Size: 38218240
+ Compressed Block Size: 5533099
+consumer: queue EMPTY.
+consumer: exiting2
+fileWriter:  Block: 3 Size: 4 Next File Block: 3, outBufferPos: 3, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  Buffer: d40008c0  Size: 5533099   Block: 3, Seq: 0, isLast: 1
+
+ -> Total Bytes Written[3:0]: 5533099 bytes...
+fileWriter [b:4:0]: done - quit loop.
+fileWriter exit
+
+ Start Time: 1386171804 + 754947
+ Stop Time : 1386171811 + 589238
+22.48user 0.34system 0:06.83elapsed 333%CPU (0avgtext+0avgdata 770688maxresident)k
+0inputs+49816outputs (0major+6429minor)pagefaults 0swaps
+time ./pbzip2-pthread -p4 -r -5 gcc-3.3.tar 
+ in the beginning of main
+main in line 3554
+main in line 3571
+argv[1]: -p4   Len: 3
+-p4
+argv[2]: -r   Len: 2
+argv[3]: -5   Len: 2
+# Blocks: 4
+pbzip2: maxMemory: 100000000    blockSize: 38218240
+pbzip2: NumBufferedBlocksMax: 1
+consumer: queue EMPTY.
+consumer:  waitTimer.tv_sec: 1386173874  waitTimer.tv_nsec: 15277000
+consumer: queue EMPTY.
+ -> Bytes To Read: 38218240 bytes...
+consumer:  waitTimer.tv_sec: 1386173874  waitTimer.tv_nsec: 15436000
+fileWriter function started
+consumer: queue EMPTY.
+consumer:  waitTimer.tv_sec: 1386173874  waitTimer.tv_nsec: 15588000
+consumer: queue EMPTY.
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 0, producerDone: 0, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386173874  waitTimer.tv_nsec: 15666000
+consumer:  waitTimer.tv_sec: 1386173874  waitTimer.tv_nsec: 15658000
+ -> Total Bytes Read: 38218240 bytes...
+
+producer:  Going into fifo-mut lock (NumBlocks: 0)
+producer:  Buffer: f1570010  Size: 38218240   Block: 0
+queue::add: elem=6134e0
+  queue::add: seq=0; blk=0; islast=1
+ -> Bytes To Read: 38218240 bytes...
+queue::remove: head=6134e0; elem=0; count=1
+  queue::remove: head: seq=0; blk=0; islast=1
+consumer:  Buffer: f1570010  Size: 38218240   Block: 0
+consumer: received 0.
+ -> Total Bytes Read: 38218240 bytes...
+
+producer:  Going into fifo-mut lock (NumBlocks: 1)
+producer:  Buffer: ef0fd010  Size: 38218240   Block: 1
+queue::add: elem=613510
+  queue::add: seq=0; blk=1; islast=1
+ -> Bytes To Read: 38218240 bytes...
+queue::remove: head=613510; elem=0; count=1
+  queue::remove: head: seq=0; blk=1; islast=1
+consumer:  Buffer: ef0fd010  Size: 38218240   Block: 1
+consumer: received 1.
+ -> Total Bytes Read: 38218240 bytes...
+
+producer:  Going into fifo-mut lock (NumBlocks: 2)
+producer:  Buffer: ec877010  Size: 38218240   Block: 2
+queue::add: elem=613540
+  queue::add: seq=0; blk=2; islast=1
+ -> Bytes To Read: 38218240 bytes...
+queue::remove: head=613540; elem=0; count=1
+  queue::remove: head: seq=0; blk=2; islast=1
+consumer:  Buffer: ec877010  Size: 38218240   Block: 2
+consumer: received 2.
+ -> Total Bytes Read: 38218240 bytes...
+
+producer:  Going into fifo-mut lock (NumBlocks: 3)
+producer:  Buffer: e5b8d010  Size: 38218240   Block: 3
+queue::add: elem=613c50
+  queue::add: seq=0; blk=3; islast=1
+ -> Bytes To Read: 38218240 bytes...
+queue::remove: head=613c50; elem=0; count=1
+  queue::remove: head: seq=0; blk=3; islast=1
+ -> Total Bytes Read: 0 bytes...
+
+consumer:  Buffer: e5b8d010  Size: 38218240   Block: 3
+consumer: received 3.
+producer:  Done - exiting. Num Blocks: 4
+fileWriter: pthread_cond_timedwait returned with non-fatal error [110]
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386173875  waitTimer.tv_nsec: 15790000
+fileWriter: pthread_cond_timedwait returned with non-fatal error [110]
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386173876  waitTimer.tv_nsec: 15920000
+fileWriter: pthread_cond_timedwait returned with non-fatal error [110]
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386173877  waitTimer.tv_nsec: 198230000
+fileWriter: pthread_cond_timedwait returned with non-fatal error [110]
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386173878  waitTimer.tv_nsec: 198358000
+
+   Original Block Size: 38218240
+ Compressed Block Size: 6505266
+consumer: queue EMPTY.
+consumer: exiting2
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  Buffer: e80008c0  Size: 6505266   Block: 0, Seq: 0, isLast: 1
+
+   Original Block Size: 38218240
+ Compressed Block Size: 6265963
+consumer: queue EMPTY.
+consumer: exiting2
+
+   Original Block Size: 38218240
+ Compressed Block Size: 7193857
+consumer: queue EMPTY.
+consumer: exiting2
+
+ -> Total Bytes Written[0:0]: 6505266 bytes...
+fileWriter:  Block: 1 Size: 4 Next File Block: 1, outBufferPos: 1, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  Buffer: e00008c0  Size: 7193857   Block: 1, Seq: 0, isLast: 1
+
+ -> Total Bytes Written[1:0]: 7193857 bytes...
+fileWriter:  Block: 2 Size: 4 Next File Block: 2, outBufferPos: 2, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  Buffer: dc0008c0  Size: 6265963   Block: 2, Seq: 0, isLast: 1
+
+ -> Total Bytes Written[2:0]: 6265963 bytes...
+fileWriter:  Block: 3 Size: 4 Next File Block: 3, outBufferPos: 3, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386173880  waitTimer.tv_nsec: 356058000
+
+   Original Block Size: 38218240
+ Compressed Block Size: 5533099
+consumer: queue EMPTY.
+consumer: exiting2
+fileWriter:  Block: 3 Size: 4 Next File Block: 3, outBufferPos: 3, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  Buffer: d40008c0  Size: 5533099   Block: 3, Seq: 0, isLast: 1
+
+ -> Total Bytes Written[3:0]: 5533099 bytes...
+fileWriter [b:4:0]: done - quit loop.
+fileWriter exit
+
+ Start Time: 1386173873 + 14167
+ Stop Time : 1386173879 + 942032
+22.90user 0.39system 0:07.05elapsed 330%CPU (0avgtext+0avgdata 770688maxresident)k
+3488inputs+49816outputs (13major+6416minor)pagefaults 0swaps
+time ./pbzip2-defaults -p4 -r -5 gcc-3.3.tar
+XHEAP:_start 0x40000000 end is 0x240000000
+Initially, startaddr 0x616000 endaddr 0x617000
+ in the beginning of main
+main in line 3554
+main in line 3571
+argv[1]: -p4   Len: 3
+-p4
+argv[2]: -r   Len: 2
+argv[3]: -5   Len: 2
+# Blocks: 4
+pbzip2: maxMemory: 100000000    blockSize: 38218240
+pbzip2: NumBufferedBlocksMax: 1
+consumer: queue EMPTY.
+consumer:  waitTimer.tv_sec: 1386173913  waitTimer.tv_nsec: 925504000
+consumer: queue EMPTY.
+ -> Bytes To Read: 38218240 bytes...
+consumer:  waitTimer.tv_sec: 1386173913  waitTimer.tv_nsec: 925638000
+consumer: queue EMPTY.
+consumer:  waitTimer.tv_sec: 1386173913  waitTimer.tv_nsec: 925691000
+consumer: queue EMPTY.
+consumer:  waitTimer.tv_sec: 1386173913  waitTimer.tv_nsec: 925721000
+fileWriter function started
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 0, producerDone: 0, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386173913  waitTimer.tv_nsec: 925823000
+ -> Total Bytes Read: 38218240 bytes...
+
+producer:  Going into fifo-mut lock (NumBlocks: 0)
+producer:  Buffer: 40101038  Size: 38218240   Block: 0
+queue::add: elem=400008c8
+  queue::add: seq=0; blk=0; islast=1
+ -> Bytes To Read: 38218240 bytes...
+queue::remove: head=400008c8; elem=0; count=1
+  queue::remove: head: seq=0; blk=0; islast=1
+consumer:  Buffer: 40101038  Size: 38218240   Block: 0
+consumer: received 0.
+ -> Total Bytes Read: 38218240 bytes...
+
+producer:  Going into fifo-mut lock (NumBlocks: 1)
+producer:  Buffer: 44102038  Size: 38218240   Block: 1
+queue::add: elem=4c708038
+  queue::add: seq=0; blk=1; islast=1
+ -> Bytes To Read: 38218240 bytes...
+queue::remove: head=4c708038; elem=0; count=1
+  queue::remove: head: seq=0; blk=1; islast=1
+consumer:  Buffer: 44102038  Size: 38218240   Block: 1
+consumer: received 1.
+ -> Total Bytes Read: 38218240 bytes...
+
+producer:  Going into fifo-mut lock (NumBlocks: 2)
+producer:  Buffer: 4c809038  Size: 38218240   Block: 2
+queue::add: elem=54e0f038
+  queue::add: seq=0; blk=2; islast=1
+ -> Bytes To Read: 38218240 bytes...
+queue::remove: head=54e0f038; elem=0; count=1
+  queue::remove: head: seq=0; blk=2; islast=1
+consumer:  Buffer: 4c809038  Size: 38218240   Block: 2
+consumer: received 2.
+ -> Total Bytes Read: 38218240 bytes...
+
+producer:  Going into fifo-mut lock (NumBlocks: 3)
+producer:  Buffer: 54f10038  Size: 38218240   Block: 3
+queue::add: elem=5d516038
+  queue::add: seq=0; blk=3; islast=1
+ -> Bytes To Read: 38218240 bytes...
+queue::remove: head=5d516038; elem=0; count=1
+  queue::remove: head: seq=0; blk=3; islast=1
+consumer:  Buffer: 54f10038  Size: 38218240   Block: 3
+consumer: received 3.
+ -> Total Bytes Read: 0 bytes...
+
+producer:  Done - exiting. Num Blocks: 4
+fileWriter: pthread_cond_timedwait returned with non-fatal error [110]
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386173914  waitTimer.tv_nsec: 925958000
+fileWriter: pthread_cond_timedwait returned with non-fatal error [110]
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386173915  waitTimer.tv_nsec: 926068000
+fileWriter: pthread_cond_timedwait returned with non-fatal error [110]
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386173917  waitTimer.tv_nsec: 408439000
+fileWriter: pthread_cond_timedwait returned with non-fatal error [110]
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386173918  waitTimer.tv_nsec: 408559000
+
+   Original Block Size: 38218240
+ Compressed Block Size: 6505266
+consumer: queue EMPTY.
+consumer: exiting2
+fileWriter:  Block: 0 Size: 4 Next File Block: 0, outBufferPos: 0, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  Buffer: 48103038  Size: 6505266   Block: 0, Seq: 0, isLast: 1
+
+ -> Total Bytes Written[0:0]: 6505266 bytes...
+fileWriter:  Block: 1 Size: 4 Next File Block: 1, outBufferPos: 1, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386173918  waitTimer.tv_nsec: 853806000
+
+   Original Block Size: 38218240
+ Compressed Block Size: 6265963
+consumer: queue EMPTY.
+consumer: exiting2
+
+   Original Block Size: 38218240
+ Compressed Block Size: 7193857
+consumer: queue EMPTY.
+consumer: exiting2
+fileWriter:  Block: 1 Size: 4 Next File Block: 1, outBufferPos: 1, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  Buffer: 5080a038  Size: 7193857   Block: 1, Seq: 0, isLast: 1
+
+ -> Total Bytes Written[1:0]: 7193857 bytes...
+fileWriter:  Block: 2 Size: 4 Next File Block: 2, outBufferPos: 2, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  Buffer: 58f11038  Size: 6265963   Block: 2, Seq: 0, isLast: 1
+
+ -> Total Bytes Written[2:0]: 6265963 bytes...
+fileWriter:  Block: 3 Size: 4 Next File Block: 3, outBufferPos: 3, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  waitTimer.tv_sec: 1386173919  waitTimer.tv_nsec: 735739000
+
+   Original Block Size: 38218240
+ Compressed Block Size: 5533099
+consumer: queue EMPTY.
+consumer: exiting2
+fileWriter:  Block: 3 Size: 4 Next File Block: 3, outBufferPos: 3, NumBlocks: 4, producerDone: 1, lastseq=0, prev=0, next=0
+fileWriter:  Buffer: 61618038  Size: 5533099   Block: 3, Seq: 0, isLast: 1
+
+ -> Total Bytes Written[3:0]: 5533099 bytes...
+fileWriter [b:4:0]: done - quit loop.
+fileWriter exit
+
+ Start Time: 1386173912 + 922054
+ Stop Time : 1386173919 + 702258
+reporting start 0x616000 end 0x617000 cacheWrites 0x200000000000 cacheTrackings 0x200080000000
+reportGlobalObjects now. globalstart 616000 globalend 617000
+reporting start 0x40000000 end 0x65c1d000 cacheWrites 0x200000000000 cacheTrackings 0x200080000000
+22.33user 0.41system 0:07.06elapsed 322%CPU (0avgtext+0avgdata 1215264maxresident)k
+4520inputs+49824outputs (16major+876minor)pagefaults 0swaps

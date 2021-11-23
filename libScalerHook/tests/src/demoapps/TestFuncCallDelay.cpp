@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include "FuncWithDiffParms.h"
 #include "CallFunctionCall.h"
+
 using namespace std;
 
 
@@ -36,6 +37,7 @@ void *testThread2(void *data) {
 }
 
 int main() {
+
     pthread_t thread1, thread2;
     int iret1, iret2;
 

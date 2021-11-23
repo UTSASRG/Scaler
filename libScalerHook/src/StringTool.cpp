@@ -7,3 +7,18 @@ bool scaler::strEndsWith(const std::string &fullString, const std::string &endin
         return false;
     }
 }
+
+
+bool scaler::strStartsWith(const std::string &fullString, const std::string &starting) {
+    if (fullString.length() >= starting.length()) {
+        return (0 == fullString.compare(0, starting.length(), starting));
+    } else {
+        return false;
+    }
+}
+
+
+bool scaler::strContains(const std::string &fullString, const std::string &keyword) {
+    return fullString.find(keyword) != std::string::npos;
+}
+

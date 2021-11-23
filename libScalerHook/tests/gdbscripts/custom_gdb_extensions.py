@@ -20,7 +20,10 @@ asmHookHanlderRetAddr = None
 
 def event_handler(event):
     global asmHookHanlderAddr
-    global asmHookHanlderRetAddr
+    globalkHanlderAddr is None:
+            asmHookHanlderAddr = curBreakpointLoc
+            # Set breakpoint in the end
+            g asmHookHanlderRetAddr
     global prevRegValue
 
     canContinue = True
@@ -29,10 +32,7 @@ def event_handler(event):
         regNames = getAllRegisterNames()
         curBreakpointLoc = curFrame.read_register('rip')
 
-        if asmHookHanlderAddr is None:
-            asmHookHanlderAddr = curBreakpointLoc
-            # Set breakpoint in the end
-            gdb.execute('break *' + str(hex((int(curBreakpointLoc) + 372))))
+        if asmHoodb.execute('break *' + str(hex((int(curBreakpointLoc) + 372))))
         elif asmHookHanlderRetAddr is None:
             asmHookHanlderRetAddr = curBreakpointLoc
 

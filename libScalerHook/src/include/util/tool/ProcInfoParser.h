@@ -37,6 +37,7 @@ implied warranty.
 #include <iomanip>
 #include <link.h>
 #include <elf.h>
+#include <util/hook/hook.hh>
 
 namespace scaler {
 
@@ -60,7 +61,7 @@ namespace scaler {
         int inode;              // inode of the file that backs the area
 
         std::string pathName;   //Path name to that executable
-        size_t fileId;          //Id of pathname in PmParser_Linux structure
+        FileID fileId;          //Id of pathname in PmParser_Linux structure
 
         /**
          * Print PMEntry just like /proc/{pid}/map
@@ -101,11 +102,12 @@ namespace scaler {
      */
     class PmParser_Linux : public Object {
     public:
+
+
         //Map executable name with it's PMEntry
         std::map<std::string, std::vector<PMEntry_Linux>> procMap;
-        // Used to find which fileID  floor(i/2) the corresponding fileID of pointer addrFileMap[i]
-        // This array should be sorted by starting address for fast lookup
-        std::vector<std::pair<size_t, PMEntry_Linux>> sortedSegments;
+        // This array should be sorted by starting address for fast lookup (binary search in findExecNameByAddr)
+        std::vector<std::pair<FileID, PMEntry_Linux>> sortedSegments;
 
 
         //This will be current executable name
@@ -117,21 +119,38 @@ namespace scaler {
 
 
         // The id of a.so : fileIDMap[full path for a.so]
-        std::map<std::string, size_t> fileIDMap;
+        std::map<std::string, FileID> fileIDMap;
 
         //The base address of an executable
-        std::map<size_t, uint8_t *> fileBaseAddrMap;
+        std::vector<std::pair<uint8_t *,uint8_t *>> fileBaseAddrMap;
 
-        std::map<uint8_t *, size_t> startAddrFileMap;
+        std::map<uint8_t *, FileID> startAddrFileMap;
 
 
         // Map id to file name
         std::vector<std::string> idFileMap;
 
-        std::vector<size_t> linkedFileID;
+        std::vector<FileID> linkedFileID;
+
+        //For .plt, .plt.sec, we only need to search in segments with executable permission
+        std::vector<PMEntry_Linux> executableSegments;
+        //For _DYNAMIC, we only need to search in segments with readable but not executable permission
+        std::vector<PMEntry_Linux> readableSegments;
+
 
         PmParser_Linux(int procID = -1);
 
+        /**
+        * Determine whether current elf file use relative address or absolute address
+        * @param curBaseAddr
+        * @param curFileiD
+        * @param targetAddr
+        * @return
+        */
+        uint8_t *autoAddBaseAddr(uint8_t *curBaseAddr, FileID curFileiD, ElfW(Addr) targetAddr);
+
+
+        void *readProcMem(void *startAddr, size_t bytes);
 
         /**
          * A convenient way to print /proc/{pid}/maps
@@ -147,22 +166,36 @@ namespace scaler {
         ~PmParser_Linux() override;
 
 
+        /**
+             * Parse /proc/{pid}/maps into procMap
+             */
+        virtual void parsePMMap();
+
+        bool addrInApplication(void* addr);
+
     protected:
         //Process ID
         int procID;
 
         //The filestream for process file
-        std::ifstream file;
+
 
         /**
          * Open /proc/{pid}/maps
          */
-        virtual void openPMMap();
+        virtual void openPMMap(std::ifstream &file);
 
-        /**
-         * Parse /proc/{pid}/maps into procMap
-         */
-        virtual void parsePMMap();
+        virtual void parseAddrStr(PMEntry_Linux& curEntry, const std::string& addrStr);
+
+        virtual void parseOffsetStr(PMEntry_Linux& curEntry, const std::string& offsetStr);
+
+        virtual void parsePermStr(PMEntry_Linux& curEntry, const std::string& permStr);
+
+        virtual void indexFile(PMEntry_Linux& curEntry);
+
+
+        virtual void curExecName();
+
 
         //todo: Build a library dependency graph
 
@@ -186,9 +219,6 @@ namespace scaler {
         ~PmParserC_Linux();
 
         int findExecNameByAddr(void *addr) override;
-
-    protected:
-        void openPMMap() override;
 
     protected:
 

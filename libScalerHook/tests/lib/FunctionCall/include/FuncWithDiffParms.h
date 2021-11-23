@@ -27,6 +27,7 @@ uint64_t funcTiming();
 
 void resolveSystemFunc();
 
+pthread_t myGetThreadID();
 typedef struct {
     int a, b;
     double d;
@@ -44,6 +45,10 @@ void *getFuncAddr(std::string funcName);
 void *findRdbg();
 
 void *findDYNAMIC();
+
+__m256 funcRetm256();
+
+__m512 funcRetm512();
 
 class A {
 public:

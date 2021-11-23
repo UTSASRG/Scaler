@@ -1,6 +1,6 @@
 This documentation is not meant to provide a comprehensive collection of everything I learned during the development of PltHook. By writing this document I intend to:
 
-- Summarize key concepts, challenges, corresponding solutions, and collect links for study materials.
+- Summarize getKey concepts, challenges, corresponding solutions, and collect links for study materials.
 - Provide a memo for myself
 - Give professors a clear view of my progress 
 - Provide a good starting material for people who would like to work on this after me.
