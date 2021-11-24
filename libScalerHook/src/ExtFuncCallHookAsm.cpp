@@ -14,7 +14,6 @@
 #include <util/tool/Timer.h>
 #include <set>
 #include <immintrin.h>
-#include <thread>
 #include <util/tool/Logging.h>
 #include <util/tool/Config.h>
 #include <util/tool/PthreadParmExtractor.h>
@@ -50,7 +49,9 @@ __thread bool inhookHandler = false;
 long long threadLocalOffsetToTCB = 0;
 
 namespace scaler {
+    typedef int (*pthread_create_origt)(pthread_t *, const pthread_attr_t *, void *(*)(void *), void *);
 
+    pthread_create_origt pthread_create_orig;
     //Declare hook handler written in assembly code
 
     //void __attribute__((naked)) asmHookHandler();
@@ -64,6 +65,10 @@ namespace scaler {
 
 
     void ExtFuncCallHookAsm::install(Hook::SYMBOL_FILTER filterCallB) {
+        //load plt hook address
+        if (!pthread_create_orig) {
+            pthread_create_orig = (pthread_create_origt) dlsym(RTLD_NEXT, "pthread_create");
+        }
         //Calcualte the offset between context variable and tid
         inhookHandler = true;
         //todo: Maybe long is enough?
@@ -217,8 +222,8 @@ namespace scaler {
 
                     auto pltRedirectorCodeArr = fillDestAddr2PltRedirectorCode(redzoneJumperAddr);
 
-                    DBG_LOGS("[%s] %s hooked (ID:%zd)", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
-                             curSymbol.extSymbolId);
+                    //DBG_LOGS("[%s] %s hooked (ID:%zd)", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
+                    //         curSymbol.extSymbolId);
 
                     //Step6: Replace .plt.sec and .plt
                     if (curELFImgInfo.pltSecStartAddr != nullptr) {
@@ -1306,5 +1311,48 @@ void *cAfterHookHandlerLinux() {
 
 }
 
+/**
+ * Pthread hook
+ */
+
+extern "C" {
+
+
+// Define structure to hold arguments for dummy thread function
+struct dummy_thread_function_args {
+    void *(*actual_thread_function)(void *data);
+
+    void *data;
+};
+
+// Define the dummy thread function
+// Entering this function means the thread has been successfully created
+// Instrument thread beginning, call the original thread function, instrument thread end
+void *dummy_thread_function(void *data) {
+    // Perform required actions at beginning of thread
+    DBG_LOGS("phtread_create %lu",pthread_self());
+    // Extract arguments and call actual thread function
+    auto *args = static_cast<dummy_thread_function_args *>(data);
+    args->actual_thread_function(args->data);
+    free(args);
+    args = nullptr;
+    // Perform required actions at end of thread
+    DBG_LOGS("pthread finished %lu",pthread_self());
+    return nullptr;
+}
+
+// Main Pthread wrapper functions.
+int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start) (void *), void *arg)  {
+    assert(scaler::pthread_create_orig != nullptr);
+
+    // Prepare the inputs for the intermediate (dummy) thread function
+    auto args = (struct dummy_thread_function_args *) malloc(sizeof(struct dummy_thread_function_args));
+    args->actual_thread_function = start;
+    args->data = arg;
+
+    // Call the actual pthread_create
+    return scaler::pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
+}
+}
 
 #endif
