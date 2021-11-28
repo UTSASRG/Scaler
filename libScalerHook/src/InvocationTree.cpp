@@ -203,3 +203,11 @@ void scaler::SerializableMixIn::load(FILE *fp) {
 void scaler::SerializableMixIn::save(FILE *fp) {
     Serializable::save(fp);
 }
+
+scaler::RawRecordEntry::RawRecordEntry(scaler::SymID symId, scaler::FileID fileId, uint64_t timeStamp, Type operation)
+        : symId(symId),
+          fileId(fileId),
+          timeStamp(timeStamp),
+          operation(operation) {
+
+}

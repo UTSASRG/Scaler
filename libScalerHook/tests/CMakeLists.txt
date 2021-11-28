@@ -104,7 +104,7 @@ target_compile_options(libScalerHook-demoapps-StdPthread PRIVATE ${TEST_FLAGS} -
 
 add_executable(libScalerHook-demoapps-ComplexThreadop src/demoapps/TestComplexThreadOps.cpp)
 target_include_directories(libScalerHook-demoapps-ComplexThreadop PUBLIC libtest/header)
-target_link_libraries(libScalerHook-demoapps-ComplexThreadop ScalerHook-HookAuto ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
+target_link_libraries(libScalerHook-demoapps-ComplexThreadop ScalerHook-HookAuto libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
 target_compile_options(libScalerHook-demoapps-ComplexThreadop PRIVATE ${TEST_FLAGS} -Werror)
 
 
@@ -138,7 +138,7 @@ add_executable(libScalerHook-parsecapps-aget
         src/parsecapps/aget/Resume.c
         src/parsecapps/aget/Signal.c)
 target_include_directories(libScalerHook-parsecapps-aget PUBLIC src/parsecapps/aget/include)
-target_link_libraries(libScalerHook-parsecapps-aget ScalerHook-HookAuto pthread dl)
+target_link_libraries(libScalerHook-parsecapps-aget ScalerHook-HookAuto dl)
 target_compile_options(libScalerHook-parsecapps-aget PRIVATE ${TEST_FLAGS})
 
 

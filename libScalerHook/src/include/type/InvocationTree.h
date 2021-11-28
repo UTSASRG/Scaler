@@ -28,6 +28,26 @@ namespace scaler {
 
     };
 
+    /**
+     * This struct stores the raw recording data (push or pop? Which function? Which file?)
+     */
+    class RawRecordEntry {
+    public:
+        enum Type {
+            UNSPECIFIED = 0,
+            PUSH = 1,
+            POP = 2,
+        };
+        SymID symId;
+        FileID fileId;
+        uint64_t timeStamp;
+        char operation;
+
+        RawRecordEntry() = default;
+
+        RawRecordEntry(SymID symId, FileID fileId, uint64_t timeStamp,Type operation);
+    };
+
     class InvocationTreeNode : public SerializableMixIn {
     protected:
         int64_t realFileID = -1;
@@ -85,7 +105,7 @@ namespace scaler {
             return realFileID;
         }
 
-        inline void setFuncAddr(void* funcAddr) {
+        inline void setFuncAddr(void *funcAddr) {
             this->funcAddr = reinterpret_cast<int64_t>(funcAddr);
         }
 
@@ -123,7 +143,6 @@ namespace scaler {
         //void rmChild(size_t posi);
 
     };
-
 
     class PthreadInvocationTreeNode : public InvocationTreeNode {
     public:

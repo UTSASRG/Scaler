@@ -3,7 +3,7 @@ project(ScalerHook)
 
 # Set global (Relative this folder until reset) compiler options
 set(CMAKE_C_STANDARD 11)
-set(SCALER_HOOK_COMPILATION_FLAGS "-O2" "-mavx" "-mavx512f" "-mavx512vl" "-Werror")
+set(SCALER_HOOK_COMPILATION_FLAGS "-O0" "-g" "-mavx" "-mavx512f" "-mavx512vl" "-Werror")
 # https://json.nlohmann.me/integration/cmake/
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(lib/json)
@@ -60,11 +60,11 @@ target_compile_options(ScalerHook-HookBrkpoint PRIVATE ${SCALER_HOOK_COMPILATION
 
 
 #ScalerHook with auto installation enabled. Scaler hook will run automatically before main.
-add_library(ScalerHook-HookAuto SHARED src/autoinstall.cpp)
-target_compile_options(ScalerHook-HookAuto PRIVATE "--verbose")
-target_link_libraries(ScalerHook-HookAuto PUBLIC ScalerHook-HookManualAsm)
+add_library(ScalerHook-HookAuto SHARED src/autoinstall.cpp ${ScalerHookSrc})
+target_include_directories(ScalerHook-HookAuto PUBLIC src/include lib/inireader)
+target_link_libraries(ScalerHook-HookAuto PUBLIC pthread dl nlohmann_json::nlohmann_json xed2 xed2-ild)
+target_compile_definitions(ScalerHook-HookAuto PUBLIC XED_ENCODER)
 target_compile_options(ScalerHook-HookAuto PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
-
 
 add_library(ScalerHook-HookAuto-Brkpoint SHARED src/autoinstall.cpp)
 target_link_libraries(ScalerHook-HookAuto-Brkpoint PUBLIC ScalerHook-HookBrkpoint)

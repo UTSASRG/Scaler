@@ -4,9 +4,11 @@
 
 #ifndef SCALER_TIME_H
 #define SCALER_TIMER_H
+
 #include <inttypes.h>
 
-int64_t getunixtimestampms();
+
+uint64_t getunixtimestampms();
 
 
 #endif //SCALER_TIME_H

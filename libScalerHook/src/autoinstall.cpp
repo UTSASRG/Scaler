@@ -14,6 +14,9 @@ int doubletake_main(int argc, char **argv, char **envp) {
     DBG_LOG("Installing plthook");
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
+        if(fileName=="/lib/x86_64-linux-gnu/libpthread-2.27.so"){
+            return false;
+        }
         if (funcName == "_Unwind_RaiseException") {
             return false;
         } else if (funcName == "_ZSt13get_terminatev") {
@@ -34,6 +37,14 @@ int doubletake_main(int argc, char **argv, char **envp) {
             //This function is hooked by ld overloading rather than plt replacement
             return false;
         } else if (funcName == "pthread_exit") {
+            return false;
+        } else if (funcName == "_setjmp") {
+            return false;
+        } else if (funcName == "__libc_longjmp") {
+            return false;
+        }  else if (scaler::strStartsWith(fileName, "__tls")) {
+            return false;
+        } else if (scaler::strStartsWith(fileName, "__cxa")) {
             return false;
         } else if (scaler::strEndsWith(fileName, "libxed.so")) {
             return false;
