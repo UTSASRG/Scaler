@@ -39,13 +39,12 @@ namespace scaler {
             POP = 2,
         };
         SymID symId;
-        FileID fileId;
         uint64_t timeStamp;
         char operation;
 
         RawRecordEntry() = default;
 
-        RawRecordEntry(SymID symId, FileID fileId, uint64_t timeStamp,Type operation);
+        RawRecordEntry(SymID symId, uint64_t timeStamp,Type operation);
     };
 
     class InvocationTreeNode : public SerializableMixIn {

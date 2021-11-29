@@ -31,24 +31,66 @@ extern "C" {
 //todo: many functions are too long
 
 //#define PREHOOK_ONLY
-#define ENABLE_SAVE
+//#define ENABLE_SAVE
 
 struct Context {
     //todo: Initialize using maximum stack size
     scaler::FStack<scaler::SymID, 8192> extSymbolId;
-    scaler::FStack<scaler::FileID, 8192> fileId;
     //Variables used to determine whether it's called by hook handler or not
     scaler::FStack<void *, 8192> callerAddr;
-    scaler::FStack<int64_t, 8192> timestamp;
     scaler::Vector<scaler::RawRecordEntry> *recordBuffer;
+    char initializeMe = 0;
+
 };
 
 scaler::ExtFuncCallHookAsm *scaler_extFuncCallHookAsm_thiz = nullptr;
 
 thread_local Context curContext;
-__thread bool inhookHandler = false;
+
+__thread bool bypassCHooks = true;
 
 long long threadLocalOffsetToTCB = 0;
+
+class DataSaver {
+public:
+    char initializeMe = 0;
+
+    ~DataSaver() {
+        bypassCHooks = true;
+        assert(curContext.recordBuffer != nullptr);
+        char fileName[255];
+        DBG_LOGS("Save rawrecord %lu", pthread_self());
+        sprintf(fileName, "scaler_rawrecord_%lu.bin", pthread_self());
+        FILE *fp = NULL;
+        //todo: check open success or not
+        fp = fopen(fileName, "w");
+        assert(fp != nullptr);
+        assert(curContext.recordBuffer != nullptr);
+        const uint64_t &arrSize = curContext.recordBuffer->getSize();
+        const uint64_t &entrySize = sizeof(scaler::RawRecordEntry);
+        fwrite(&arrSize, sizeof(uint64_t), 1, fp);
+        fwrite(&entrySize, sizeof(uint64_t), 1, fp);
+        //Write entire array
+        fwrite(curContext.recordBuffer->data(), sizeof(scaler::RawRecordEntry), curContext.recordBuffer->getSize(), fp);
+        //todo: check close success or not
+        fclose(fp);
+        //Only save once
+        delete curContext.recordBuffer;
+        curContext.recordBuffer = nullptr;
+    }
+};
+
+thread_local DataSaver saverElem;
+
+void initTLS() {
+    //Dont double initialize
+    assert(bypassCHooks == true);
+    //Initialize saving data structure
+    curContext.initializeMe = ~curContext.initializeMe;
+    saverElem.initializeMe = ~saverElem.initializeMe;
+    curContext.recordBuffer = new scaler::Vector<scaler::RawRecordEntry>(4096);
+    bypassCHooks = false;
+}
 
 namespace scaler {
     typedef int (*pthread_create_origt)(pthread_t *, const pthread_attr_t *, void *(*)(void *), void *);
@@ -80,14 +122,6 @@ namespace scaler {
             pthread_exit_orig = (pthread_exit_origt) dlsym(RTLD_NEXT, "pthread_exit");
             pthread_cancel_orig = (pthread_cancel_origt) dlsym(RTLD_NEXT, "pthread_cancel");
         }
-        //Allocate recordBuffer for main thread
-        curContext.recordBuffer = new scaler::Vector<scaler::RawRecordEntry>(4096);
-
-        //Calcualte the offset between context variable and tid
-        inhookHandler = true;
-        //todo: Maybe long is enough?
-        auto tid = (pthread_t) THREAD_SELF;
-        threadLocalOffsetToTCB = (long long) &inhookHandler - (long long) tid;
 
         memTool = MemoryTool_Linux::getInst();
         scaler_extFuncCallHookAsm_thiz = this;
@@ -293,8 +327,10 @@ namespace scaler {
             }
 
         }
-        inhookHandler = false;
 
+
+        //Allocate tls storage, set hook type to FULL
+        initTLS();
     }
 
     //thread_local SerilizableInvocationTree invocationTree;
@@ -314,16 +350,14 @@ namespace scaler {
 
     void ExtFuncCallHookAsm::uninstall() {
         //todo: release oriPltCode oriPltSecCode
-        inhookHandler = true;
         //Decallocate recordbuffer for main thread
-        delete curContext.recordBuffer;
         for (FileID curFileId = 0; curFileId < elfImgInfoMap.getSize(); ++curFileId) {
             auto &curELFImgInfo = elfImgInfoMap[curFileId];
             if (curELFImgInfo.elfImgValid) {
                 for (SymID curSymId: curELFImgInfo.hookedExtSymbol) {
                     auto &curSymbol = curELFImgInfo.allExtSymbol[curSymId];
 
-                    //DBG_LOGS("[%s] %s hooked (ID:%d)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
+                    //DBG_LOGS("[%s] %s hooked (ID:%zd)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
                     //curSymbol.extSymbolId);
                     void *oriCodePtr = nullptr;
 
@@ -370,8 +404,6 @@ namespace scaler {
             }
 
         }
-
-        inhookHandler = false;
     }
 
     std::vector<uint8_t> ExtFuncCallHookAsm::fillDestAddr2PltRedirectorCode(void *funcAddr) {
@@ -713,6 +745,40 @@ namespace scaler {
 "addq $64,%rsp\n\t"
 
 
+/**
+* Restore Registers
+*/
+#define ASM_RESTORE_ENV_PREHOOK \
+    POPZMM(7) \
+    POPZMM(6)\
+    POPZMM(5)\
+    POPZMM(4)\
+    POPZMM(3)\
+    POPZMM(2)\
+    POPZMM(1)\
+    POPZMM(0)\
+    "addq $8,%rsp\n\t" \
+    \
+    "popq %r10\n\t"\
+    "popq %r9\n\t"\
+    "popq %r8\n\t"\
+    "popq %rdi\n\t"\
+    "popq %rsi\n\t"\
+    "popq %rdx\n\t"\
+    "popq %rcx\n\t"\
+    "popq %rax\n\t"\
+    \
+    "ldmxcsr (%rsp)\n\t" \
+    "fldcw 4(%rsp)\n\t" \
+    "addq $8,%rsp\n\t" \
+    \
+    "popq %r15\n\t"\
+    "popq %r14\n\t"\
+    "popq %r13\n\t"\
+    "popq %r12\n\t"\
+    "popq %rbp\n\t"\
+    "popq %rbx\n\t"
+
     /**
      * Source code version for #define IMPL_ASMHANDLER
      * We can't add comments to a macro
@@ -766,7 +832,6 @@ namespace scaler {
         /**
         * Save environment
         */
-        //rsp%10h=0
         "pushq %rbx\n\t" //8
         "pushq %rbp\n\t" //8
         "pushq %r12\n\t" //8
@@ -822,50 +887,22 @@ namespace scaler {
         //The return address is maybe the real function address. Or a pointer to the pseodoPlt table
         "movq %rax,%r11\n\t"
 
+        "cmpq $0,%rdi\n\t"
+        "jnz  RET_FULL\n\t"
 
-        /**
-        * Restore Registers
-        */
-        POPZMM(7)
-        POPZMM(6)
-        POPZMM(5)
-        POPZMM(4)
-        POPZMM(3)
-        POPZMM(2)
-        POPZMM(1)
-        POPZMM(0)
-
-        "addq $8,%rsp\n\t" //8  (16-byte allignment)
-
-        "popq %r10\n\t"
-        "popq %r9\n\t"
-        "popq %r8\n\t"
-        "popq %rdi\n\t"
-        "popq %rsi\n\t"
-        "popq %rdx\n\t"
-        "popq %rcx\n\t"
-        "popq %rax\n\t"
-        //"popf\n\t" //forward flag (Store all)
-
-        "ldmxcsr (%rsp)\n\t" // 2 Bytes(8-4)
-        "fldcw 4(%rsp)\n\t" // 4 Bytes(4-2)
-        "addq $8,%rsp\n\t" //8
-
-        "popq %r15\n\t"
-        "popq %r14\n\t"
-        "popq %r13\n\t"
-        "popq %r12\n\t"
-        "popq %rbp\n\t"
-        "popq %rbx\n\t"
-
-        #ifdef PREHOOK_ONLY
+        //=======================================> if r12==0
+        "RET_PREHOOK_ONLY:\n\t"
+        ASM_RESTORE_ENV_PREHOOK
         //Restore rsp to original value (Uncomment the following to only enable prehook)
         "addq $152,%rsp\n\t"
         "jmpq *%r11\n\t"
-        #endif
+
+        //=======================================> if r12!=0
         /**
          * Call actual function
          */
+        "RET_FULL:\n\t"
+        ASM_RESTORE_ENV_PREHOOK
         "addq $152,%rsp\n\t"
         "addq $8,%rsp\n\t" //Override caller address
         "callq *%r11\n\t"
@@ -965,10 +1002,9 @@ static bool GDB_CTL_LOG = false;
 
 static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc) {
 
-    //pthread_mutex_lock(&lock0);
     //todo: The following two values are highly dependent on assembly code
-    void *rdiLoc = (uint8_t *) rspLoc - 8;
-    void *rsiLoc = (uint8_t *) rspLoc - 16;
+    //void *rdiLoc = (uint8_t *) rspLoc - 8;
+    //void *rsiLoc = (uint8_t *) rspLoc - 16;
 
     //Calculate fileID
     auto &_this = scaler_extFuncCallHookAsm_thiz;
@@ -990,23 +1026,19 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
         }
     }
 
-    if (inhookHandler) {
-#ifndef PREHOOK_ONLY
-        curContext.callerAddr.push(callerAddr);
-#endif
+    if (bypassCHooks) {
+        //Skip afterhook
+        asm ("movq $0, %rdi");
         return retOriFuncAddr;
     }
 
     //Starting from here, we could call external symbols and it won't cause any problem
-    inhookHandler = true;
+    bypassCHooks = true;
 
 #ifndef PREHOOK_ONLY
-    auto startTimeStamp = getunixtimestampms();
     //Push callerAddr into stack
-    curContext.timestamp.push(startTimeStamp);
     curContext.callerAddr.push(callerAddr);
     //Push calling info to afterhook
-    curContext.fileId.push(fileId);
     //todo: rename this to caller function
     curContext.extSymbolId.push(extSymbolId);
 
@@ -1019,7 +1051,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 //    assert(curContext.recordBuffer != nullptr);
     if (curContext.recordBuffer != nullptr) {
         curContext.recordBuffer->pushBack(
-                scaler::RawRecordEntry(extSymbolId, fileId, startTimeStamp, scaler::RawRecordEntry::Type::PUSH));
+                scaler::RawRecordEntry(extSymbolId, getunixtimestampms(), scaler::RawRecordEntry::Type::PUSH));
         //DBG_LOG("hit");
     } else {
         DBG_LOG("miss");
@@ -1032,47 +1064,24 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 
 #endif
 
-    inhookHandler = false;
+    bypassCHooks = false;
     return retOriFuncAddr;
 }
 
 pthread_mutex_t lock1 = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
 void *cAfterHookHandlerLinux() {
-    if (inhookHandler) {
-        void *callerAddr = curContext.callerAddr.peekpop();
-        return callerAddr;
-    }
-    inhookHandler = true;
-
+    bypassCHooks = true;
     auto &_this = scaler_extFuncCallHookAsm_thiz;
 
-    scaler::FileID fileId = curContext.fileId.peekpop();
-    //scaler::ExtFuncCallHookAsm::ELFImgInfo &curELFImgInfo = _this->elfImgInfoMap[fileId];
-//    auto &fileName = curELFImgInfo.filePath;
     scaler::SymID extSymbolID = curContext.extSymbolId.peekpop();
     //auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID);
-    auto stopTimestamp = curContext.timestamp.peekpop();
-//    int64_t endTimestamp = getunixtimestampms();
     // When after hook is called. Library address is resolved. We use searching mechanism to find the file name.
     // To improve efficiency, we could sotre this value
     void *callerAddr = curContext.callerAddr.peekpop();
 
-    //scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = curELFImgInfo.hookedExtSymbol.get(extSymbolID);
-    //auto libraryFileId = _this->pmParser.findExecNameByAddr(curSymbol.addr);
-    //auto &libraryFileName = _this->pmParser.idFileMap.at(libraryFileId);
-//    assert(libraryFileId != -1);
-//    curSymbol.libraryFileID = libraryFileId;
-//    scaler::curNode->setRealFileID(libraryFileId);
-//    scaler::curNode->setFuncAddr(curSymbol.addr);
-//    scaler::curNode->setEndTimestamp(endTimestamp);
-//    scaler::curNode = scaler::curNode->getParent();
-
-//    DBG_LOG("[After Hook] Thread ID:%lu");
-
-//    DBG_LOGS("[After Hook] Thread ID:%lu Library(%d):%s, Func(%ld): %s Start: %ld End: %ld", pthread_self(),
-//             libraryFileId, libraryFileName.c_str(),
-//             extSymbolID, funcName.c_str(), startTimestamp, endTimestamp);
+    DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) End: %ld",
+             pthread_self(), extSymbolID, getunixtimestampms());
 /*
     if (extSymbolID == curELFImgInfo.pthreadExtSymbolId.PTHREAD_CREATE) {
         //todo: A better way is to compare function id rather than name. This is more efficient.
@@ -1099,16 +1108,12 @@ void *cAfterHookHandlerLinux() {
 */
 #ifdef ENABLE_SAVE
     //Save this operation
-//    assert(curContext.recordBuffer != nullptr);
-    if (curContext.recordBuffer != nullptr) {
-        curContext.recordBuffer->pushBack(
-                scaler::RawRecordEntry(extSymbolID, fileId, stopTimestamp, scaler::RawRecordEntry::Type::POP));
-        //DBG_LOG("hit");
-    } else {
-        //DBG_LOG("miss");
-    }
+    assert(curContext.recordBuffer != nullptr);
+    curContext.recordBuffer->pushBack(
+            scaler::RawRecordEntry(extSymbolID, getunixtimestampms(), scaler::RawRecordEntry::Type::POP));
+
 #endif
-    inhookHandler = false;
+    bypassCHooks = false;
     return callerAddr;
 
 }
@@ -1130,47 +1135,6 @@ struct dummy_thread_function_args {
 };
 
 
-inline void saveRecordBuffer() {
-    if (curContext.recordBuffer != nullptr) {
-        char fileName[255];
-        DBG_LOGS("Save rawrecord %lu", pthread_self());
-        sprintf(fileName, "scaler_rawrecord_%lu.bin", pthread_self());
-        FILE *fp = NULL;
-        //todo: check open success or not
-        fp = fopen(fileName, "w");
-        assert(fp != nullptr);
-        assert(curContext.recordBuffer != nullptr);
-        const uint64_t &arrSize = curContext.recordBuffer->getSize();
-        const uint64_t &entrySize = sizeof(scaler::RawRecordEntry);
-        fwrite(&arrSize, sizeof(uint64_t), 1, fp);
-        fwrite(&entrySize, sizeof(uint64_t), 1, fp);
-        //Write entire array
-        fwrite(curContext.recordBuffer->data(), sizeof(scaler::RawRecordEntry), curContext.recordBuffer->getSize(), fp);
-        //todo: check close success or not
-        fclose(fp);
-        fprintf(stdout, "DBG: %s:%d  ", __FILE__, __LINE__);
-        fprintf(stdout, "pthread finished %lu", pthread_self());
-        fprintf(stdout, "\n");
-
-        //Only save once
-        delete curContext.recordBuffer;
-        curContext.recordBuffer = nullptr;
-    }
-}
-
-
-class DataSaver{
-public:
-    int doNotOptimizeMe=0;
-
-    ~DataSaver(){
-
-    }
-};
-
-thread_local DataSaver saverElem;
-
-
 // Define the dummy thread function
 // Entering this function means the thread has been successfully created
 // Instrument thread beginning, call the original thread function, instrument thread end
@@ -1178,12 +1142,7 @@ void *dummy_thread_function(void *data) {
     /**
      * Perform required actions at beginning of thread
      */
-    //Initialize saving data structure
-    inhookHandler = true;
-    ++saverElem.doNotOptimizeMe;
-    curContext.recordBuffer = new scaler::Vector<scaler::RawRecordEntry>(4096);
-    inhookHandler = false;
-
+    initTLS();
     /**
      * Call actual thread function
      */
@@ -1199,18 +1158,18 @@ void *dummy_thread_function(void *data) {
 }
 
 
-
 // Main Pthread wrapper functions.
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)(void *), void *arg) {
-    inhookHandler = true;
+    bypassCHooks = true;
     assert(scaler::pthread_create_orig != nullptr);
+    auto threadID = pthread_self();
     DBG_LOGS("pthread_create %lu", pthread_self());
 
     // Prepare the inputs for the intermediate (dummy) thread function
     auto args = (struct dummy_thread_function_args *) malloc(sizeof(struct dummy_thread_function_args));
     args->actual_thread_function = start;
     args->data = arg;
-    inhookHandler = false;
+    bypassCHooks = false;
     // Call the actual pthread_create
     return scaler::pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
 }

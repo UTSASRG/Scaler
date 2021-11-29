@@ -96,11 +96,15 @@ int doubletake_main(int argc, char **argv, char **envp) {
             return false;
         } else if (funcName == "__assert") {
             return false;
+        } else if (funcName == "_dl_allocate_tls") {
+            return false;
+        } else if (funcName == "_dl_allocate_tls_init") {
+            return false;
+        } else if (funcName == "__call_tls_dtors") {
+            return false;
         } else if (funcName == "termination_handler") {
             return false;
-        } else if (funcName == "start_threads") {
-            return false;
-        } else if (funcName == "receive_print_stats") {
+        }  else if (funcName == "receive_print_stats") {
             return false;
         } else if (funcName == "nscd_run_prune") {
             return false;
@@ -144,7 +148,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
             return false;
         } else if (funcName == "__cxa_throw") {
             return false;
-        }  else if (funcName == "__cxa_rethrow") {
+        } else if (funcName == "__cxa_rethrow") {
             return false;
         } else if (funcName == "__cxa_init_primary_exception") {
             return false;
@@ -170,7 +174,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
             return false;
         } else if (funcName == "_dl_catch_error") {
             return false;
-        }  else if (scaler::strEndsWith(fileName, "libxed.so")) {
+        } else if (scaler::strEndsWith(fileName, "libxed.so")) {
             return false;
         } else if (scaler::strEndsWith(fileName, "libxed-ild.so")) {
             return false;

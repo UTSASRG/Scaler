@@ -47,13 +47,14 @@ namespace scaler {
             void *addr = nullptr;                 //The address of a symbol. After a symbol is resolved, it's equal to *gotEntry; If the symbol is not resolve, it equals nullptr
             FileID fileId = -1;             //Store fileID for this symbol
             SymID extSymbolId = -1;             //The id with respect to where this symbol is called. Store this symbol's ID (it's also called symbolID) //todo: change this to symbolID for consistency
+            SymID scalerSymbolId = -1; //todo: change the definition of symbol id so we only need to save one id. (Put all symbols in one list, one simple id corresponds to one symbol in a file. Same simple in different file is considered as different)
             FileID libraryFileID = -1;       //Store the libary file id that contains this
             void *pseudoPltEntry = nullptr;                   //A pointer to pseudoPltEntry
             int type = -1;
             int bind = -1;
 
-            void* oriPltSecCode=nullptr;
-            void* oriPltCode=nullptr;
+            void *oriPltSecCode = nullptr;
+            void *oriPltCode = nullptr;
 
             bool operator==(const ExtSymInfo &rho) const {
                 if (&rho != this) {
@@ -65,9 +66,9 @@ namespace scaler {
         };
 
 
-         /**
-         * ELF image (ELF file in memory) information.
-         */
+        /**
+        * ELF image (ELF file in memory) information.
+        */
         class ELFImgInfo {
         public:
 
