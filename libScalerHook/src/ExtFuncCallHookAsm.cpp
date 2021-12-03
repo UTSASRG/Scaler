@@ -86,8 +86,8 @@ void initTLS() {
     //Dont double initialize
     assert(bypassCHooks == true);
     //Initialize saving data structure
-    curContext.initializeMe = ~curContext.initializeMe;
-    saverElem.initializeMe = ~saverElem.initializeMe;
+    //curContext.initializeMe = ~curContext.initializeMe;
+    //saverElem.initializeMe = ~saverElem.initializeMe;
     curContext.recordBuffer = new scaler::Vector<scaler::RawRecordEntry>(4096);
     bypassCHooks = false;
 }
@@ -100,8 +100,6 @@ namespace scaler {
     typedef int (*pthread_cancel_origt)(pthread_t __th);
 
     pthread_create_origt pthread_create_orig;
-    pthread_exit_origt pthread_exit_orig;
-    pthread_cancel_origt pthread_cancel_orig;
 
     //Declare hook handler written in assembly code
 
@@ -119,8 +117,6 @@ namespace scaler {
         //load plt hook address
         if (!pthread_create_orig) {
             pthread_create_orig = (pthread_create_origt) dlsym(RTLD_NEXT, "pthread_create");
-            pthread_exit_orig = (pthread_exit_origt) dlsym(RTLD_NEXT, "pthread_exit");
-            pthread_cancel_orig = (pthread_cancel_origt) dlsym(RTLD_NEXT, "pthread_cancel");
         }
 
         memTool = MemoryTool_Linux::getInst();
@@ -132,13 +128,13 @@ namespace scaler {
         //Step3: Use callback to determine which ID to hook
         for (FileID curFileId = 0; curFileId < elfImgInfoMap.getSize(); ++curFileId) {
             auto &curElfImgInfo = elfImgInfoMap[curFileId];
-            //DBG_LOGS("PLT start addr for %s is %p", curElfImgInfo.filePath.c_str(), curElfImgInfo.pltStartAddr);
+            DBG_LOGS("PLT start addr for %s is %p", curElfImgInfo.filePath.c_str(), curElfImgInfo.pltStartAddr);
 
             if (curElfImgInfo.elfImgValid) {
                 auto &curFileName = pmParser.idFileMap.at(curFileId);
                 //loop through external symbols, let user decide which symbol to hook through callback function
-                for (SymID curSymbolId = 0; curSymbolId < curElfImgInfo.allExtSymbol.getSize(); ++curSymbolId) {
-                    auto &curSymbol = curElfImgInfo.allExtSymbol[curSymbolId];
+                for (SymID scalerSymbolId:curElfImgInfo.scalerIdMap) {
+                    auto &curSymbol = allExtSymbol[scalerSymbolId];
 
                     if (curSymbol.type != STT_FUNC) {
                         continue;
@@ -146,10 +142,10 @@ namespace scaler {
 
                     if (filterCallB(curFileName, curSymbol.symbolName)) {
                         //The user wants this symbol
-                        curElfImgInfo.hookedExtSymbol.pushBack(curSymbolId);
+                        hookedExtSymbol.pushBack(scalerSymbolId);
 
                         //ERR_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd",
-                        //         curElfImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.extSymbolId);
+                        //         curElfImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.scalerSymbolId);
 
                         //todo: adjust for all symbols in advance, rather than do them individually
                         //Adjust permiss for this current entry
@@ -167,73 +163,73 @@ namespace scaler {
 
 
                         //If the function name matches common pthread functions. Store the function id in advance
-                        if (curSymbol.symbolName == "pthread_create") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_CREATE = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_join") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_JOIN = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_tryjoin_np") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_TRYJOIN_NP = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_timedjoin_np") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_TIMEDJOIN_NP = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_clockjoin_np") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_CLOCKJOIN_NP = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_mutex_lock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_LOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_mutex_timedlock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_TIMEDLOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_mutex_clocklock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_CLOCKLOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_mutex_unlock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_UNLOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_rwlock_rdlock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_RDLOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_rwlock_tryrdlock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TRYRDLOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_rwlock_timedrdlock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TIMEDRDLOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_rwlock_clockrdlock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_CLOCKRDLOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_rwlock_wrlock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_WRLOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_rwlock_trywrlock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TRYWRLOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_rwlock_timedwrlock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TIMEDWRLOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_rwlock_clockwrlock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_CLOCKWRLOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_rwlock_unlock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_UNLOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_cond_signal") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_COND_SIGNAL = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_cond_broadcast") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_COND_BROADCAST = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_cond_wait") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_COND_WAIT = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_cond_timedwait") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_COND_TIMEDWAIT = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_cond_clockwait") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_COND_CLOCKWAIT = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_spin_lock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_LOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_spin_trylock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_TRYLOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_spin_unlock") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_UNLOCK = curSymbolId;
-                        } else if (curSymbol.symbolName == "pthread_barrier_wait") {
-                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_BARRIER_WAIT = curSymbolId;
-                        }
-
-                        if (curSymbol.symbolName == "sem_wait") {
-                            curElfImgInfo.semaphoreExtSymbolId.SEM_WAIT = curSymbolId;
-                        } else if (curSymbol.symbolName == "sem_timedwait") {
-                            curElfImgInfo.semaphoreExtSymbolId.SEM_TIMEDWAIT = curSymbolId;
-                        } else if (curSymbol.symbolName == "sem_clockwait") {
-                            curElfImgInfo.semaphoreExtSymbolId.SEM_CLOCKWAIT = curSymbolId;
-                        } else if (curSymbol.symbolName == "sem_trywait") {
-                            curElfImgInfo.semaphoreExtSymbolId.SEM_TRYWAIT = curSymbolId;
-                        } else if (curSymbol.symbolName == "sem_post") {
-                            curElfImgInfo.semaphoreExtSymbolId.SEM_POST = curSymbolId;
-                        }
+//                        if (curSymbol.symbolName == "pthread_create") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_CREATE = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_join") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_JOIN = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_tryjoin_np") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_TRYJOIN_NP = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_timedjoin_np") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_TIMEDJOIN_NP = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_clockjoin_np") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_CLOCKJOIN_NP = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_mutex_lock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_LOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_mutex_timedlock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_TIMEDLOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_mutex_clocklock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_CLOCKLOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_mutex_unlock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_UNLOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_rwlock_rdlock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_RDLOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_rwlock_tryrdlock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TRYRDLOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_rwlock_timedrdlock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TIMEDRDLOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_rwlock_clockrdlock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_CLOCKRDLOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_rwlock_wrlock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_WRLOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_rwlock_trywrlock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TRYWRLOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_rwlock_timedwrlock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TIMEDWRLOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_rwlock_clockwrlock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_CLOCKWRLOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_rwlock_unlock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_UNLOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_cond_signal") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_COND_SIGNAL = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_cond_broadcast") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_COND_BROADCAST = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_cond_wait") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_COND_WAIT = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_cond_timedwait") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_COND_TIMEDWAIT = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_cond_clockwait") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_COND_CLOCKWAIT = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_spin_lock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_LOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_spin_trylock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_TRYLOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_spin_unlock") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_UNLOCK = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "pthread_barrier_wait") {
+//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_BARRIER_WAIT = scalerSymbolId;
+//                        }
+//
+//                        if (curSymbol.symbolName == "sem_wait") {
+//                            curElfImgInfo.semaphoreExtSymbolId.SEM_WAIT = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "sem_timedwait") {
+//                            curElfImgInfo.semaphoreExtSymbolId.SEM_TIMEDWAIT = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "sem_clockwait") {
+//                            curElfImgInfo.semaphoreExtSymbolId.SEM_CLOCKWAIT = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "sem_trywait") {
+//                            curElfImgInfo.semaphoreExtSymbolId.SEM_TRYWAIT = scalerSymbolId;
+//                        } else if (curSymbol.symbolName == "sem_post") {
+//                            curElfImgInfo.semaphoreExtSymbolId.SEM_POST = scalerSymbolId;
+//                        }
                     }
                 }
             }
@@ -250,83 +246,79 @@ namespace scaler {
         /**
          * Replace PLT (.plt, .plt.sec) entries
          */
-        for (FileID curFileID = 0; curFileID < elfImgInfoMap.getSize(); ++curFileID) {
-            auto &curELFImgInfo = elfImgInfoMap[curFileID];
-            if (curELFImgInfo.elfImgValid) {
-                for (const SymID &hookedSymId:curELFImgInfo.hookedExtSymbol) {
-                    auto &curSymbol = curELFImgInfo.allExtSymbol[hookedSymId];
-                    //jmp to custom handler function
-                    char output[256];
-                    std::string funcName = "__%zu_%zu";
-                    sprintf(output, funcName.c_str(), curSymbol.fileId, curSymbol.extSymbolId);
 
-                    void *redzoneJumperAddr = dlsym(redzoneJumperDl, output);
-                    curSymbol.pseudoPltEntry = dlsym(pseudoPltDl, output);
+        for (const SymID &hookedSymId:hookedExtSymbol) {
+            auto &curSymbol = allExtSymbol[hookedSymId];
+            //jmp to custom handler function
+            char output[256];
+            std::string funcName = "__%zu";
+            sprintf(output, funcName.c_str(), curSymbol.scalerSymbolId);
 
-                    if (redzoneJumperAddr == NULL) {
-                        throwScalerException(ErrCode::NO_HANDLER_IN_DLL,
-                                             "Failed to find redzone jumper address from dll");
-                    }
+            void *redzoneJumperAddr = dlsym(redzoneJumperDl, output);
+            curSymbol.pseudoPltEntry = dlsym(pseudoPltDl, output);
 
-                    auto pltRedirectorCodeArr = fillDestAddr2PltRedirectorCode(redzoneJumperAddr);
+            if (redzoneJumperAddr == NULL) {
+                throwScalerException(ErrCode::NO_HANDLER_IN_DLL,
+                                     "Failed to find redzone jumper address from dll");
+            }
 
-                    //DBG_LOGS("[%s] %s hooked (ID:%zd)", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
-                    //         curSymbol.extSymbolId);
+            auto pltRedirectorCodeArr = fillDestAddr2PltRedirectorCode(redzoneJumperAddr);
 
-                    //Step6: Replace .plt.sec and .plt
-                    if (curELFImgInfo.pltSecStartAddr != nullptr) {
-                        //.plt.sec table exists
-                        //todo: adjust the permission back after this
-                        try {
-                            //Save original .plt.sec code
+            auto &curELFImgInfo = elfImgInfoMap[curSymbol.fileId];
+            DBG_LOGS("[%s] %s hooked (ID:%zd)", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
+                     curSymbol.scalerSymbolId);
+            //Step6: Replace .plt.sec and .plt
+            if (curELFImgInfo.pltSecStartAddr != nullptr) {
+                //.plt.sec table exists
+                //todo: adjust the permission back after this
+                try {
+                    //Save original .plt.sec code
 
-                            curSymbol.oriPltSecCode = malloc(16);
-                            memcpy(curSymbol.oriPltSecCode, curSymbol.pltSecEntry, 16);
+                    curSymbol.oriPltSecCode = malloc(16);
+                    memcpy(curSymbol.oriPltSecCode, curSymbol.pltSecEntry, 16);
 
-                            memTool->adjustMemPerm(
-                                    curSymbol.pltSecEntry,
-                                    (uint8_t *) curSymbol.pltSecEntry + 16,
-                                    PROT_READ | PROT_WRITE | PROT_EXEC);
+                    memTool->adjustMemPerm(
+                            curSymbol.pltSecEntry,
+                            (uint8_t *) curSymbol.pltSecEntry + 16,
+                            PROT_READ | PROT_WRITE | PROT_EXEC);
 
-                            //Install hook code
-                            memcpy(curSymbol.pltSecEntry,
-                                   pltRedirectorCodeArr.data(), 16);
-                        } catch (const ScalerException &e) {
-                            ERR_LOGS(".plt.sec replacement Failed for \"%s\":\"%s\" because %s",
-                                     pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
-                                     e.info.c_str());
-                            continue;
-                        }
-                    }
-
-
-                    try {
-                        //Save original .plt code
-
-                        curSymbol.oriPltCode = malloc(16);
-                        memcpy(curSymbol.oriPltCode, curSymbol.pltEntry, 16);
-
-                        memTool->adjustMemPerm(
-                                (uint8_t *) curSymbol.pltEntry,
-                                (uint8_t *) curSymbol.pltEntry + 16,
-                                PROT_READ | PROT_WRITE | PROT_EXEC);
-
-                        //Install hook code
-                        memcpy((uint8_t *) curSymbol.pltEntry,
-                               pltRedirectorCodeArr.data(), 16);
-                    } catch (const ScalerException &e) {
-                        ERR_LOGS(".plt replacement Failed for \"%s\":\"%s\" because %s",
-                                 pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
-                                 e.info.c_str());
-                        continue;
-                    }
-
-                    pltRedirectorCodeArr.clear();
-
+                    //Install hook code
+                    memcpy(curSymbol.pltSecEntry,
+                           pltRedirectorCodeArr.data(), 16);
+                } catch (const ScalerException &e) {
+                    ERR_LOGS(".plt.sec replacement Failed for \"%s\":\"%s\" because %s",
+                             pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
+                             e.info.c_str());
+                    continue;
                 }
             }
 
+
+            try {
+                //Save original .plt code
+
+                curSymbol.oriPltCode = malloc(16);
+                memcpy(curSymbol.oriPltCode, curSymbol.pltEntry, 16);
+
+                memTool->adjustMemPerm(
+                        (uint8_t *) curSymbol.pltEntry,
+                        (uint8_t *) curSymbol.pltEntry + 16,
+                        PROT_READ | PROT_WRITE | PROT_EXEC);
+
+                //Install hook code
+                memcpy((uint8_t *) curSymbol.pltEntry,
+                       pltRedirectorCodeArr.data(), 16);
+            } catch (const ScalerException &e) {
+                ERR_LOGS(".plt replacement Failed for \"%s\":\"%s\" because %s",
+                         pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
+                         e.info.c_str());
+                continue;
+            }
+
+            pltRedirectorCodeArr.clear();
+
         }
+
 
 
         //Allocate tls storage, set hook type to FULL
@@ -351,60 +343,56 @@ namespace scaler {
     void ExtFuncCallHookAsm::uninstall() {
         //todo: release oriPltCode oriPltSecCode
         //Decallocate recordbuffer for main thread
-        for (FileID curFileId = 0; curFileId < elfImgInfoMap.getSize(); ++curFileId) {
-            auto &curELFImgInfo = elfImgInfoMap[curFileId];
-            if (curELFImgInfo.elfImgValid) {
-                for (SymID curSymId: curELFImgInfo.hookedExtSymbol) {
-                    auto &curSymbol = curELFImgInfo.allExtSymbol[curSymId];
 
-                    //DBG_LOGS("[%s] %s hooked (ID:%zd)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
-                    //curSymbol.extSymbolId);
-                    void *oriCodePtr = nullptr;
+        for (SymID curSymId: hookedExtSymbol) {
+            auto &curSymbol = allExtSymbol[curSymId];
 
-                    if (curSymbol.oriPltSecCode != nullptr) {
-                        //.plt.sec table exists
-                        try {
-                            //todo: adjust the permission back after this
-                            memTool->adjustMemPerm(
-                                    (uint8_t *) curSymbol.pltSecEntry,
-                                    (uint8_t *) curSymbol.pltSecEntry + 16,
-                                    PROT_READ | PROT_WRITE | PROT_EXEC);
-                            memcpy((uint8_t *) curSymbol.pltSecEntry,
-                                   curSymbol.oriPltSecCode, 16);
-                            free(curSymbol.oriPltSecCode);
-                            curSymbol.oriPltSecCode = nullptr;
-                        } catch (const ScalerException &e) {
-                            ERR_LOGS(".plt.sec replacement Failed for \"%s\":\"%s\" because %s",
-                                     pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
-                                     e.info.c_str());
-                            continue;
-                        }
-                    }
+            //DBG_LOGS("[%s] %s hooked (ID:%zd)\n", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
+            //curSymbol.extSymbolId);
+            void *oriCodePtr = nullptr;
 
-                    if (curSymbol.oriPltCode != nullptr) {
-                        try {
-                            //todo: what is this doesn't exist (for example, installer failed at this symbol)
-                            memTool->adjustMemPerm(
-                                    (uint8_t *) curSymbol.pltEntry,
-                                    (uint8_t *) curSymbol.pltEntry + 16,
-                                    PROT_READ | PROT_WRITE | PROT_EXEC);
-                            memcpy((uint8_t *) curSymbol.pltEntry,
-                                   curSymbol.oriPltCode, 16);
-                            free(curSymbol.oriPltCode);
-                            curSymbol.oriPltCode = nullptr;
-                        } catch (const ScalerException &e) {
-                            ERR_LOGS(".plt replacement Failed for \"%s\":\"%s\" because %s",
-                                     pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
-                                     e.info.c_str());
-                            continue;
-                        }
-                    }
-                    //todo: release memory stored in oroginal plt code
+            if (curSymbol.oriPltSecCode != nullptr) {
+                //.plt.sec table exists
+                try {
+                    //todo: adjust the permission back after this
+                    memTool->adjustMemPerm(
+                            (uint8_t *) curSymbol.pltSecEntry,
+                            (uint8_t *) curSymbol.pltSecEntry + 16,
+                            PROT_READ | PROT_WRITE | PROT_EXEC);
+                    memcpy((uint8_t *) curSymbol.pltSecEntry,
+                           curSymbol.oriPltSecCode, 16);
+                    free(curSymbol.oriPltSecCode);
+                    curSymbol.oriPltSecCode = nullptr;
+                } catch (const ScalerException &e) {
+                    ERR_LOGS(".plt.sec replacement Failed for \"%s\":\"%s\" because %s",
+                             pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
+                             e.info.c_str());
+                    continue;
                 }
             }
 
+            if (curSymbol.oriPltCode != nullptr) {
+                try {
+                    //todo: what is this doesn't exist (for example, installer failed at this symbol)
+                    memTool->adjustMemPerm(
+                            (uint8_t *) curSymbol.pltEntry,
+                            (uint8_t *) curSymbol.pltEntry + 16,
+                            PROT_READ | PROT_WRITE | PROT_EXEC);
+                    memcpy((uint8_t *) curSymbol.pltEntry,
+                           curSymbol.oriPltCode, 16);
+                    free(curSymbol.oriPltCode);
+                    curSymbol.oriPltCode = nullptr;
+                } catch (const ScalerException &e) {
+                    ERR_LOGS(".plt replacement Failed for \"%s\":\"%s\" because %s",
+                             pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
+                             e.info.c_str());
+                    continue;
+                }
+            }
+            //todo: release memory stored in oroginal plt code
         }
     }
+
 
     std::vector<uint8_t> ExtFuncCallHookAsm::fillDestAddr2PltRedirectorCode(void *funcAddr) {
         //The following "magical" numbers are actually two instructions
@@ -529,38 +517,37 @@ namespace scaler {
         fprintf(fp, "extern \"C\"{\n");
 
 
-        for (ELFImgInfo &curElfImgInfo:elfImgInfoMap) {
-            for (auto &curSymbolID:curElfImgInfo.hookedExtSymbol) {
-                auto &curSymbol = curElfImgInfo.allExtSymbol[curSymbolID];
+        for (auto &curSymbolID:hookedExtSymbol) {
+            auto &curSymbol = allExtSymbol[curSymbolID];
 
-                fprintf(fp, "//%s\n", curElfImgInfo.filePath.c_str());
-                fprintf(fp, "//%s\n", curSymbol.symbolName.c_str());
+#ifdef PRINT_DBG_LOG
+            auto &curELFImgInfo = elfImgInfoMap[curSymbol.fileId];
+            fprintf(fp, "//%s\n", curELFImgInfo.filePath.c_str());
+            fprintf(fp, "//%s\n", curSymbol.symbolName.c_str());
+#endif
+            //todo: In GCC < 8, naked function wasn't supported!!
+            fprintf(fp, "void  __attribute__((naked)) __%zu(){\n", curSymbol.scalerSymbolId);
+            fprintf(fp, "__asm__ __volatile__ (\n");
 
-                //todo: In GCC < 8, naked function wasn't supported!!
-                fprintf(fp, "void  __attribute__((naked)) __%zu_%zu(){\n", curSymbol.fileId,
-                        curSymbol.extSymbolId);
-                fprintf(fp, "__asm__ __volatile__ (\n");
+            //Store rsp into r11. We'll later use this value to recover rsp to the correct location
+            fprintf(fp, "\"movq (%%rsp),%%r11\\n\\t\"\n");
+            //Skip 128-bit redzone. //todo: platform specific. Only on System V 64
+            fprintf(fp, "\"subq $128,%%rsp\\n\\t\"\n");
 
-                //Store rsp into r11. We'll later use this value to recover rsp to the correct location
-                fprintf(fp, "\"movq (%%rsp),%%r11\\n\\t\"\n");
-                //Skip 128-bit redzone. //todo: platform specific. Only on System V 64
-                fprintf(fp, "\"subq $128,%%rsp\\n\\t\"\n");
+            //Now, everything happens after the redzone
+            //Store fileID into stack
+            fprintf(fp, "\"pushq  $%lu\\n\\t\"\n", curSymbol.fileId);//fileId
+            //Store functionID into stack
+            fprintf(fp, "\"pushq  $%lu\\n\\t\"\n", curSymbol.scalerSymbolId);//funcID
+            //Store the original stack location into stack
+            fprintf(fp, "\"pushq  %%r11\\n\\t\"\n");
 
-                //Now, everything happens after the redzone
-                //Store fileID into stack
-                fprintf(fp, "\"pushq  $%lu\\n\\t\"\n", curSymbol.fileId);//fileId
-                //Store functionID into stack
-                fprintf(fp, "\"pushq  $%lu\\n\\t\"\n", curSymbol.extSymbolId);//funcID
-                //Store the original stack location into stack
-                fprintf(fp, "\"pushq  %%r11\\n\\t\"\n");
+            //jmp to assembly hook handler
+            fprintf(fp, "\"movq  $%p,%%r11\\n\\t\"\n", asmHookHandlerSec);
+            fprintf(fp, "\"jmpq *%%r11\\n\\t\"\n");
 
-                //jmp to assembly hook handler
-                fprintf(fp, "\"movq  $%p,%%r11\\n\\t\"\n", asmHookHandlerSec);
-                fprintf(fp, "\"jmpq *%%r11\\n\\t\"\n");
-
-                fprintf(fp, ");\n");
-                fprintf(fp, "}\n");
-            }
+            fprintf(fp, ");\n");
+            fprintf(fp, "}\n");
         }
         fprintf(fp, "}\n");
         fclose(fp);
@@ -590,8 +577,7 @@ namespace scaler {
     void ExtFuncCallHookAsm::parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr,
                                            FileID &libraryFileID) {
         //Find correct symbol
-        ELFImgInfo &curELfImgInfo = elfImgInfoMap[callerFileID];
-        ExtSymInfo &curSymbol = curELfImgInfo.allExtSymbol[symbolIDInCaller];
+        ExtSymInfo &curSymbol = allExtSymbol[symbolIDInCaller];
 
         if (curSymbol.symbolName == "exit") {
             int j = 1;
@@ -619,23 +605,23 @@ namespace scaler {
         int i;
         fprintf(fp, "extern \"C\"{\n");
 
-        for (ELFImgInfo &curElfImgInfo:elfImgInfoMap) {
-            for (auto &curSymbolID:curElfImgInfo.hookedExtSymbol) {
-                auto &curSymbol = curElfImgInfo.allExtSymbol[curSymbolID];
+        for (auto &curSymbolID:hookedExtSymbol) {
+            auto &curSymbol = allExtSymbol[curSymbolID];
+            auto &curELFImgInfo = elfImgInfoMap[curSymbol.fileId];
+#ifdef PRINT_DBG_LOG
+            fprintf(fp, "//%s\n", curELFImgInfo.filePath.c_str());
+            fprintf(fp, "//%s\n", curSymbol.symbolName.c_str());
+#endif
 
-                fprintf(fp, "//%s\n", curElfImgInfo.filePath.c_str());
-                fprintf(fp, "//%s\n", curSymbol.symbolName.c_str());
+            fprintf(fp, "void  __attribute__((naked)) __%zu(){\n", curSymbol.scalerSymbolId);
+            fprintf(fp, "__asm__ __volatile__ (\n");
 
-                fprintf(fp, "void  __attribute__((naked)) __%zu_%zu(){\n", curSymbol.fileId, curSymbol.extSymbolId);
-                fprintf(fp, "__asm__ __volatile__ (\n");
+            fprintf(fp, "\"pushq $%zd\\n\\t\"\n", curSymbol.symIdInFile);
+            fprintf(fp, "\"movq  $%p,%%r11\\n\\t\"\n", curELFImgInfo.pltStartAddr);
+            fprintf(fp, "\"jmpq *%%r11\\n\\t\"\n");
 
-                fprintf(fp, "\"pushq $%zd\\n\\t\"\n", curSymbol.extSymbolId);
-                fprintf(fp, "\"movq  $%p,%%r11\\n\\t\"\n", curElfImgInfo.pltStartAddr);
-                fprintf(fp, "\"jmpq *%%r11\\n\\t\"\n");
-
-                fprintf(fp, ");\n");
-                fprintf(fp, "}\n");
-            }
+            fprintf(fp, ");\n");
+            fprintf(fp, "}\n");
         }
         fprintf(fp, "}\n");
         fclose(fp);
@@ -662,17 +648,18 @@ namespace scaler {
                 char *pltAddr = static_cast<char *>(curELFImgInfo.pltStartAddr);
                 char *curAddr = pltAddr;
                 int counter = 0;
-                for (int symId = 0; symId < curELFImgInfo.allExtSymbol.getSize(); ++symId) {
+                for (int _ = 0; _ < curELFImgInfo.scalerIdMap.size(); ++_) {
                     curAddr += 16;
                     ++counter;
                     //todo: use xed to parse operators
                     int *pltStubId = reinterpret_cast<int *>(curAddr + 7);
-                    auto &curSymbol = curELFImgInfo.allExtSymbol[*pltStubId];
+                    auto &curSymbol = allExtSymbol[curELFImgInfo.scalerIdMap[*pltStubId]];
+                    assert(curSymbol.symIdInFile == *pltStubId);
                     curSymbol.pltEntry = curAddr;
-                    curSymbol.pltSecEntry = (char *) curELFImgInfo.pltSecStartAddr + *pltStubId;
+                    curSymbol.pltSecEntry = (char *) curELFImgInfo.pltSecStartAddr;
                     //DBG_LOGS("%s pltStub=%d", curELFImgInfo.filePath.c_str(), *pltStubId);
 
-                    if (isSymbolAddrResolved(curELFImgInfo, curSymbol)) {
+                    if (isSymbolAddrResolved(curSymbol)) {
 //                        DBG_LOGS("%s(%zd):%s(%zd) plt=%p *%p=%p resolved=%s", curELFImgInfo.filePath.c_str(), curFileID,
 //                                 curSymbol.symbolName.c_str(), curSymbol.extSymbolId,
 //                                 curSymbol.pltEntry,
@@ -691,11 +678,8 @@ namespace scaler {
             }
         }
 
-        for (FileID curFileID = 0; curFileID < elfImgInfoMap.getSize(); ++curFileID) {
-            auto &curELFImgInfo = elfImgInfoMap[curFileID];
-            for (auto &curSymbol:curELFImgInfo.allExtSymbol) {
-                assert(curSymbol.pltEntry != nullptr);
-            }
+        for (auto &curSymbol:allExtSymbol) {
+            assert(curSymbol.pltEntry != nullptr);
         }
     }
 
@@ -907,7 +891,6 @@ namespace scaler {
         "addq $8,%rsp\n\t" //Override caller address
         "callq *%r11\n\t"
 
-
         /**
          * Save callee saved register
          */
@@ -920,7 +903,6 @@ namespace scaler {
         "pushq %r13\n\t" //8
         "pushq %r14\n\t" //8
         "pushq %r15\n\t" //8
-
 
         /**
          * Save return value
@@ -1009,14 +991,12 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     //Calculate fileID
     auto &_this = scaler_extFuncCallHookAsm_thiz;
 
-    scaler::ExtFuncCallHookAsm::ELFImgInfo &curElfImgInfo = _this->elfImgInfoMap[fileId];
-
-    scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = curElfImgInfo.allExtSymbol[extSymbolId];
+    scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = _this->allExtSymbol[extSymbolId];
     void *retOriFuncAddr = curSymbol.addr;
 
     if (curSymbol.addr == nullptr) {
         //Unresolved
-        if (!_this->isSymbolAddrResolved(curElfImgInfo, curSymbol)) {
+        if (!_this->isSymbolAddrResolved(curSymbol)) {
             //Use ld to resolve
             retOriFuncAddr = curSymbol.pseudoPltEntry;
         } else {
@@ -1028,7 +1008,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 
     if (bypassCHooks) {
         //Skip afterhook
-        asm ("movq $0, %rdi");
+        asm __volatile__ ("movq $0, %rdi");
         return retOriFuncAddr;
     }
 
@@ -1171,6 +1151,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     args->data = arg;
     bypassCHooks = false;
     // Call the actual pthread_create
+
     return scaler::pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
 }
 

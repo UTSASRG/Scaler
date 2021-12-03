@@ -1,6 +1,7 @@
-#include <util/hook/install.h>
-#include <util/hook/ExtFuncCallHookBrkpoint.h>
 #include <util/tool/StringTool.h>
+#include <util/hook/install.h>
+#include <util/tool/Logging.h>
+#include <dlfcn.h>
 
 
 typedef int (*main_fn_t)(int, char **, char **);
@@ -46,7 +47,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
             return false;
         } else if (funcName == "futex_fatal_error") {
             return false;
-        } else if (funcName == "pthread_exit") {
+        }else if (funcName == "pthread_exit") {
             return false;
         } else if (funcName == "__pthread_unwind_next") {
             return false;
@@ -104,7 +105,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
             return false;
         } else if (funcName == "termination_handler") {
             return false;
-        }  else if (funcName == "receive_print_stats") {
+        } else if (funcName == "receive_print_stats") {
             return false;
         } else if (funcName == "nscd_run_prune") {
             return false;

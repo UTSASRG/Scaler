@@ -1,6 +1,4 @@
 
-
-
 #include "hook.hh"
 
 enum INSTALL_TYPE {
