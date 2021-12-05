@@ -871,17 +871,17 @@ namespace scaler {
         //The return address is maybe the real function address. Or a pointer to the pseodoPlt table
         "movq %rax,%r11\n\t"
 
-        "cmpq $0,%rdi\n\t"
+        "cmpq $1234,%rdi\n\t"
         "jnz  RET_FULL\n\t"
 
-        //=======================================> if r12==0
+        //=======================================> if rdi==$1234
         "RET_PREHOOK_ONLY:\n\t"
         ASM_RESTORE_ENV_PREHOOK
         //Restore rsp to original value (Uncomment the following to only enable prehook)
         "addq $152,%rsp\n\t"
         "jmpq *%r11\n\t"
 
-        //=======================================> if r12!=0
+        //=======================================> if rdi!=0
         /**
          * Call actual function
          */
@@ -982,7 +982,7 @@ inline bool getInHookBoolThreadLocal() {
 //pthread_mutex_t lock0 = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 static bool GDB_CTL_LOG = false;
 
-static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc) {
+static void * cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc) {
 
     //todo: The following two values are highly dependent on assembly code
     //void *rdiLoc = (uint8_t *) rspLoc - 8;
@@ -1008,7 +1008,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
 
     if (bypassCHooks) {
         //Skip afterhook
-        asm __volatile__ ("movq $0, %rdi");
+        asm __volatile__ ("movq $1234, %rdi");
         return retOriFuncAddr;
     }
 

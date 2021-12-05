@@ -47,7 +47,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
             return false;
         } else if (funcName == "futex_fatal_error") {
             return false;
-        }else if (funcName == "pthread_exit") {
+        } else if (funcName == "pthread_exit") {
             return false;
         } else if (funcName == "__pthread_unwind_next") {
             return false;
