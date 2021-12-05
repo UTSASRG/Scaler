@@ -268,13 +268,6 @@ namespace scaler {
 
     }
 
-    bool ExtFuncCallHook_Linux::isSymbolAddrResolved(ExtFuncCallHook_Linux::ExtSymInfo &symInfo) {
-        //Check whether its value has 6 bytes offset as its plt entry start address
-        int64_t myPltStartAddr = (int64_t) symInfo.pltEntry;
-        int64_t curGotAddr = (int64_t) *symInfo.gotEntry;
-        assert(symInfo.pltEntry != nullptr);
-        return abs(curGotAddr - myPltStartAddr) > 6;
-    }
 
 
     ExtFuncCallHook_Linux::ELFImgInfo::ELFImgInfo() {

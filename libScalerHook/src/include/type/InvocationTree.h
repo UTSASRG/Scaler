@@ -33,18 +33,12 @@ namespace scaler {
      */
     class RawRecordEntry {
     public:
-        enum Type {
-            UNSPECIFIED = 0,
-            PUSH = 1,
-            POP = 2,
-        };
-        SymID symId;
-        uint64_t timeStamp;
-        char operation;
+        int64_t timeStamp;
+        int64_t counting;
 
         RawRecordEntry() = default;
 
-        RawRecordEntry(SymID symId, uint64_t timeStamp,Type operation);
+        RawRecordEntry(int64_t timeStamp, int64_t counting);
     };
 
     class InvocationTreeNode : public SerializableMixIn {

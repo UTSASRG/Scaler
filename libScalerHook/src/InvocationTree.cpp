@@ -204,9 +204,8 @@ void scaler::SerializableMixIn::save(FILE *fp) {
     Serializable::save(fp);
 }
 
-scaler::RawRecordEntry::RawRecordEntry(scaler::SymID symId, uint64_t timeStamp, Type operation)
-        : symId(symId),
-          timeStamp(timeStamp),
-          operation(operation) {
+scaler::RawRecordEntry::RawRecordEntry(int64_t timeStamp, int64_t counting)
+        : timeStamp(timeStamp),
+          counting(counting) {
 
 }

@@ -31,14 +31,15 @@ extern "C" {
 //todo: many functions are too long
 
 //#define PREHOOK_ONLY
-//#define ENABLE_SAVE
+#define ENABLE_SAVE
 
 struct Context {
     //todo: Initialize using maximum stack size
     scaler::FStack<scaler::SymID, 8192> extSymbolId;
     //Variables used to determine whether it's called by hook handler or not
     scaler::FStack<void *, 8192> callerAddr;
-    scaler::Vector<scaler::RawRecordEntry> *recordBuffer;
+    scaler::FStack<long long, 8192> timeStamp;
+    scaler::RawRecordEntry *rawRecord;
     char initializeMe = 0;
 
 };
@@ -47,7 +48,11 @@ scaler::ExtFuncCallHookAsm *scaler_extFuncCallHookAsm_thiz = nullptr;
 
 thread_local Context curContext;
 
-__thread bool bypassCHooks = true;
+const uint8_t SCALER_TRUE = 145;
+const uint8_t SCALER_FALSE = 167;
+__thread uint8_t bypassCHooks = SCALER_TRUE; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
+
+
 
 long long threadLocalOffsetToTCB = 0;
 
@@ -56,27 +61,27 @@ public:
     char initializeMe = 0;
 
     ~DataSaver() {
-        bypassCHooks = true;
-        assert(curContext.recordBuffer != nullptr);
+        bypassCHooks = SCALER_TRUE;
+        assert(curContext.rawRecord != nullptr);
         char fileName[255];
         DBG_LOGS("Save rawrecord %lu", pthread_self());
-        sprintf(fileName, "scaler_rawrecord_%lu.bin", pthread_self());
+        sprintf(fileName, "scaler_time_%lu.bin", pthread_self());
         FILE *fp = NULL;
         //todo: check open success or not
         fp = fopen(fileName, "w");
         assert(fp != nullptr);
-        assert(curContext.recordBuffer != nullptr);
-        const uint64_t &arrSize = curContext.recordBuffer->getSize();
+        assert(curContext.rawRecord != nullptr);
+        const uint64_t &arrSize = scaler_extFuncCallHookAsm_thiz->allExtSymbol.getSize();
         const uint64_t &entrySize = sizeof(scaler::RawRecordEntry);
         fwrite(&arrSize, sizeof(uint64_t), 1, fp);
         fwrite(&entrySize, sizeof(uint64_t), 1, fp);
         //Write entire array
-        fwrite(curContext.recordBuffer->data(), sizeof(scaler::RawRecordEntry), curContext.recordBuffer->getSize(), fp);
+        fwrite(curContext.rawRecord, sizeof(scaler::RawRecordEntry), arrSize, fp);
         //todo: check close success or not
         fclose(fp);
         //Only save once
-        delete curContext.recordBuffer;
-        curContext.recordBuffer = nullptr;
+        delete[] curContext.rawRecord;
+        curContext.rawRecord = nullptr;
     }
 };
 
@@ -84,12 +89,12 @@ thread_local DataSaver saverElem;
 
 void initTLS() {
     //Dont double initialize
-    assert(bypassCHooks == true);
+    assert(bypassCHooks == SCALER_TRUE);
     //Initialize saving data structure
     //curContext.initializeMe = ~curContext.initializeMe;
     //saverElem.initializeMe = ~saverElem.initializeMe;
-    curContext.recordBuffer = new scaler::Vector<scaler::RawRecordEntry>(4096);
-    bypassCHooks = false;
+    curContext.rawRecord = new scaler::RawRecordEntry[scaler_extFuncCallHookAsm_thiz->allExtSymbol.getSize()];
+    bypassCHooks = SCALER_FALSE;
 }
 
 namespace scaler {
@@ -985,9 +990,6 @@ static bool GDB_CTL_LOG = false;
 static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc) {
 
     //todo: The following two values are highly dependent on assembly code
-    //void *rdiLoc = (uint8_t *) rspLoc - 8;
-    //void *rsiLoc = (uint8_t *) rspLoc - 16;
-
     //Calculate fileID
     auto &_this = scaler_extFuncCallHookAsm_thiz;
 
@@ -1006,95 +1008,75 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
         }
     }
 
-    if (bypassCHooks) {
+    /**
+     * No counting, no measuring time
+     */
+    if (bypassCHooks != SCALER_FALSE) {
         //Skip afterhook
-
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
         return retOriFuncAddr;
     }
 
     //Starting from here, we could call external symbols and it won't cause any problem
-    bypassCHooks = true;
-
-
-    //Push callerAddr into stack
-    curContext.callerAddr.push(callerAddr);
-    //Push calling info to afterhook
-    //todo: rename this to caller function
-    curContext.extSymbolId.push(extSymbolId);
+    bypassCHooks = SCALER_TRUE;
 
     DBG_LOGS("[Pre Hook] Thread:%lu File(%ld):%s, Func(%ld): %s RetAddr:%p", pthread_self(),
              fileId, _this->pmParser.idFileMap.at(fileId).c_str(),
              extSymbolId, curSymbol.symbolName.c_str(), retOriFuncAddr);
-
-#ifdef ENABLE_SAVE
-    //Save this operation
-//    assert(curContext.recordBuffer != nullptr);
-    if (curContext.recordBuffer != nullptr) {
-        curContext.recordBuffer->pushBack(
-                scaler::RawRecordEntry(extSymbolId, getunixtimestampms(), scaler::RawRecordEntry::Type::PUSH));
-        //DBG_LOG("hit");
-    } else {
-        DBG_LOG("miss");
-    }
-#endif
-
 #ifdef PREHOOK_ONLY
+    //skip afterhook
     asm __volatile__ ("movq $1234, %rdi");
+    return retOriFuncAddr;
 #endif
 
-    bypassCHooks = false;
+    /**
+    * Counting (Bypass afterhook)
+    */
+    Context* curContextPtr= &curContext;
+
+    assert(curContextPtr->rawRecord != nullptr);
+
+    ++curContextPtr->rawRecord[extSymbolId].counting;
+    //asm __volatile__ ("movq $1234, %rdi");
+    //return retOriFuncAddr;
+
+    /**
+    * Record time (Need afterhook)
+    */
+    curContextPtr->timeStamp.push(getunixtimestampms());
+    //Push callerAddr into stack
+    curContextPtr->callerAddr.push(callerAddr);
+    //Push calling info to afterhook
+    //todo: rename this to caller function
+    curContextPtr->extSymbolId.push(extSymbolId);
+
+    bypassCHooks = SCALER_FALSE;
     return retOriFuncAddr;
 }
 
 pthread_mutex_t lock1 = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 
 void *cAfterHookHandlerLinux() {
-    bypassCHooks = true;
+    bypassCHooks = SCALER_TRUE;
     auto &_this = scaler_extFuncCallHookAsm_thiz;
+    Context *curContextPtr = &curContext;
 
-    scaler::SymID extSymbolID = curContext.extSymbolId.peekpop();
+    scaler::SymID extSymbolID = curContextPtr->extSymbolId.peekpop();
     //auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID);
     // When after hook is called. Library address is resolved. We use searching mechanism to find the file name.
     // To improve efficiency, we could sotre this value
-    void *callerAddr = curContext.callerAddr.peekpop();
+    void *callerAddr = curContextPtr->callerAddr.peekpop();
+    const auto &preHookTimestamp = curContextPtr->timeStamp.peekpop();
+    DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) End: %llu",
+             pthread_self(), extSymbolID, getunixtimestampms() - preHookTimestamp);
 
-    DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) End: %ld",
-             pthread_self(), extSymbolID, getunixtimestampms());
-    /*
-        if (extSymbolID == curELFImgInfo.pthreadExtSymbolId.PTHREAD_CREATE) {
-            //todo: A better way is to compare function id rather than name. This is more efficient.
-            //todo: A better way is to also compare library id because a custom library will also implement pthread_create.
-            pthread_t *pthreadIdPtr = curContext.pthreadIdPtr.peekpop();
-            DBG_LOGS("[After Hook Param Parser]    pthread_create tid=%lu", *pthreadIdPtr);
-        }
-
-
-    FILE *fp = NULL;
-    fp = fopen("./libScalerhookOutput.csv", "a");
-    fprintf(fp, "%lu,%s,%s,%ld,%ld,\n",
-            pthread_self(),
-            libraryFileName.c_str(),
-            funcName.c_str(),
-            startTimestamp,
-            endTimestamp);
-    fclose(fp);
-
-
-//        if (*curContext.released && curContext.funcId.size() == 0)
-//            curContext.realDeconstructor();
-//    pthread_mutex_unlock(&lock1);
-*/
-#ifdef ENABLE_SAVE
     //Save this operation
-    assert(curContext.recordBuffer != nullptr);
-    curContext.recordBuffer->pushBack(
-            scaler::RawRecordEntry(extSymbolID, getunixtimestampms(), scaler::RawRecordEntry::Type::POP));
-#endif
-    bypassCHooks = false;
-    return callerAddr;
+    assert(curContextPtr->rawRecord != nullptr);
+    curContextPtr->rawRecord[extSymbolID].timeStamp = getunixtimestampms() - preHookTimestamp;
 
+    bypassCHooks = SCALER_FALSE;
+    return callerAddr;
 }
 
 }
@@ -1102,7 +1084,6 @@ void *cAfterHookHandlerLinux() {
 /**
  * Pthread hook
  */
-
 extern "C" {
 
 
@@ -1141,7 +1122,7 @@ void *dummy_thread_function(void *data) {
 
 // Main Pthread wrapper functions.
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)(void *), void *arg) {
-    bypassCHooks = true;
+    bypassCHooks = SCALER_TRUE;
     assert(scaler::pthread_create_orig != nullptr);
     auto threadID = pthread_self();
     DBG_LOGS("pthread_create %lu", pthread_self());
@@ -1150,7 +1131,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     auto args = (struct dummy_thread_function_args *) malloc(sizeof(struct dummy_thread_function_args));
     args->actual_thread_function = start;
     args->data = arg;
-    bypassCHooks = false;
+    bypassCHooks = SCALER_FALSE;
     // Call the actual pthread_create
 
     return scaler::pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);

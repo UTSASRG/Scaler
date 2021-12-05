@@ -59,7 +59,7 @@ target_compile_options(ScalerHook-HookManualAsm PRIVATE ${SCALER_HOOK_COMPILATIO
 add_library(ScalerHook-HookAuto SHARED src/autoinstall.cpp ${ScalerHookSrc})
 target_include_directories(ScalerHook-HookAuto PUBLIC src/include lib/inireader)
 target_link_libraries(ScalerHook-HookAuto PUBLIC pthread dl nlohmann_json::nlohmann_json xed2 xed2-ild)
-target_compile_definitions(ScalerHook-HookAuto PUBLIC XED_ENCODER)
+target_compile_definitions(ScalerHook-HookAuto PUBLIC XED_ENCODER NDEBUG)
 target_compile_options(ScalerHook-HookAuto PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
 
 #add_library(ScalerHook-HookAuto-Brkpoint SHARED src/autoinstall.cpp)

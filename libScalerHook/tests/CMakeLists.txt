@@ -230,6 +230,9 @@ target_link_options(libScalerHook-proof-testMultithreadPrint PRIVATE "-z" "lazy"
 add_executable(libScalerHook-proof-SaveDataUponExit src/proofconcept/testSaveDataUponExit.cpp)
 target_link_libraries(libScalerHook-proof-SaveDataUponExit pthread)
 
+add_executable(libScalerHook-proof-threadlocalasmarray src/proofconcept/TestAccessThreadLocalArrayInAsm.cpp)
+target_link_libraries(libScalerHook-proof-threadlocalasmarray pthread)
+
 
 #add_executable(libScalerHook-demoapps src/proofconcept/testprog.cpp)
 #target_link_libraries(DemoProg libTest PltHookLib dl)
