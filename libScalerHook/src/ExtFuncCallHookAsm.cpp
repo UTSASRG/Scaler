@@ -1127,9 +1127,11 @@ void *dummy_thread_function(void *data) {
      */
     // Extract arguments and call actual thread function
     auto *args = static_cast<dummy_thread_function_args *>(data);
-    args->actual_thread_function(args->data);
+    void *argData = args->data;
+    auto actualFuncPtr = args->actual_thread_function;
     free(args);
     args = nullptr;
+    actualFuncPtr(argData);
     /**
      * Perform required actions after each thread function completes
      */
