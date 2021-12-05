@@ -982,7 +982,7 @@ inline bool getInHookBoolThreadLocal() {
 //pthread_mutex_t lock0 = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 static bool GDB_CTL_LOG = false;
 
-static void * cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc) {
+static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc) {
 
     //todo: The following two values are highly dependent on assembly code
     //void *rdiLoc = (uint8_t *) rspLoc - 8;
@@ -1008,14 +1008,16 @@ static void * cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbo
 
     if (bypassCHooks) {
         //Skip afterhook
-        asm __volatile__ ("movq $1234, %rdi");
+
+        asm volatile ("movq $1234, %%rdi" : /* No outputs. */
+        :/* No inputs. */:"rdi");
         return retOriFuncAddr;
     }
 
     //Starting from here, we could call external symbols and it won't cause any problem
     bypassCHooks = true;
 
-#ifndef PREHOOK_ONLY
+
     //Push callerAddr into stack
     curContext.callerAddr.push(callerAddr);
     //Push calling info to afterhook
@@ -1038,10 +1040,8 @@ static void * cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbo
     }
 #endif
 
-//    if (GDB_CTL_LOG) {
-//        printf("%zd:%zd %s\n", curSymbol.fileId, curSymbol.extSymbolId, curSymbol.symbolName.c_str());
-//    }
-
+#ifdef PREHOOK_ONLY
+    asm __volatile__ ("movq $1234, %rdi");
 #endif
 
     bypassCHooks = false;
@@ -1062,13 +1062,13 @@ void *cAfterHookHandlerLinux() {
 
     DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) End: %ld",
              pthread_self(), extSymbolID, getunixtimestampms());
-/*
-    if (extSymbolID == curELFImgInfo.pthreadExtSymbolId.PTHREAD_CREATE) {
-        //todo: A better way is to compare function id rather than name. This is more efficient.
-        //todo: A better way is to also compare library id because a custom library will also implement pthread_create.
-        pthread_t *pthreadIdPtr = curContext.pthreadIdPtr.peekpop();
-        DBG_LOGS("[After Hook Param Parser]    pthread_create tid=%lu", *pthreadIdPtr);
-    }
+    /*
+        if (extSymbolID == curELFImgInfo.pthreadExtSymbolId.PTHREAD_CREATE) {
+            //todo: A better way is to compare function id rather than name. This is more efficient.
+            //todo: A better way is to also compare library id because a custom library will also implement pthread_create.
+            pthread_t *pthreadIdPtr = curContext.pthreadIdPtr.peekpop();
+            DBG_LOGS("[After Hook Param Parser]    pthread_create tid=%lu", *pthreadIdPtr);
+        }
 
 
     FILE *fp = NULL;
@@ -1091,7 +1091,6 @@ void *cAfterHookHandlerLinux() {
     assert(curContext.recordBuffer != nullptr);
     curContext.recordBuffer->pushBack(
             scaler::RawRecordEntry(extSymbolID, getunixtimestampms(), scaler::RawRecordEntry::Type::POP));
-
 #endif
     bypassCHooks = false;
     return callerAddr;
