@@ -158,6 +158,7 @@ target_link_libraries(libScalerHook-parsecapps-dedup ScalerHook-HookAuto pthread
         libcrypto.a
         libssl.a
         libz.a)
+target_compile_options(libScalerHook-parsecapps-dedup PRIVATE "-DPARALLEL")
 target_compile_options(libScalerHook-parsecapps-dedup PRIVATE ${TEST_FLAGS})
 
 

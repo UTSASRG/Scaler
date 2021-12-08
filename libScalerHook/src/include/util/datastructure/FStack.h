@@ -6,8 +6,8 @@ namespace scaler {
     template<typename T, ssize_t initialSize>
     class FStack {
     public:
-        bool isEmpty() const {
-            return internalVec.size == 0;
+        inline bool isEmpty() const {
+            return stackTopIndex > 0;
         }
 
         inline void push(const T &newELem) {
@@ -16,7 +16,7 @@ namespace scaler {
         }
 
         inline const T &peek() {
-            return internalVec[stackTopIndex-1];
+            return internalVec[stackTopIndex - 1];
         }
 
         inline void pop() {

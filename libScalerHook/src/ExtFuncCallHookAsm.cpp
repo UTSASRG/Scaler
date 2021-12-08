@@ -737,15 +737,16 @@ namespace scaler {
 /**
 * Restore Registers
 */
+
+//    POPZMM(7) \
+//    POPZMM(6)\
+//    POPZMM(5)\
+//    POPZMM(4)\
+//    POPZMM(3)\
+//    POPZMM(2)\
+//    POPZMM(1)\
+//    POPZMM(0)
 #define ASM_RESTORE_ENV_PREHOOK \
-    POPZMM(7) \
-    POPZMM(6)\
-    POPZMM(5)\
-    POPZMM(4)\
-    POPZMM(3)\
-    POPZMM(2)\
-    POPZMM(1)\
-    POPZMM(0)\
     "addq $8,%rsp\n\t" \
     \
     "popq %r10\n\t"\
@@ -843,14 +844,14 @@ namespace scaler {
         "subq $8,%rsp\n\t" //8  (16-byte allignment)
 
         //rsp%10h=0
-        PUSHZMM(0) //16
-        PUSHZMM(1) //16
-        PUSHZMM(2) //16
-        PUSHZMM(3) //16
-        PUSHZMM(4) //16
-        PUSHZMM(5) //16
-        PUSHZMM(6) //16
-        PUSHZMM(7) //16
+//        PUSHZMM(0) //16
+//        PUSHZMM(1) //16
+//        PUSHZMM(2) //16
+//        PUSHZMM(3) //16
+//        PUSHZMM(4) //16
+//        PUSHZMM(5) //16
+//        PUSHZMM(6) //16
+//        PUSHZMM(7) //16
 
         /**
          * Getting PLT entry address and caller address from stack
@@ -899,15 +900,15 @@ namespace scaler {
         /**
          * Save callee saved register
          */
-        "subq $16,%rsp\n\t" //16
-        "stmxcsr (%rsp)\n\t" // 4 Bytes(8-4)
-        "fnstcw 4(%rsp)\n\t" // 2 Bytes(4-2)
-        "pushq %rbx\n\t" //8
-        "pushq %rbp\n\t" //8
-        "pushq %r12\n\t" //8
-        "pushq %r13\n\t" //8
-        "pushq %r14\n\t" //8
-        "pushq %r15\n\t" //8
+//        "subq $16,%rsp\n\t" //16
+//        "stmxcsr (%rsp)\n\t" // 4 Bytes(8-4)
+//        "fnstcw 4(%rsp)\n\t" // 2 Bytes(4-2)
+//        "pushq %rbx\n\t" //8
+//        "pushq %rbp\n\t" //8
+//        "pushq %r12\n\t" //8
+//        "pushq %r13\n\t" //8
+//        "pushq %r14\n\t" //8
+//        "pushq %r15\n\t" //8
 
         /**
          * Save return value
@@ -915,13 +916,13 @@ namespace scaler {
         //Save return value to stack
         "pushq %rax\n\t" //8
         "pushq %rdx\n\t" //8
-        PUSHZMM(0) //16
-        PUSHZMM(1) //16
+//                PUSHZMM(0) //16
+//                PUSHZMM(1) //16
         //Save st0
-        "subq $16,%rsp\n\t" //16
-        "fstpt (%rsp)\n\t"
-        "subq $16,%rsp\n\t" //16
-        "fstpt (%rsp)\n\t"
+//                "subq $16,%rsp\n\t" //16
+//                "fstpt (%rsp)\n\t"
+//                "subq $16,%rsp\n\t" //16
+//                "fstpt (%rsp)\n\t"
 
         /**
          * Call After Hook
@@ -934,28 +935,28 @@ namespace scaler {
         /**
         * Restore return value
         */
-        "fldt (%rsp)\n\t"
-        "addq $16,%rsp\n\t" //16
-        "fldt (%rsp)\n\t"
-        "addq $16,%rsp\n\t" //16
-        POPZMM(1) //16
-        POPZMM(0) //16
-        "popq %rdx\n\t" //8
+//                "fldt (%rsp)\n\t"
+//                "addq $16,%rsp\n\t" //16
+//                "fldt (%rsp)\n\t"
+//                "addq $16,%rsp\n\t" //16
+//                POPZMM(1) //16
+//                POPZMM(0) //16
+        "popq %rdx\n\t" //8 (Used in afterhook)
         "popq %rax\n\t" //8
 
 
         /**
          * Restore callee saved register
          */
-        "popq %r15\n\t" //8
-        "popq %r14\n\t" //8
-        "popq %r13\n\t" //8
-        "popq %r12\n\t" //8
-        "popq %rbp\n\t" //8
-        "popq %rbx\n\t" //8
-        "ldmxcsr (%rsp)\n\t" // 2 Bytes(8-4)
-        "fldcw 4(%rsp)\n\t" // 4 Bytes(4-2)
-        "addq $16,%rsp\n\t" //16
+//        "popq %r15\n\t" //8
+//        "popq %r14\n\t" //8
+//        "popq %r13\n\t" //8
+//        "popq %r12\n\t" //8
+//        "popq %rbp\n\t" //8
+//        "popq %rbx\n\t" //8
+//        "ldmxcsr (%rsp)\n\t" // 2 Bytes(8-4)
+//        "fldcw 4(%rsp)\n\t" // 4 Bytes(4-2)
+//        "addq $16,%rsp\n\t" //16
 
 
         //"CLD\n\t"
@@ -1033,13 +1034,14 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     /**
     * Counting (Bypass afterhook)
     */
-    Context* curContextPtr= &curContext;
+    Context *curContextPtr = &curContext;
 
     assert(curContextPtr->rawRecord != nullptr);
 
     ++curContextPtr->rawRecord[extSymbolId].counting;
-    //asm __volatile__ ("movq $1234, %rdi");
-    //return retOriFuncAddr;
+//    bypassCHooks = SCALER_FALSE;
+//    asm __volatile__ ("movq $1234, %rdi");
+//    return retOriFuncAddr;
 
     /**
     * Record time (Need afterhook)
@@ -1067,13 +1069,18 @@ void *cAfterHookHandlerLinux() {
     // When after hook is called. Library address is resolved. We use searching mechanism to find the file name.
     // To improve efficiency, we could sotre this value
     void *callerAddr = curContextPtr->callerAddr.peekpop();
-    const auto &preHookTimestamp = curContextPtr->timeStamp.peekpop();
+    const long long &preHookTimestamp = curContextPtr->timeStamp.peekpop();
     DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) End: %llu",
              pthread_self(), extSymbolID, getunixtimestampms() - preHookTimestamp);
 
     //Save this operation
     assert(curContextPtr->rawRecord != nullptr);
-    curContextPtr->rawRecord[extSymbolID].timeStamp = getunixtimestampms() - preHookTimestamp;
+    const long long duration = getunixtimestampms() - preHookTimestamp;
+    curContextPtr->rawRecord[extSymbolID].timeStamp = duration;
+
+    if (!curContextPtr->extSymbolId.isEmpty()) {
+        curContextPtr->rawRecord[curContextPtr->extSymbolId.peek()].timeStamp -= duration;
+    }
 
     bypassCHooks = SCALER_FALSE;
     return callerAddr;
@@ -1099,6 +1106,7 @@ struct dummy_thread_function_args {
 // Entering this function means the thread has been successfully created
 // Instrument thread beginning, call the original thread function, instrument thread end
 void *dummy_thread_function(void *data) {
+    bypassCHooks = SCALER_TRUE;
     /**
      * Perform required actions at beginning of thread
      */
@@ -1112,6 +1120,7 @@ void *dummy_thread_function(void *data) {
     auto actualFuncPtr = args->actual_thread_function;
     free(args);
     args = nullptr;
+    bypassCHooks = SCALER_FALSE;
     actualFuncPtr(argData);
     /**
      * Perform required actions after each thread function completes
