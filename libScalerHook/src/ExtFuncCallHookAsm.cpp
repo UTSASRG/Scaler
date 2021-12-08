@@ -761,13 +761,13 @@ namespace scaler {
     "ldmxcsr (%rsp)\n\t" \
     "fldcw 4(%rsp)\n\t" \
     "addq $8,%rsp\n\t" \
-    \
-    "popq %r15\n\t"\
-    "popq %r14\n\t"\
-    "popq %r13\n\t"\
-    "popq %r12\n\t"\
-    "popq %rbp\n\t"\
-    "popq %rbx\n\t"
+
+//    "popq %r15\n\t"\
+//    "popq %r14\n\t"\
+//    "popq %r13\n\t"\
+//    "popq %r12\n\t"\
+//    "popq %rbp\n\t"\
+//    "popq %rbx\n\t"
 
     /**
      * Source code version for #define IMPL_ASMHANDLER
@@ -822,12 +822,12 @@ namespace scaler {
         /**
         * Save environment
         */
-        "pushq %rbx\n\t" //8
-        "pushq %rbp\n\t" //8
-        "pushq %r12\n\t" //8
-        "pushq %r13\n\t" //8
-        "pushq %r14\n\t" //8
-        "pushq %r15\n\t" //8
+        //"pushq %rbx\n\t" //8
+        //"pushq %rbp\n\t" //8
+        //"pushq %r12\n\t" //8
+        //"pushq %r13\n\t" //8
+        //"pushq %r14\n\t" //8
+        //"pushq %r15\n\t" //8
         "subq $8,%rsp\n\t" //8
         "stmxcsr (%rsp)\n\t" // 4 Bytes(8-4)
         "fnstcw 4(%rsp)\n\t" // 2 Bytes(4-2)
