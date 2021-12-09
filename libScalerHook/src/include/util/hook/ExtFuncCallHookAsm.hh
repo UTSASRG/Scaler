@@ -91,7 +91,7 @@ extern "C" {
  * @return Original function pointer
  */
 __attribute__((used)) static void *
-cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc);
+cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr);
 
 
 __attribute__((used)) static void *cAfterHookHandlerLinux();

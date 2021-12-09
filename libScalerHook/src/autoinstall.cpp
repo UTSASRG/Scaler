@@ -189,7 +189,6 @@ int doubletake_main(int argc, char **argv, char **envp) {
             //printf("%s\n", fileName.c_str());
             return true;
         }
-
     }, INSTALL_TYPE::ASM);
 
 //    //Initialization

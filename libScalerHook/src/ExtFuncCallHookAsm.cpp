@@ -537,11 +537,9 @@ namespace scaler {
             //Store rsp into r11. We'll later use this value to recover rsp to the correct location
             fprintf(fp, "\"movq (%%rsp),%%r11\\n\\t\"\n");
             //Skip 128-bit redzone. //todo: platform specific. Only on System V 64
-            fprintf(fp, "\"subq $128,%%rsp\\n\\t\"\n");
+            fprintf(fp, "\"subq $136,%%rsp\\n\\t\"\n"); //128 bits +8 bits=136bits. The extra 8 bits are for alignment
 
             //Now, everything happens after the redzone
-            //Store fileID into stack
-            fprintf(fp, "\"pushq  $%lu\\n\\t\"\n", curSymbol.fileId);//fileId
             //Store functionID into stack
             fprintf(fp, "\"pushq  $%lu\\n\\t\"\n", curSymbol.scalerSymbolId);//funcID
             //Store the original stack location into stack
@@ -754,17 +752,8 @@ namespace scaler {
     "popq %rsi\n\t"\
     "popq %rdx\n\t"\
     "popq %rcx\n\t"\
-    "popq %rax\n\t"\
+    "popq %rax\n\t"
 
-
-//"ldmxcsr (%rsp)\n\t" \
-//"fldcw 4(%rsp)\n\t" \
-//    "popq %r15\n\t"\
-//    "popq %r14\n\t"\
-//    "popq %r13\n\t"\
-//    "popq %r12\n\t"\
-//    "popq %rbp\n\t"\
-//    "popq %rbx\n\t"
 
     /**
      * Source code version for #define IMPL_ASMHANDLER
@@ -819,16 +808,6 @@ namespace scaler {
         /**
         * Save environment
         */
-        //"pushq %rbx\n\t" //8
-        //"pushq %rbp\n\t" //8
-        //"pushq %r12\n\t" //8
-        //"pushq %r13\n\t" //8
-        //"pushq %r14\n\t" //8
-        //"pushq %r15\n\t" //8
-        //"subq $8,%rsp\n\t" //8
-        //"stmxcsr (%rsp)\n\t" // 4 Bytes(8-4)
-        //"fnstcw 4(%rsp)\n\t" // 2 Bytes(4-2)
-        //        "pushf\n\t" //forward flag (Store all)
         "pushq %rax\n\t" //8
         "pushq %rcx\n\t" //8
         "pushq %rdx\n\t" //8
@@ -838,29 +817,25 @@ namespace scaler {
         "pushq %r9\n\t" //8
         "pushq %r10\n\t" //8
 
-        //"subq $8,%rsp\n\t" //8  (16-byte allignment)
-
         //rsp%10h=0
-//        PUSHZMM(0) //16
-//        PUSHZMM(1) //16
-//        PUSHZMM(2) //16
-//        PUSHZMM(3) //16
-//        PUSHZMM(4) //16
-//        PUSHZMM(5) //16
-//        PUSHZMM(6) //16
-//        PUSHZMM(7) //16
+        //        PUSHZMM(0) //16
+        //        PUSHZMM(1) //16
+        //        PUSHZMM(2) //16
+        //        PUSHZMM(3) //16
+        //        PUSHZMM(4) //16
+        //        PUSHZMM(5) //16
+        //        PUSHZMM(6) //16
+        //        PUSHZMM(7) //16
 
         /**
          * Getting PLT entry address and caller address from stack
          */
-        "movq (%r11),%rdx\n\t" //R11 stores callerAddr
+        "movq (%r11),%rsi\n\t" //R11 stores callerAddr
         "addq $8,%r11\n\t"
-        "movq (%r11),%rsi\n\t" //R11 stores funcID
-        "addq $8,%r11\n\t"
-        "movq (%r11),%rdi\n\t" //R11 stores fileID
+        "movq (%r11),%rdi\n\t" //R11 stores funcID
 
-        "movq %rsp,%rcx\n\t"
-        "addq $150,%rcx\n\t" //todo: value wrong
+        //"movq %rsp,%rcx\n\t"
+        //"addq $150,%rcx\n\t" //todo: value wrong
         //FileID fileId (rdi), FuncID funcId (rsi), void *callerAddr (rdx), void* oriRspLoc (rcx)
 
         /**
@@ -895,31 +870,18 @@ namespace scaler {
         "callq *%r11\n\t"
 
         /**
-         * Save callee saved register
-         */
-//        "subq $16,%rsp\n\t" //16
-//        "stmxcsr (%rsp)\n\t" // 4 Bytes(8-4)
-//        "fnstcw 4(%rsp)\n\t" // 2 Bytes(4-2)
-//        "pushq %rbx\n\t" //8
-//        "pushq %rbp\n\t" //8
-//        "pushq %r12\n\t" //8
-//        "pushq %r13\n\t" //8
-//        "pushq %r14\n\t" //8
-//        "pushq %r15\n\t" //8
-
-        /**
          * Save return value
          */
         //Save return value to stack
         "pushq %rax\n\t" //8
         "pushq %rdx\n\t" //8
-//                PUSHZMM(0) //16
-//                PUSHZMM(1) //16
+        //                PUSHZMM(0) //16
+        //                PUSHZMM(1) //16
         //Save st0
-//                "subq $16,%rsp\n\t" //16
-//                "fstpt (%rsp)\n\t"
-//                "subq $16,%rsp\n\t" //16
-//                "fstpt (%rsp)\n\t"
+        //                "subq $16,%rsp\n\t" //16
+        //                "fstpt (%rsp)\n\t"
+        //                "subq $16,%rsp\n\t" //16
+        //                "fstpt (%rsp)\n\t"
 
         /**
          * Call After Hook
@@ -932,12 +894,12 @@ namespace scaler {
         /**
         * Restore return value
         */
-//                "fldt (%rsp)\n\t"
-//                "addq $16,%rsp\n\t" //16
-//                "fldt (%rsp)\n\t"
-//                "addq $16,%rsp\n\t" //16
-//                POPZMM(1) //16
-//                POPZMM(0) //16
+        //                "fldt (%rsp)\n\t"
+        //                "addq $16,%rsp\n\t" //16
+        //                "fldt (%rsp)\n\t"
+        //                "addq $16,%rsp\n\t" //16
+        //                POPZMM(1) //16
+        //                POPZMM(0) //16
         "popq %rdx\n\t" //8 (Used in afterhook)
         "popq %rax\n\t" //8
 
@@ -945,15 +907,15 @@ namespace scaler {
         /**
          * Restore callee saved register
          */
-//        "popq %r15\n\t" //8
-//        "popq %r14\n\t" //8
-//        "popq %r13\n\t" //8
-//        "popq %r12\n\t" //8
-//        "popq %rbp\n\t" //8
-//        "popq %rbx\n\t" //8
-//        "ldmxcsr (%rsp)\n\t" // 2 Bytes(8-4)
-//        "fldcw 4(%rsp)\n\t" // 4 Bytes(4-2)
-//        "addq $16,%rsp\n\t" //16
+        //        "popq %r15\n\t" //8
+        //        "popq %r14\n\t" //8
+        //        "popq %r13\n\t" //8
+        //        "popq %r12\n\t" //8
+        //        "popq %rbp\n\t" //8
+        //        "popq %rbx\n\t" //8
+        //        "ldmxcsr (%rsp)\n\t" // 2 Bytes(8-4)
+        //        "fldcw 4(%rsp)\n\t" // 4 Bytes(4-2)
+        //        "addq $16,%rsp\n\t" //16
 
 
         //"CLD\n\t"
@@ -985,7 +947,7 @@ inline bool getInHookBoolThreadLocal() {
 //pthread_mutex_t lock0 = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 static bool GDB_CTL_LOG = false;
 
-static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc) {
+static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
 
     //todo: The following two values are highly dependent on assembly code
     //Calculate fileID
@@ -1020,7 +982,7 @@ static void *cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbol
     bypassCHooks = SCALER_TRUE;
 
     DBG_LOGS("[Pre Hook] Thread:%lu File(%ld):%s, Func(%ld): %s RetAddr:%p", pthread_self(),
-             fileId, _this->pmParser.idFileMap.at(fileId).c_str(),
+             curSymbol.fileId, _this->pmParser.idFileMap.at(curSymbol.fileId).c_str(),
              extSymbolId, curSymbol.symbolName.c_str(), retOriFuncAddr);
 #ifdef PREHOOK_ONLY
     //skip afterhook
