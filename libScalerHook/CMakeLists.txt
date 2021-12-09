@@ -37,6 +37,11 @@ target_link_libraries(ScalerHook-HookManualAsm PUBLIC pthread dl nlohmann_json::
 target_compile_definitions(ScalerHook-HookManualAsm PUBLIC XED_ENCODER)
 target_compile_options(ScalerHook-HookManualAsm PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
 
+
+add_executable(ScalerRun
+        src/injector.cpp)
+
+
 #add_executable(ScalerHook-HookManualPtrace
 #        src/PtraceHookMain.cpp
 #        ${ScalerHookSrc}

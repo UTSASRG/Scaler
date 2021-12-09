@@ -2,6 +2,7 @@
 #include <util/hook/install.h>
 #include <util/tool/Logging.h>
 #include <dlfcn.h>
+#include <util/tool/FileTool.h>
 
 
 typedef int (*main_fn_t)(int, char **, char **);
@@ -246,6 +247,13 @@ extern "C" int __libc_start_main(main_fn_t, int, char **, void (*)(), void (*)()
 
 extern "C" int doubletake_libc_start_main(main_fn_t main_fn, int argc, char **argv, void (*init)(), void (*fini)(),
                                           void (*rtld_fini)(), void *stack_end) {
+    using namespace scaler;
+
+    std::string pathName;
+    std::string funcName;
+    extractFileName_Linux(std::string(argv[0]), pathName, funcName);
+    setenv("SCALER_WORKDIR", pathName.c_str(), true);
+    setenv("LD_PRELOAD", "", true);
     // Find the real __libc_start_main
     auto real_libc_start_main = (decltype(__libc_start_main) *) dlsym(RTLD_NEXT, "__libc_start_main");
     // Save the program's real main function

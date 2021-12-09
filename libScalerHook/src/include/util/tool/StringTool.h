@@ -1,5 +1,5 @@
-#ifndef SCALER_FILETOOL_H
-#define SCALER_FILETOOL_H
+#ifndef SCALER_STRTOOL_H
+#define SCALER_STRTOOL_H
 
 
 #include <cstddef>

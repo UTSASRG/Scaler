@@ -258,7 +258,6 @@ namespace scaler {
             char output[256];
             std::string funcName = "__%zu";
             sprintf(output, funcName.c_str(), curSymbol.scalerSymbolId);
-
             void *redzoneJumperAddr = dlsym(redzoneJumperDl, output);
             curSymbol.pseudoPltEntry = dlsym(pseudoPltDl, output);
 
@@ -270,8 +269,8 @@ namespace scaler {
             auto pltRedirectorCodeArr = fillDestAddr2PltRedirectorCode(redzoneJumperAddr);
 
             auto &curELFImgInfo = elfImgInfoMap[curSymbol.fileId];
-            DBG_LOGS("[%s] %s hooked (ID:%zd)", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
-                     curSymbol.scalerSymbolId);
+            //DBG_LOGS("[%s] %s hooked (ID:%zd)", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
+            //         curSymbol.scalerSymbolId);
             //Step6: Replace .plt.sec and .plt
             if (curELFImgInfo.pltSecStartAddr != nullptr) {
                 //.plt.sec table exists
@@ -515,7 +514,12 @@ namespace scaler {
 
         FILE *fp = NULL;
 
-        fp = fopen("./redzoneJumper.cpp", "w");
+        std::string execWorkDir(getenv("SCALER_WORKDIR"));
+
+        std::stringstream sstream;
+        sstream << execWorkDir << "/redzoneJumper.cpp";
+        DBG_LOGS("RedzoneJmper location=%s\n", sstream.str().c_str());
+        fp = fopen(sstream.str().c_str(), "w");
         unsigned int pos = 0;
         const char *name;
         int i;
@@ -555,15 +559,23 @@ namespace scaler {
         fprintf(fp, "}\n");
         fclose(fp);
         //compile it
-        int sysRet = system("gcc-9 -shared -fPIC ./redzoneJumper.cpp -o ./redzoneJumper.so");
+
+        sstream.str("");
+        sstream << "gcc-9 -shared -fPIC ";
+        sstream << execWorkDir << "/redzoneJumper.cpp ";
+        sstream << "-o ";
+        sstream << execWorkDir << "/redzoneJumper.so ";
+
+        DBG_LOGS("RedzoneJmper compilation command=%s\n", sstream.str().c_str());
+
+        int sysRet = system(sstream.str().c_str());
         if (sysRet < 0) {
             throwScalerException(ErrCode::COMPILATION_FAILED, "gcc compilation handler failed");
         }
 
-
-        std::stringstream ss;
-        ss << pmParser.curExecPath << "/redzoneJumper.so";
-        void *handle = dlopen(ss.str().c_str(),
+        sstream.str("");
+        sstream << execWorkDir << "/redzoneJumper.so";
+        void *handle = dlopen(sstream.str().c_str(),
                               RTLD_NOW);
         if (handle == NULL) {
             throwScalerException(ErrCode::HANDLER_LOAD_FAILED, "dlOpen failed");
@@ -602,7 +614,13 @@ namespace scaler {
     void *ExtFuncCallHookAsm::writeAndCompilePseudoPlt() {
         FILE *fp = NULL;
 
-        fp = fopen("./pseudoPlt.cpp", "w");
+        std::string execWorkDir(getenv("SCALER_WORKDIR"));
+
+        std::stringstream sstream;
+        sstream << execWorkDir << "/pseudoPlt.cpp";
+        DBG_LOGS("PseudoPlt location=%s\n", sstream.str().c_str());
+
+        fp = fopen(sstream.str().c_str(), "w");
         unsigned int pos = 0;
         const char *name;
         int i;
@@ -628,15 +646,22 @@ namespace scaler {
         }
         fprintf(fp, "}\n");
         fclose(fp);
-        int sysRet = system("gcc-9 -shared -fPIC ./pseudoPlt.cpp -o ./pseudoPlt.so");
+
+        sstream.str("");
+        sstream << "gcc-9 -shared -fPIC ";
+        sstream << execWorkDir << "/pseudoPlt.cpp ";
+        sstream << "-o ";
+        sstream << execWorkDir << "/pseudoPlt.so ";
+
+        int sysRet = system(sstream.str().c_str());
         if (sysRet < 0) {
             throwScalerException(ErrCode::COMPILATION_FAILED, "gcc compilation handler failed");
         }
 
 
-        std::stringstream ss;
-        ss << pmParser.curExecPath << "/pseudoPlt.so";
-        void *handle = dlopen(ss.str().c_str(),
+        sstream.str("");
+        sstream << execWorkDir << "/pseudoPlt.so";
+        void *handle = dlopen(sstream.str().c_str(),
                               RTLD_NOW);
         if (handle == NULL) {
             throwScalerException(ErrCode::HANDLER_LOAD_FAILED, "dlOpen failed");
