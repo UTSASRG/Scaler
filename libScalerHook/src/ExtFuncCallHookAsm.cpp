@@ -747,8 +747,6 @@ namespace scaler {
 //    POPZMM(1)\
 //    POPZMM(0)
 #define ASM_RESTORE_ENV_PREHOOK \
-    "addq $8,%rsp\n\t" \
-    \
     "popq %r10\n\t"\
     "popq %r9\n\t"\
     "popq %r8\n\t"\
@@ -757,11 +755,10 @@ namespace scaler {
     "popq %rdx\n\t"\
     "popq %rcx\n\t"\
     "popq %rax\n\t"\
-    \
-    "ldmxcsr (%rsp)\n\t" \
-    "fldcw 4(%rsp)\n\t" \
-    "addq $8,%rsp\n\t" \
 
+
+//"ldmxcsr (%rsp)\n\t" \
+//"fldcw 4(%rsp)\n\t" \
 //    "popq %r15\n\t"\
 //    "popq %r14\n\t"\
 //    "popq %r13\n\t"\
@@ -828,9 +825,9 @@ namespace scaler {
         //"pushq %r13\n\t" //8
         //"pushq %r14\n\t" //8
         //"pushq %r15\n\t" //8
-        "subq $8,%rsp\n\t" //8
-        "stmxcsr (%rsp)\n\t" // 4 Bytes(8-4)
-        "fnstcw 4(%rsp)\n\t" // 2 Bytes(4-2)
+        //"subq $8,%rsp\n\t" //8
+        //"stmxcsr (%rsp)\n\t" // 4 Bytes(8-4)
+        //"fnstcw 4(%rsp)\n\t" // 2 Bytes(4-2)
         //        "pushf\n\t" //forward flag (Store all)
         "pushq %rax\n\t" //8
         "pushq %rcx\n\t" //8
@@ -841,7 +838,7 @@ namespace scaler {
         "pushq %r9\n\t" //8
         "pushq %r10\n\t" //8
 
-        "subq $8,%rsp\n\t" //8  (16-byte allignment)
+        //"subq $8,%rsp\n\t" //8  (16-byte allignment)
 
         //rsp%10h=0
 //        PUSHZMM(0) //16
