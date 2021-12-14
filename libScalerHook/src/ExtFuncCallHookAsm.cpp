@@ -46,11 +46,11 @@ struct Context {
 
 scaler::ExtFuncCallHookAsm *scaler_extFuncCallHookAsm_thiz = nullptr;
 
-thread_local Context curContext;
+__thread Context *curContext __attribute((tls_model("initial-exec")));
 
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
-__thread uint8_t bypassCHooks = SCALER_TRUE; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
+__thread uint8_t bypassCHooks __attribute((tls_model("initial-exec"))) = SCALER_TRUE; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
 
 
 
@@ -62,7 +62,7 @@ public:
 
     ~DataSaver() {
         bypassCHooks = SCALER_TRUE;
-        assert(curContext.rawRecord != nullptr);
+        assert(curContext->rawRecord != nullptr);
         char fileName[255];
         DBG_LOGS("Save rawrecord %lu", pthread_self());
         sprintf(fileName, "scaler_time_%lu.bin", pthread_self());
@@ -70,18 +70,20 @@ public:
         //todo: check open success or not
         fp = fopen(fileName, "w");
         assert(fp != nullptr);
-        assert(curContext.rawRecord != nullptr);
+        assert(curContext->rawRecord != nullptr);
         const uint64_t &arrSize = scaler_extFuncCallHookAsm_thiz->allExtSymbol.getSize();
         const uint64_t &entrySize = sizeof(scaler::RawRecordEntry);
         fwrite(&arrSize, sizeof(uint64_t), 1, fp);
         fwrite(&entrySize, sizeof(uint64_t), 1, fp);
         //Write entire array
-        fwrite(curContext.rawRecord, sizeof(scaler::RawRecordEntry), arrSize, fp);
+        fwrite(curContext->rawRecord, sizeof(scaler::RawRecordEntry), arrSize, fp);
         //todo: check close success or not
         fclose(fp);
         //Only save once
-        delete[] curContext.rawRecord;
-        curContext.rawRecord = nullptr;
+        delete[] curContext->rawRecord;
+        curContext->rawRecord = nullptr;
+        free(curContext);
+        curContext = nullptr;
     }
 };
 
@@ -93,7 +95,8 @@ void initTLS() {
     //Initialize saving data structure
     //curContext.initializeMe = ~curContext.initializeMe;
     //saverElem.initializeMe = ~saverElem.initializeMe;
-    curContext.rawRecord = new scaler::RawRecordEntry[scaler_extFuncCallHookAsm_thiz->allExtSymbol.getSize()];
+    curContext = new Context();
+    curContext->rawRecord = new scaler::RawRecordEntry[scaler_extFuncCallHookAsm_thiz->allExtSymbol.getSize()];
     bypassCHooks = SCALER_FALSE;
 }
 
@@ -141,7 +144,7 @@ namespace scaler {
                 for (SymID scalerSymbolId:curElfImgInfo.scalerIdMap) {
                     auto &curSymbol = allExtSymbol[scalerSymbolId];
 
-                    if (curSymbol.type != STT_FUNC) {
+                    if (curSymbol.type != STT_FUNC || curSymbol.bind != STB_GLOBAL) {
                         continue;
                     }
 
@@ -1018,7 +1021,7 @@ static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
     /**
     * Counting (Bypass afterhook)
     */
-    Context *curContextPtr = &curContext;
+    Context *curContextPtr = curContext;
 
     assert(curContextPtr->rawRecord != nullptr);
 
@@ -1046,7 +1049,7 @@ pthread_mutex_t lock1 = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
 void *cAfterHookHandlerLinux() {
     bypassCHooks = SCALER_TRUE;
     auto &_this = scaler_extFuncCallHookAsm_thiz;
-    Context *curContextPtr = &curContext;
+    Context *curContextPtr = curContext;
 
     scaler::SymID extSymbolID = curContextPtr->extSymbolId.peekpop();
     //auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID);

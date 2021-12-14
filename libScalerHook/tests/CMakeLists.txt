@@ -124,6 +124,11 @@ target_include_directories(libScalerHook-demoapps-InlineFunc PUBLIC)
 target_link_libraries(libScalerHook-demoapps-InlineFunc ScalerHook-HookAuto)
 target_compile_options(libScalerHook-demoapps-InlineFunc PRIVATE ${TEST_FLAGS} -Werror)
 
+add_executable(libScalerHook-demoapps-Fork src/demoapps/TestFork.cpp)
+target_include_directories(libScalerHook-demoapps-Fork PUBLIC)
+target_link_libraries(libScalerHook-demoapps-Fork ScalerHook-HookAuto libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall)
+target_compile_options(libScalerHook-demoapps-Fork PRIVATE ${TEST_FLAGS} -Werror)
+
 add_executable(libScalerHook-proof-TestTLS src/demoapps/TestTLS.cpp)
 target_include_directories(libScalerHook-proof-TestTLS PUBLIC)
 target_link_libraries(libScalerHook-proof-TestTLS pthread)

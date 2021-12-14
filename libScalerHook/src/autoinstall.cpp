@@ -248,7 +248,7 @@ extern "C" int __libc_start_main(main_fn_t, int, char **, void (*)(), void (*)()
 extern "C" int doubletake_libc_start_main(main_fn_t main_fn, int argc, char **argv, void (*init)(), void (*fini)(),
                                           void (*rtld_fini)(), void *stack_end) {
     using namespace scaler;
-
+    //printf("libScalerHook\n");
     std::string pathName;
     std::string funcName;
     extractFileName_Linux(std::string(argv[0]), pathName, funcName);

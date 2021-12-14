@@ -7,7 +7,7 @@ namespace scaler {
     class FStack {
     public:
         inline bool isEmpty() const {
-            return stackTopIndex > 0;
+            return stackTopIndex == 0;
         }
 
         inline void push(const T &newELem) {
