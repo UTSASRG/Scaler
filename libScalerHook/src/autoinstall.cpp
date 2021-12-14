@@ -1,6 +1,8 @@
-#include <util/hook/install.h>
-#include <util/hook/ExtFuncCallHookBrkpoint.h>
 #include <util/tool/StringTool.h>
+#include <util/hook/install.h>
+#include <util/tool/Logging.h>
+#include <dlfcn.h>
+#include <util/tool/FileTool.h>
 
 
 typedef int (*main_fn_t)(int, char **, char **);
@@ -96,9 +98,13 @@ int doubletake_main(int argc, char **argv, char **envp) {
             return false;
         } else if (funcName == "__assert") {
             return false;
-        } else if (funcName == "termination_handler") {
+        } else if (funcName == "_dl_allocate_tls") {
             return false;
-        } else if (funcName == "start_threads") {
+        } else if (funcName == "_dl_allocate_tls_init") {
+            return false;
+        } else if (funcName == "__call_tls_dtors") {
+            return false;
+        } else if (funcName == "termination_handler") {
             return false;
         } else if (funcName == "receive_print_stats") {
             return false;
@@ -146,8 +152,6 @@ int doubletake_main(int argc, char **argv, char **envp) {
             return false;
         } else if (funcName == "__cxa_rethrow") {
             return false;
-        } else if (funcName == "__cxa_rethrow") {
-            return false;
         } else if (funcName == "__cxa_init_primary_exception") {
             return false;
         } else if (funcName == "__cxa_begin_catch") {
@@ -186,7 +190,6 @@ int doubletake_main(int argc, char **argv, char **envp) {
             //printf("%s\n", fileName.c_str());
             return true;
         }
-
     }, INSTALL_TYPE::ASM);
 
 //    //Initialization
@@ -244,6 +247,13 @@ extern "C" int __libc_start_main(main_fn_t, int, char **, void (*)(), void (*)()
 
 extern "C" int doubletake_libc_start_main(main_fn_t main_fn, int argc, char **argv, void (*init)(), void (*fini)(),
                                           void (*rtld_fini)(), void *stack_end) {
+    using namespace scaler;
+    //printf("libScalerHook\n");
+    std::string pathName;
+    std::string funcName;
+    extractFileName_Linux(std::string(argv[0]), pathName, funcName);
+    setenv("SCALER_WORKDIR", pathName.c_str(), true);
+    setenv("LD_PRELOAD", "", true);
     // Find the real __libc_start_main
     auto real_libc_start_main = (decltype(__libc_start_main) *) dlsym(RTLD_NEXT, "__libc_start_main");
     // Save the program's real main function

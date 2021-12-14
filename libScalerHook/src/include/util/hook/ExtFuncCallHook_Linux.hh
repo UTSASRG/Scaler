@@ -46,18 +46,19 @@ namespace scaler {
             void *pltSecEntry = nullptr;            //Pointer to a symbol's .plt.sec entry.
             void *addr = nullptr;                 //The address of a symbol. After a symbol is resolved, it's equal to *gotEntry; If the symbol is not resolve, it equals nullptr
             FileID fileId = -1;             //Store fileID for this symbol
-            SymID extSymbolId = -1;             //The id with respect to where this symbol is called. Store this symbol's ID (it's also called symbolID) //todo: change this to symbolID for consistency
+            SymID symIdInFile = -1;             //The id with respect to where this symbol is called. Store this symbol's ID (it's also called symbolID) //todo: change this to symbolID for consistency
+            SymID scalerSymbolId = -1; //todo: change the definition of symbol id so we only need to save one id. (Put all symbols in one list, one simple id corresponds to one symbol in a file. Same simple in different file is considered as different)
             FileID libraryFileID = -1;       //Store the libary file id that contains this
             void *pseudoPltEntry = nullptr;                   //A pointer to pseudoPltEntry
             int type = -1;
             int bind = -1;
 
-            void* oriPltSecCode=nullptr;
-            void* oriPltCode=nullptr;
+            void *oriPltSecCode = nullptr;
+            void *oriPltCode = nullptr;
 
             bool operator==(const ExtSymInfo &rho) const {
                 if (&rho != this) {
-                    return fileId == rho.fileId && extSymbolId == rho.extSymbolId;
+                    return fileId == rho.fileId && symIdInFile == rho.symIdInFile;
                 } else {
                     return true;
                 }
@@ -65,9 +66,9 @@ namespace scaler {
         };
 
 
-         /**
-         * ELF image (ELF file in memory) information.
-         */
+        /**
+        * ELF image (ELF file in memory) information.
+        */
         class ELFImgInfo {
         public:
 
@@ -126,14 +127,12 @@ namespace scaler {
             void *pltSecStartAddr = nullptr;                //The starting address of the PLT.SEC table
             void *pltSecEndAddr = nullptr;                  //The ending address of the PLT.SEC table
             ElfW(Dyn) *_DYNAMICAddr = nullptr;              //The staring address of _DYNAMIC
-
+            std::vector<SymID> scalerIdMap;
             // uint8_t *pseudoPlt = nullptr;                   //A pointer to pseudoPlt table
 
-            Vector<SymID> hookedExtSymbol;   //External symbol ids that has already been hooked
             //todo:memory leak
 
-            Vector<ExtSymInfo> allExtSymbol;      //All external symbols in ELF image
-            std::map<std::string, FuncID> funcIdMap;        //Mapping function name to it's id
+            //std::map<std::string, FuncID> funcIdMap;        //Mapping function name to it's id
             //todo: Check const for all variables
             ElfW(Rela) *relaPlt = nullptr;                            //The first .plt.rela entry in ELF iamge
             ElfW(Xword) relaPltCnt = 0;                         //The number of entries in relaPlt
@@ -158,8 +157,9 @@ namespace scaler {
         PmParser_Linux &pmParser;
         MemoryTool_Linux &memTool;
 
-        Vector<ELFImgInfo> elfImgInfoMap;         //Mapping fileID to ELFImgInfo
-
+        Vector<ELFImgInfo> elfImgInfoMap;//Mapping fileID to ELFImgInfo
+        Vector<SymID> hookedExtSymbol;//External symbol ids that has already been hooked
+        Vector<ExtSymInfo> allExtSymbol;//All external symbols in ELF image
 
         /**
          * Private constructor
@@ -211,7 +211,14 @@ namespace scaler {
 
         virtual void parseRelaSymbol(ELFImgInfo &curELFImgInfo, FileID curFileID);
 
-        bool isSymbolAddrResolved(ELFImgInfo &curImgInfo, ExtSymInfo &symInfo);
+        inline bool isSymbolAddrResolved(ExtSymInfo &symInfo) {
+            //Check whether its value has 6 bytes offset as its plt entry start address
+            int64_t myPltStartAddr = (int64_t) symInfo.pltEntry;
+            int64_t curGotAddr = (int64_t) *symInfo.gotEntry;
+            assert(symInfo.pltEntry != nullptr);
+            int64_t offset = curGotAddr - myPltStartAddr;
+            return offset > 6 || offset < -6;
+        }
     };
 
 }

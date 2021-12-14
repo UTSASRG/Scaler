@@ -124,6 +124,11 @@ target_include_directories(libScalerHook-demoapps-InlineFunc PUBLIC)
 target_link_libraries(libScalerHook-demoapps-InlineFunc ScalerHook-HookAuto)
 target_compile_options(libScalerHook-demoapps-InlineFunc PRIVATE ${TEST_FLAGS} -Werror)
 
+add_executable(libScalerHook-demoapps-Fork src/demoapps/TestFork.cpp)
+target_include_directories(libScalerHook-demoapps-Fork PUBLIC)
+target_link_libraries(libScalerHook-demoapps-Fork ScalerHook-HookAuto libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall)
+target_compile_options(libScalerHook-demoapps-Fork PRIVATE ${TEST_FLAGS} -Werror)
+
 add_executable(libScalerHook-proof-TestTLS src/demoapps/TestTLS.cpp)
 target_include_directories(libScalerHook-proof-TestTLS PUBLIC)
 target_link_libraries(libScalerHook-proof-TestTLS pthread)
@@ -138,7 +143,7 @@ add_executable(libScalerHook-parsecapps-aget
         src/parsecapps/aget/Resume.c
         src/parsecapps/aget/Signal.c)
 target_include_directories(libScalerHook-parsecapps-aget PUBLIC src/parsecapps/aget/include)
-target_link_libraries(libScalerHook-parsecapps-aget ScalerHook-HookAuto pthread dl)
+target_link_libraries(libScalerHook-parsecapps-aget ScalerHook-HookAuto dl)
 target_compile_options(libScalerHook-parsecapps-aget PRIVATE ${TEST_FLAGS})
 
 
@@ -158,6 +163,7 @@ target_link_libraries(libScalerHook-parsecapps-dedup ScalerHook-HookAuto pthread
         libcrypto.a
         libssl.a
         libz.a)
+target_compile_options(libScalerHook-parsecapps-dedup PRIVATE "-DPARALLEL")
 target_compile_options(libScalerHook-parsecapps-dedup PRIVATE ${TEST_FLAGS})
 
 
@@ -229,6 +235,9 @@ target_link_options(libScalerHook-proof-testMultithreadPrint PRIVATE "-z" "lazy"
 
 add_executable(libScalerHook-proof-SaveDataUponExit src/proofconcept/testSaveDataUponExit.cpp)
 target_link_libraries(libScalerHook-proof-SaveDataUponExit pthread)
+
+add_executable(libScalerHook-proof-threadlocalasmarray src/proofconcept/TestAccessThreadLocalArrayInAsm.cpp)
+target_link_libraries(libScalerHook-proof-threadlocalasmarray pthread)
 
 
 #add_executable(libScalerHook-demoapps src/proofconcept/testprog.cpp)

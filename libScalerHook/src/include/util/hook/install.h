@@ -1,7 +1,7 @@
 
-
-
 #include "hook.hh"
+
+static bool PRELOADED = false;
 
 enum INSTALL_TYPE {
     ASM = 0,

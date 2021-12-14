@@ -91,17 +91,19 @@ extern "C" {
  * @return Original function pointer
  */
 __attribute__((used)) static void *
-cPreHookHandlerLinux(scaler::FileID fileId, scaler::SymID extSymbolId, void *callerAddr, void *rspLoc);
+cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr);
 
 
 __attribute__((used)) static void *cAfterHookHandlerLinux();
 
 }
 
+extern "C" {
+int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)(void *), void *arg);
+//void pthread_exit(void *__retval);
+}
 
 #endif
 
 #endif
 
-
-void *print_message_function1(void *ptr);

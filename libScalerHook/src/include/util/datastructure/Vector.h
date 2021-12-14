@@ -73,15 +73,17 @@ namespace scaler {
 
         //todo: Check initialized
         explicit Vector(const ssize_t &initialSize = 4096) : internalArrSize(initialSize), size(0), beginIter(this),
-                                                          endIter(this), rbeginIter(this), rendIter(this) {
-            internalArr = new T[initialSize];
+                                                             endIter(this), rbeginIter(this), rendIter(this) {
+            if (initialSize > 0) {
+                internalArr = new T[initialSize];
+            }
         }
 
         Vector(const Vector &rho) : Vector() {
             operator=(rho);
         }
 
-        ~Vector() {
+        virtual ~Vector() {
             if (internalArr)
                 delete[] internalArr;
         }
@@ -100,17 +102,17 @@ namespace scaler {
             return *this;
         };
 
-        bool isEmpty() const {
+        virtual bool isEmpty() const {
             return size == 0;
         }
 
-        inline T &operator[](const ssize_t &index) {
+        virtual inline T &operator[](const ssize_t &index) {
             assert(0 <= index && index < size);
             assert(internalArr != nullptr);
             return internalArr[index];
         }
 
-        inline void erase(const ssize_t &index) {
+        virtual inline void erase(const ssize_t &index) {
             assert(0 <= index && index < size);
             for (int i = index + 1; i < size; ++i) {
                 internalArr[i - 1] = internalArr[i];
@@ -118,20 +120,7 @@ namespace scaler {
             size -= 1;
         }
 
-        void expand() {
-            exit(-15);
-            T *oldInternalArr = internalArr;
-            T *newInternalArr = new T[internalArrSize * 2];
-            for (int i = 0; i < internalArrSize; ++i) {
-                newInternalArr[i] = oldInternalArr[i];
-            }
-            internalArrSize *= 2;
-            delete[] oldInternalArr;
-            oldInternalArr = nullptr;
-            internalArr = newInternalArr;
-        }
-
-        void insertAt(const ssize_t &index, const T &newElem) {
+        virtual void insertAt(const ssize_t &index, const T &newElem) {
             assert(0 <= index && index <= size);
             if (size == internalArrSize)
                 expand();
@@ -142,16 +131,24 @@ namespace scaler {
             size += 1;
         }
 
-        inline void pushBack(const T &newElem) {
+        virtual inline void pushBack(const T &newElem) {
             insertAt(size, newElem);
         }
 
+        virtual inline void pushBack(const T &&newElem) {
+            insertAt(size, std::move(newElem));
+        }
 
-        inline ssize_t getSize() {
+
+        virtual inline ssize_t getSize() {
             return size;
         }
 
-        void clear() {
+        virtual inline bool willExpand() {
+            return size == internalArrSize;
+        }
+
+        virtual inline void clear() {
             size = 0;
         }
 
@@ -175,6 +172,10 @@ namespace scaler {
             return rendIter;
         }
 
+        const T *data() const {
+            return internalArr;
+        }
+
     protected:
         ssize_t internalArrSize = 0;
         ssize_t size = 0;
@@ -184,6 +185,18 @@ namespace scaler {
         VectorIterator<T> endIter;
         VectorIterator<T> rbeginIter;
         VectorIterator<T> rendIter;
+        bool saveContentOnExit;
+        virtual void expand() {
+            T *oldInternalArr = internalArr;
+            T *newInternalArr = new T[internalArrSize * 2];
+            for (int i = 0; i < internalArrSize; ++i) {
+                newInternalArr[i] = oldInternalArr[i];
+            }
+            internalArrSize *= 2;
+            delete[] oldInternalArr;
+            oldInternalArr = nullptr;
+            internalArr = newInternalArr;
+        }
     };
 
 

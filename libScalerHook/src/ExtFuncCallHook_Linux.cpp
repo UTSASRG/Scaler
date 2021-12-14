@@ -200,15 +200,19 @@ namespace scaler {
                 }
 
                 newSymbol.fileId = curFileID;
-                newSymbol.extSymbolId = i;
+                //newSymbol.symIdInFile = i; This should be determined by plt scanning process
+                newSymbol.symIdInFile = i;
+
 
                 if (newSymbol.symbolName == "") {
                     ss.str("");
                     ss << "func" << i;
                     newSymbol.symbolName = ss.str();
                 }
-                curELFImgInfo.funcIdMap[newSymbol.symbolName] = i;
-                curELFImgInfo.allExtSymbol.pushBack(newSymbol);
+                newSymbol.scalerSymbolId = allExtSymbol.getSize();
+                allExtSymbol.pushBack(newSymbol);
+
+                curELFImgInfo.scalerIdMap.push_back(newSymbol.scalerSymbolId);
             } catch (const ScalerException &e) {
                 //Remove current entry
                 elfImgInfoMap[curFileID].elfImgValid = false;
@@ -219,6 +223,8 @@ namespace scaler {
     }
 
     void ExtFuncCallHook_Linux::saveAllSymbolId() {
+        assert(false);
+        //drprecated saving function, needs update to be compatible with the latest version
         using Json = nlohmann::json;
 
         Json outFile;
@@ -230,15 +236,11 @@ namespace scaler {
             outFile[std::to_string(i)]["funcNames"] = Json();
         }
 
-        for (FileID curFileID = 0; curFileID < elfImgInfoMap.getSize(); ++curFileID) {
-            auto &curELFImgInfo = elfImgInfoMap[curFileID];
-            if (curELFImgInfo.elfImgValid) {
-                for (SymID hookedSymId:curELFImgInfo.hookedExtSymbol) {
-                    const auto &curSymbol = curELFImgInfo.allExtSymbol[hookedSymId];
-                    outFile[std::to_string(curSymbol.libraryFileID)]["funcNames"][std::to_string(int64_t(
-                            curSymbol.addr))] = curSymbol.symbolName;
-                }
-            }
+
+        for (SymID hookedSymId:hookedExtSymbol) {
+            const auto &curSymbol = allExtSymbol[hookedSymId];
+//            outFile[std::to_string(curSymbol.libraryFileID)]["funcNames"][std::to_string(int64_t(
+//                    curSymbol.addr))] = curSymbol.symbolName;
         }
 
         char fileName[255];
@@ -266,17 +268,9 @@ namespace scaler {
 
     }
 
-    bool ExtFuncCallHook_Linux::isSymbolAddrResolved(ExtFuncCallHook_Linux::ELFImgInfo &curImgInfo,
-                                                     ExtFuncCallHook_Linux::ExtSymInfo &symInfo) {
-        //Check whether its value has 6 bytes offset as its plt entry start address
-        int64_t myPltStartAddr = (int64_t) symInfo.pltEntry;
-        int64_t curGotAddr = (int64_t) *symInfo.gotEntry;
-        assert(symInfo.pltEntry!= nullptr);
-        return abs(curGotAddr - myPltStartAddr) > 6;
-    }
 
 
-    ExtFuncCallHook_Linux::ELFImgInfo::ELFImgInfo() : hookedExtSymbol() {
+    ExtFuncCallHook_Linux::ELFImgInfo::ELFImgInfo() {
 
     }
 
