@@ -122,6 +122,8 @@ namespace scaler {
 
 
     void ExtFuncCallHookAsm::install(Hook::SYMBOL_FILTER filterCallB) {
+        auto ldPreloadVal = getenv("LD_PRELOAD");
+        setenv("LD_PRELOAD", "", true);
         //load plt hook address
         if (!pthread_create_orig) {
             pthread_create_orig = (pthread_create_origt) dlsym(RTLD_NEXT, "pthread_create");
@@ -330,6 +332,9 @@ namespace scaler {
 
         //Allocate tls storage, set hook type to FULL
         initTLS();
+        if (ldPreloadVal) {
+            setenv("LD_PRELOAD", ldPreloadVal, true);
+        }
     }
 
     //thread_local SerilizableInvocationTree invocationTree;
@@ -520,7 +525,7 @@ namespace scaler {
         std::string execWorkDir(getenv("SCALER_WORKDIR"));
 
         std::stringstream sstream;
-        sstream << execWorkDir << "/redzoneJumper.cpp";
+        sstream << execWorkDir << "/redzoneJumper-" << getpid() << ".cpp";
         DBG_LOGS("RedzoneJmper location=%s\n", sstream.str().c_str());
         fp = fopen(sstream.str().c_str(), "w");
         unsigned int pos = 0;
@@ -565,9 +570,9 @@ namespace scaler {
 
         sstream.str("");
         sstream << "gcc-9 -shared -fPIC ";
-        sstream << execWorkDir << "/redzoneJumper.cpp ";
+        sstream << execWorkDir << "/redzoneJumper-" << getpid() << ".cpp ";
         sstream << "-o ";
-        sstream << execWorkDir << "/redzoneJumper.so ";
+        sstream << execWorkDir << "/redzoneJumper-" << getpid() << ".so ";
 
         DBG_LOGS("RedzoneJmper compilation command=%s\n", sstream.str().c_str());
 
@@ -577,7 +582,7 @@ namespace scaler {
         }
 
         sstream.str("");
-        sstream << execWorkDir << "/redzoneJumper.so";
+        sstream << execWorkDir << "/redzoneJumper-" << getpid() << ".so";
         void *handle = dlopen(sstream.str().c_str(),
                               RTLD_NOW);
         if (handle == NULL) {
@@ -620,7 +625,7 @@ namespace scaler {
         std::string execWorkDir(getenv("SCALER_WORKDIR"));
 
         std::stringstream sstream;
-        sstream << execWorkDir << "/pseudoPlt.cpp";
+        sstream << execWorkDir << "/pseudoPlt-" << getpid() << ".cpp";
         DBG_LOGS("PseudoPlt location=%s\n", sstream.str().c_str());
 
         fp = fopen(sstream.str().c_str(), "w");
@@ -652,9 +657,9 @@ namespace scaler {
 
         sstream.str("");
         sstream << "gcc-9 -shared -fPIC ";
-        sstream << execWorkDir << "/pseudoPlt.cpp ";
+        sstream << execWorkDir << "/pseudoPlt-" << getpid() << ".cpp ";
         sstream << "-o ";
-        sstream << execWorkDir << "/pseudoPlt.so ";
+        sstream << execWorkDir << "/pseudoPlt-" << getpid() << ".so ";
 
         int sysRet = system(sstream.str().c_str());
         if (sysRet < 0) {
@@ -663,7 +668,7 @@ namespace scaler {
 
 
         sstream.str("");
-        sstream << execWorkDir << "/pseudoPlt.so";
+        sstream << execWorkDir << "/pseudoPlt-" << getpid() << ".so";
         void *handle = dlopen(sstream.str().c_str(),
                               RTLD_NOW);
         if (handle == NULL) {
@@ -685,7 +690,10 @@ namespace scaler {
                     //todo: use xed to parse operators
                     int *pltStubId = reinterpret_cast<int *>(curAddr + 7);
                     auto &curSymbol = allExtSymbol[curELFImgInfo.scalerIdMap[*pltStubId]];
-                    assert(curSymbol.symIdInFile == *pltStubId);
+                    if (curSymbol.symIdInFile != *pltStubId) {
+                        fprintf(stderr, "Cannot parse correct symbol id");
+                        exit(-15);
+                    }
                     curSymbol.pltEntry = curAddr;
                     curSymbol.pltSecEntry = (char *) curELFImgInfo.pltSecStartAddr;
                     //DBG_LOGS("%s pltStub=%d", curELFImgInfo.filePath.c_str(), *pltStubId);
@@ -1026,8 +1034,10 @@ static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
     assert(curContextPtr->rawRecord != nullptr);
 
     ++curContextPtr->rawRecord[extSymbolId].counting;
-//    bypassCHooks = SCALER_FALSE;
-//    asm __volatile__ ("movq $1234, %rdi");
+
+    //Skip afterhook
+//    asm volatile ("movq $1234, %%rdi" : /* No outputs. */
+//    :/* No inputs. */:"rdi");
 //    return retOriFuncAddr;
 
     /**

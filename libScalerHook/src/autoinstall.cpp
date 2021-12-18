@@ -12,6 +12,7 @@ main_fn_t real_main;
 std::string execFileName;
 
 int doubletake_main(int argc, char **argv, char **envp) {
+    printf("libscalerhook %s\n",argv[0]);
     //todo: support different running modes
     DBG_LOG("Installing plthook");
     install([](std::string fileName, std::string funcName) -> bool {
@@ -249,11 +250,10 @@ extern "C" int doubletake_libc_start_main(main_fn_t main_fn, int argc, char **ar
                                           void (*rtld_fini)(), void *stack_end) {
     using namespace scaler;
     //printf("libScalerHook\n");
-    std::string pathName;
-    std::string funcName;
-    extractFileName_Linux(std::string(argv[0]), pathName, funcName);
-    setenv("SCALER_WORKDIR", pathName.c_str(), true);
-    setenv("LD_PRELOAD", "", true);
+    //std::string pathName;
+    //std::string funcName;
+    //extractFileName_Linux(std::string(argv[0]), pathName, funcName);
+    setenv("SCALER_WORKDIR", "/media/umass/datasystem/steven/Scaler/cmake-build-release/libScalerHook/tests", true);
     // Find the real __libc_start_main
     auto real_libc_start_main = (decltype(__libc_start_main) *) dlsym(RTLD_NEXT, "__libc_start_main");
     // Save the program's real main function
