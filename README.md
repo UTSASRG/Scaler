@@ -19,7 +19,8 @@ What type of contributions:
 5. We could know the series of function calls and their related information, which is impossible to know when using perf or other tools. We could support 2-phase profiling, where the first level is to identify the possible issue inside the execution, and then the second execution is to collect more fine-grained information. 
 
 Possible shortcomings: 
-This is not able to detect cache-related issues. Therefore, can combine with cache-related tools to consist of a full set of tools for performance analysis. 
+1. This is not able to detect cache-related issues. Therefore, can combine with cache-related tools to consist of a full set of tools for performance analysis. 
+2. It is not very easy to recognize whether there are some issues, which shares the same shortcoming with all time-based profilers, such as perf. For instance, we know that swpations runs very slow with Hoard, but how we can know whether Hoard introduces some performance issues? MemPerf could detect lots of lock contention and predict the performance issue. But Scaler could only detect that much time has been spent inside Hoard. This can provide some guidelines where to predict. 
 
 ## Exchanges with other people
 
