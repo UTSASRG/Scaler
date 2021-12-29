@@ -1,9 +1,6 @@
 [submodule "libScalerHook/tests/lib/plthook"]
 	path = libScalerHook/tests/lib/plthook
 	url = https://github.com/kubo/plthook.git
-[submodule "libScalerHook/tests/lib/multithreadingtests"]
-	path = libScalerHook/tests/lib/multithreadingtests
-	url = https://github.com/UTSASRG/multithreadingtests.git
 [submodule "libScalerHook/lib/json"]
 	path = libScalerHook/lib/json
 	url = https://github.com/nlohmann/json.git
