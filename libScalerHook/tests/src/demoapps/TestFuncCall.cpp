@@ -2,10 +2,8 @@
 #include <FuncWithDiffParms.h>
 #include <CallFunctionCall.h>
 #include <TenThousandFunc.h>
-#include <util/hook/install.h>
 #include <sys/prctl.h>
 #include <thread>
-#include <util/tool/MemTool.h>
 #include <cassert>
 
 using namespace std;

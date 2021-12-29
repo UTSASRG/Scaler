@@ -25,9 +25,9 @@
 #include <util/datastructure/FStack.h>
 #include <type/InvocationTree.h>
 
-extern "C" {
-#include "xed/xed-interface.h"
-}
+//extern "C" {
+//#include "xed/xed-interface.h"
+//}
 //todo: many functions are too long
 
 //#define PREHOOK_ONLY
