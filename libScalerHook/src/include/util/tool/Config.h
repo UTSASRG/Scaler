@@ -26,7 +26,6 @@ namespace scaler {
         template<typename CONFIG_TYPE>
         CONFIG_TYPE get(std::string section, std::string name, CONFIG_TYPE default_value) const {
             throwScalerException(ErrCode::FUNC_NOT_IMPLEMENTED, "Function not implemented");
-            return std::string();
         }
 
     protected:

@@ -1,7 +1,3 @@
-//
-// Created by steven on 6/26/21.
-//
-
 #include <c++/7/string>
 #include <util/tool/Config.h>
 #include <c++/7/sstream>

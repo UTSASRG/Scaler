@@ -69,7 +69,10 @@ public:
         FILE *fp = NULL;
         //todo: check open success or not
         fp = fopen(fileName, "w");
-        assert(fp != nullptr);
+        if (!fp) {
+            ERR_LOGS("Fail to create file, reason:%s", strerror(errno));
+            exit(-1);
+        }
         assert(curContext->rawRecord != nullptr);
         const uint64_t &arrSize = scaler_extFuncCallHookAsm_thiz->allExtSymbol.getSize();
         const uint64_t &entrySize = sizeof(scaler::RawRecordEntry);
@@ -96,7 +99,10 @@ void initTLS() {
     //curContext.initializeMe = ~curContext.initializeMe;
     //saverElem.initializeMe = ~saverElem.initializeMe;
     curContext = new Context();
+    assert(curContext != nullptr);
     curContext->rawRecord = new scaler::RawRecordEntry[scaler_extFuncCallHookAsm_thiz->allExtSymbol.getSize()];
+    assert(curContext->rawRecord);
+
     bypassCHooks = SCALER_FALSE;
 }
 
@@ -123,16 +129,21 @@ namespace scaler {
 
     void ExtFuncCallHookAsm::install(Hook::SYMBOL_FILTER filterCallB) {
         auto ldPreloadVal = getenv("LD_PRELOAD");
-        setenv("LD_PRELOAD", "", true);
+        if (setenv("LD_PRELOAD", "", true) != 0) {
+            ERR_LOGS("Cannot set environment variable, reason: %s", strerror(errno));
+            exit(-1);
+        }
         //load plt hook address
         if (!pthread_create_orig) {
             pthread_create_orig = (pthread_create_origt) dlsym(RTLD_NEXT, "pthread_create");
+            assert(pthread_create_orig);
         }
 
         memTool = MemoryTool_Linux::getInst();
         scaler_extFuncCallHookAsm_thiz = this;
 
         //Step1: Locating table in memory
+        DBG_LOG("Locating required segments from ELF file");
         locateRequiredSecAndSeg();
 
         //Step3: Use callback to determine which ID to hook
@@ -168,88 +179,18 @@ namespace scaler {
                                      curSymbol.symbolName.c_str(), e.info.c_str());
                             continue;
                         }
-
-                        //Since it's external symbol, it's address must be in another file.
-
-
-                        //If the function name matches common pthread functions. Store the function id in advance
-//                        if (curSymbol.symbolName == "pthread_create") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_CREATE = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_join") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_JOIN = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_tryjoin_np") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_TRYJOIN_NP = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_timedjoin_np") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_TIMEDJOIN_NP = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_clockjoin_np") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_CLOCKJOIN_NP = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_mutex_lock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_LOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_mutex_timedlock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_TIMEDLOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_mutex_clocklock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_CLOCKLOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_mutex_unlock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_MUTEX_UNLOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_rwlock_rdlock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_RDLOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_rwlock_tryrdlock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TRYRDLOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_rwlock_timedrdlock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TIMEDRDLOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_rwlock_clockrdlock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_CLOCKRDLOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_rwlock_wrlock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_WRLOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_rwlock_trywrlock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TRYWRLOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_rwlock_timedwrlock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_TIMEDWRLOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_rwlock_clockwrlock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_CLOCKWRLOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_rwlock_unlock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_RWLOCK_UNLOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_cond_signal") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_COND_SIGNAL = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_cond_broadcast") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_COND_BROADCAST = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_cond_wait") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_COND_WAIT = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_cond_timedwait") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_COND_TIMEDWAIT = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_cond_clockwait") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_COND_CLOCKWAIT = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_spin_lock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_LOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_spin_trylock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_TRYLOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_spin_unlock") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_SPIN_UNLOCK = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "pthread_barrier_wait") {
-//                            curElfImgInfo.pthreadExtSymbolId.PTHREAD_BARRIER_WAIT = scalerSymbolId;
-//                        }
-//
-//                        if (curSymbol.symbolName == "sem_wait") {
-//                            curElfImgInfo.semaphoreExtSymbolId.SEM_WAIT = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "sem_timedwait") {
-//                            curElfImgInfo.semaphoreExtSymbolId.SEM_TIMEDWAIT = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "sem_clockwait") {
-//                            curElfImgInfo.semaphoreExtSymbolId.SEM_CLOCKWAIT = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "sem_trywait") {
-//                            curElfImgInfo.semaphoreExtSymbolId.SEM_TRYWAIT = scalerSymbolId;
-//                        } else if (curSymbol.symbolName == "sem_post") {
-//                            curElfImgInfo.semaphoreExtSymbolId.SEM_POST = scalerSymbolId;
-//                        }
                     }
                 }
             }
         }
 
         //Step4: Build pseodo PLT
+        DBG_LOG("Write and compile pseudo plt");
         void *pseudoPltDl = writeAndCompilePseudoPlt();
         //Step5: Write redzone jumper code to file
+        DBG_LOG("Write and compile redzone jumper");
         void *redzoneJumperDl = writeAndCompileRedzoneJumper();
-
+        DBG_LOG("Parse plt entry address");
         parsePltEntryAddress();
 
         //Step6: Replace PLT table, jmp to dll function
@@ -522,12 +463,21 @@ namespace scaler {
 
         FILE *fp = NULL;
 
-        std::string execWorkDir(getenv("SCALER_WORKDIR"));
+        std::string execWorkDir;
+        if (!getPWD(execWorkDir)) {
+            ERR_LOG("Cannot open PWD");
+            exit(-1);
+        }
 
         std::stringstream sstream;
         sstream << execWorkDir << "/redzoneJumper-" << getpid() << ".cpp";
         DBG_LOGS("RedzoneJmper location=%s\n", sstream.str().c_str());
         fp = fopen(sstream.str().c_str(), "w");
+        if(!fp){
+            ERR_LOG("Cannot open compiled redzone jumper. Check compilation is successful or not.");
+            exit(-1);
+        }
+
         unsigned int pos = 0;
         const char *name;
         int i;
@@ -569,7 +519,7 @@ namespace scaler {
         //compile it
 
         sstream.str("");
-        sstream << "gcc-9 -shared -fPIC ";
+        sstream << "gcc -shared -fPIC ";
         sstream << execWorkDir << "/redzoneJumper-" << getpid() << ".cpp ";
         sstream << "-o ";
         sstream << execWorkDir << "/redzoneJumper-" << getpid() << ".so ";
@@ -577,8 +527,9 @@ namespace scaler {
         DBG_LOGS("RedzoneJmper compilation command=%s\n", sstream.str().c_str());
 
         int sysRet = system(sstream.str().c_str());
-        if (sysRet < 0) {
-            throwScalerException(ErrCode::COMPILATION_FAILED, "gcc compilation handler failed");
+        if (sysRet!=0) {
+            ERR_LOG( "gcc compilation handler failed");
+            exit(-1);
         }
 
         sstream.str("");
@@ -586,7 +537,8 @@ namespace scaler {
         void *handle = dlopen(sstream.str().c_str(),
                               RTLD_NOW);
         if (handle == NULL) {
-            throwScalerException(ErrCode::HANDLER_LOAD_FAILED, "dlOpen failed");
+            ERR_LOG("Cannot open compiled redzone jumper");
+            exit(-1);
         }
         return handle;
     }
@@ -621,14 +573,23 @@ namespace scaler {
     */
     void *ExtFuncCallHookAsm::writeAndCompilePseudoPlt() {
         FILE *fp = NULL;
-
-        std::string execWorkDir(getenv("SCALER_WORKDIR"));
+        char tmp[PATH_MAX];
+        std::string execWorkDir;
+        if (!getPWD(execWorkDir)) {
+            ERR_LOG("Cannot get pwd");
+            exit(-1);
+        }
 
         std::stringstream sstream;
         sstream << execWorkDir << "/pseudoPlt-" << getpid() << ".cpp";
         DBG_LOGS("PseudoPlt location=%s\n", sstream.str().c_str());
 
         fp = fopen(sstream.str().c_str(), "w");
+        if (!fp) {
+            ERR_LOGS("Fail to create file, reason:%s", strerror(errno));
+            exit(-1);
+        }
+
         unsigned int pos = 0;
         const char *name;
         int i;
@@ -656,23 +617,24 @@ namespace scaler {
         fclose(fp);
 
         sstream.str("");
-        sstream << "gcc-9 -shared -fPIC ";
+        sstream << "gcc -shared -fPIC ";
         sstream << execWorkDir << "/pseudoPlt-" << getpid() << ".cpp ";
         sstream << "-o ";
         sstream << execWorkDir << "/pseudoPlt-" << getpid() << ".so ";
 
         int sysRet = system(sstream.str().c_str());
-        if (sysRet < 0) {
-            throwScalerException(ErrCode::COMPILATION_FAILED, "gcc compilation handler failed");
+        if (sysRet != 0) {
+            ERR_LOG("Pseudo plt compilation failed");
+            exit(-1);
         }
-
 
         sstream.str("");
         sstream << execWorkDir << "/pseudoPlt-" << getpid() << ".so";
         void *handle = dlopen(sstream.str().c_str(),
                               RTLD_NOW);
-        if (handle == NULL) {
-            throwScalerException(ErrCode::HANDLER_LOAD_FAILED, "dlOpen failed");
+        if (!handle) {
+            ERR_LOGS("dlOpen failed, reason: %s", strerror(errno));
+            exit(-1);
         }
         return handle;
     }

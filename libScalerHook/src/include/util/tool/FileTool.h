@@ -31,6 +31,8 @@ namespace scaler {
     std::vector<ssize_t> findStrSplit(std::string &srcStr, char splitChar);
 
     void extractFileName_Linux(std::string absolutePath, std::string &pathName, std::string &fileName);
+
+    bool getPWD(std::string& retPwdPath);
 }
 
 
