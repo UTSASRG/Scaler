@@ -127,7 +127,7 @@ namespace scaler {
     ExtFuncCallHookAsm *ExtFuncCallHookAsm::instance = nullptr;
 
 
-    void ExtFuncCallHookAsm::install(Hook::SYMBOL_FILTER filterCallB) {
+    bool ExtFuncCallHookAsm::install(Hook::SYMBOL_FILTER filterCallB) {
         auto ldPreloadVal = getenv("LD_PRELOAD");
         if (setenv("LD_PRELOAD", "", true) != 0) {
             ERR_LOGS("Cannot set environment variable, reason: %s", strerror(errno));
@@ -281,8 +281,8 @@ namespace scaler {
     //thread_local SerilizableInvocationTree invocationTree;
     //thread_local InvocationTreeNode *curNode = &invocationTree.treeRoot;
 
-    ExtFuncCallHookAsm::ExtFuncCallHookAsm() : ExtFuncCallHook_Linux(pmParser,
-                                                                     *MemoryTool_Linux::getInst()) {
+    ExtFuncCallHookAsm::ExtFuncCallHookAsm() : ExtFuncCallHook(pmParser,
+                                                               *MemoryTool_Linux::getInst()) {
         //invocationTree.libPltHook = this;
     }
 
@@ -293,7 +293,7 @@ namespace scaler {
     }
 
 
-    void ExtFuncCallHookAsm::uninstall() {
+    bool ExtFuncCallHookAsm::uninstall() {
         //todo: release oriPltCode oriPltSecCode
         //Decallocate recordbuffer for main thread
 

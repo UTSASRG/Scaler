@@ -1,6 +1,6 @@
 #ifdef __linux
 
-#include <util/hook/ExtFuncCallHook_Linux.hh>
+#include <util/hook/ExtFuncCallHook.hh>
 #include <util/tool/ProcInfoParser.h>
 #include <util/tool/ElfParser.h>
 #include <exceptions/ScalerException.h>
@@ -14,22 +14,31 @@
 #include <nlohmann/json.hpp>
 
 namespace scaler {
-    void ExtFuncCallHook_Linux::findELFSecInMemory(ELFParser_Linux &elfParser, std::string secName, void *&startAddr,
-                                                   void *endAddr, void *boundStartAddr, void *boundEndAddr) {
-        auto pltHdr = elfParser.getSecHdrByName(std::move(secName));
+    bool ExtFuncCallHook::findELFSecInMemory(ELFParser_Linux &elfParser, std::string secName, void *&startAddr,
+                                             void *endAddr, void *boundStartAddr, void *boundEndAddr) {
+        ELFParser_Linux::SecInfo pltHdr{};
+        if (!elfParser.getSecHdrByName(std::move(secName), pltHdr)) {
+            ERR_LOGS("Cannot find elf section in memory", secName.c_str());
+            return false;
+        }
 
         void *pltAddrInFile = elfParser.getSecContent(pltHdr);
+        if (!pltAddrInFile) {
+            ERR_LOG("Cannot find elf section in memory");
+            return false;
+        }
         startAddr = memTool.searchBinInMemory(pltAddrInFile, sizeof(pltHdr.secHdr.sh_entsize),
                                               pmParser.executableSegments, boundStartAddr, boundEndAddr);
-        if (startAddr == nullptr) {
-            throwScalerExceptionS(ErrCode::ELF_SECTION_NOT_FOUND_IN_MEM, "Can't find section %s", secName.c_str());
-        } else {
-            //We already have the starting address, let's calculate the end address
-            endAddr = (uint8_t *) startAddr + pltHdr.secHdr.sh_size;
+        if (!startAddr) {
+            ERR_LOGS("Can't find section %s", secName.c_str());
+            return false;
         }
+        //We already have the starting address, let's calculate the end address
+        endAddr = (uint8_t *) startAddr + pltHdr.secHdr.sh_size;
+        return true;
     }
 
-    void ExtFuncCallHook_Linux::locateRequiredSecAndSeg() {
+    bool ExtFuncCallHook::locateRequiredSecAndSeg() {
         //pmParser.printPM();
         //Get segment info from /proc/self/maps
         for (FileID curFileiD = 0; curFileiD < pmParser.idFileMap.size(); ++curFileiD) {
@@ -136,13 +145,13 @@ namespace scaler {
     }
 
 
-    ExtFuncCallHook_Linux::~ExtFuncCallHook_Linux() {
+    ExtFuncCallHook::~ExtFuncCallHook() {
 
     }
 
-    ExtFuncCallHook_Linux::ExtFuncCallHook_Linux(PmParser_Linux &parser, MemoryTool_Linux &memTool) : pmParser(parser),
-                                                                                                      memTool(memTool),
-                                                                                                      elfImgInfoMap() {
+    ExtFuncCallHook::ExtFuncCallHook(PmParser_Linux &parser, MemoryTool_Linux &memTool) : pmParser(parser),
+                                                                                          memTool(memTool),
+                                                                                          elfImgInfoMap() {
 
     }
 
@@ -151,7 +160,7 @@ namespace scaler {
     * This is a very important structure to find symbol table and relocation table in memory
     * _DYNAMIC should always exist.
     */
-    ElfW(Dyn) *ExtFuncCallHook_Linux::findDynamicSegment(ELFParser_Linux &elfParser) {
+    ElfW(Dyn) *ExtFuncCallHook::findDynamicSegment(ELFParser_Linux &elfParser) {
         auto dynamicHdr = elfParser.getProgHdrByType(PT_DYNAMIC);
         assert(dynamicHdr.size() == 1); //There should be only one _DYNAMIC
         ElfW(Dyn) *rltAddr = static_cast<ElfW(Dyn) *>( elfParser.getSegContent(dynamicHdr[0]));
@@ -161,7 +170,7 @@ namespace scaler {
         return rltAddr;
     }
 
-    void ExtFuncCallHook_Linux::parseRelaSymbol(ELFImgInfo &curELFImgInfo, FileID curFileID) {
+    void ExtFuncCallHook::parseRelaSymbol(ELFImgInfo &curELFImgInfo, FileID curFileID) {
         std::stringstream ss;
         for (ssize_t i = 0; i < curELFImgInfo.relaPltCnt; ++i) {
             ElfW(Rela) *curRelaPlt = curELFImgInfo.relaPlt + i;
@@ -222,7 +231,7 @@ namespace scaler {
         }
     }
 
-    void ExtFuncCallHook_Linux::saveAllSymbolId() {
+    void ExtFuncCallHook::saveAllSymbolId() {
         assert(false);
         //drprecated saving function, needs update to be compatible with the latest version
         using Json = nlohmann::json;
@@ -262,20 +271,19 @@ namespace scaler {
      * @param funcAddr
      * @param libraryFileID
      */
-    void ExtFuncCallHook_Linux::parseFuncInfo(FileID callerFileID, FileID symbolIDInCaller, void *&funcAddr,
-                                              FileID &libraryFileID) {
+    void ExtFuncCallHook::parseFuncInfo(FileID callerFileID, FileID symbolIDInCaller, void *&funcAddr,
+                                        FileID &libraryFileID) {
 
 
     }
 
 
-
-    ExtFuncCallHook_Linux::ELFImgInfo::ELFImgInfo() {
+    ExtFuncCallHook::ELFImgInfo::ELFImgInfo() {
 
     }
 
 
-    bool ExtFuncCallHook_Linux::ELFImgInfo::PthreadFuncId::isFuncPthread(FuncID funcID) {
+    bool ExtFuncCallHook::ELFImgInfo::PthreadFuncId::isFuncPthread(FuncID funcID) {
         return funcID == PTHREAD_CREATE ||
                funcID == PTHREAD_JOIN ||
                funcID == PTHREAD_TRYJOIN_NP ||
@@ -305,7 +313,7 @@ namespace scaler {
                funcID == PTHREAD_BARRIER_WAIT;
     }
 
-    std::vector<SymID> ExtFuncCallHook_Linux::ELFImgInfo::PthreadFuncId::getAllIds() {
+    std::vector<SymID> ExtFuncCallHook::ELFImgInfo::PthreadFuncId::getAllIds() {
         std::vector<SymID> result;
         result.begin()++;
         if (PTHREAD_CREATE != -1)
@@ -368,7 +376,7 @@ namespace scaler {
     }
 
 
-    bool ExtFuncCallHook_Linux::ELFImgInfo::SemaphoreFuncId::isFuncSemaphore(FuncID funcID) {
+    bool ExtFuncCallHook::ELFImgInfo::SemaphoreFuncId::isFuncSemaphore(FuncID funcID) {
         return funcID == SEM_WAIT ||
                funcID == SEM_TIMEDWAIT ||
                funcID == SEM_CLOCKWAIT ||
@@ -377,7 +385,7 @@ namespace scaler {
 
     }
 
-    std::vector<SymID> ExtFuncCallHook_Linux::ELFImgInfo::SemaphoreFuncId::getAllIds() {
+    std::vector<SymID> ExtFuncCallHook::ELFImgInfo::SemaphoreFuncId::getAllIds() {
         std::vector<SymID> result;
         if (SEM_WAIT != -1)
             result.push_back(SEM_WAIT);

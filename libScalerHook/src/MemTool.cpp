@@ -57,6 +57,9 @@ namespace scaler {
     MemoryTool *MemoryTool::getInst() {
         if (MemoryTool::instance == nullptr) {
             MemoryTool::instance = new MemoryTool();
+            if (!MemoryTool::instance) {
+                fatalError("Cannot allocate memory for MemoryTool");
+            }
         }
         return MemoryTool::instance;
     }

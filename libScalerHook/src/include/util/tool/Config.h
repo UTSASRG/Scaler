@@ -25,7 +25,8 @@ namespace scaler {
         // Get a string value from INI file, returning default_value if not found.
         template<typename CONFIG_TYPE>
         CONFIG_TYPE get(std::string section, std::string name, CONFIG_TYPE default_value) const {
-            throwScalerException(ErrCode::FUNC_NOT_IMPLEMENTED, "Function not implemented");
+            fatalError("Function not implemented");
+            return default_value;
         }
 
     protected:

@@ -1,5 +1,5 @@
-#ifndef SCALER_EXTFUNCCALLHOOK_LINUX_HH
-#define SCALER_EXTFUNCCALLHOOK_LINUX_HH
+#ifndef SCALER_EXTFUNCCALLHOOK_HH
+#define SCALER_EXTFUNCCALLHOOK_HH
 
 #include <util/hook/hook.hh>
 
@@ -17,7 +17,7 @@
 
 namespace scaler {
 
-    class ExtFuncCallHook_Linux : public Hook {
+    class ExtFuncCallHook : public Hook {
     public:
 
         virtual void install(SYMBOL_FILTER filterCallB) override = 0;
@@ -25,11 +25,11 @@ namespace scaler {
 
         virtual void uninstall() override = 0;
 
-        ExtFuncCallHook_Linux(ExtFuncCallHook_Linux &) = delete;
+        ExtFuncCallHook(ExtFuncCallHook &) = delete;
 
-        ExtFuncCallHook_Linux(ExtFuncCallHook_Linux &&) = delete;
+        ExtFuncCallHook(ExtFuncCallHook &&) = delete;
 
-        virtual ~ExtFuncCallHook_Linux() override = 0;
+        virtual ~ExtFuncCallHook() override = 0;
 
         virtual void parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr, FileID &libraryFileID);
 
@@ -164,17 +164,17 @@ namespace scaler {
         /**
          * Private constructor
          */
-        ExtFuncCallHook_Linux(PmParser_Linux &parser, MemoryTool_Linux &memTool);
+        ExtFuncCallHook(PmParser_Linux &parser, MemoryTool_Linux &memTool);
 
         /**
         * Locate the address of required sections in memory
         */
-        virtual void locateRequiredSecAndSeg();
+        virtual bool locateRequiredSecAndSeg();
 
         /**
         * Find elf section in memory and return start and end address
         */
-        virtual void
+        virtual bool
         findELFSecInMemory(ELFParser_Linux &elfParser, std::string secName, void *&startAddr, void *endAddr,
                            void *boundStartAddr, void *boundEndAddr);
 

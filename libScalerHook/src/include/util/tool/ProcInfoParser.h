@@ -169,7 +169,7 @@ namespace scaler {
         /**
              * Parse /proc/{pid}/maps into procMap
              */
-        virtual void parsePMMap();
+        virtual bool parsePMMap();
 
         bool addrInApplication(void* addr);
 
@@ -183,18 +183,17 @@ namespace scaler {
         /**
          * Open /proc/{pid}/maps
          */
-        virtual void openPMMap(std::ifstream &file);
+        virtual bool openPMMap(std::ifstream &file) const;
 
-        virtual void parseAddrStr(PMEntry_Linux& curEntry, const std::string& addrStr);
+        virtual bool parseAddrStr(PMEntry_Linux& curEntry, const std::string& addrStr);
 
-        virtual void parseOffsetStr(PMEntry_Linux& curEntry, const std::string& offsetStr);
+        virtual bool parseOffsetStr(PMEntry_Linux& curEntry, const std::string& offsetStr);
 
         virtual void parsePermStr(PMEntry_Linux& curEntry, const std::string& permStr);
 
         virtual void indexFile(PMEntry_Linux& curEntry);
 
 
-        virtual void curExecName();
 
 
         //todo: Build a library dependency graph

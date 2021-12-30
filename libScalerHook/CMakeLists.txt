@@ -10,7 +10,7 @@ add_subdirectory(lib/json)
 add_subdirectory(lib/watcher)
 
 set(ScalerHookSrc
-        src/ExtFuncCallHook_Linux.cpp
+        src/ExtFuncCallHook.cpp
         src/ExtFuncCallHookAsm.cpp
         src/ProcInfoParser.cpp
         src/ElfParser.cpp

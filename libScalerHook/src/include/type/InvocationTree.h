@@ -6,7 +6,7 @@
 #include <cassert>
 #include <string>
 #include <vector>
-#include <util/hook/ExtFuncCallHook_Linux.hh>
+#include <util/hook/ExtFuncCallHook.hh>
 
 namespace scaler {
 
@@ -22,9 +22,9 @@ namespace scaler {
         int64_t firstChildIndex = Type::UNSPECIFIED;
 
 
-        void load(FILE *fp) override;
+        bool load(FILE *fp) override;
 
-        void save(FILE *fp) override;
+        bool save(FILE *fp) override;
 
     };
 
@@ -74,7 +74,7 @@ namespace scaler {
             return childrenSize;
         }
 
-        inline void setStartTimestamp(ssize_t startTimestamp) {
+        inline void setStartTimestamp(const ssize_t& startTimestamp) {
             this->startTimestamp = startTimestamp;
         }
 
@@ -82,7 +82,7 @@ namespace scaler {
             return startTimestamp;
         }
 
-        inline void setEndTimestamp(ssize_t endTimeStamp) {
+        inline void setEndTimestamp(const ssize_t& endTimeStamp) {
             this->endTimeStamp = endTimeStamp;
         }
 
@@ -127,9 +127,9 @@ namespace scaler {
             return nextSibling;
         }
 
-        void load(FILE *fp) override;
+        bool load(FILE *fp) override;
 
-        void save(FILE *fp) override;
+        bool save(FILE *fp) override;
 
         InvocationTreeNode *addChild(InvocationTreeNode *childNode, ssize_t posi = -2);
 
@@ -144,9 +144,9 @@ namespace scaler {
         int64_t extraField1;
         int64_t extraField2;
 
-        void load(FILE *fp) override;
+        bool load(FILE *fp) override;
 
-        void save(FILE *fp) override;
+        bool save(FILE *fp) override;
 
     };
 
@@ -156,24 +156,24 @@ namespace scaler {
 
         int64_t extraField1;
 
-        void load(FILE *fp) override;
+        bool load(FILE *fp) override;
 
-        void save(FILE *fp) override;
+        bool save(FILE *fp) override;
     };
 
     class SerilizableInvocationTree : Serializable {
     public:
 
         InvocationTreeNode treeRoot;
-        scaler::ExtFuncCallHook_Linux *libPltHook;
+        scaler::ExtFuncCallHook *libPltHook;
 
         SerilizableInvocationTree();
 
         explicit SerilizableInvocationTree(std::string fileName);
 
-        void load(FILE *fp) override;
+        bool load(FILE *fp) override;
 
-        void save(FILE *fp) override;
+        bool save(FILE *fp) override;
 
         ~SerilizableInvocationTree() override;
 
@@ -182,7 +182,6 @@ namespace scaler {
         }
 
         std::vector<InvocationTreeNode *> serializeRootNode();
-
 
     protected:
         pthread_t tid = 0;

@@ -10,13 +10,13 @@
 #include <vector>
 #include <util/tool/ProcInfoParser.h>
 #include <util/tool/MemTool.h>
-#include "ExtFuncCallHook_Linux.hh"
+#include "ExtFuncCallHook.hh"
 #include <util/datastructure/Stack.h>
 #include <util/tool/AssemblyTool.h>
 
 namespace scaler {
 
-    class ExtFuncCallHookAsm : public ExtFuncCallHook_Linux {
+    class ExtFuncCallHookAsm : public ExtFuncCallHook {
     public:
 
         void install(SYMBOL_FILTER filterCallB) override;

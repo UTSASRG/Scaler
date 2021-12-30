@@ -8,9 +8,9 @@ namespace scaler {
     public:
         Serializable();
 
-        virtual void load(FILE *fp);
+        virtual bool load(FILE *fp);
 
-        virtual void save(FILE *fp);
+        virtual bool save(FILE *fp);
 
         virtual ~Serializable();
     };
