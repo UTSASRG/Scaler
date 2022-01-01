@@ -184,7 +184,7 @@ namespace scaler {
                         //The user wants this symbol
                         hookedExtSymbol.pushBack(scalerSymbolId);
 
-                        ERR_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd, %s, %zd",
+                        DBG_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd, %s, %zd",
                                  curElfImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.scalerSymbolId,curSymbol.symbolName.c_str(),curSymbol.symIdInFile);
 
                         //todo: adjust for all symbols in advance, rather than do them individually
@@ -288,7 +288,7 @@ namespace scaler {
                         curSymbol.pltSecEntry,
                         (uint8_t *) curSymbol.pltSecEntry + 16,
                         PROT_READ | PROT_WRITE | PROT_EXEC)) {
-                    ERR_LOGS("Failed to adjust memory permission for %s", curSymbol.symbolName.c_str());
+                    //ERR_LOGS("Failed to adjust memory permission for %s", curSymbol.symbolName.c_str());
                     continue;
                 }
 
@@ -775,7 +775,6 @@ namespace scaler {
 #define POPZMM(ArgumentName) \
 "vmovdqu64  (%rsp),%zmm"#ArgumentName"\n\t"\
 "addq $64,%rsp\n\t"
-
 
 /**
 * Restore Registers
