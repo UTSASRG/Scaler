@@ -46,8 +46,9 @@ namespace scaler {
 
             elfImgInfoMap.pushBack(ELFImgInfo());
             auto &curELFImgInfo = elfImgInfoMap[elfImgInfoMap.getSize() - 1];
+            curELFImgInfo.elfImgValid=false;
 
-            if (curFileName == ""||curFileName[0]=='[') {
+            if (curFileName == "" || curFileName[0] == '[') {
                 //We don't need noname process entry
                 continue;
             }
@@ -130,10 +131,9 @@ namespace scaler {
 
             if (!parseRelaSymbol(curELFImgInfo, curFileiD)) {
                 ERR_LOGS("Failed to parse relocation table in %s. Scaler won't hook this file.", curFileName.c_str());
-                curELFImgInfo.elfImgValid = false;
                 continue;
             }
-
+            curELFImgInfo.elfImgValid = true;
         }
 
         return true;
@@ -210,7 +210,9 @@ namespace scaler {
         std::stringstream ss;
         for (ssize_t i = 0; i < curELFImgInfo.relaPltCnt; ++i) {
             ElfW(Rela) *curRelaPlt = curELFImgInfo.relaPlt + i;
-            //assert(ELF64_R_TYPE(curRelaPlt->r_info) == R_X86_64_JUMP_SLOT);
+//            if (ELF64_R_TYPE(curRelaPlt->r_info) != R_X86_64_JUMP_SLOT) {
+//                continue;
+//            }
 
             ssize_t relIdx = ELFW(R_SYM)(curRelaPlt->r_info);
             ssize_t strIdx = curELFImgInfo.dynSymTable[relIdx].st_name;
