@@ -17,7 +17,15 @@ int doubletake_main(int argc, char **argv, char **envp) {
     DBG_LOG("Installing plthook");
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
-        if (funcName == "svcunix_rendezvous_abort") {
+
+
+        if (funcName == "__tls_get_addr") {
+            return false;
+        } else if (funcName == "_dl_sym") {
+            return false;
+        } else if (funcName == "_dl_find_dso_for_object") {
+            return false;
+        } else if (funcName == "svcunix_rendezvous_abort") {
             return false;
         } else if (funcName == "svctcp_rendezvous_abort") {
             return false;
