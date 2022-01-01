@@ -317,7 +317,8 @@ namespace scaler {
                 }
 
                 //Install hook code
-                memcpy((uint8_t *) curSymbol.pltEntry, redzoneJumperAddr, 16);
+                memcpy(curSymbol.pltEntry,
+                       pltRedirectorCodeArr.data(), 16);
                 DBG_LOGS("File=%s Symbol=%s(ID:%zd) .plt=%p hooked", curELFImgInfo.filePath.c_str(),
                          curSymbol.symbolName.c_str(), curSymbol.scalerSymbolId,
                          curSymbol.pltEntry);
@@ -715,8 +716,8 @@ namespace scaler {
                         curSymbol.addr = *curSymbol.gotEntry;
 
                     } else {
-                        DBG_LOGS("%s:%s  *%p=%p not resolved=%s", curELFImgInfo.filePath.c_str(),
-                                 curSymbol.symbolName.c_str(), curSymbol.gotEntry, *curSymbol.gotEntry, "false");
+                        //DBG_LOGS("%s:%s  *%p=%p not resolved=%s", curELFImgInfo.filePath.c_str(),
+                        //         curSymbol.symbolName.c_str(), curSymbol.gotEntry, *curSymbol.gotEntry, "false");
                         curSymbol.addr = nullptr;
                     }
 
