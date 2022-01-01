@@ -18,7 +18,7 @@ namespace scaler {
                                              void *endAddr, void *boundStartAddr, void *boundEndAddr) {
         ELFParser_Linux::SecInfo pltHdr{};
         if (!elfParser.getSecHdrByName(std::move(secName), pltHdr)) {
-            ERR_LOGS("Cannot find elf section %s in memory", secName.c_str());
+            //ERR_LOGS("Cannot find elf section %s in memory", secName.c_str());
             return false;
         }
 

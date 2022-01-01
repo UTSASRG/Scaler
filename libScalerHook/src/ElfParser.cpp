@@ -186,7 +186,7 @@ namespace scaler {
 
     bool ELFParser_Linux::getSecHdrByName(std::string targetSecName, ELFParser_Linux::SecInfo &retSecInfo) {
         if (secNameIndexMap.count(targetSecName) == 0) {
-            ERR_LOGS("Cannot find section %s in %s", targetSecName.c_str(), elfPath.c_str());
+            //ERR_LOGS("Cannot find section %s in %s", targetSecName.c_str(), elfPath.c_str());
             return false;
         }
         retSecInfo = secNameIndexMap.at(targetSecName);
