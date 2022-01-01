@@ -45,7 +45,10 @@ namespace scaler {
             auto &curFileName = pmParser.idFileMap.at(curFileiD);
             auto &pmEntries = pmParser.procMap.at(curFileName);
 
-            if (curFileName == "") {
+            elfImgInfoMap.pushBack(ELFImgInfo());
+            auto &curELFImgInfo = elfImgInfoMap[elfImgInfoMap.getSize() - 1];
+
+            if (curFileName == ""||curFileName[0]=='[') {
                 //We don't need noname process entry
                 continue;
             }
@@ -60,8 +63,7 @@ namespace scaler {
                 ERR_LOGS("Failed to parse elf file: %s", curFileName.c_str());
                 continue;
             }
-            elfImgInfoMap.pushBack(ELFImgInfo());
-            auto &curELFImgInfo = elfImgInfoMap[elfImgInfoMap.getSize() - 1];
+
             curELFImgInfo.filePath = curFileName;
 
             curELFImgInfo.baseAddrStart = pmParser.fileBaseAddrMap.at(curFileiD).first;

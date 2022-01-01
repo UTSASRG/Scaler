@@ -40,7 +40,7 @@ int main() {
 
     printf("My id is: %lu\n", pthread_self());
 
-    int rlt=system("ls -al");
+    //int rlt=system("ls -al");
 //    prctl(PR_SET_DUMPABLE, 1);
 
 //    while (1) {

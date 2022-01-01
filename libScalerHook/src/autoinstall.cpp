@@ -16,9 +16,6 @@ int doubletake_main(int argc, char **argv, char **envp) {
     //todo: support different running modes
     DBG_LOG("Installing plthook");
     install([](std::string fileName, std::string funcName) -> bool {
-        if(fileName!="/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-FuncCall"){
-            return false;
-        }
         //todo: User should be able to specify name here. Since they can change filename
         if (funcName == "svcunix_rendezvous_abort") {
             return false;

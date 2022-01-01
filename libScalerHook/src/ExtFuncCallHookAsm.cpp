@@ -184,8 +184,8 @@ namespace scaler {
                         //The user wants this symbol
                         hookedExtSymbol.pushBack(scalerSymbolId);
 
-                        //ERR_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd",
-                        //         curElfImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.scalerSymbolId);
+                        ERR_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd, %s, %zd",
+                                 curElfImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.scalerSymbolId,curSymbol.symbolName.c_str(),curSymbol.symIdInFile);
 
                         //todo: adjust for all symbols in advance, rather than do them individually
                         //Adjust permiss for this current got entry
@@ -295,6 +295,9 @@ namespace scaler {
                 //Install hook code
                 memcpy(curSymbol.pltSecEntry,
                        pltRedirectorCodeArr.data(), 16);
+                DBG_LOGS("File=%s Symbol=%s(ID:%zd) .plt=%p hooked", curELFImgInfo.filePath.c_str(),
+                         curSymbol.symbolName.c_str(), curSymbol.scalerSymbolId,
+                         curSymbol.pltEntry);
             } else {
                 //No .plt.sec, use .plt
 
@@ -712,8 +715,8 @@ namespace scaler {
                         curSymbol.addr = *curSymbol.gotEntry;
 
                     } else {
-//                        DBG_LOGS("%s:%s  *%p=%p resolved=%s", curELFImgInfo.filePath.c_str(),
-//                                 curSymbol.symbolName.c_str(), curSymbol.gotEntry, *curSymbol.gotEntry, "false");
+                        DBG_LOGS("%s:%s  *%p=%p not resolved=%s", curELFImgInfo.filePath.c_str(),
+                                 curSymbol.symbolName.c_str(), curSymbol.gotEntry, *curSymbol.gotEntry, "false");
                         curSymbol.addr = nullptr;
                     }
 
