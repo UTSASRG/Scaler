@@ -541,7 +541,7 @@ namespace scaler {
         //compile it
 
         sstream.str("");
-        sstream << "gcc -shared -fPIC ";
+        sstream << "gcc-9 -shared -fPIC ";
         sstream << execWorkDir << "/redzoneJumper-" << getpid() << ".cpp ";
         sstream << "-o ";
         sstream << execWorkDir << "/redzoneJumper-" << getpid() << ".so ";
@@ -644,7 +644,7 @@ namespace scaler {
         fclose(fp);
 
         sstream.str("");
-        sstream << "gcc -shared -fPIC ";
+        sstream << "gcc-9 -shared -fPIC -Werror ";
         sstream << execWorkDir << "/pseudoPlt-" << getpid() << ".cpp ";
         sstream << "-o ";
         sstream << execWorkDir << "/pseudoPlt-" << getpid() << ".so ";
