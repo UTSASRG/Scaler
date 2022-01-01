@@ -18,7 +18,7 @@ namespace scaler {
                                              void *endAddr, void *boundStartAddr, void *boundEndAddr) {
         ELFParser_Linux::SecInfo pltHdr{};
         if (!elfParser.getSecHdrByName(std::move(secName), pltHdr)) {
-            ERR_LOGS("Cannot find elf section in memory", secName.c_str());
+            ERR_LOGS("Cannot find elf section %s in memory", secName.c_str());
             return false;
         }
 
@@ -53,60 +53,88 @@ namespace scaler {
                 continue;
             }
 
-            try {
-                /**
-                 * Open corresponding c file
-                 * Some sections may throw exception here. So we will naturally skip invalid path like "[stack]" .etc
-                 */
-                ELFParser_Linux elfParser(curFileName);
-
-                curELFImgInfo.baseAddrStart = pmParser.fileBaseAddrMap.at(curFileiD).first;
-                curELFImgInfo.baseAddrEnd = pmParser.fileBaseAddrMap.at(curFileiD).second;
-
-                //Get plt from ELF file
-                findELFSecInMemory(elfParser, ".plt", curELFImgInfo.pltStartAddr, curELFImgInfo.pltEndAddr,
-                                   curELFImgInfo.baseAddrStart, curELFImgInfo.baseAddrEnd);
-
-                //DBG_LOGS(".plt section for %s starts at %p",curFileName.c_str(),curELFImgInfo.pltStartAddr);
-                //Get .plt.sec (may not exist)
-                try {
-                    findELFSecInMemory(elfParser, ".plt.sec", curELFImgInfo.pltSecStartAddr,
-                                       curELFImgInfo.pltSecEndAddr, curELFImgInfo.baseAddrStart,
-                                       curELFImgInfo.baseAddrEnd);
-                    DBG_LOGS("%s .plt.sec = %p baseaddr=%p-%p", curELFImgInfo.filePath.c_str(),
-                             curELFImgInfo.pltSecStartAddr, curELFImgInfo.baseAddrStart, curELFImgInfo.baseAddrEnd);
-                } catch (const ScalerException &e) {
-                    curELFImgInfo.pltSecStartAddr = nullptr;
-                    DBG_LOG("Cannot find .plt.sec");
-                }
-
-                curELFImgInfo._DYNAMICAddr = findDynamicSegment(elfParser);
-
-
-                curELFImgInfo.dynSymTable = findElemPtrInDynamicSeg<ElfW(Sym) *>(elfParser, curELFImgInfo, curFileiD,
-                                                                                 DT_SYMTAB);
-
-                curELFImgInfo.dynStrTable = findElemPtrInDynamicSeg<char *>(elfParser, curELFImgInfo, curFileiD,
-                                                                            DT_STRTAB);
-
-                curELFImgInfo.dynStrSize = findElemValInDynamicSeg<ssize_t>(elfParser, curELFImgInfo, curFileiD,
-                                                                            DT_STRSZ);
-
-                curELFImgInfo.relaPlt = findElemPtrInDynamicSeg<ElfW(Rela) *>(elfParser, curELFImgInfo, curFileiD,
-                                                                              DT_JMPREL);
-
-                curELFImgInfo.relaPltCnt = findElemValInDynamicSeg<ssize_t>(elfParser, curELFImgInfo, curFileiD,
-                                                                            DT_PLTRELSZ) / sizeof(ElfW(Rela));
-
-                parseRelaSymbol(curELFImgInfo, curFileiD);
-            } catch (const ScalerException &e) {
-                //Remove current entry
-                elfImgInfoMap[curFileiD].elfImgValid = false;
-                ERR_LOGS("Hook Failed for \"%s\" because %s", curFileName.c_str(), e.info.c_str());
+            /**
+             * Open corresponding c file
+             * Some sections may throw exception here. So we will naturally skip invalid path like "[stack]" .etc
+             */
+            ELFParser_Linux elfParser(curFileName);
+            if (!elfParser.parse()) {
+                ERR_LOGS("Failed to parse elf file: %s", curFileName.c_str());
+                continue;
             }
+
+            curELFImgInfo.baseAddrStart = pmParser.fileBaseAddrMap.at(curFileiD).first;
+            curELFImgInfo.baseAddrEnd = pmParser.fileBaseAddrMap.at(curFileiD).second;
+
+            //Get plt from ELF file
+            if (!findELFSecInMemory(elfParser, ".plt", curELFImgInfo.pltStartAddr, curELFImgInfo.pltEndAddr,
+                                    curELFImgInfo.baseAddrStart, curELFImgInfo.baseAddrEnd)) {
+                ERR_LOGS("Failed to find .plt table in %s. Scaler won't hook this file.", curFileName.c_str());
+                continue;
+            }
+
+            //DBG_LOGS(".plt section for %s starts at %p",curFileName.c_str(),curELFImgInfo.pltStartAddr);
+            //Get .plt.sec (may not exist)
+            if (!findELFSecInMemory(elfParser, ".plt.sec", curELFImgInfo.pltSecStartAddr,
+                                    curELFImgInfo.pltSecEndAddr, curELFImgInfo.baseAddrStart,
+                                    curELFImgInfo.baseAddrEnd)) {
+                curELFImgInfo.pltSecStartAddr = nullptr;
+                DBG_LOG("Cannot find .plt.sec, this is normal because some machine just doesn't have it.");
+            } else {
+                DBG_LOGS("%s .plt.sec = %p baseaddr=%p-%p", curELFImgInfo.filePath.c_str(),
+                         curELFImgInfo.pltSecStartAddr, curELFImgInfo.baseAddrStart, curELFImgInfo.baseAddrEnd);
+            }
+
+            curELFImgInfo._DYNAMICAddr = findDynamicSegment(elfParser);
+
+            curELFImgInfo.dynSymTable = findElemPtrInDynamicSeg<ElfW(Sym) *>(elfParser, curELFImgInfo, curFileiD,
+                                                                             DT_SYMTAB);
+            if (!curELFImgInfo.dynSymTable) {
+                ERR_LOGS("Failed to find dynamic symbol table in %s. Scaler won't hook this file.",
+                         curFileName.c_str());
+                continue;
+            }
+
+            curELFImgInfo.dynStrTable = findElemPtrInDynamicSeg<char *>(elfParser, curELFImgInfo, curFileiD,
+                                                                        DT_STRTAB);
+            if (!curELFImgInfo.dynStrTable) {
+                ERR_LOGS("Failed to find dynamic string table in %s. Scaler won't hook this file.",
+                         curFileName.c_str());
+                continue;
+            }
+
+            curELFImgInfo.dynStrSize = findElemValInDynamicSeg<ssize_t>(elfParser, curELFImgInfo, curFileiD,
+                                                                        DT_STRSZ);
+
+            if (!curELFImgInfo.dynStrSize) {
+                ERR_LOGS("Failed to find dynamic string size in %s. Scaler won't hook this file.",
+                         curFileName.c_str());
+                continue;
+            }
+
+            curELFImgInfo.relaPlt = findElemPtrInDynamicSeg<ElfW(Rela) *>(elfParser, curELFImgInfo, curFileiD,
+                                                                          DT_JMPREL);
+            if (!curELFImgInfo.relaPlt) {
+                ERR_LOGS("Failed to find .rela.plt in %s. Scaler won't hook this file.", curFileName.c_str());
+                continue;
+            }
+
+            curELFImgInfo.relaPltCnt = findElemValInDynamicSeg<ssize_t>(elfParser, curELFImgInfo, curFileiD,
+                                                                        DT_PLTRELSZ) / sizeof(ElfW(Rela));
+            if (!curELFImgInfo.relaPltCnt) {
+                ERR_LOGS("Failed to find .rela plt count in %s. Scaler won't hook this file.", curFileName.c_str());
+                continue;
+            }
+
+            if (!parseRelaSymbol(curELFImgInfo, curFileiD)) {
+                ERR_LOGS("Failed to parse relocation table in %s. Scaler won't hook this file.", curFileName.c_str());
+                curELFImgInfo.elfImgValid = false;
+                continue;
+            }
+
         }
 
-
+        return true;
         /**
             * We need to know the starting and ending address of sections in other parts of the hook library.
             * Currently we devised three potential ways to do so:
@@ -161,16 +189,22 @@ namespace scaler {
     * _DYNAMIC should always exist.
     */
     ElfW(Dyn) *ExtFuncCallHook::findDynamicSegment(ELFParser_Linux &elfParser) {
-        auto dynamicHdr = elfParser.getProgHdrByType(PT_DYNAMIC);
-        assert(dynamicHdr.size() == 1); //There should be only one _DYNAMIC
-        ElfW(Dyn) *rltAddr = static_cast<ElfW(Dyn) *>( elfParser.getSegContent(dynamicHdr[0]));
-        if (rltAddr == nullptr) {
-            throwScalerException(ErrCode::ELF_SEGMENT_NOT_FOUND, "Cannot find PT_DYNAMIC in ELF file");
+        std::vector<ELFParser_Linux::SegInfo> retSegInfoVec;
+        if (!elfParser.getProgHdrByType(PT_DYNAMIC, retSegInfoVec) || retSegInfoVec.size() != 1) {
+            ERR_LOG("Failed to find header to _DYNAMIC");
+            return nullptr;
         }
+
+        ElfW(Dyn) *rltAddr = static_cast<ElfW(Dyn) *>( elfParser.getSegContent(retSegInfoVec[0]));
+        if (!rltAddr) {
+            ERR_LOG("Failed to find PT_DYNAMIC in ELF file");
+            return nullptr;
+        }
+
         return rltAddr;
     }
 
-    void ExtFuncCallHook::parseRelaSymbol(ELFImgInfo &curELFImgInfo, FileID curFileID) {
+    bool ExtFuncCallHook::parseRelaSymbol(ELFImgInfo &curELFImgInfo, FileID curFileID) {
         std::stringstream ss;
         for (ssize_t i = 0; i < curELFImgInfo.relaPltCnt; ++i) {
             ElfW(Rela) *curRelaPlt = curELFImgInfo.relaPlt + i;
@@ -179,60 +213,52 @@ namespace scaler {
             ssize_t relIdx = ELFW(R_SYM)(curRelaPlt->r_info);
             ssize_t strIdx = curELFImgInfo.dynSymTable[relIdx].st_name;
 
-
-            if (strIdx + 1 > curELFImgInfo.dynStrSize) {
-                throwScalerException(ErrCode::ELF_DYNAMIC_ENTRY_PARSE_ERR, "Too big section header string table index");
-            }
-
             ExtSymInfo newSymbol;
-            try {
-                newSymbol.symbolName = std::string(curELFImgInfo.dynStrTable + strIdx);
+            newSymbol.symbolName = std::string(curELFImgInfo.dynStrTable + strIdx);
 
-                newSymbol.type = ELF64_ST_TYPE(curELFImgInfo.dynSymTable[relIdx].st_info);
-                newSymbol.bind = ELF64_ST_BIND(curELFImgInfo.dynSymTable[relIdx].st_info);
-
-
-                //todo: PLT stub is parsed in "ParsePltEntryAddress"
-                newSymbol.pltEntry = nullptr;
-
-                newSymbol.pltSecEntry = nullptr;
-
-                //DBG_LOGS("pltEntryCheck: %s:%s entry is %p", curELFImgInfo.filePath.c_str(),
-                //         newSymbol.symbolName.c_str(), newSymbol.pltSecEntry);
-
-                uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddrStart, curFileID,
-                                                                curRelaPlt->r_offset);
-                newSymbol.gotEntry = reinterpret_cast<void **>(curBaseAddr + curRelaPlt->r_offset);
-
-                if (newSymbol.gotEntry == nullptr) {
-                    throwScalerException(ErrCode::ELF_DYNAMIC_ENTRY_PARSE_ERR, "Failed to get got address.");
-                }
-
-                newSymbol.fileId = curFileID;
-                //newSymbol.symIdInFile = i; This should be determined by plt scanning process
-                newSymbol.symIdInFile = i;
+            newSymbol.type = ELF64_ST_TYPE(curELFImgInfo.dynSymTable[relIdx].st_info);
+            newSymbol.bind = ELF64_ST_BIND(curELFImgInfo.dynSymTable[relIdx].st_info);
 
 
-                if (newSymbol.symbolName == "") {
-                    ss.str("");
-                    ss << "func" << i;
-                    newSymbol.symbolName = ss.str();
-                }
-                newSymbol.scalerSymbolId = allExtSymbol.getSize();
-                allExtSymbol.pushBack(newSymbol);
+            //todo: PLT stub is parsed in "ParsePltEntryAddress"
+            newSymbol.pltEntry = nullptr;
 
-                curELFImgInfo.scalerIdMap.push_back(newSymbol.scalerSymbolId);
-            } catch (const ScalerException &e) {
-                //Remove current entry
-                elfImgInfoMap[curFileID].elfImgValid = false;
-                ERR_LOGS("Hook Failed for \"%s\":\"%s\" because %s", curELFImgInfo.filePath.c_str(),
-                         newSymbol.symbolName.c_str(), e.info.c_str());
+            newSymbol.pltSecEntry = nullptr;
+
+            //DBG_LOGS("pltEntryCheck: %s:%s entry is %p", curELFImgInfo.filePath.c_str(),
+            //         newSymbol.symbolName.c_str(), newSymbol.pltSecEntry);
+
+            uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddrStart, curFileID,
+                                                            curRelaPlt->r_offset);
+            newSymbol.gotEntry = reinterpret_cast<void **>(curBaseAddr + curRelaPlt->r_offset);
+
+            if (!newSymbol.gotEntry) {
+                ERR_LOG("Failed to get .got address. Cannot hoook");
+                return false;
             }
+
+            newSymbol.fileId = curFileID;
+            //newSymbol.symIdInFile = i; This should be determined by plt scanning process
+            newSymbol.symIdInFile = i;
+
+            if (newSymbol.symbolName == "") {
+                //There is no function name parsed. We use func+id to replace function name.
+                ss.str("");
+                ss << "func" << i;
+                newSymbol.symbolName = ss.str();
+            }
+
+            newSymbol.scalerSymbolId = allExtSymbol.getSize();
+            allExtSymbol.pushBack(newSymbol);
+
+            curELFImgInfo.scalerIdMap.push_back(newSymbol.scalerSymbolId);
         }
+        return true;
     }
 
-    void ExtFuncCallHook::saveAllSymbolId() {
-        assert(false);
+    bool ExtFuncCallHook::saveAllSymbolId() {
+        fatalError("This funciton use an old implementation.");
+        return false;
         //drprecated saving function, needs update to be compatible with the latest version
         using Json = nlohmann::json;
 
@@ -271,10 +297,10 @@ namespace scaler {
      * @param funcAddr
      * @param libraryFileID
      */
-    void ExtFuncCallHook::parseFuncInfo(FileID callerFileID, FileID symbolIDInCaller, void *&funcAddr,
+    bool ExtFuncCallHook::parseFuncInfo(FileID callerFileID, FileID symbolIDInCaller, void *&funcAddr,
                                         FileID &libraryFileID) {
-
-
+        fatalError("Function not implemented");
+        return false;
     }
 
 
@@ -313,68 +339,119 @@ namespace scaler {
                funcID == PTHREAD_BARRIER_WAIT;
     }
 
-    std::vector<SymID> ExtFuncCallHook::ELFImgInfo::PthreadFuncId::getAllIds() {
+    bool ExtFuncCallHook::ELFImgInfo::PthreadFuncId::getAllIds(std::vector<SymID> &retSymId) {
         std::vector<SymID> result;
-        result.begin()++;
-        if (PTHREAD_CREATE != -1)
-            result.push_back(PTHREAD_CREATE);
-        if (PTHREAD_JOIN != -1)
-            result.push_back(PTHREAD_JOIN);
-        if (PTHREAD_TRYJOIN_NP != -1)
-            result.push_back(PTHREAD_TRYJOIN_NP);
-        if (PTHREAD_TIMEDJOIN_NP != -1)
-            result.push_back(PTHREAD_TIMEDJOIN_NP);
-        if (PTHREAD_CLOCKJOIN_NP != -1)
-            result.push_back(PTHREAD_CLOCKJOIN_NP);
-        if (PTHREAD_MUTEX_LOCK != -1)
-            result.push_back(PTHREAD_MUTEX_LOCK);
-        if (PTHREAD_MUTEX_TIMEDLOCK != -1)
-            result.push_back(PTHREAD_MUTEX_TIMEDLOCK);
-        if (PTHREAD_MUTEX_CLOCKLOCK != -1)
-            result.push_back(PTHREAD_MUTEX_CLOCKLOCK);
-        if (PTHREAD_MUTEX_UNLOCK != -1)
-            result.push_back(PTHREAD_MUTEX_UNLOCK);
-        if (PTHREAD_RWLOCK_RDLOCK != -1)
-            result.push_back(PTHREAD_RWLOCK_RDLOCK);
-        if (PTHREAD_RWLOCK_TRYRDLOCK != -1)
-            result.push_back(PTHREAD_RWLOCK_TRYRDLOCK);
-        if (PTHREAD_RWLOCK_TIMEDRDLOCK != -1)
-            result.push_back(PTHREAD_RWLOCK_TIMEDRDLOCK);
-        if (PTHREAD_RWLOCK_CLOCKRDLOCK != -1)
-            result.push_back(PTHREAD_RWLOCK_CLOCKRDLOCK);
-        if (PTHREAD_RWLOCK_WRLOCK != -1)
-            result.push_back(PTHREAD_RWLOCK_WRLOCK);
-        if (PTHREAD_RWLOCK_TRYWRLOCK != -1)
-            result.push_back(PTHREAD_RWLOCK_TRYWRLOCK);
-        if (PTHREAD_RWLOCK_TIMEDWRLOCK != -1)
-            result.push_back(PTHREAD_RWLOCK_TIMEDWRLOCK);
-        if (PTHREAD_RWLOCK_CLOCKWRLOCK != -1)
-            result.push_back(PTHREAD_RWLOCK_CLOCKWRLOCK);
-        if (PTHREAD_RWLOCK_UNLOCK != -1)
-            result.push_back(PTHREAD_RWLOCK_UNLOCK);
-        if (PTHREAD_COND_SIGNAL != -1)
-            result.push_back(PTHREAD_COND_SIGNAL);
-        if (PTHREAD_COND_BROADCAST != -1)
-            result.push_back(PTHREAD_COND_BROADCAST);
-        if (PTHREAD_COND_WAIT != -1)
-            result.push_back(PTHREAD_COND_WAIT);
-        if (PTHREAD_COND_TIMEDWAIT != -1)
-            result.push_back(PTHREAD_COND_TIMEDWAIT);
-        if (PTHREAD_COND_CLOCKWAIT != -1)
-            result.push_back(PTHREAD_COND_CLOCKWAIT);
-        if (PTHREAD_SPIN_LOCK != -1)
-            result.push_back(PTHREAD_SPIN_LOCK);
-        if (PTHREAD_SPIN_TRYLOCK != -1)
-            result.push_back(PTHREAD_SPIN_TRYLOCK);
-        if (PTHREAD_SPIN_UNLOCK != -1)
-            result.push_back(PTHREAD_SPIN_UNLOCK);
-        if (PTHREAD_BARRIER_WAIT != -1)
-            result.push_back(PTHREAD_BARRIER_WAIT);
+        if (PTHREAD_CREATE == -1) {
+            ERR_LOG("Did not find pthread_create during ELF parsing");
+        }
+        result.push_back(PTHREAD_CREATE);
 
-
-        return result;
+        if (PTHREAD_JOIN != -1) {
+            ERR_LOG("Did not find pthread_join during ELF parsing");
+        }
+        result.push_back(PTHREAD_JOIN);
+        if (PTHREAD_TRYJOIN_NP != -1) {
+            ERR_LOG("Did not find pthread_tryjoinup during ELF parsing");
+        }
+        result.push_back(PTHREAD_TRYJOIN_NP);
+        if (PTHREAD_TIMEDJOIN_NP != -1) {
+            ERR_LOG("Did not find pthread_timedjoin_np during ELF parsing");
+        }
+        result.push_back(PTHREAD_TIMEDJOIN_NP);
+        if (PTHREAD_CLOCKJOIN_NP != -1) {
+            ERR_LOG("Did not find pthread_clockjoin_np during ELF parsing");
+        }
+        result.push_back(PTHREAD_CLOCKJOIN_NP);
+        if (PTHREAD_MUTEX_LOCK != -1) {
+            ERR_LOG("Did not find pthread_mutex_lock during ELF parsing");
+        }
+        result.push_back(PTHREAD_MUTEX_LOCK);
+        if (PTHREAD_MUTEX_TIMEDLOCK != -1) {
+            ERR_LOG("Did not find pthread_mutex_timedlock during ELF parsing");
+        }
+        result.push_back(PTHREAD_MUTEX_TIMEDLOCK);
+        if (PTHREAD_MUTEX_CLOCKLOCK != -1) {
+            ERR_LOG("Did not find pthread_mutex_clocklock during ELF parsing");
+        }
+        result.push_back(PTHREAD_MUTEX_CLOCKLOCK);
+        if (PTHREAD_MUTEX_UNLOCK != -1) {
+            ERR_LOG("Did not find pthread_mutex_unlock during ELF parsing");
+        }
+        result.push_back(PTHREAD_MUTEX_UNLOCK);
+        if (PTHREAD_RWLOCK_RDLOCK != -1) {
+            ERR_LOG("Did not find pthread_rwlock_rdlock during ELF parsing");
+        }
+        result.push_back(PTHREAD_RWLOCK_RDLOCK);
+        if (PTHREAD_RWLOCK_TRYRDLOCK != -1) {
+            ERR_LOG("Did not find pthread_rwlock_tryrdlock during ELF parsing");
+        }
+        result.push_back(PTHREAD_RWLOCK_TRYRDLOCK);
+        if (PTHREAD_RWLOCK_TIMEDRDLOCK != -1) {
+            ERR_LOG("Did not find pthread_rwlock_timedrdlock during ELF parsing");
+        }
+        result.push_back(PTHREAD_RWLOCK_TIMEDRDLOCK);
+        if (PTHREAD_RWLOCK_CLOCKRDLOCK != -1) {
+            ERR_LOG("Did not find pthread_rwlock_clockrdlock during ELF parsing");
+        }
+        result.push_back(PTHREAD_RWLOCK_CLOCKRDLOCK);
+        if (PTHREAD_RWLOCK_WRLOCK != -1) {
+            ERR_LOG("Did not find pthread_rwlock_wrlock during ELF parsing");
+        }
+        result.push_back(PTHREAD_RWLOCK_WRLOCK);
+        if (PTHREAD_RWLOCK_TRYWRLOCK != -1) {
+            ERR_LOG("Did not find pthread_rwlock_trywrlock during ELF parsing");
+        }
+        result.push_back(PTHREAD_RWLOCK_TRYWRLOCK);
+        if (PTHREAD_RWLOCK_TIMEDWRLOCK != -1) {
+            ERR_LOG("Did not find pthread_rwlock_timedwrlock during ELF parsing");
+        }
+        result.push_back(PTHREAD_RWLOCK_TIMEDWRLOCK);
+        if (PTHREAD_RWLOCK_CLOCKWRLOCK != -1) {
+            ERR_LOG("Did not find pthread_rwlock_clockwrlock during ELF parsing");
+        }
+        result.push_back(PTHREAD_RWLOCK_CLOCKWRLOCK);
+        if (PTHREAD_RWLOCK_UNLOCK != -1) {
+            ERR_LOG("Did not find pthread_rwlock_unlock during ELF parsing");
+        }
+        result.push_back(PTHREAD_RWLOCK_UNLOCK);
+        if (PTHREAD_COND_SIGNAL != -1) {
+            ERR_LOG("Did not find pthread_cond_signal during ELF parsing");
+        }
+        result.push_back(PTHREAD_COND_SIGNAL);
+        if (PTHREAD_COND_BROADCAST != -1) {
+            ERR_LOG("Did not find pthread_cond_broadcast during ELF parsing");
+        }
+        result.push_back(PTHREAD_COND_BROADCAST);
+        if (PTHREAD_COND_WAIT != -1) {
+            ERR_LOG("Did not find pthread_cond_wait during ELF parsing");
+        }
+        result.push_back(PTHREAD_COND_WAIT);
+        if (PTHREAD_COND_TIMEDWAIT != -1) {
+            ERR_LOG("Did not find pthread_cond_timedwait during ELF parsing");
+        }
+        result.push_back(PTHREAD_COND_TIMEDWAIT);
+        if (PTHREAD_COND_CLOCKWAIT != -1) {
+            ERR_LOG("Did not find pthread_cond_clockwait during ELF parsing");
+        }
+        result.push_back(PTHREAD_COND_CLOCKWAIT);
+        if (PTHREAD_SPIN_LOCK != -1) {
+            ERR_LOG("Did not find pthread_spin_lock during ELF parsing");
+        }
+        result.push_back(PTHREAD_SPIN_LOCK);
+        if (PTHREAD_SPIN_TRYLOCK != -1) {
+            ERR_LOG("Did not find pthread_spin_trylock during ELF parsing");
+        }
+        result.push_back(PTHREAD_SPIN_TRYLOCK);
+        if (PTHREAD_SPIN_UNLOCK != -1) {
+            ERR_LOG("Did not find pthread_spin_unlock during ELF parsing");
+        }
+        result.push_back(PTHREAD_SPIN_UNLOCK);
+        if (PTHREAD_BARRIER_WAIT != -1) {
+            ERR_LOG("Did not find pthread_barrier_wait during ELF parsing");
+        }
+        result.push_back(PTHREAD_BARRIER_WAIT);
+        return true;
     }
-
 
     bool ExtFuncCallHook::ELFImgInfo::SemaphoreFuncId::isFuncSemaphore(FuncID funcID) {
         return funcID == SEM_WAIT ||

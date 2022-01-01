@@ -38,7 +38,7 @@ namespace scaler {
 
         explicit ELFParser_Linux(std::string elfPath);
 
-        bool parseELFFile();
+        bool parse();
 
         ELFParser_Linux(ELFParser_Linux &) = delete;
 

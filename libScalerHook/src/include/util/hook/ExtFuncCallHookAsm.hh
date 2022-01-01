@@ -19,10 +19,10 @@ namespace scaler {
     class ExtFuncCallHookAsm : public ExtFuncCallHook {
     public:
 
-        void install(SYMBOL_FILTER filterCallB) override;
+        bool install(Hook::SYMBOL_FILTER *filterCallB) override;
 
 
-        void uninstall() override;
+        bool uninstall() override;
 
         /**
          * Singeleton
@@ -37,7 +37,7 @@ namespace scaler {
 
         //void saveCommonFuncID();
 
-        void
+        bool
         parseFuncInfo(FileID callerFileID, FuncID symbolIDInCaller, void *&funcAddr, FileID &libraryFileID) override;
 
         PmParserC_Linux pmParser;
@@ -60,7 +60,7 @@ namespace scaler {
          * todo: This function is machine specific
          * todo: Add assemboly code to comments to make it more clear
          */
-        std::vector<uint8_t> fillDestAddr2PltRedirectorCode(void *funcAddr);
+        bool fillDestAddr2PltRedirectorCode(void *funcAddr,std::vector<uint8_t>& retPltRedirCode);
 
         /**
         * This function fills address into binary file  (Binary code used to store in Heap as Pseudo Plt table)
@@ -73,7 +73,7 @@ namespace scaler {
 
         void *writeAndCompilePseudoPlt();
 
-        void parsePltEntryAddress();
+        bool parsePltEntryAddress();
 
     };
 

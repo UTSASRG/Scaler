@@ -80,7 +80,7 @@ namespace scaler {
                   [](const std::pair<FileID, PMEntry_Linux> &lhs, const std::pair<FileID, PMEntry_Linux> &rhs) {
                       return (ElfW(Addr)) lhs.second.addrStart < (ElfW(Addr)) rhs.second.addrStart;
                   });
-
+        return true;
     }
 
     bool PmParser_Linux::openPMMap(std::ifstream &file) const {
@@ -265,7 +265,7 @@ namespace scaler {
         return true;
     }
 
-    void PmParser_Linux::parsePermStr(PMEntry_Linux &curEntry, const std::string &permStr) {
+    bool PmParser_Linux::parsePermStr(PMEntry_Linux &curEntry, const std::string &permStr) {
         curEntry.isR = (permStr[0] == 'r');
         curEntry.isW = (permStr[1] == 'w');
         curEntry.isE = (permStr[2] == 'x');
@@ -276,10 +276,11 @@ namespace scaler {
             executableSegments.emplace_back(curEntry);
         else if (curEntry.isR)
             readableSegments.emplace_back(curEntry);
+        return true;
     }
 
 
-    void PmParser_Linux::indexFile(PMEntry_Linux &curEntry) {
+    bool PmParser_Linux::indexFile(PMEntry_Linux &curEntry) {
         if (fileIDMap.count(curEntry.pathName) == 0) {
             //Only add if it is a new file. New File, add it to fileId idFile map. Fill it's starting address as base address
             idFileMap.emplace_back(curEntry.pathName);
@@ -297,6 +298,7 @@ namespace scaler {
         procMap[curEntry.pathName].emplace_back(curEntry);
         startAddrFileMap[(uint8_t *) curEntry.addrStart] = fileIDMap[curEntry.pathName];
         sortedSegments.emplace_back(std::make_pair(fileIDMap.at(curEntry.pathName), curEntry));
+        return true;
     }
 
     bool PmParser_Linux::addrInApplication(void *addr) {

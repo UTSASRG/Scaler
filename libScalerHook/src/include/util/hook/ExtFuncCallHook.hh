@@ -20,10 +20,10 @@ namespace scaler {
     class ExtFuncCallHook : public Hook {
     public:
 
-        virtual void install(SYMBOL_FILTER filterCallB) override = 0;
+        virtual bool install(SYMBOL_FILTER filterCallB) override = 0;
 
 
-        virtual void uninstall() override = 0;
+        virtual bool uninstall() override = 0;
 
         ExtFuncCallHook(ExtFuncCallHook &) = delete;
 
@@ -31,9 +31,9 @@ namespace scaler {
 
         virtual ~ExtFuncCallHook() override = 0;
 
-        virtual void parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr, FileID &libraryFileID);
+        virtual bool parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr, FileID &libraryFileID);
 
-        virtual void saveAllSymbolId();
+        virtual bool saveAllSymbolId();
 
         /**
         * Symbol information
@@ -103,7 +103,11 @@ namespace scaler {
 
                 bool isFuncPthread(FuncID funcID);
 
-                std::vector<SymID> getAllIds();
+                /**
+                 * This function returns the scaler id of all functions that belongs to pthread library
+                 * @return
+                 */
+                bool getAllIds(std::vector<SymID> &retSymId);
 
             };
 
@@ -188,7 +192,8 @@ namespace scaler {
 
             const ElfW(Dyn) *dynEntryPtr = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, elemType);
             if (dynEntryPtr == nullptr) {
-                throwScalerException(-1, "Cannot find a dyn entry");
+                ERR_LOG("Cannot find a dyn entry");
+                return nullptr;
             }
             uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddrStart, curFileID,
                                                             dynEntryPtr->d_un.d_ptr);
@@ -203,13 +208,14 @@ namespace scaler {
 
             const ElfW(Dyn) *dynEntryPtr = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, elemType);
             if (dynEntryPtr == nullptr) {
-                throwScalerException(0, "Cannot find a dyn entry");
+                ERR_LOG("Cannot find a dyn entry");
+                return 0;
             }
             return (SEGTYPE) (dynEntryPtr->d_un.d_val);
         }
 
 
-        virtual void parseRelaSymbol(ELFImgInfo &curELFImgInfo, FileID curFileID);
+        virtual bool parseRelaSymbol(ELFImgInfo &curELFImgInfo, FileID curFileID);
 
         inline bool isSymbolAddrResolved(ExtSymInfo &symInfo) {
             //Check whether its value has 6 bytes offset as its plt entry start address

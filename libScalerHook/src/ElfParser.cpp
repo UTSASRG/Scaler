@@ -14,7 +14,7 @@ namespace scaler {
         this->elfPath = elfPath;
     }
 
-    bool ELFParser_Linux::parseELFFile() {
+    bool ELFParser_Linux::parse() {
         if (!openELFFile())
             return false;
 

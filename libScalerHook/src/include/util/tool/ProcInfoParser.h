@@ -122,7 +122,7 @@ namespace scaler {
         std::map<std::string, FileID> fileIDMap;
 
         //The base address of an executable
-        std::vector<std::pair<uint8_t *,uint8_t *>> fileBaseAddrMap;
+        std::vector<std::pair<uint8_t *, uint8_t *>> fileBaseAddrMap;
 
         std::map<uint8_t *, FileID> startAddrFileMap;
 
@@ -167,11 +167,11 @@ namespace scaler {
 
 
         /**
-             * Parse /proc/{pid}/maps into procMap
-             */
+         * Parse /proc/{pid}/maps into procMap
+         */
         virtual bool parsePMMap();
 
-        bool addrInApplication(void* addr);
+        bool addrInApplication(void *addr);
 
     protected:
         //Process ID
@@ -185,13 +185,13 @@ namespace scaler {
          */
         virtual bool openPMMap(std::ifstream &file) const;
 
-        virtual bool parseAddrStr(PMEntry_Linux& curEntry, const std::string& addrStr);
+        virtual bool parseAddrStr(PMEntry_Linux &curEntry, const std::string &addrStr);
 
-        virtual bool parseOffsetStr(PMEntry_Linux& curEntry, const std::string& offsetStr);
+        virtual bool parseOffsetStr(PMEntry_Linux &curEntry, const std::string &offsetStr);
 
-        virtual void parsePermStr(PMEntry_Linux& curEntry, const std::string& permStr);
+        virtual bool parsePermStr(PMEntry_Linux &curEntry, const std::string &permStr);
 
-        virtual void indexFile(PMEntry_Linux& curEntry);
+        virtual bool indexFile(PMEntry_Linux &curEntry);
 
 
 

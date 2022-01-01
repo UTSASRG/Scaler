@@ -62,24 +62,31 @@ public:
 
     ~DataSaver() {
         bypassCHooks = SCALER_TRUE;
-        assert(curContext->rawRecord != nullptr);
+        if (!curContext->rawRecord) {
+            fatalError("rawRecord is not initialized");
+        }
         char fileName[255];
-        DBG_LOGS("Save rawrecord %lu", pthread_self());
+        DBG_LOGS("Save rawrecord of thread %lu", pthread_self());
         sprintf(fileName, "scaler_time_%lu.bin", pthread_self());
         FILE *fp = NULL;
         //todo: check open success or not
         fp = fopen(fileName, "w");
         if (!fp) {
-            ERR_LOGS("Fail to create file, reason:%s", strerror(errno));
-            exit(-1);
+            fatalErrorS("Fail to create file, reason:%s", strerror(errno));
         }
-        assert(curContext->rawRecord != nullptr);
         const uint64_t &arrSize = scaler_extFuncCallHookAsm_thiz->allExtSymbol.getSize();
         const uint64_t &entrySize = sizeof(scaler::RawRecordEntry);
-        fwrite(&arrSize, sizeof(uint64_t), 1, fp);
-        fwrite(&entrySize, sizeof(uint64_t), 1, fp);
+
+        if (!fwrite(&arrSize, sizeof(uint64_t), 1, fp)) {
+            fatalErrorS("Fail to write data into file, reason:%s", strerror(errno));
+        }
+        if (!fwrite(&entrySize, sizeof(uint64_t), 1, fp)) {
+            fatalErrorS("Fail to write data into file, reason:%s", strerror(errno));
+        }
         //Write entire array
-        fwrite(curContext->rawRecord, sizeof(scaler::RawRecordEntry), arrSize, fp);
+        if (!fwrite(curContext->rawRecord, sizeof(scaler::RawRecordEntry), arrSize, fp)) {
+            fatalErrorS("Fail to write data into file, reason:%s", strerror(errno));
+        }
         //todo: check close success or not
         fclose(fp);
         //Only save once
@@ -92,18 +99,25 @@ public:
 
 thread_local DataSaver saverElem;
 
-void initTLS() {
+bool initTLS() {
     //Dont double initialize
     assert(bypassCHooks == SCALER_TRUE);
     //Initialize saving data structure
     //curContext.initializeMe = ~curContext.initializeMe;
     //saverElem.initializeMe = ~saverElem.initializeMe;
     curContext = new Context();
-    assert(curContext != nullptr);
+    if (!curContext) {
+        fatalError("Failed to allocate memory for Context");
+        return false;
+    }
     curContext->rawRecord = new scaler::RawRecordEntry[scaler_extFuncCallHookAsm_thiz->allExtSymbol.getSize()];
-    assert(curContext->rawRecord);
+    if (!curContext->rawRecord) {
+        fatalError("Failed to allocate memory for RawRecordEntry");
+        return false;
+    }
 
     bypassCHooks = SCALER_FALSE;
+    return true;
 }
 
 namespace scaler {
@@ -127,24 +141,30 @@ namespace scaler {
     ExtFuncCallHookAsm *ExtFuncCallHookAsm::instance = nullptr;
 
 
-    bool ExtFuncCallHookAsm::install(Hook::SYMBOL_FILTER filterCallB) {
+    bool ExtFuncCallHookAsm::install(Hook::SYMBOL_FILTER *filterCallB) {
         auto ldPreloadVal = getenv("LD_PRELOAD");
         if (setenv("LD_PRELOAD", "", true) != 0) {
-            ERR_LOGS("Cannot set environment variable, reason: %s", strerror(errno));
-            exit(-1);
+            fatalErrorS("Cannot set environment variable, reason: %s", strerror(errno));
+            return false;
         }
         //load plt hook address
+        pthread_create_orig = (pthread_create_origt) dlsym(RTLD_NEXT, "pthread_create");
         if (!pthread_create_orig) {
-            pthread_create_orig = (pthread_create_origt) dlsym(RTLD_NEXT, "pthread_create");
-            assert(pthread_create_orig);
+            fatalError("Cannot find the address of pthread_create");
+            return false;
         }
 
         memTool = MemoryTool_Linux::getInst();
+        if (!memTool) {
+            return false;
+        }
         scaler_extFuncCallHookAsm_thiz = this;
 
         //Step1: Locating table in memory
         DBG_LOG("Locating required segments from ELF file");
-        locateRequiredSecAndSeg();
+        if (!locateRequiredSecAndSeg()) {
+            return false;
+        }
 
         //Step3: Use callback to determine which ID to hook
         for (FileID curFileId = 0; curFileId < elfImgInfoMap.getSize(); ++curFileId) {
@@ -169,14 +189,11 @@ namespace scaler {
                         //         curElfImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.scalerSymbolId);
 
                         //todo: adjust for all symbols in advance, rather than do them individually
-                        //Adjust permiss for this current entry
-                        try {
-                            memTool->adjustMemPerm(curSymbol.gotEntry, curSymbol.gotEntry + 1,
-                                                   PROT_READ | PROT_WRITE | PROT_EXEC);
-                        } catch (const ScalerException &e) {
-                            ERR_LOGS("Hook Failed for \"%s\":\"%s\" because %s",
-                                     pmParser.idFileMap.at(curSymbol.fileId).c_str(),
-                                     curSymbol.symbolName.c_str(), e.info.c_str());
+                        //Adjust permiss for this current got entry
+                        if (!memTool->adjustMemPerm(curSymbol.gotEntry, curSymbol.gotEntry + 1,
+                                                    PROT_READ | PROT_WRITE | PROT_EXEC)) {
+
+                            ERR_LOGS("Cannot adjust permission for %s's GOT table", curSymbol.symbolName.c_str());
                             continue;
                         }
                     }
@@ -187,11 +204,22 @@ namespace scaler {
         //Step4: Build pseodo PLT
         DBG_LOG("Write and compile pseudo plt");
         void *pseudoPltDl = writeAndCompilePseudoPlt();
+        if (!pseudoPltDl) {
+            ERR_LOG("Cannot compile pseudo plt table.");
+            return false;
+        }
         //Step5: Write redzone jumper code to file
         DBG_LOG("Write and compile redzone jumper");
         void *redzoneJumperDl = writeAndCompileRedzoneJumper();
+        if (!redzoneJumperDl) {
+            ERR_LOG("Cannot compile redzone jumper.");
+            return false;
+        }
         DBG_LOG("Parse plt entry address");
-        parsePltEntryAddress();
+        if (!parsePltEntryAddress()) {
+            ERR_LOG("Cannot parse plt entry address jumper.");
+            return false;
+        }
 
         //Step6: Replace PLT table, jmp to dll function
         /**
@@ -205,64 +233,71 @@ namespace scaler {
             std::string funcName = "__%zu";
             sprintf(output, funcName.c_str(), curSymbol.scalerSymbolId);
             void *redzoneJumperAddr = dlsym(redzoneJumperDl, output);
+            if (!redzoneJumperAddr) {
+                fatalErrorS("Cannot find redzone jumper address for symbol %s.", funcName.c_str());
+                continue;
+            }
             curSymbol.pseudoPltEntry = dlsym(pseudoPltDl, output);
 
-            if (redzoneJumperAddr == NULL) {
-                throwScalerException(ErrCode::NO_HANDLER_IN_DLL,
-                                     "Failed to find redzone jumper address from dll");
+            if (!curSymbol.pseudoPltEntry) {
+                fatalErrorS("Cannot find pseudo plt address for symbol %s.", funcName.c_str());
+                continue;
             }
-
-            auto pltRedirectorCodeArr = fillDestAddr2PltRedirectorCode(redzoneJumperAddr);
+            std::vector<uint8_t> pltRedirectorCodeArr;
+            if (!fillDestAddr2PltRedirectorCode(redzoneJumperAddr, pltRedirectorCodeArr)) {
+                fatalErrorS("Cannot find pseudo plt address for symbol %s.", funcName.c_str());
+                continue;
+            }
 
             auto &curELFImgInfo = elfImgInfoMap[curSymbol.fileId];
             //DBG_LOGS("[%s] %s hooked (ID:%zd)", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
             //         curSymbol.scalerSymbolId);
-            //Step6: Replace .plt.sec and .plt
+            //Step6: Replace .plt.sec or .plt
             if (curELFImgInfo.pltSecStartAddr != nullptr) {
                 //.plt.sec table exists
                 //todo: adjust the permission back after this
-                try {
-                    //Save original .plt.sec code
+                //Save original .plt.sec code
 
-                    curSymbol.oriPltSecCode = malloc(16);
-                    memcpy(curSymbol.oriPltSecCode, curSymbol.pltSecEntry, 16);
+                curSymbol.oriPltSecCode = malloc(16);
+                if (!curSymbol.oriPltSecCode) {
+                    fatalErrorS("Failed to allocate memory for %s", curSymbol.symbolName.c_str());
+                    return false;
+                }
+                memcpy(curSymbol.oriPltSecCode, curSymbol.pltSecEntry, 16);
 
-                    memTool->adjustMemPerm(
-                            curSymbol.pltSecEntry,
-                            (uint8_t *) curSymbol.pltSecEntry + 16,
-                            PROT_READ | PROT_WRITE | PROT_EXEC);
-
-                    //Install hook code
-                    memcpy(curSymbol.pltSecEntry,
-                           pltRedirectorCodeArr.data(), 16);
-                } catch (const ScalerException &e) {
-                    ERR_LOGS(".plt.sec replacement Failed for \"%s\":\"%s\" because %s",
-                             pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
-                             e.info.c_str());
+                if (!memTool->adjustMemPerm(
+                        curSymbol.pltSecEntry,
+                        (uint8_t *) curSymbol.pltSecEntry + 16,
+                        PROT_READ | PROT_WRITE | PROT_EXEC)) {
+                    ERR_LOGS("Failed to adjust memory permission for %s", curSymbol.symbolName.c_str());
                     continue;
                 }
-            }
 
+                //Install hook code
+                memcpy(curSymbol.pltSecEntry,
+                       pltRedirectorCodeArr.data(), 16);
+            } else {
+                //No .plt.sec, use .plt
 
-            try {
                 //Save original .plt code
 
                 curSymbol.oriPltCode = malloc(16);
+                if (!curSymbol.oriPltCode) {
+                    fatalErrorS("Cannot allocate memory for oriPltCode in %s", curSymbol.symbolName.c_str());
+                }
                 memcpy(curSymbol.oriPltCode, curSymbol.pltEntry, 16);
 
-                memTool->adjustMemPerm(
+                if (!memTool->adjustMemPerm(
                         (uint8_t *) curSymbol.pltEntry,
                         (uint8_t *) curSymbol.pltEntry + 16,
-                        PROT_READ | PROT_WRITE | PROT_EXEC);
+                        PROT_READ | PROT_WRITE | PROT_EXEC)) {
+
+                }
 
                 //Install hook code
                 memcpy((uint8_t *) curSymbol.pltEntry,
                        pltRedirectorCodeArr.data(), 16);
-            } catch (const ScalerException &e) {
-                ERR_LOGS(".plt replacement Failed for \"%s\":\"%s\" because %s",
-                         pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
-                         e.info.c_str());
-                continue;
+
             }
 
             pltRedirectorCodeArr.clear();
@@ -272,10 +307,16 @@ namespace scaler {
 
 
         //Allocate tls storage, set hook type to FULL
-        initTLS();
-        if (ldPreloadVal) {
-            setenv("LD_PRELOAD", ldPreloadVal, true);
+        if (!initTLS()) {
+            ERR_LOG("Failed to initialize TLS");
         }
+        if (ldPreloadVal) {
+            if (!setenv("LD_PRELOAD", ldPreloadVal, true)) {
+                fatalErrorS("Cannot set environment variable LD_PRELOAD, reason: %s", strerror(errno));
+                return false;
+            }
+        }
+        return true;
     }
 
     //thread_local SerilizableInvocationTree invocationTree;
@@ -287,8 +328,13 @@ namespace scaler {
     }
 
     ExtFuncCallHookAsm *ExtFuncCallHookAsm::getInst() {
-        if (!instance)
+        if (!instance) {
             instance = new ExtFuncCallHookAsm();
+            if (!instance) {
+                fatalError("Cannot allocate memory for ExtFuncCallHookAsm");
+                return nullptr;
+            }
+        }
         return instance;
     }
 
@@ -306,48 +352,41 @@ namespace scaler {
 
             if (curSymbol.oriPltSecCode != nullptr) {
                 //.plt.sec table exists
-                try {
-                    //todo: adjust the permission back after this
-                    memTool->adjustMemPerm(
-                            (uint8_t *) curSymbol.pltSecEntry,
-                            (uint8_t *) curSymbol.pltSecEntry + 16,
-                            PROT_READ | PROT_WRITE | PROT_EXEC);
-                    memcpy((uint8_t *) curSymbol.pltSecEntry,
-                           curSymbol.oriPltSecCode, 16);
-                    free(curSymbol.oriPltSecCode);
-                    curSymbol.oriPltSecCode = nullptr;
-                } catch (const ScalerException &e) {
-                    ERR_LOGS(".plt.sec replacement Failed for \"%s\":\"%s\" because %s",
-                             pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
-                             e.info.c_str());
+                //todo: adjust the permission back after this
+                if (!memTool->adjustMemPerm(
+                        (uint8_t *) curSymbol.pltSecEntry,
+                        (uint8_t *) curSymbol.pltSecEntry + 16,
+                        PROT_READ | PROT_WRITE | PROT_EXEC)) {
+                    ERR_LOG("Cannot adjust memory permission");
                     continue;
                 }
+                memcpy((uint8_t *) curSymbol.pltSecEntry,
+                       curSymbol.oriPltSecCode, 16);
+                free(curSymbol.oriPltSecCode);
+                curSymbol.oriPltSecCode = nullptr;
+
             }
 
             if (curSymbol.oriPltCode != nullptr) {
-                try {
-                    //todo: what is this doesn't exist (for example, installer failed at this symbol)
-                    memTool->adjustMemPerm(
-                            (uint8_t *) curSymbol.pltEntry,
-                            (uint8_t *) curSymbol.pltEntry + 16,
-                            PROT_READ | PROT_WRITE | PROT_EXEC);
-                    memcpy((uint8_t *) curSymbol.pltEntry,
-                           curSymbol.oriPltCode, 16);
-                    free(curSymbol.oriPltCode);
-                    curSymbol.oriPltCode = nullptr;
-                } catch (const ScalerException &e) {
-                    ERR_LOGS(".plt replacement Failed for \"%s\":\"%s\" because %s",
-                             pmParser.idFileMap.at(curSymbol.fileId).c_str(), curSymbol.symbolName.c_str(),
-                             e.info.c_str());
+                //todo: what is this doesn't exist (for example, installer failed at this symbol)
+                if (!memTool->adjustMemPerm(
+                        (uint8_t *) curSymbol.pltEntry,
+                        (uint8_t *) curSymbol.pltEntry + 16,
+                        PROT_READ | PROT_WRITE | PROT_EXEC)) {
+                    ERR_LOG("Cannot adjust memory permission");
                     continue;
                 }
+                memcpy((uint8_t *) curSymbol.pltEntry,
+                       curSymbol.oriPltCode, 16);
+                free(curSymbol.oriPltCode);
+                curSymbol.oriPltCode = nullptr;
             }
-            //todo: release memory stored in oroginal plt code
         }
+        return true;
     }
 
 
-    std::vector<uint8_t> ExtFuncCallHookAsm::fillDestAddr2PltRedirectorCode(void *funcAddr) {
+    bool ExtFuncCallHookAsm::fillDestAddr2PltRedirectorCode(void *funcAddr, std::vector<uint8_t> &retPltRedirCode) {
         //The following "magical" numbers are actually two instructions
         //"movq  $0xFFFFFFFF,%r11\n\t"   73, 187, 0, 0, 0, 0, 0, 0, 0, 0,
         //"callq *%r11\n\t" 65, 255, 211
@@ -356,7 +395,7 @@ namespace scaler {
         //After calling r15. The address of next instruction will be on stack. The hander will pop this address and
         //Calculating function ID by comparing it with the starting address of .plt/.plt.sec address
 
-        std::vector<uint8_t> binCodeArr = {73, 187, 0, 0, 0, 0, 0, 0, 0, 0, 65, 255, 227, 144, 144, 144};
+        retPltRedirCode = {73, 187, 0, 0, 0, 0, 0, 0, 0, 0, 65, 255, 227, 144, 144, 144};
 
         //funcAddr cannot be placed into one byte. We need to convert funcAddr to binary code and put corresponding bytes
         //to the correct position (It's machine specific.)
@@ -374,91 +413,53 @@ namespace scaler {
         auto _funcAddr = (ElfW(Addr)) funcAddr;
 
         //Put funcAddr to corresponding position
-        binCodeArr[2] = _funcAddr & h1;
-        binCodeArr[3] = (_funcAddr & h2) >> 8;
-        binCodeArr[4] = (_funcAddr & h3) >> 16;
-        binCodeArr[5] = (_funcAddr & h4) >> 24;
-        binCodeArr[6] = (_funcAddr & h5) >> 32;
-        binCodeArr[7] = (_funcAddr & h6) >> 40;
-        binCodeArr[8] = (_funcAddr & h7) >> 48;
-        binCodeArr[9] = (_funcAddr & h8) >> 56;
+        retPltRedirCode[2] = _funcAddr & h1;
+        retPltRedirCode[3] = (_funcAddr & h2) >> 8;
+        retPltRedirCode[4] = (_funcAddr & h3) >> 16;
+        retPltRedirCode[5] = (_funcAddr & h4) >> 24;
+        retPltRedirCode[6] = (_funcAddr & h5) >> 32;
+        retPltRedirCode[7] = (_funcAddr & h6) >> 40;
+        retPltRedirCode[8] = (_funcAddr & h7) >> 48;
+        retPltRedirCode[9] = (_funcAddr & h8) >> 56;
 
-        return binCodeArr;
+        return true;
     }
 
-    //todo: add a check here to compare with compiled result. This is to make sure the generated code is correct.
-//    std::vector<uint8_t> ExtFuncCallHookAsm::fillDestAddr2PseudoPltCode(SymID extSymbolId, void *funcAddr) {
-    //The following "magical" numbers are actually two instructions
-    //pushq    0FFFFh   104, 00, 00, 00, 00,
-    //movq     r11, 0FFFFFFFFh 73, 187, 00, 00, 00, 00, 00, 00, 00, 00,
-    //jmpq     r11 65, 255, 227
-
-//        char binCodeArr[] = {255, 52, 37, 00, 00, 00, 00, 73, 199, 195, 00, 00, 00, 00, 65, 255, 227, 00};
-//
-//        const uint64_t h1 = 0b00000000000000000000000011111111;
-//        const uint64_t h2 = h1 << 8;
-//        const uint64_t h3 = h1 << 16;
-//        const uint64_t h4 = h1 << 24;
-//        const uint64_t h5 = h1 << 32;
-//        const uint64_t h6 = h1 << 40;
-//        const uint64_t h7 = h1 << 48;
-//        const uint64_t h8 = h1 << 56;
-//
-//
-//        binCodeArr[1] = extSymbolId & h1;
-//        binCodeArr[2] = (extSymbolId & h2) >> 8;
-//        binCodeArr[3] = (extSymbolId & h3) >> 16;
-//        binCodeArr[4] = (extSymbolId & h4) >> 24;
-//
-//        auto _funcAddr = (ElfW(Addr)) funcAddr;
-//
-//        binCodeArr[7] = _funcAddr & h1;
-//        binCodeArr[8] = (_funcAddr & h2) >> 8;
-//        binCodeArr[9] = (_funcAddr & h3) >> 16;
-//        binCodeArr[10] = (_funcAddr & h4) >> 24;
-//        binCodeArr[11] = (_funcAddr & h5) >> 32;
-//        binCodeArr[12] = (_funcAddr & h6) >> 40;
-//        binCodeArr[13] = (_funcAddr & h7) >> 48;
-//        binCodeArr[14] = (_funcAddr & h8) >> 56;
-
-//        return binCodeArr;
-//    }
-
-    /**
-     * todo: This function can be replaced by binary code. But writing this is easier for debugging.
-     * Since it's easier to modify.
-     *
-     * The mission of this function is to skip redzone, save fileID and funcID and jump to the assembly hook handler
-     *
-     *
-     *
-     * When this function finishes (The control flow won't return here)
-     *
-     * todo: Currently, memory alignment is not considered.
-     *
-     * Input stack
-     *
-     * oldrsp-152  newrsp-23
-     *                      8 bytes caller address
-     * oldrsp-145  newrsp-16
-     *
-     *
-     * oldrsp-144  newrsp-15
-     *                      8 bytes funcID
-     * oldrsp-137  newrsp-8
-     *
-     *
-     * oldrsp-136  newrsp-7
-     *                      8 bytes fileID
-     * oldrsp-129  newrsp-0
-     *
-     *
-     * oldrsp-128
-     *              128 bytes redzone
-     * oldrsp-1
-     *
-     * oldrsp-0        caller(return) address
-     */
+/**
+ * todo: This function can be replaced by binary code. But writing this is easier for debugging.
+ * Since it's easier to modify.
+ *
+ * The mission of this function is to skip redzone, save fileID and funcID and jump to the assembly hook handler
+ *
+ *
+ *
+ * When this function finishes (The control flow won't return here)
+ *
+ * todo: Currently, memory alignment is not considered.
+ *
+ * Input stack
+ *
+ * oldrsp-152  newrsp-23
+ *                      8 bytes caller address
+ * oldrsp-145  newrsp-16
+ *
+ *
+ * oldrsp-144  newrsp-15
+ *                      8 bytes funcID
+ * oldrsp-137  newrsp-8
+ *
+ *
+ * oldrsp-136  newrsp-7
+ *                      8 bytes fileID
+ * oldrsp-129  newrsp-0
+ *
+ *
+ * oldrsp-128
+ *              128 bytes redzone
+ * oldrsp-1
+ *
+ * oldrsp-0        caller(return) address
+ */
     void *ExtFuncCallHookAsm::writeAndCompileRedzoneJumper() {
 
         FILE *fp = NULL;
@@ -466,16 +467,16 @@ namespace scaler {
         std::string execWorkDir;
         if (!getPWD(execWorkDir)) {
             ERR_LOG("Cannot open PWD");
-            exit(-1);
+            return nullptr;
         }
 
         std::stringstream sstream;
         sstream << execWorkDir << "/redzoneJumper-" << getpid() << ".cpp";
         DBG_LOGS("RedzoneJmper location=%s\n", sstream.str().c_str());
         fp = fopen(sstream.str().c_str(), "w");
-        if(!fp){
-            ERR_LOG("Cannot open compiled redzone jumper. Check compilation is successful or not.");
-            exit(-1);
+        if (!fp) {
+            fatalError("Cannot open compiled redzone jumper. Check compilation is successful or not.");
+            return nullptr;
         }
 
         unsigned int pos = 0;
@@ -499,7 +500,8 @@ namespace scaler {
             //Store rsp into r11. We'll later use this value to recover rsp to the correct location
             fprintf(fp, "\"movq (%%rsp),%%r11\\n\\t\"\n");
             //Skip 128-bit redzone. //todo: platform specific. Only on System V 64
-            fprintf(fp, "\"subq $136,%%rsp\\n\\t\"\n"); //128 bits +8 bits=136bits. The extra 8 bits are for alignment
+            fprintf(fp,
+                    "\"subq $136,%%rsp\\n\\t\"\n"); //128 bits +8 bits=136bits. The extra 8 bits are for alignment
 
             //Now, everything happens after the redzone
             //Store functionID into stack
@@ -527,9 +529,9 @@ namespace scaler {
         DBG_LOGS("RedzoneJmper compilation command=%s\n", sstream.str().c_str());
 
         int sysRet = system(sstream.str().c_str());
-        if (sysRet!=0) {
-            ERR_LOG( "gcc compilation handler failed");
-            exit(-1);
+        if (sysRet != 0) {
+            fatalError("gcc compilation handler failed");
+            return nullptr;
         }
 
         sstream.str("");
@@ -537,8 +539,8 @@ namespace scaler {
         void *handle = dlopen(sstream.str().c_str(),
                               RTLD_NOW);
         if (handle == NULL) {
-            ERR_LOG("Cannot open compiled redzone jumper");
-            exit(-1);
+            fatalErrorS("Cannot open compiled redzone jumper because: %s", strerror(errno));
+            return nullptr;
         }
         return handle;
     }
@@ -549,35 +551,38 @@ namespace scaler {
         uninstall();
     }
 
-    void ExtFuncCallHookAsm::parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr,
+    bool ExtFuncCallHookAsm::parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr,
                                            FileID &libraryFileID) {
         //Find correct symbol
         ExtSymInfo &curSymbol = allExtSymbol[symbolIDInCaller];
 
-        if (curSymbol.symbolName == "exit") {
-            int j = 1;
-        }
         //Parse address from got table
         funcAddr = curSymbol.addr;
         //Search the fileID
         libraryFileID = pmParser.findExecNameByAddr(curSymbol.addr);
-        assert(libraryFileID != -1);
-        curSymbol.libraryFileID = libraryFileID;
+
+        if (libraryFileID != -1) {
+            ERR_LOGS("Cannot find library file id for symbol %s with address %p", curSymbol.symbolName.c_str(),
+                     curSymbol.addr);
+            return false;
+        }
         DBG_LOGS("curSymbol patched %s lib:%zd", curSymbol.symbolName.c_str(), curSymbol.libraryFileID);
+        return true;
     }
 
-    /**
-    * This function dynamically compiles
-    *
-    * oldrsp-0        caller(return) address
-    */
+
+/**
+* This function dynamically compiles
+*
+* oldrsp-0        caller(return) address
+*/
     void *ExtFuncCallHookAsm::writeAndCompilePseudoPlt() {
         FILE *fp = NULL;
         char tmp[PATH_MAX];
         std::string execWorkDir;
         if (!getPWD(execWorkDir)) {
-            ERR_LOG("Cannot get pwd");
-            exit(-1);
+            fatalError("Cannot get present working directory");
+            return nullptr;
         }
 
         std::stringstream sstream;
@@ -586,8 +591,8 @@ namespace scaler {
 
         fp = fopen(sstream.str().c_str(), "w");
         if (!fp) {
-            ERR_LOGS("Fail to create file, reason:%s", strerror(errno));
-            exit(-1);
+            fatalErrorS("Fail to create file, reason:%s", strerror(errno));
+            return nullptr;
         }
 
         unsigned int pos = 0;
@@ -624,8 +629,8 @@ namespace scaler {
 
         int sysRet = system(sstream.str().c_str());
         if (sysRet != 0) {
-            ERR_LOG("Pseudo plt compilation failed");
-            exit(-1);
+            fatalError("Pseudo plt compilation failed");
+            return nullptr;
         }
 
         sstream.str("");
@@ -633,17 +638,18 @@ namespace scaler {
         void *handle = dlopen(sstream.str().c_str(),
                               RTLD_NOW);
         if (!handle) {
-            ERR_LOGS("dlOpen failed, reason: %s", strerror(errno));
-            exit(-1);
+            fatalErrorS("dlOpen failed, reason: %s", strerror(errno));
+            return nullptr;
         }
         return handle;
     }
 
-    void ExtFuncCallHookAsm::parsePltEntryAddress() {
+    bool ExtFuncCallHookAsm::parsePltEntryAddress() {
         for (FileID curFileID = 0; curFileID < elfImgInfoMap.getSize(); ++curFileID) {
             auto &curELFImgInfo = elfImgInfoMap[curFileID];
             if (curELFImgInfo.elfImgValid) {
                 char *pltAddr = static_cast<char *>(curELFImgInfo.pltStartAddr);
+                assert(pltAddr != nullptr);
                 char *curAddr = pltAddr;
                 int counter = 0;
                 for (int _ = 0; _ < curELFImgInfo.scalerIdMap.size(); ++_) {
@@ -653,8 +659,8 @@ namespace scaler {
                     int *pltStubId = reinterpret_cast<int *>(curAddr + 7);
                     auto &curSymbol = allExtSymbol[curELFImgInfo.scalerIdMap[*pltStubId]];
                     if (curSymbol.symIdInFile != *pltStubId) {
-                        fprintf(stderr, "Cannot parse correct symbol id");
-                        exit(-15);
+                        fatalError("Plt id parsing logic is flawed.");
+                        return false;
                     }
                     curSymbol.pltEntry = curAddr;
                     curSymbol.pltSecEntry = (char *) curELFImgInfo.pltSecStartAddr;
@@ -682,6 +688,7 @@ namespace scaler {
         for (auto &curSymbol:allExtSymbol) {
             assert(curSymbol.pltEntry != nullptr);
         }
+        return true;
     }
 
 //    void ExtFuncCallHookAsm::saveCommonFuncID() {
@@ -753,33 +760,33 @@ namespace scaler {
     "popq %rax\n\t"
 
 
-    /**
-     * Source code version for #define IMPL_ASMHANDLER
-     * We can't add comments to a macro
-     *
-     * Input stack
-     *
-     * oldrsp-152  currsp+0
-     *                      8 bytes caller address
-     * oldrsp-145  currsp+7
-     *
-     *
-     * oldrsp-144  currsp+8
-     *                      8 bytes funcID
-     * oldrsp-137  currsp+15
-     *
-     *
-     * oldrsp-136  currsp+16
-     *                      8 bytes fileID
-     * oldrsp-129  currsp+23
-     *
-     *
-     * oldrsp-128
-     *              128 bytes redzone
-     * oldrsp-1
-     *
-     * oldrsp-0        caller(return) address
-     */
+/**
+ * Source code version for #define IMPL_ASMHANDLER
+ * We can't add comments to a macro
+ *
+ * Input stack
+ *
+ * oldrsp-152  currsp+0
+ *                      8 bytes caller address
+ * oldrsp-145  currsp+7
+ *
+ *
+ * oldrsp-144  currsp+8
+ *                      8 bytes funcID
+ * oldrsp-137  currsp+15
+ *
+ *
+ * oldrsp-136  currsp+16
+ *                      8 bytes fileID
+ * oldrsp-129  currsp+23
+ *
+ *
+ * oldrsp-128
+ *              128 bytes redzone
+ * oldrsp-1
+ *
+ * oldrsp-0        caller(return) address
+ */
     void __attribute__((naked)) asmHookHandlerSec() {
         //todo: Calculate values based on rsp rathe than saving them to registers
         __asm__ __volatile__ (
@@ -922,28 +929,11 @@ namespace scaler {
         );
 
     }
+
 }
 
 
 extern "C" {
-
-/**
- * Calculate the context pointer based on current thread id
- * @return
- */
-inline Context *getContext() {
-    auto tid = reinterpret_cast<pthread_t>(THREAD_SELF);
-    return *(Context **) (threadLocalOffsetToTCB + (long long) tid);
-}
-
-inline bool getInHookBoolThreadLocal() {
-    auto tid = reinterpret_cast<pthread_t>(THREAD_SELF);
-    return *(bool *) (threadLocalOffsetToTCB + (long long) tid);
-}
-
-
-//pthread_mutex_t lock0 = PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP;
-static bool GDB_CTL_LOG = false;
 
 static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
 

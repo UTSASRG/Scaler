@@ -20,9 +20,9 @@ namespace scaler {
          */
         typedef bool SYMBOL_FILTER(std::string fileName, std::string funcName);
 
-        virtual void install(SYMBOL_FILTER filterCallB) = 0;
+        virtual bool install(SYMBOL_FILTER filterCallB) = 0;
 
-        virtual void uninstall() = 0;
+        virtual bool uninstall() = 0;
 
     };
 

@@ -42,13 +42,13 @@ bool scaler::SerilizableInvocationTree::save(FILE *fp) {
                  curElem->getEndTimestamp() == -1) && curElem->getParent() != nullptr) {
                 //After previous op, all nodes other than the root node should be complete.
                 ERR_LOG("Program exits abnormally, one or more attributes are -1.");
-//                assert(false);
             }
         }
 
         for (ssize_t i = 0; i < layerOrderedElem.size(); ++i) {
             if (!layerOrderedElem[i]->save(fp)) {
                 ERR_LOGS("Saving tree node %zd failed", i);
+                continue;
             }
         }
         if (!fp) {
@@ -58,6 +58,7 @@ bool scaler::SerilizableInvocationTree::save(FILE *fp) {
             libPltHook->saveAllSymbolId();
         }
     }
+    return true;
 }
 
 scaler::SerilizableInvocationTree::SerilizableInvocationTree() {
@@ -215,6 +216,7 @@ bool scaler::SemaphoreInvocationTreeNode::save(FILE *fp) {
     if (!fwrite(&extraField1, sizeof(extraField1), 1, fp)) {
         ERR_LOG("Cannot write semaphore info into file");
     }
+    return true;
 }
 
 bool scaler::SerializableMixIn::load(FILE *fp) {
