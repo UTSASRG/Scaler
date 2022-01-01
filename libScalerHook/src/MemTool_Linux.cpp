@@ -28,8 +28,8 @@ namespace scaler {
         //todo:(uint8_t *) endPtrBound - (uint8_t  *) startPtrBound,
         ssize_t memoryLength =
                 (ceil(((uint8_t *) endPtrBound - (uint8_t *) startPtrBound) / (double) pageSize)) * pageSize;
-        if (!mprotect(startPtrBound, memoryLength, prem)) {
-            ERR_LOGS("Could not change the process memory permission at %p-%p", startPtrBound, endPtrBound);
+        if (mprotect(startPtrBound, memoryLength, prem)!=0) {
+            ERR_LOGS("Could not change the process memory permission at %p-%p because: %s", startPtrBound, endPtrBound,strerror(errno));
             return false;
         }
         return true;

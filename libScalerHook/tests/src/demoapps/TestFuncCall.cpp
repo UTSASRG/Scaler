@@ -47,7 +47,7 @@ int main() {
 //        std::this_thread::sleep_for(std::chrono::seconds(1));
 //    }
 
-    func1();
+    /*func1();
     func2();
     func3();
     func4();
@@ -1045,7 +1045,7 @@ int main() {
     func996();
     func997();
     func998();
-    func999();
+    func999();*/
 
 
     return 0;

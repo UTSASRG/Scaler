@@ -85,7 +85,7 @@ namespace scaler {
             return false;
         }
 
-        if (!fseek(file, elfHdr->e_shoff, SEEK_SET)) {
+        if (fseek(file, elfHdr->e_shoff, SEEK_SET)!=0) {
             ERR_LOGS("Failed to fseek because: %s", strerror(errno));
             return false;
         }
@@ -103,7 +103,7 @@ namespace scaler {
             return false;
         }
 
-        if (!fseek(file, strTblSecHdr->sh_offset, SEEK_SET)) {
+        if (fseek(file, strTblSecHdr->sh_offset, SEEK_SET)!=0) {
             ERR_LOGS("Failed to fseek because: %s", strerror(errno));
             return false;
         }
@@ -133,7 +133,7 @@ namespace scaler {
             ERR_LOG("Failed to allocate memory for progHdr");
             return false;
         }
-        if (!fseek(file, elfHdr->e_phoff, SEEK_SET)) {
+        if (fseek(file, elfHdr->e_phoff, SEEK_SET)!=0) {
             ERR_LOGS("Failed to allocate memory for e_phnum, because: %s", strerror(errno));
             return false;
         }
@@ -156,12 +156,16 @@ namespace scaler {
 
 
     ELFParser_Linux::~ELFParser_Linux() {
-        if (elfHdr)
+        if (elfHdr){
             free(elfHdr);
+            elfHdr=nullptr;
+        }
         if (secHdr)
             free(secHdr);
-        if (progHdr)
+        if (progHdr) {
             free(progHdr);
+            progHdr= nullptr;
+        }
         if (secStrtbl)
             free((void *) secStrtbl);
         for (auto &iter : secIdContentMap) {
@@ -216,7 +220,7 @@ namespace scaler {
                 return nullptr;
             }
 
-            if (!fseek(file, targetSecInfo.secHdr.sh_offset, SEEK_SET)) {
+            if (fseek(file, targetSecInfo.secHdr.sh_offset, SEEK_SET)!=0) {
                 ERR_LOGS("fseek failed because: %s", strerror(errno));
                 return nullptr;
             }
@@ -252,7 +256,7 @@ namespace scaler {
                 return nullptr;
             }
 
-            if (!fseek(file, targetSegInfo.progHdr.p_offset, SEEK_SET)) {
+            if (fseek(file, targetSegInfo.progHdr.p_offset, SEEK_SET)!=0) {
                 ERR_LOGS("Failed to fseek because: %s", strerror(errno));
                 return nullptr;
             }

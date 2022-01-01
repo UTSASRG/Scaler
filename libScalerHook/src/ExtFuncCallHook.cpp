@@ -39,19 +39,17 @@ namespace scaler {
     }
 
     bool ExtFuncCallHook::locateRequiredSecAndSeg() {
-        //pmParser.printPM();
+        pmParser.printPM();
         //Get segment info from /proc/self/maps
         for (FileID curFileiD = 0; curFileiD < pmParser.idFileMap.size(); ++curFileiD) {
             auto &curFileName = pmParser.idFileMap.at(curFileiD);
             auto &pmEntries = pmParser.procMap.at(curFileName);
-            elfImgInfoMap.pushBack(ELFImgInfo());
-            auto &curELFImgInfo = elfImgInfoMap[elfImgInfoMap.getSize() - 1];
-            curELFImgInfo.filePath = curFileName;
 
             if (curFileName == "") {
                 //We don't need noname process entry
                 continue;
             }
+
 
             /**
              * Open corresponding c file
@@ -62,6 +60,9 @@ namespace scaler {
                 ERR_LOGS("Failed to parse elf file: %s", curFileName.c_str());
                 continue;
             }
+            elfImgInfoMap.pushBack(ELFImgInfo());
+            auto &curELFImgInfo = elfImgInfoMap[elfImgInfoMap.getSize() - 1];
+            curELFImgInfo.filePath = curFileName;
 
             curELFImgInfo.baseAddrStart = pmParser.fileBaseAddrMap.at(curFileiD).first;
             curELFImgInfo.baseAddrEnd = pmParser.fileBaseAddrMap.at(curFileiD).second;

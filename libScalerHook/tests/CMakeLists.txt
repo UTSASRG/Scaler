@@ -215,7 +215,7 @@ target_link_options(libScalerHook-proof-LTraceSimpleMain PRIVATE "-z" "lazy")
 add_executable(libScalerHook-proof-HookEverything src/proofconcept/TestHookEverything.cpp)
 target_link_options(libScalerHook-proof-HookEverything PRIVATE "-z" "lazy")
 target_link_libraries(libScalerHook-proof-HookEverything libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall)
-target_compile_options(libScalerHook-proof-HookEverything PRIVATE ${TEST_FLAGS})
+target_compile_options(libScalerHook-proof-HookEverything PRIVATE ${TEST_FLAGS} "-z" "lazy")
 
 add_executable(libScalerHook-proof-PthreadParam src/proofconcept/testPthreadParameter.cpp)
 target_link_options(libScalerHook-proof-PthreadParam PRIVATE "-z" "now" "-O0") #Avoid plt lookup code.

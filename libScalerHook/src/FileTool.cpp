@@ -46,7 +46,7 @@ std::vector<ssize_t> scaler::findStrSplit(std::string &srcStr, char splitChar) {
 
 long int scaler::getFileSize(FILE *file) {
     //The type of this return value is used by ftell. So it should be universal
-    if (!fseek(file, 0L, SEEK_END)) {
+    if (fseek(file, 0L, SEEK_END)!=0) {
         ERR_LOGS("fseek failed because: %s", strerror(errno));
         return -1;
     }
@@ -55,7 +55,7 @@ long int scaler::getFileSize(FILE *file) {
         ERR_LOGS("ftell failed because: %s", strerror(errno));
         return -1;
     }
-    if (!fseek(file, 0L, SEEK_SET)) {
+    if (fseek(file, 0L, SEEK_SET)!=0) {
         ERR_LOGS("ftell failed because: %s", strerror(errno));
         return -1;
     }

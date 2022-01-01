@@ -166,13 +166,12 @@ namespace scaler {
             return false;
         }
 
+
         //Step3: Use callback to determine which ID to hook
         for (FileID curFileId = 0; curFileId < elfImgInfoMap.getSize(); ++curFileId) {
             auto &curElfImgInfo = elfImgInfoMap[curFileId];
-            DBG_LOGS("PLT start addr for %s is %p", curElfImgInfo.filePath.c_str(), curElfImgInfo.pltStartAddr);
 
             if (curElfImgInfo.elfImgValid) {
-                auto &curFileName = pmParser.idFileMap.at(curFileId);
                 //loop through external symbols, let user decide which symbol to hook through callback function
                 for (SymID scalerSymbolId:curElfImgInfo.scalerIdMap) {
                     auto &curSymbol = allExtSymbol[scalerSymbolId];
@@ -181,7 +180,7 @@ namespace scaler {
                         continue;
                     }
 
-                    if (filterCallB(curFileName, curSymbol.symbolName)) {
+                    if (filterCallB(curElfImgInfo.filePath, curSymbol.symbolName)) {
                         //The user wants this symbol
                         hookedExtSymbol.pushBack(scalerSymbolId);
 
@@ -238,16 +237,36 @@ namespace scaler {
                 continue;
             }
             curSymbol.pseudoPltEntry = dlsym(pseudoPltDl, output);
-
             if (!curSymbol.pseudoPltEntry) {
                 fatalErrorS("Cannot find pseudo plt address for symbol %s.", funcName.c_str());
                 continue;
             }
+
             std::vector<uint8_t> pltRedirectorCodeArr;
             if (!fillDestAddr2PltRedirectorCode(redzoneJumperAddr, pltRedirectorCodeArr)) {
                 fatalErrorS("Cannot find pseudo plt address for symbol %s.", funcName.c_str());
                 continue;
             }
+
+//            //Jump endbranch if possible
+//            if (*(uint8_t *) curSymbol.pseudoPltEntry == 0xF3) {
+//                //Jump endbranch 64
+//                curSymbol.pseudoPltEntry = (uint8_t *) curSymbol.pseudoPltEntry + 4;
+//            }
+//            //Jump endbranch if possible
+//            if (*(uint8_t *) redzoneJumperAddr == 0xF3) {
+//                //Jump endbranch 64
+//                redzoneJumperAddr = (uint8_t *) redzoneJumperAddr + 4;
+//            }
+
+//            if( *(uint8_t *) curSymbol.pseudoPltEntry!=0x6A){
+//                fatalError("Illegal instruction detected in compiled pseudo PltEntry");
+//                return false;
+//            }
+//            if( *(uint8_t *) redzoneJumperAddr!=0x4c){
+//                fatalError("Illegal instruction detected in compiled redzone jumper");
+//                return false;
+//            }
 
             auto &curELFImgInfo = elfImgInfoMap[curSymbol.fileId];
             //DBG_LOGS("[%s] %s hooked (ID:%zd)", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
@@ -295,13 +314,11 @@ namespace scaler {
                 }
 
                 //Install hook code
-                memcpy((uint8_t *) curSymbol.pltEntry,
-                       pltRedirectorCodeArr.data(), 16);
-
+                memcpy((uint8_t *) curSymbol.pltEntry, redzoneJumperAddr, 16);
+                DBG_LOGS("File=%s Symbol=%s(ID:%zd) .plt=%p hooked", curELFImgInfo.filePath.c_str(),
+                         curSymbol.symbolName.c_str(), curSymbol.scalerSymbolId,
+                         curSymbol.pltEntry);
             }
-
-            pltRedirectorCodeArr.clear();
-
         }
 
 
@@ -536,12 +553,14 @@ namespace scaler {
 
         sstream.str("");
         sstream << execWorkDir << "/redzoneJumper-" << getpid() << ".so";
-        void *handle = dlopen(sstream.str().c_str(),
-                              RTLD_NOW);
+        uint8_t *handle = static_cast<uint8_t *>(dlopen(sstream.str().c_str(),
+                                                        RTLD_NOW));
         if (handle == NULL) {
             fatalErrorS("Cannot open compiled redzone jumper because: %s", strerror(errno));
             return nullptr;
         }
+
+
         return handle;
     }
 
@@ -635,12 +654,14 @@ namespace scaler {
 
         sstream.str("");
         sstream << execWorkDir << "/pseudoPlt-" << getpid() << ".so";
-        void *handle = dlopen(sstream.str().c_str(),
-                              RTLD_NOW);
+        uint8_t *handle = static_cast<uint8_t *>(dlopen(sstream.str().c_str(),
+                                                        RTLD_NOW));
         if (!handle) {
             fatalErrorS("dlOpen failed, reason: %s", strerror(errno));
             return nullptr;
         }
+
+
         return handle;
     }
 
@@ -653,17 +674,33 @@ namespace scaler {
                 char *curAddr = pltAddr;
                 int counter = 0;
                 for (int _ = 0; _ < curELFImgInfo.scalerIdMap.size(); ++_) {
-                    curAddr += 16;
+                    curAddr += 16; //Skip ld calling plt entry/ move to the next plt entry
                     ++counter;
-                    //todo: use xed to parse operators
-                    int *pltStubId = reinterpret_cast<int *>(curAddr + 7);
+                    int pushOffset = -1;
+                    for (int i = 0; i < 16; ++i) {
+                        uint8_t *curOpCode = reinterpret_cast<uint8_t *>(curAddr + i);
+                        if (*curOpCode == 0x68) { // 68 is the op code for push
+                            pushOffset = i + 1;
+                            break;
+                        }
+                    }
+                    if (pushOffset == -1) {
+                        fatalError("Plt entry format illegal. Cannot find instruction \"push id\"");
+                    }
+
+                    //Debug tips: Add breakpoint after this statement, and *pltStubId should be 0 at first, 2 at second .etc
+                    int *pltStubId = reinterpret_cast<int *>(curAddr + pushOffset);
+                    if (*pltStubId >= curELFImgInfo.scalerIdMap.size()) {
+                        fatalError("Plt entry format illegal. Plt id parsed is larger than the number of symbols.");
+                        return false;
+                    }
                     auto &curSymbol = allExtSymbol[curELFImgInfo.scalerIdMap[*pltStubId]];
                     if (curSymbol.symIdInFile != *pltStubId) {
                         fatalError("Plt id parsing logic is flawed.");
                         return false;
                     }
                     curSymbol.pltEntry = curAddr;
-                    curSymbol.pltSecEntry = (char *) curELFImgInfo.pltSecStartAddr;
+                    curSymbol.pltSecEntry = (char *) curELFImgInfo.pltSecStartAddr + (*pltStubId) * 16;
                     //DBG_LOGS("%s pltStub=%d", curELFImgInfo.filePath.c_str(), *pltStubId);
 
                     if (isSymbolAddrResolved(curSymbol)) {
