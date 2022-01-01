@@ -681,7 +681,7 @@ namespace scaler {
                     if(*(uint8_t *)curAddr==0xFF){
                         pushOffset=7;
                     }else if(*(uint8_t *)curAddr==0xF3){
-                        pushOffset=4;
+                        pushOffset=5;
                     }else{
                         fatalError("Plt entry format illegal. Cannot find instruction \"push id\"");
                     }
