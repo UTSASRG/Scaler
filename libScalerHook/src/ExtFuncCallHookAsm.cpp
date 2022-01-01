@@ -332,10 +332,7 @@ namespace scaler {
             ERR_LOG("Failed to initialize TLS");
         }
         if (ldPreloadVal) {
-            if (!setenv("LD_PRELOAD", ldPreloadVal, true)) {
-                fatalErrorS("Cannot set environment variable LD_PRELOAD, reason: %s", strerror(errno));
-                return false;
-            }
+            setenv("LD_PRELOAD", ldPreloadVal, true);
         }
         return true;
     }
@@ -681,21 +678,18 @@ namespace scaler {
                     curAddr += 16; //Skip ld calling plt entry/ move to the next plt entry
                     ++counter;
                     int pushOffset = -1;
-                    for (int i = 0; i < 16; ++i) {
-                        uint8_t *curOpCode = reinterpret_cast<uint8_t *>(curAddr + i);
-                        if (*curOpCode == 0x68) { // 68 is the op code for push
-                            pushOffset = i + 1;
-                            break;
-                        }
-                    }
-                    if (pushOffset == -1) {
+                    if(*(uint8_t *)curAddr==0xFF){
+                        pushOffset=7;
+                    }else if(*(uint8_t *)curAddr==0xF3){
+                        pushOffset=4;
+                    }else{
                         fatalError("Plt entry format illegal. Cannot find instruction \"push id\"");
                     }
 
                     //Debug tips: Add breakpoint after this statement, and *pltStubId should be 0 at first, 2 at second .etc
                     int *pltStubId = reinterpret_cast<int *>(curAddr + pushOffset);
-                    if (*pltStubId >= curELFImgInfo.scalerIdMap.size()) {
-                        fatalError("Plt entry format illegal. Plt id parsed is larger than the number of symbols.");
+                    if (*pltStubId >= (int)curELFImgInfo.scalerIdMap.size()) {
+                        fatalErrorS("Plt entry format illegal. Plt id=%d parsed is larger than the number of symbols=%zu.",*pltStubId,curELFImgInfo.scalerIdMap.size());
                         return false;
                     }
                     auto &curSymbol = allExtSymbol[curELFImgInfo.scalerIdMap[*pltStubId]];
