@@ -10,13 +10,16 @@
 #include <util/tool/FileTool.h>
 #include <exceptions/ErrCode.h>
 #include <util/hook/hook.hh>
+#include <util/tool/StringTool.h>
 
 
 #define PROCMAPS_LINE_MAX_LENGTH  (PATH_MAX + 100)
 namespace scaler {
 
     PmParser_Linux::PmParser_Linux(int pid) : procID(pid) {
-        parsePMMap();
+        if(!parsePMMap()){
+            fatalError("Cannot parse mp. Check format?")
+        }
         //todo: Parse used dll
         //parseDLPhdr();
     }
@@ -261,7 +264,7 @@ namespace scaler {
 
     bool PmParser_Linux::parseOffsetStr(PMEntry_Linux &curEntry, const std::string &offsetStr) {
         //Put offset into offset (They are 8-bit hex without 0x prefix)
-        if (!sscanf(offsetStr.c_str(), "%8lx", &curEntry.offset)) {
+        if (!sscanf(offsetStr.c_str(), "%8llx", &curEntry.offset)) {
             ERR_LOG("/pros/{pid}/map offset format wrong");
             return false;
         }

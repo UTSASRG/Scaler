@@ -56,9 +56,9 @@ namespace scaler {
         bool isE;               // Is executable
         bool isP;               // Is private
 
-        long offset;            // offset
+        long long offset;            // offset
         std::string dev;        // device major:minor
-        int inode;              // inode of the file that backs the area
+        long long inode;              // inode of the file that backs the area
 
         std::string pathName;   //Path name to that executable
         FileID fileId;          //Id of pathname in PmParser_Linux structure

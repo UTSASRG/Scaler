@@ -103,8 +103,8 @@ bool initTLS() {
     //Dont double initialize
     assert(bypassCHooks == SCALER_TRUE);
     //Initialize saving data structure
-    //curContext.initializeMe = ~curContext.initializeMe;
-    //saverElem.initializeMe = ~saverElem.initializeMe;
+//    curContext.initializeMe = ~curContext.initializeMe;
+    saverElem.initializeMe = ~saverElem.initializeMe;
     curContext = new Context();
     if (!curContext) {
         fatalError("Failed to allocate memory for Context");
