@@ -195,8 +195,12 @@ namespace scaler {
                 ERR_LOG("Cannot find a dyn entry");
                 return nullptr;
             }
+            //DBG_LOGS("d_tag=%16lx d_value=%16lx", dynEntryPtr->d_tag, dynEntryPtr->d_un.d_val);
             uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddrStart, curFileID,
                                                             dynEntryPtr->d_un.d_ptr);
+//            DBG_LOGS("curBaseAddr(%p) + dynEntryPtr->d_un.d_ptr(%p) =%16lx", (void *) curBaseAddr,
+//                     (void *) dynEntryPtr->d_un.d_ptr,
+//                     (long unsigned int) curBaseAddr + dynEntryPtr->d_un.d_ptr);
             return (SEGTYPE) (curBaseAddr + dynEntryPtr->d_un.d_ptr);
         }
 

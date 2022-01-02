@@ -164,12 +164,15 @@ namespace scaler {
     uint8_t *PmParser_Linux::autoAddBaseAddr(uint8_t *curBaseAddr, FileID curFileiD, ElfW(Addr) targetAddr) {
         ssize_t idWithBaseAddr = findExecNameByAddr(curBaseAddr + targetAddr);
         ssize_t idWithoutBaseAddr = findExecNameByAddr((void *) targetAddr);
-        if (idWithBaseAddr == curFileiD) {
-            //Relative
-            return curBaseAddr;
-        } else if (idWithoutBaseAddr == curFileiD) {
+
+        DBG_LOGS("idWithBaseAddr=%zd, idWithoutBaseAddr=%zd %p", idWithBaseAddr, idWithoutBaseAddr, curBaseAddr);
+
+        if (idWithoutBaseAddr == curFileiD) {
             //Absolute
             return nullptr;
+        } else if (idWithBaseAddr == curFileiD) {
+            //Relative
+            return curBaseAddr;
         } else {
             ERR_LOGS("Not found, id1=%zu, id2=%zu, curFileID=%zu\n", idWithBaseAddr, idWithoutBaseAddr, curFileiD);
             return nullptr;

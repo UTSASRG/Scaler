@@ -46,7 +46,7 @@ namespace scaler {
 
             elfImgInfoMap.pushBack(ELFImgInfo());
             auto &curELFImgInfo = elfImgInfoMap[elfImgInfoMap.getSize() - 1];
-            curELFImgInfo.elfImgValid=false;
+            curELFImgInfo.elfImgValid = false;
 
             if (curFileName == "" || curFileName[0] == '[') {
                 //We don't need noname process entry
@@ -98,12 +98,15 @@ namespace scaler {
                 continue;
             }
 
+            DBG_LOG("Finding dynStrTable");
             curELFImgInfo.dynStrTable = findElemPtrInDynamicSeg<char *>(elfParser, curELFImgInfo, curFileiD,
                                                                         DT_STRTAB);
             if (!curELFImgInfo.dynStrTable) {
                 ERR_LOGS("Failed to find dynamic string table in %s. Scaler won't hook this file.",
                          curFileName.c_str());
                 continue;
+            } else {
+                DBG_LOGS("dynStrTable is at %p", curELFImgInfo.dynStrTable);
             }
 
             curELFImgInfo.dynStrSize = findElemValInDynamicSeg<ssize_t>(elfParser, curELFImgInfo, curFileiD,
@@ -210,8 +213,13 @@ namespace scaler {
         std::stringstream ss;
         for (ssize_t i = 0; i < curELFImgInfo.relaPltCnt; ++i) {
             ElfW(Rela) *curRelaPlt = curELFImgInfo.relaPlt + i;
-//            if (ELF64_R_TYPE(curRelaPlt->r_info) != R_X86_64_JUMP_SLOT) {
-//                continue;
+//            DBG_LOGS("r_offset=%16lx, r_info=%16lx, r_addend=%16lx, sym=%16lx, type=%16lx %s", curRelaPlt->r_offset,
+//                     curRelaPlt->r_info, curRelaPlt->r_addend, ELFW(R_SYM)(curRelaPlt->r_info),
+//                     ELFW(R_TYPE)(curRelaPlt->r_info), curELFImgInfo.dynStrTable + strIdx);
+
+//            if(ELFW(R_TYPE)(curRelaPlt->r_info)!=7){
+//This can happen. eg: libm
+//                ERR_LOG("Find non R_X86_64_JMP_SLOT in .rela.plt");
 //            }
 
             ssize_t relIdx = ELFW(R_SYM)(curRelaPlt->r_info);
