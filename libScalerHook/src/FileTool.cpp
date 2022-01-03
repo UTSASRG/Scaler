@@ -46,7 +46,7 @@ std::vector<ssize_t> scaler::findStrSplit(std::string &srcStr, char splitChar) {
 
 long int scaler::getFileSize(FILE *file) {
     //The type of this return value is used by ftell. So it should be universal
-    if (fseek(file, 0L, SEEK_END)!=0) {
+    if (fseek(file, 0L, SEEK_END) != 0) {
         ERR_LOGS("fseek failed because: %s", strerror(errno));
         return -1;
     }
@@ -55,7 +55,7 @@ long int scaler::getFileSize(FILE *file) {
         ERR_LOGS("ftell failed because: %s", strerror(errno));
         return -1;
     }
-    if (fseek(file, 0L, SEEK_SET)!=0) {
+    if (fseek(file, 0L, SEEK_SET) != 0) {
         ERR_LOGS("ftell failed because: %s", strerror(errno));
         return -1;
     }
@@ -76,14 +76,22 @@ bool scaler::extractFileName_Linux(std::string absolutePath, std::string &pathNa
 }
 
 bool scaler::getPWD(std::string &retPwdPath) {
+    auto scalerWorkDirPtr = getenv("SCALER_WORKDIR");
 
-    char temp[PATH_MAX];
+    if (!scalerWorkDirPtr) {
+        //Use cwd
+        char temp[PATH_MAX];
 
-    if (getcwd(temp, PATH_MAX) != 0) {
-        retPwdPath = std::string(temp);
-        return true;
+        if (getcwd(temp, PATH_MAX) != 0) {
+            retPwdPath = std::string(temp);
+            return true;
+        } else {
+            ERR_LOGS("getcwd failed because %s", strerror(errno));
+            return false;
+        }
     } else {
-        ERR_LOGS("%s", strerror(errno));
-        return false;
+        //Use env variable
+        retPwdPath = scalerWorkDirPtr;
+        return true;
     }
 }

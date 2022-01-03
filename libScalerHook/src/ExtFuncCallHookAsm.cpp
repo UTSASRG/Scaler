@@ -65,14 +65,24 @@ public:
         if (!curContext->rawRecord) {
             fatalError("rawRecord is not initialized");
         }
+
+        std::string execWorkDir;
+        if (!scaler::getPWD(execWorkDir)) {
+            ERR_LOG("Cannot open PWD");
+            return;
+        }
+
+        std::stringstream ss;
+        ss << execWorkDir << "/scaler_time" << getpid() << "_" << pthread_self() << ".bin";
+
         char fileName[255];
-        DBG_LOGS("Save rawrecord of thread %lu", pthread_self());
-        sprintf(fileName, "scaler_time_%lu.bin", pthread_self());
+        DBG_LOGS("Save rawrecord of pid=%d thread %lu", getpid(), pthread_self());
         FILE *fp = NULL;
         //todo: check open success or not
-        fp = fopen(fileName, "w");
+        fp = fopen(ss.str().c_str(), "wb");
         if (!fp) {
-            fatalErrorS("Fail to create file, reason:%s", strerror(errno));
+            ERR_LOGS("Fail to create file \"%s\" reason:%s", ss.str().c_str(), strerror(errno));
+            return;
         }
         const uint64_t &arrSize = scaler_extFuncCallHookAsm_thiz->allExtSymbol.getSize();
         const uint64_t &entrySize = sizeof(scaler::RawRecordEntry);
@@ -185,7 +195,8 @@ namespace scaler {
                         hookedExtSymbol.pushBack(scalerSymbolId);
 
                         DBG_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd, %s, %zd",
-                                 curElfImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.scalerSymbolId,curSymbol.symbolName.c_str(),curSymbol.symIdInFile);
+                                 curElfImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.scalerSymbolId,
+                                 curSymbol.symbolName.c_str(), curSymbol.symIdInFile);
 
                         //todo: adjust for all symbols in advance, rather than do them individually
                         //Adjust permiss for this current got entry
@@ -649,7 +660,7 @@ namespace scaler {
 
         int sysRet = system(sstream.str().c_str());
         if (sysRet != 0) {
-            fatalError("Pseudo plt compilation failed");
+            fatalErrorS("Pseudo plt compilation failed with command %s", sstream.str().c_str());
             return nullptr;
         }
 
@@ -678,18 +689,20 @@ namespace scaler {
                     curAddr += 16; //Skip ld calling plt entry/ move to the next plt entry
                     ++counter;
                     int pushOffset = -1;
-                    if(*(uint8_t *)curAddr==0xFF){
-                        pushOffset=7;
-                    }else if(*(uint8_t *)curAddr==0xF3){
-                        pushOffset=5;
-                    }else{
+                    if (*(uint8_t *) curAddr == 0xFF) {
+                        pushOffset = 7;
+                    } else if (*(uint8_t *) curAddr == 0xF3) {
+                        pushOffset = 5;
+                    } else {
                         fatalError("Plt entry format illegal. Cannot find instruction \"push id\"");
                     }
 
                     //Debug tips: Add breakpoint after this statement, and *pltStubId should be 0 at first, 2 at second .etc
                     int *pltStubId = reinterpret_cast<int *>(curAddr + pushOffset);
-                    if (*pltStubId >= (int)curELFImgInfo.scalerIdMap.size()) {
-                        fatalErrorS("Plt entry format illegal. Plt id=%d parsed is larger than the number of symbols=%zu.",*pltStubId,curELFImgInfo.scalerIdMap.size());
+                    if (*pltStubId >= (int) curELFImgInfo.scalerIdMap.size()) {
+                        fatalErrorS(
+                                "Plt entry format illegal. Plt id=%d parsed is larger than the number of symbols=%zu.",
+                                *pltStubId, curELFImgInfo.scalerIdMap.size());
                         return false;
                     }
                     auto &curSymbol = allExtSymbol[curELFImgInfo.scalerIdMap[*pltStubId]];
@@ -1024,6 +1037,7 @@ static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
     //Skip afterhook
 //    asm volatile ("movq $1234, %%rdi" : /* No outputs. */
 //    :/* No inputs. */:"rdi");
+//    bypassCHooks = SCALER_TRUE;
 //    return retOriFuncAddr;
 
     /**

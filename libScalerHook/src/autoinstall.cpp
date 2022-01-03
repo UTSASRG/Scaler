@@ -17,8 +17,9 @@ int doubletake_main(int argc, char **argv, char **envp) {
     DBG_LOG("Installing plthook");
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
-
-        if (funcName == "__tunable_get_val") {
+        if (funcName == "__sigsetjmp") {
+            return false;
+        } else if (funcName == "__tunable_get_val") {
             return false;
         } else if (funcName == "__tls_get_addr") {
             return false;
