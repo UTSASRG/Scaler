@@ -9,10 +9,8 @@ enum INSTALL_TYPE {
     BRKPOINT = 2
 };
 
-void install(scaler::Hook::SYMBOL_FILTER filterCallB);
+bool install(scaler::Hook::SYMBOL_FILTER filterCallB);
 
-void install(scaler::Hook::SYMBOL_FILTER filterCallB, INSTALL_TYPE type, pid_t childPID);
+bool install(scaler::Hook::SYMBOL_FILTER filterCallB, INSTALL_TYPE type, pid_t childPID=0);
 
-void install(scaler::Hook::SYMBOL_FILTER filterCallB, INSTALL_TYPE type);
-
-void uninstall(INSTALL_TYPE type);
+bool uninstall(INSTALL_TYPE type);

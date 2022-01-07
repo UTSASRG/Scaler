@@ -4,14 +4,14 @@
 #include <cstdio>
 
 #define PRINT_DBG_LOG false
-#define PRINT_ERR_LOG false
+#define PRINT_ERR_LOG true
 
 #if PRINT_DBG_LOG
 
 // Print a single log string
-#define DBG_LOG(str) fprintf(stderr,"DBG: %s:%d  ",__FILE__,__LINE__); fprintf(stderr,"%s\n",str)
+#define DBG_LOG(str) fprintf(stdout,"DBG: %s:%d  ",__FILE__,__LINE__); fprintf(stdout,"%s\n",str)
 // Print log strings using printf template format
-#define DBG_LOGS(fmt, ...) fprintf(stderr,"DBG: %s:%d  ",__FILE__,__LINE__); fprintf(stderr,fmt,__VA_ARGS__); fprintf(stderr,"\n")
+#define DBG_LOGS(fmt, ...) fprintf(stdout,"DBG: %s:%d  ",__FILE__,__LINE__); fprintf(stdout,fmt,__VA_ARGS__); fprintf(stdout,"\n")
 // Print a single error string
 
 #else

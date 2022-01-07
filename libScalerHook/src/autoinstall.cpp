@@ -3,7 +3,7 @@
 #include <util/tool/Logging.h>
 #include <dlfcn.h>
 #include <util/tool/FileTool.h>
-
+#include <exceptions/ScalerException.h>
 
 typedef int (*main_fn_t)(int, char **, char **);
 
@@ -12,11 +12,22 @@ main_fn_t real_main;
 std::string execFileName;
 
 int doubletake_main(int argc, char **argv, char **envp) {
+    printf("libscalerhook %s\n", argv[0]);
     //todo: support different running modes
     DBG_LOG("Installing plthook");
     install([](std::string fileName, std::string funcName) -> bool {
         //todo: User should be able to specify name here. Since they can change filename
-        if (funcName == "svcunix_rendezvous_abort") {
+        if (funcName == "__sigsetjmp") {
+            return false;
+        } else if (funcName == "__tunable_get_val") {
+            return false;
+        } else if (funcName == "__tls_get_addr") {
+            return false;
+        } else if (funcName == "_dl_sym") {
+            return false;
+        } else if (funcName == "_dl_find_dso_for_object") {
+            return false;
+        } else if (funcName == "svcunix_rendezvous_abort") {
             return false;
         } else if (funcName == "svctcp_rendezvous_abort") {
             return false;
@@ -192,48 +203,6 @@ int doubletake_main(int argc, char **argv, char **envp) {
         }
     }, INSTALL_TYPE::ASM);
 
-//    //Initialization
-//    scaler::ExtFuncCallHookAsm *libPltHook = scaler::ExtFuncCallHookAsm::getInst();
-//
-//    scaler::PmParserC_Linux pmParser;
-//    execFileName = pmParser.curExecAbsolutePath;
-//
-//    //Hook all symbols except certain files
-//    //todo:Merged from asmSimpleCase. Only hook current executable for testing
-//    libPltHook->install([](std::string fileName, std::string funcName) -> bool {
-//        //todo: User should be able to specify name here. Since they can change filename
-//        if (fileName == execFileName) {
-//            ERR_LOGS("Autoinstall %s:%s", fileName.c_str(), funcName.c_str());
-//            return true;
-//        } else {
-//            return false;
-//        }
-//    });
-//    libPltHook->install([](std::string fileName, std::string funcName) -> bool {
-//        //todo: User should be able to specify name here. Since they can change filename
-//        if (funcName == "") {
-//            return false;
-//        } else if (fileName.length() >= 16 && fileName.substr(fileName.length() - 16, 16) == "libscalerhook.so") {
-//            return false;
-//        } else if (funcName.length() >= 26 &&
-//                   funcName.substr(funcName.length() - 26, 26) != "libscalerhook_installer.so") {
-//            return false;
-//        }  else {
-//            return true;
-//        }
-    //todo: User should be able to specify name here. Since they can change filename
-//        if (funcName == "") {
-//            return false;
-//        } else if (fileName.length() >= 16 && fileName.substr(fileName.length() - 16, 16) == "libscalerhook.so") {
-//            return false;
-//        } else if (funcName.length() >= 26 &&
-//                   funcName.substr(funcName.length() - 26, 26) != "libscalerhook_installer.so") {
-//            return false;
-//        }  else {
-//            return true;
-//        }
-//    });
-
     // Call the program's main function
     int ret = real_main(argc, argv, envp);
     DBG_LOG("Uninstalling plthook");
@@ -248,14 +217,12 @@ extern "C" int __libc_start_main(main_fn_t, int, char **, void (*)(), void (*)()
 extern "C" int doubletake_libc_start_main(main_fn_t main_fn, int argc, char **argv, void (*init)(), void (*fini)(),
                                           void (*rtld_fini)(), void *stack_end) {
     using namespace scaler;
-    //printf("libScalerHook\n");
-    std::string pathName;
-    std::string funcName;
-    extractFileName_Linux(std::string(argv[0]), pathName, funcName);
-    setenv("SCALER_WORKDIR", pathName.c_str(), true);
-    setenv("LD_PRELOAD", "", true);
     // Find the real __libc_start_main
     auto real_libc_start_main = (decltype(__libc_start_main) *) dlsym(RTLD_NEXT, "__libc_start_main");
+    if (!real_libc_start_main) {
+        fatalError("Cannot find __libc_start_main.");
+        return -1;
+    }
     // Save the program's real main function
     real_main = main_fn;
     // Run the real __libc_start_main, but pass in doubletake's main function

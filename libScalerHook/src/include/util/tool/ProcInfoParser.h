@@ -56,9 +56,9 @@ namespace scaler {
         bool isE;               // Is executable
         bool isP;               // Is private
 
-        long offset;            // offset
+        long long offset;            // offset
         std::string dev;        // device major:minor
-        int inode;              // inode of the file that backs the area
+        long long inode;              // inode of the file that backs the area
 
         std::string pathName;   //Path name to that executable
         FileID fileId;          //Id of pathname in PmParser_Linux structure
@@ -122,7 +122,7 @@ namespace scaler {
         std::map<std::string, FileID> fileIDMap;
 
         //The base address of an executable
-        std::vector<std::pair<uint8_t *,uint8_t *>> fileBaseAddrMap;
+        std::vector<std::pair<uint8_t *, uint8_t *>> fileBaseAddrMap;
 
         std::map<uint8_t *, FileID> startAddrFileMap;
 
@@ -167,11 +167,11 @@ namespace scaler {
 
 
         /**
-             * Parse /proc/{pid}/maps into procMap
-             */
-        virtual void parsePMMap();
+         * Parse /proc/{pid}/maps into procMap
+         */
+        virtual bool parsePMMap();
 
-        bool addrInApplication(void* addr);
+        bool addrInApplication(void *addr);
 
     protected:
         //Process ID
@@ -183,18 +183,17 @@ namespace scaler {
         /**
          * Open /proc/{pid}/maps
          */
-        virtual void openPMMap(std::ifstream &file);
+        virtual bool openPMMap(std::ifstream &file) const;
 
-        virtual void parseAddrStr(PMEntry_Linux& curEntry, const std::string& addrStr);
+        virtual bool parseAddrStr(PMEntry_Linux &curEntry, const std::string &addrStr);
 
-        virtual void parseOffsetStr(PMEntry_Linux& curEntry, const std::string& offsetStr);
+        virtual bool parseOffsetStr(PMEntry_Linux &curEntry, const std::string &offsetStr);
 
-        virtual void parsePermStr(PMEntry_Linux& curEntry, const std::string& permStr);
+        virtual bool parsePermStr(PMEntry_Linux &curEntry, const std::string &permStr);
 
-        virtual void indexFile(PMEntry_Linux& curEntry);
+        virtual bool indexFile(PMEntry_Linux &curEntry);
 
 
-        virtual void curExecName();
 
 
         //todo: Build a library dependency graph

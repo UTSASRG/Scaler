@@ -9,7 +9,7 @@
 #include <cassert>
 #include <string>
 #include <vector>
-#include <util/hook/ExtFuncCallHook_Linux.hh>
+#include <util/hook/ExtFuncCallHook.hh>
 #include <bits/types/siginfo_t.h>
 #include <xed/xed-iclass-enum.h>
 #include <xed/xed-decoded-inst.h>

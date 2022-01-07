@@ -3,14 +3,14 @@ project(ScalerHook)
 
 # Set global (Relative this folder until reset) compiler options
 set(CMAKE_C_STANDARD 11)
-set(SCALER_HOOK_COMPILATION_FLAGS "-O3" "-g" "-mavx" "-mavx512f" "-mavx512vl" "-Werror")
+set(SCALER_HOOK_COMPILATION_FLAGS "-O0" "-g" "-Werror")
 # https://json.nlohmann.me/integration/cmake/
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(lib/json)
 add_subdirectory(lib/watcher)
 
 set(ScalerHookSrc
-        src/ExtFuncCallHook_Linux.cpp
+        src/ExtFuncCallHook.cpp
         src/ExtFuncCallHookAsm.cpp
         src/ProcInfoParser.cpp
         src/ElfParser.cpp
@@ -21,19 +21,20 @@ set(ScalerHookSrc
         src/Timer.cpp
         src/Config.cpp
         src/Serilizable.cpp
-        src/VMEmulator.cpp
         src/InvocationTree.cpp
         src/StringTool.cpp)
+#src/VMEmulator.cpp
+
 
 list(APPEND CMAKE_PREFIX_PATH "/media/umass/datasystem/steven/lib/intel/build/kits/xed-install-base-2021-08-26-lin-x86-64")
-find_package(XED REQUIRED)
+#find_package(XED REQUIRED)
 
 
 # Scaler hook library itself. Users need to manually install scalerhook through library functions.
 add_library(ScalerHook-HookManualAsm SHARED
         ${ScalerHookSrc})
 target_include_directories(ScalerHook-HookManualAsm PUBLIC src/include lib/inireader)
-target_link_libraries(ScalerHook-HookManualAsm PUBLIC pthread dl nlohmann_json::nlohmann_json xed2 xed2-ild)
+target_link_libraries(ScalerHook-HookManualAsm PUBLIC pthread dl nlohmann_json::nlohmann_json)
 target_compile_definitions(ScalerHook-HookManualAsm PUBLIC XED_ENCODER)
 target_compile_options(ScalerHook-HookManualAsm PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
 
@@ -64,7 +65,8 @@ add_executable(ScalerRun
 add_library(ScalerHook-HookAuto SHARED src/autoinstall.cpp ${ScalerHookSrc})
 target_include_directories(ScalerHook-HookAuto PUBLIC src/include lib/inireader)
 target_link_libraries(ScalerHook-HookAuto PUBLIC pthread dl nlohmann_json::nlohmann_json xed2 xed2-ild)
-target_compile_definitions(ScalerHook-HookAuto PUBLIC XED_ENCODER NDEBUG)
+target_compile_definitions(ScalerHook-HookAuto PUBLIC XED_ENCODER )#NDEBUG
+target_link_options(ScalerHook-HookAuto PRIVATE -static-libgcc -static-libstdc++)
 target_compile_options(ScalerHook-HookAuto PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
 
 #add_library(ScalerHook-HookAuto-Brkpoint SHARED src/autoinstall.cpp)

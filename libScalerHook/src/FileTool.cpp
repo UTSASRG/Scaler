@@ -1,6 +1,9 @@
 #include <util/tool/FileTool.h>
 #include <exceptions/ScalerException.h>
 #include <exceptions/ErrCode.h>
+#include <climits>
+#include <unistd.h>
+#include <cstring>
 
 
 std::vector<ssize_t> scaler::findStrSplit(std::string &srcStr, char splitChar) {
@@ -43,19 +46,52 @@ std::vector<ssize_t> scaler::findStrSplit(std::string &srcStr, char splitChar) {
 
 long int scaler::getFileSize(FILE *file) {
     //The type of this return value is used by ftell. So it should be universal
-    fseek(file, 0L, SEEK_END);
+    if (fseek(file, 0L, SEEK_END) != 0) {
+        ERR_LOGS("fseek failed because: %s", strerror(errno));
+        return -1;
+    }
     long int fileSize = ftell(file);
-    fseek(file, 0L, SEEK_SET);
+    if (!fileSize) {
+        ERR_LOGS("ftell failed because: %s", strerror(errno));
+        return -1;
+    }
+    if (fseek(file, 0L, SEEK_SET) != 0) {
+        ERR_LOGS("ftell failed because: %s", strerror(errno));
+        return -1;
+    }
     return fileSize;
 }
 
-void scaler::extractFileName_Linux(std::string absolutePath, std::string &pathName, std::string &fileName) {
+bool scaler::extractFileName_Linux(std::string absolutePath, std::string &pathName, std::string &fileName) {
     auto posi = absolutePath.find_last_of('/');
     if (posi == std::string::npos) {
         //Not found, return full string
-        throwScalerExceptionS(ErrCode::PATH_FORMAT_INCORRECT, "Path incorrect: %s",absolutePath.c_str());
+        ERR_LOGS("Path incorrect: %s", absolutePath.c_str());
+        return false;
     } else {
         pathName = absolutePath.substr(0, posi);
         fileName = absolutePath.substr(posi + 1, absolutePath.length() - posi);
+        return true;
+    }
+}
+
+bool scaler::getPWD(std::string &retPwdPath) {
+    auto scalerWorkDirPtr = getenv("SCALER_WORKDIR");
+
+    if (!scalerWorkDirPtr) {
+        //Use cwd
+        char temp[PATH_MAX];
+
+        if (getcwd(temp, PATH_MAX) != 0) {
+            retPwdPath = std::string(temp);
+            return true;
+        } else {
+            ERR_LOGS("getcwd failed because %s", strerror(errno));
+            return false;
+        }
+    } else {
+        //Use env variable
+        retPwdPath = scalerWorkDirPtr;
+        return true;
     }
 }

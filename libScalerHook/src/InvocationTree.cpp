@@ -9,21 +9,18 @@
 #include <queue>
 #include <util/hook/ExtFuncCallHookAsm.hh>
 
-void scaler::SerilizableInvocationTree::load(FILE *fp) {
-    throwScalerException(ErrCode::FUNC_NOT_IMPLEMENTED, "load has not been implemented");
-    if (fileName != "") {
-
-    }
-
+bool scaler::SerilizableInvocationTree::load(FILE *fp) {
+    fatalError("Serialization of invocation tree not implemented")
+    return false;
 }
 
 
-void scaler::SerilizableInvocationTree::save(FILE *fp) {
+bool scaler::SerilizableInvocationTree::save(FILE *fp) {
     if (saveOnExit) {
         auto appEndTimestamp = getunixtimestampms();
         //Add information for root node
-//        treeRoot.setStartTimestamp(libPltHook->appStartTimestamp);
-//        treeRoot.setEndTimestamp(appEndTimestamp);
+        //treeRoot.setStartTimestamp(libPltHook->appStartTimestamp);
+        //treeRoot.setEndTimestamp(appEndTimestamp);
         treeRoot.setRealFileID(0);
 
         char fileName[255];
@@ -31,48 +28,37 @@ void scaler::SerilizableInvocationTree::save(FILE *fp) {
         auto layerOrderedElem = serializeRootNode();
 
 
-        FILE *fp = NULL;
-        fp = fopen(fileName, "w");
+        FILE *fp = fopen(fileName, "w");
+        if (!fp) {
+            ERR_LOG("Cannot open saving file");
+            return false;
+        }
 
         for (ssize_t i = 0; i < layerOrderedElem.size(); ++i) {
             auto &curElem = layerOrderedElem[i];
-
-//            if (curElem->getEndTimestamp() == -1) {
-//                curElem->setEndTimestamp(appEndTimestamp);
-//                ERR_LOG("Program exits abnormally, adding timestamp");
-//            }
-
-//            if (curElem->getRealFileID() == -1 && curElem->getParent() != nullptr) {
-//                //todo: move this to ExtFuncCallHookAsm
-//                int64_t callerFileID = curElem->getParent()->getRealFileID();
-//                int64_t fileIDInCaller = curElem->getExtFuncID();
-//                void *funcAddr = nullptr;
-//                int64_t libraryID = -1;
-//                assert(callerFileID != -1);
-//                assert(fileIDInCaller != -1);
-//                libPltHook->parseFuncInfo(callerFileID, fileIDInCaller, funcAddr, libraryID);
-//                curElem->setFuncAddr(reinterpret_cast<int64_t>(funcAddr));
-//                curElem->setRealFileID(libraryID);
-//                ERR_LOGS("Program exits abnormally, parsing %ld:%ld for realAddr, funcAddr=%p",callerFileID,fileIDInCaller,funcAddr);
-//            }
 
             if ((curElem->getExtFuncID() == -1 || curElem->getFuncAddr() == -1 ||
                  curElem->getRealFileID() == -1 || curElem->getStartTimestamp() == -1 ||
                  curElem->getEndTimestamp() == -1) && curElem->getParent() != nullptr) {
                 //After previous op, all nodes other than the root node should be complete.
                 ERR_LOG("Program exits abnormally, one or more attributes are -1.");
-//                assert(false);
             }
         }
 
         for (ssize_t i = 0; i < layerOrderedElem.size(); ++i) {
-            layerOrderedElem[i]->save(fp);
+            if (!layerOrderedElem[i]->save(fp)) {
+                ERR_LOGS("Saving tree node %zd failed", i);
+                continue;
+            }
         }
-        fclose(fp);
+        if (!fp) {
+            fclose(fp);
+        }
         if (libPltHook) {
             libPltHook->saveAllSymbolId();
         }
     }
+    return true;
 }
 
 scaler::SerilizableInvocationTree::SerilizableInvocationTree() {
@@ -153,55 +139,92 @@ scaler::InvocationTreeNode *scaler::InvocationTreeNode::addChild(scaler::Invocat
     return childNode;
 }
 
-void scaler::InvocationTreeNode::load(FILE *fp) {
-    throwScalerException(ErrCode::FUNC_NOT_IMPLEMENTED, "load has not been implemented");
-
+bool scaler::InvocationTreeNode::load(FILE *fp) {
+    fatalError("Serialization of invocation tree is not implemented")
+    return false;
 }
 
-void scaler::InvocationTreeNode::save(FILE *fp) {
-    fwrite(&type, sizeof(type), 1, fp);
-    fwrite(&realFileID, sizeof(realFileID), 1, fp);
-    fwrite(&funcAddr, sizeof(funcAddr), 1, fp);
-    fwrite(&startTimestamp, sizeof(startTimestamp), 1, fp);
-    fwrite(&endTimeStamp, sizeof(endTimeStamp), 1, fp);
-    fwrite(&firstChildIndex, sizeof(firstChildIndex), 1, fp);
-    fwrite(&childrenSize, sizeof(childrenSize), 1, fp);
+bool scaler::InvocationTreeNode::save(FILE *fp) {
+    if (!fwrite(&type, sizeof(type), 1, fp)) {
+        ERR_LOG("Failed to write type into file");
+        return false;
+    }
+    if (!fwrite(&realFileID, sizeof(realFileID), 1, fp)) {
+        ERR_LOG("Failed to write realFileID into file");
+        return false;
+    }
+    if (!fwrite(&funcAddr, sizeof(funcAddr), 1, fp)) {
+        ERR_LOG("Failed to write funcAddr into file");
+        return false;
+    }
+    if (!fwrite(&startTimestamp, sizeof(startTimestamp), 1, fp)) {
+        ERR_LOG("Failed to write startTimestamp into file");
+        return false;
+    }
+    if (!fwrite(&endTimeStamp, sizeof(endTimeStamp), 1, fp)) {
+        ERR_LOG("Failed to write endTimeStamp into file");
+        return false;
+    }
+    if (!fwrite(&firstChildIndex, sizeof(firstChildIndex), 1, fp)) {
+        ERR_LOG("Failed to write firstChildIndex into file");
+        return false;
+    }
+    if (!fwrite(&childrenSize, sizeof(childrenSize), 1, fp)) {
+        ERR_LOG("Failed to write childrenSize into file");
+        return false;
+    }
+    return true;
 }
 
 scaler::PthreadInvocationTreeNode::PthreadInvocationTreeNode() {
     type = Type::PTHREAD_FUNC;
 }
 
-void scaler::PthreadInvocationTreeNode::load(FILE *fp) {
-    throwScalerException(ErrCode::FUNC_NOT_IMPLEMENTED, "load has not been implemented");
-
+bool scaler::PthreadInvocationTreeNode::load(FILE *fp) {
+    fatalError("load has not been implemented");
+    return false;
 }
 
-void scaler::PthreadInvocationTreeNode::save(FILE *fp) {
-    scaler::InvocationTreeNode::save(fp);
-    fwrite(&extraField1, sizeof(extraField1), 1, fp);
-    fwrite(&extraField2, sizeof(extraField2), 1, fp);
+bool scaler::PthreadInvocationTreeNode::save(FILE *fp) {
+    if (!scaler::InvocationTreeNode::save(fp)) {
+        return false;
+    }
+    if (!fwrite(&extraField1, sizeof(extraField1), 1, fp)) {
+        ERR_LOG("Cannot write pthread info into file");
+        return false;
+    }
+    if (!fwrite(&extraField2, sizeof(extraField2), 1, fp)) {
+        ERR_LOG("Cannot write pthread info into file");
+        return false;
+    }
+    return true;
 }
 
 scaler::SemaphoreInvocationTreeNode::SemaphoreInvocationTreeNode() {
     type = Type::SEMAPHORE_FUNC;
 }
 
-void scaler::SemaphoreInvocationTreeNode::load(FILE *fp) {
-    throwScalerException(ErrCode::FUNC_NOT_IMPLEMENTED, "load has not been implemented");
+bool scaler::SemaphoreInvocationTreeNode::load(FILE *fp) {
+    fatalError("load has not been implemented");
+    return false;
 }
 
-void scaler::SemaphoreInvocationTreeNode::save(FILE *fp) {
-    scaler::InvocationTreeNode::save(fp);
-    fwrite(&extraField1, sizeof(extraField1), 1, fp);
+bool scaler::SemaphoreInvocationTreeNode::save(FILE *fp) {
+    if (!scaler::InvocationTreeNode::save(fp)) {
+        return false;
+    }
+    if (!fwrite(&extraField1, sizeof(extraField1), 1, fp)) {
+        ERR_LOG("Cannot write semaphore info into file");
+    }
+    return true;
 }
 
-void scaler::SerializableMixIn::load(FILE *fp) {
-    Serializable::load(fp);
+bool scaler::SerializableMixIn::load(FILE *fp) {
+    return Serializable::load(fp);
 }
 
-void scaler::SerializableMixIn::save(FILE *fp) {
-    Serializable::save(fp);
+bool scaler::SerializableMixIn::save(FILE *fp) {
+    return Serializable::save(fp);
 }
 
 scaler::RawRecordEntry::RawRecordEntry(int64_t timeStamp, int64_t counting)

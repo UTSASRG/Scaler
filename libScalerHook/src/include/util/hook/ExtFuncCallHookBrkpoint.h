@@ -1,7 +1,7 @@
 #ifndef SCALER_EXTFUNCCALLHOOKBRKPOINT_H
 #define SCALER_EXTFUNCCALLHOOKBRKPOINT_H
 
-#include "ExtFuncCallHook_Linux.hh"
+#include "ExtFuncCallHook.hh"
 #include <type/breakpoint.h>
 #include <ucontext.h>
 #include <set>

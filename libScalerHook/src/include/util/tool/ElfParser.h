@@ -38,6 +38,8 @@ namespace scaler {
 
         explicit ELFParser_Linux(std::string elfPath);
 
+        bool parse();
+
         ELFParser_Linux(ELFParser_Linux &) = delete;
 
         /**
@@ -49,38 +51,36 @@ namespace scaler {
         /**
          * @return A list of program header whose type is specified by param "type".
          */
-        std::vector<SegInfo> getProgHdrByType(ElfW(Word) type);
+        bool getProgHdrByType(ElfW(Word) type, std::vector<SegInfo> &retSegInfoVec);
 
         /**
          * @return A section header whose name is specified by param "targetSecName".
          */
-        SecInfo getSecHdrByName(std::string targetSecName);
+        bool getSecHdrByName(std::string targetSecName, ELFParser_Linux::SecInfo &retSecInfo);
 
         /**
         * "Content" means the binary code for a specifc section
-         * The returned memory will be freed with ELFParser
         * @return A pointer that points to the starting address of the section specified by targetSecName
         */
-        void *getSecContent(const SecInfo &targetSecInfo);
+        void* getSecContent(const SecInfo &targetSecInfo);
 
         /**
         * "Content" means the binary code for a specifc segment
         * The returned memory will be freed with ELFParser
-        * @return A pointer that points to the starting address of the segment specified by targetSecName
         */
-        void *getSegContent(const SegInfo &targetSegInfo);
+        void* getSegContent(const SegInfo &targetSegInfo);
 
         /**
          * This is a convient method to get the address of a group of segments. (eg: segments with the same p_type)
          * The returned memory will be freed with ELFParser
         * @return A set of pointers that points to the starting address of the segment specified by a groups of segments
         */
-        std::vector<void *> getSegContent(std::vector<SegInfo> &targetSegInfos);
+        bool getSegContent(std::vector<SegInfo> &targetSegInfos, std::vector<void *> &retSegContent);
 
         /**
          * @return A list of section names
          */
-        std::vector<std::string> getSecNames();
+        bool getSecNames(std::vector<std::string> &retSecName);
 
         ~ELFParser_Linux() override;
 
@@ -100,16 +100,16 @@ namespace scaler {
         std::map<ElfW(Word), std::vector<SegInfo>> segTypeIndexMap;
         std::map<SegInfo::SegID, void *> segIdContentMap; //Map segment id to the pointer in ELF file
 
-        void readELFHeader();
+        bool readELFHeader();
 
-        void readELFSecHeaders();
+        bool readELFSecHeaders();
 
-        void readELFProgHeaders();
+        bool readELFProgHeaders();
 
         /**
          * Open and read elf file to memory
          */
-        void openELFFile();
+        bool openELFFile();
 
 
     };

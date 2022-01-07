@@ -1,7 +1,5 @@
 #include <util/tool/ElfParser.h>
 
-#ifdef __linux
-
 #include <util/tool/FileTool.h>
 #include <elf.h>
 #include <link.h>
@@ -14,29 +12,54 @@ namespace scaler {
 
     ELFParser_Linux::ELFParser_Linux(const std::string elfPath) {
         this->elfPath = elfPath;
-        openELFFile();
-        //ELF header contains information the location of section table and program header table
-        readELFHeader();
-        readELFSecHeaders();
-        readELFProgHeaders();
-        fclose(file);
     }
 
-    void ELFParser_Linux::openELFFile() {
+    bool ELFParser_Linux::parse() {
+        if (!openELFFile())
+            return false;
+
+        //ELF header contains information the location of section table and program header table
+        if (!readELFHeader()) {
+            return false;
+        }
+
+        if (!readELFSecHeaders()) {
+            return false;
+        }
+
+        if (!readELFProgHeaders()) {
+            return false;
+        }
+
+        if (file != nullptr) {
+            fclose(file);
+            file = nullptr;
+        }
+
+        return true;
+    }
+
+    bool ELFParser_Linux::openELFFile() {
         file = fopen(elfPath.c_str(), "rb");
         if (file == NULL) {
-            throwScalerExceptionS(ErrCode::ELF_FILE_CANNOT_OPEN, "Can't open ELF file \"%s\"", elfPath.c_str());
+            ERR_LOGS("Can't open ELF file \"%s\", reason:", strerror(errno));
+            return false;
         }
+        return true;
     }
 
-    void ELFParser_Linux::readELFHeader() {
+    bool ELFParser_Linux::readELFHeader() {
         //Read ELF file to memory
         elfHdr = static_cast<ElfW(Ehdr) *>(malloc(sizeof(ElfW(Ehdr))));
+
         if (!elfHdr) {
-            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to allocate memory for elfHdr");
+            fatalError("Failed to allocate memory for elfHdr")
+            return false;
         }
+
         if (!fread(elfHdr, 1, sizeof(ElfW(Ehdr)), file)) {
-            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to read elfHdr");
+            ERR_LOGS("Failed to read elfHdr because: %s", strerror(errno));
+            return false;
         }
 
         //Check whether ELF file is valid through magic number
@@ -46,31 +69,48 @@ namespace scaler {
             (elfHdr->e_ident[EI_DATA] != ELFDATA2LSB) ||
             (elfHdr->e_machine != EM_X86_64) ||
             (elfHdr->e_version != 1)) {
-            throwScalerException(ErrCode::ELF_FILE_NOT_COMPATIBLE,
-                                 "ELF type doesn't match. This ELF file maybe not compatible.");
+            ERR_LOGS("ELF magic number check failed. Is this a ELF file? Path:%s", elfPath.c_str());
+            return false;
         }
+
+        return true;
     }
 
-    void ELFParser_Linux::readELFSecHeaders() {
+    bool ELFParser_Linux::readELFSecHeaders() {
+
         //Read all section headers
         secHdr = static_cast<ElfW(Shdr) *>(calloc(elfHdr->e_shnum, sizeof(ElfW(Shdr))));
         if (!secHdr) {
-            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to allocate memory for secHdr");
+            fatalError("Failed to allocate memory for secHdr");
+            return false;
         }
-        fseek(file, elfHdr->e_shoff, SEEK_SET);
+
+        if (fseek(file, elfHdr->e_shoff, SEEK_SET)!=0) {
+            ERR_LOGS("Failed to fseek because: %s", strerror(errno));
+            return false;
+        }
+
         if (!fread(secHdr, sizeof(ElfW(Shdr)), elfHdr->e_shnum, file)) {
-            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to read secHdr");
+            ERR_LOGS("Failed to read elfHdr because: %s", strerror(errno));
+            return false;
         }
 
         //Read section name string table
         ElfW(Shdr) *strTblSecHdr = secHdr + elfHdr->e_shstrndx;
         secStrtbl = static_cast<const char *>(malloc(sizeof(char) * strTblSecHdr->sh_size));
         if (!secStrtbl) {
-            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to allocate memory for secStrtbl");
+            fatalError("Failed to allocate memory for secStrtbl");
+            return false;
         }
-        fseek(file, strTblSecHdr->sh_offset, SEEK_SET);
+
+        if (fseek(file, strTblSecHdr->sh_offset, SEEK_SET)!=0) {
+            ERR_LOGS("Failed to fseek because: %s", strerror(errno));
+            return false;
+        }
+
         if (!fread((void *) secStrtbl, 1, strTblSecHdr->sh_size, file)) {
-            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to read secStrtbl");
+            ERR_LOGS("Failed to read secStrtbl because: %s", strerror(errno));
+            return false;
         }
 
         //Store section header into secNameIndexMap for faster lookup
@@ -83,17 +123,23 @@ namespace scaler {
             secNameIndexMap[std::string(secStrtbl + curShDr.sh_name)] = curSecInfo;
         }
 
+        return true;
     }
 
-    void ELFParser_Linux::readELFProgHeaders() {
+    bool ELFParser_Linux::readELFProgHeaders() {
         //Read all program headers
         progHdr = static_cast<ElfW(Phdr) *>(calloc(elfHdr->e_phnum, sizeof(ElfW(Phdr))));
         if (!progHdr) {
-            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to allocate memory for progHdr");
+            ERR_LOG("Failed to allocate memory for progHdr");
+            return false;
         }
-        fseek(file, elfHdr->e_phoff, SEEK_SET);
+        if (fseek(file, elfHdr->e_phoff, SEEK_SET)!=0) {
+            ERR_LOGS("Failed to allocate memory for e_phnum, because: %s", strerror(errno));
+            return false;
+        }
         if (!fread(progHdr, sizeof(ElfW(Phdr)), elfHdr->e_phnum, file)) {
-            throwScalerException(ErrCode::MEM_ALLOC_FAIL, "Faild to allocate memory for e_phnum");
+            ERR_LOGS("Failed to fseek because: %s", strerror(errno));
+            return false;
         }
 
         //Store program header into segTypeIndexMap for faster lookup
@@ -105,16 +151,21 @@ namespace scaler {
             curSegInfo.segId = i;
             segTypeIndexMap[curProgHdr.p_type].emplace_back(curSegInfo);
         }
+        return true;
     }
 
 
     ELFParser_Linux::~ELFParser_Linux() {
-        if (elfHdr)
+        if (elfHdr){
             free(elfHdr);
+            elfHdr=nullptr;
+        }
         if (secHdr)
             free(secHdr);
-        if (progHdr)
+        if (progHdr) {
             free(progHdr);
+            progHdr= nullptr;
+        }
         if (secStrtbl)
             free((void *) secStrtbl);
         for (auto &iter : secIdContentMap) {
@@ -126,85 +177,112 @@ namespace scaler {
     }
 
 
-    std::vector<std::string> ELFParser_Linux::getSecNames() {
-        std::vector<std::string> secNameVec;
+    bool ELFParser_Linux::getSecNames(std::vector<std::string> &retSecName) {
         for (auto iter = secNameIndexMap.begin(); iter != secNameIndexMap.end(); ++iter) {
-            secNameVec.push_back(iter->first);
+            retSecName.push_back(iter->first);
         }
-        return secNameVec;
+        return true;
     }
 
-    ELFParser_Linux::SecInfo ELFParser_Linux::getSecHdrByName(std::string targetSecName) {
+    bool ELFParser_Linux::getSecHdrByName(std::string targetSecName, ELFParser_Linux::SecInfo &retSecInfo) {
         if (secNameIndexMap.count(targetSecName) == 0) {
-            throwScalerExceptionS(ErrCode::ELF_SECTION_NOT_FOUND, "Cannot find section %s in %s",
-                                  targetSecName.c_str(), elfPath.c_str());
+            //ERR_LOGS("Cannot find section %s in %s", targetSecName.c_str(), elfPath.c_str());
+            return false;
         }
-        return secNameIndexMap.at(targetSecName);
+        retSecInfo = secNameIndexMap.at(targetSecName);
+        return true;
     }
 
 
-    std::vector<ELFParser_Linux::SegInfo> ELFParser_Linux::getProgHdrByType(ElfW(Word) type) {
+    bool ELFParser_Linux::getProgHdrByType(ElfW(Word) type, std::vector<ELFParser_Linux::SegInfo> &retSegInfoVec) {
         if (segTypeIndexMap.count(type) == 0) {
-            throwScalerExceptionS(ErrCode::ELF_SEGMENT_NOT_FOUND, "Cannot find segment of type %d", type);
+            ERR_LOGS("Cannot find segment of type %d", type);
+            return false;
         }
-        return segTypeIndexMap.at(type);
+        retSegInfoVec = segTypeIndexMap.at(type);
+        return true;
     }
 
 
     void *ELFParser_Linux::getSecContent(const SecInfo &targetSecInfo) {
         //todo: memory leak
-        openELFFile();
+        if (!openELFFile()) {
+            return nullptr;
+        }
 
         void *targetSecHdrContent;
         if (secIdContentMap.count(targetSecInfo.secId) == 0) {
             //If targetSecInfo have not been loaded, read the elffile file and cache it
 
             targetSecHdrContent = malloc(targetSecInfo.secHdr.sh_size);
-            fseek(file, targetSecInfo.secHdr.sh_offset, SEEK_SET);
+            if (!targetSecHdrContent) {
+                fatalError("Failed to allocate memory for targetSecHdrContent");
+                return nullptr;
+            }
+
+            if (fseek(file, targetSecInfo.secHdr.sh_offset, SEEK_SET)!=0) {
+                ERR_LOGS("fseek failed because: %s", strerror(errno));
+                return nullptr;
+            }
+
             if (!fread(targetSecHdrContent, targetSecInfo.secHdr.sh_size, 1, file)) {
-                throwScalerException(ErrCode::ELF_SECTION_NOT_FOUND, "Faild to parse sh_size");
+                ERR_LOGS("Failed to read section header because: %s", strerror(errno));
+                return nullptr;
             }
             //Store address for faster lookup
             secIdContentMap[targetSecInfo.secId] = targetSecHdrContent;
         } else {
             //The content has been loaded before, return it directly
-
             targetSecHdrContent = secIdContentMap.at(targetSecInfo.secId);
         }
-        fclose(file);
+        if (file) {
+            fclose(file);
+        }
         return targetSecHdrContent;
     }
 
     void *ELFParser_Linux::getSegContent(const SegInfo &targetSegInfo) {
-        openELFFile();
+        if (!openELFFile()) {
+            return nullptr;
+        }
 
         void *targetSegHdrContent;
         if (secIdContentMap.count(targetSegInfo.segId) == 0) {
             //If targetSegInfo have not been loaded, read the elffile file and cache it
 
             targetSegHdrContent = malloc(targetSegInfo.progHdr.p_filesz);
-            fseek(file, targetSegInfo.progHdr.p_offset, SEEK_SET);
-            if(!fread(targetSegHdrContent, targetSegInfo.progHdr.p_filesz, 1, file)){
-                throwScalerException(ErrCode::ELF_SECTION_NOT_FOUND, "Faild to parse p_filesz");
+            if (!targetSegHdrContent) {
+                fatalError("Cannot allocate memory for targetSegHdrContent");
+                return nullptr;
+            }
+
+            if (fseek(file, targetSegInfo.progHdr.p_offset, SEEK_SET)!=0) {
+                ERR_LOGS("Failed to fseek because: %s", strerror(errno));
+                return nullptr;
+            }
+
+            if (!fread(targetSegHdrContent, targetSegInfo.progHdr.p_filesz, 1, file)) {
+                ERR_LOG("Faild to parse p_filesz");
+                return nullptr;
             }
             //Store address for faster lookup
             segIdContentMap[targetSegInfo.segId] = targetSegHdrContent;
         } else {
             //The content has been loaded before, return it directly
-
             targetSegHdrContent = secIdContentMap.at(targetSegInfo.segId);
         }
-        fclose(file);
+        if (file) {
+            fclose(file);
+        }
         return targetSegHdrContent;
     }
 
-    std::vector<void *> ELFParser_Linux::getSegContent(std::vector<SegInfo> &targetSegInfos) {
-        std::vector<void *> rltVec;
+    bool ELFParser_Linux::getSegContent(std::vector<SegInfo> &targetSegInfos, std::vector<void *> &retSegContent) {
         for (int i = 0; i < targetSegInfos.size(); ++i) {
             //Call getSegContent to load and cache individual segment
-            rltVec.emplace_back(getSegContent(targetSegInfos)[i]);
+            retSegContent.emplace_back(getSegContent(targetSegInfos[i]));
         }
-        return rltVec;
+        return true;
     }
 
     ElfW(Dyn) *ELFParser_Linux::findDynEntryByTag(Elf64_Dyn *dyn, Elf64_Sxword tag) {
@@ -219,4 +297,3 @@ namespace scaler {
     }
 
 }
-#endif

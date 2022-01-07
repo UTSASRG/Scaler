@@ -35,7 +35,7 @@ int main() {
     printf("Calling func1472\n");
     func1472();
 
-
+#ifdef __AVX__
     printf("Calling funcEverything\n");
     structparm strP;
     strP.a = 15;
@@ -52,7 +52,7 @@ int main() {
     __m512 z = _mm512_set_ps(224152.215680, 89794.021145, 89065436.213, 883.340, 10251.0122, 121234.025251, 14567.0567,
                              16567.0567, 2234.607, 482.03, 653.02, 879.03, 46310.07, 12342.07376, 142.021412, 16.022);
     funcEverything(e, f, s, g, h, ld, m, y, z, n, i, j, k);
-
+#endif
     float srcFloat = 1.75;
     Son son;
     son.fValFather = 3.141;
@@ -63,7 +63,7 @@ int main() {
     assert(son.fValFather - 3.141 < 1e-5);
     assert(son.fValSon - 6.283 < 1e-5);
 
-
+#ifdef __AVX__
     printf("Calling funcRetm256();\n");
     __m256 rlt256_real = _mm256_set_ps(123152.16784534123, 3543475612.567129823, 123567234567123.12, 4323415.765234345,
                                        1234562453.798678456, 13213265.6746523,
@@ -83,6 +83,7 @@ int main() {
                                        1235623435.23235373453423);
     __m512 rlt512 = funcRetm512();
     assert(_mm512_cmp_ps_mask(rlt512, rlt512_real, _CMP_EQ_OS) == 0b1111111111111111);
+#endif
 
     printf("Calling callFuncA\n");
     callFuncA();

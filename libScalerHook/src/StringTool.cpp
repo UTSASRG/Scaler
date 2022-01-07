@@ -22,3 +22,24 @@ bool scaler::strContains(const std::string &fullString, const std::string &keywo
     return fullString.find(keyword) != std::string::npos;
 }
 
+bool scaler::collapseStrSpace(const std::string &oriString, std::string &outString) {
+    //todo: expensive op. Allocate with heap.
+    outString = oriString;
+    std::stringstream ss;
+
+    bool spaceInserted = true;
+    for (int i = 0; i < outString.size(); ++i) {
+        auto &curChar = outString[i];
+        if (outString[i] != ' ') {
+            spaceInserted = false;
+            ss << curChar;
+        } else if (!spaceInserted) {
+            ss << " ";
+            spaceInserted = true;
+        }
+    }
+    outString=ss.str();
+
+    return true;
+}
+

@@ -144,6 +144,7 @@ int nativeFunc() {
     funcE(1, 2, 3);
     structparm strP;
 
+#ifdef __AVX__
     structparm s;
     int e, f, g, h, i, j, k;
     long double ld;
@@ -151,7 +152,7 @@ int nativeFunc() {
     __m256 y;
     __m512 z;
     funcEverything(e, f, s, g, h, ld, m, y, z, n, i, j, k);
-
+#endif
     auto a1 = EXTVAR_VAR1 + 1;
     a1 += A::asdf;
     a1 += EXTVAR_VAR2;

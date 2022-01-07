@@ -1,7 +1,7 @@
 #include <link.h>
 #include "hook.hh"
 #include "../tool/ProcInfoParser.h"
-#include "ExtFuncCallHook_Linux.hh"
+#include "ExtFuncCallHook.hh"
 #include <elf.h>
 #include <vector>
 #include <map>

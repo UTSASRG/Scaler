@@ -8,7 +8,7 @@ find_package(GTest REQUIRED)
 # Test libs
 # ============================================================
 
-set(TEST_FLAGS "-mavx" "-mavx512f" "-mavx512vl" "-fstack-protector-all")
+set(TEST_FLAGS "-fstack-protector-all")
 
 
 ## A library that does a range of function call
@@ -46,7 +46,9 @@ add_executable(libScalerHook-unittests
         src/unittests/util/datastructure/TestList.cpp
         src/unittests/util/datastructure/TestStack.cpp
         src/unittests/util/datastructure/TestVector.cpp
-        src/unittests/util/datastructure/TestHashmap.cpp src/unittests/util/datastructure/TestELFInfo.cpp)
+        src/unittests/util/datastructure/TestHashmap.cpp
+        src/unittests/util/datastructure/TestELFInfo.cpp
+        src/unittests/TestStr.cpp)
 target_link_libraries(libScalerHook-unittests PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread)
 target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHook-Tests_SOURCE_DIR}/linkerscripts/mylinker.ld")
 target_compile_options(libScalerHook-unittests PRIVATE "-fno-access-control" ${TEST_FLAGS} -Werror)
@@ -63,7 +65,7 @@ target_link_libraries(libScalerHook-demoapps-Exceptions PUBLIC ScalerHook-HookAu
 target_compile_options(libScalerHook-demoapps-Exceptions PRIVATE ${TEST_FLAGS} -Werror)
 
 add_executable(libScalerHook-demoapps-FuncCall src/demoapps/TestFuncCall.cpp)
-target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC ScalerHook-HookAuto libScalerHook-testlib-FuncCall
+target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall KuBoPltHook dl)
 target_compile_options(libScalerHook-demoapps-FuncCall PRIVATE ${TEST_FLAGS} -Werror)
 
@@ -215,7 +217,7 @@ target_link_options(libScalerHook-proof-LTraceSimpleMain PRIVATE "-z" "lazy")
 add_executable(libScalerHook-proof-HookEverything src/proofconcept/TestHookEverything.cpp)
 target_link_options(libScalerHook-proof-HookEverything PRIVATE "-z" "lazy")
 target_link_libraries(libScalerHook-proof-HookEverything libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall)
-target_compile_options(libScalerHook-proof-HookEverything PRIVATE ${TEST_FLAGS})
+target_compile_options(libScalerHook-proof-HookEverything PRIVATE ${TEST_FLAGS} "-z" "lazy")
 
 add_executable(libScalerHook-proof-PthreadParam src/proofconcept/testPthreadParameter.cpp)
 target_link_options(libScalerHook-proof-PthreadParam PRIVATE "-z" "now" "-O0") #Avoid plt lookup code.

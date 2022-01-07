@@ -1,5 +1,5 @@
-#ifndef SCALER_EXTFUNCCALLHOOK_LINUX_HH
-#define SCALER_EXTFUNCCALLHOOK_LINUX_HH
+#ifndef SCALER_EXTFUNCCALLHOOK_HH
+#define SCALER_EXTFUNCCALLHOOK_HH
 
 #include <util/hook/hook.hh>
 
@@ -17,23 +17,23 @@
 
 namespace scaler {
 
-    class ExtFuncCallHook_Linux : public Hook {
+    class ExtFuncCallHook : public Hook {
     public:
 
-        virtual void install(SYMBOL_FILTER filterCallB) override = 0;
+        virtual bool install(SYMBOL_FILTER filterCallB) override = 0;
 
 
-        virtual void uninstall() override = 0;
+        virtual bool uninstall() override = 0;
 
-        ExtFuncCallHook_Linux(ExtFuncCallHook_Linux &) = delete;
+        ExtFuncCallHook(ExtFuncCallHook &) = delete;
 
-        ExtFuncCallHook_Linux(ExtFuncCallHook_Linux &&) = delete;
+        ExtFuncCallHook(ExtFuncCallHook &&) = delete;
 
-        virtual ~ExtFuncCallHook_Linux() override = 0;
+        virtual ~ExtFuncCallHook() override = 0;
 
-        virtual void parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr, FileID &libraryFileID);
+        virtual bool parseFuncInfo(FileID callerFileID, SymID symbolIDInCaller, void *&funcAddr, FileID &libraryFileID);
 
-        virtual void saveAllSymbolId();
+        virtual bool saveAllSymbolId();
 
         /**
         * Symbol information
@@ -103,7 +103,11 @@ namespace scaler {
 
                 bool isFuncPthread(FuncID funcID);
 
-                std::vector<SymID> getAllIds();
+                /**
+                 * This function returns the scaler id of all functions that belongs to pthread library
+                 * @return
+                 */
+                bool getAllIds(std::vector<SymID> &retSymId);
 
             };
 
@@ -164,17 +168,17 @@ namespace scaler {
         /**
          * Private constructor
          */
-        ExtFuncCallHook_Linux(PmParser_Linux &parser, MemoryTool_Linux &memTool);
+        ExtFuncCallHook(PmParser_Linux &parser, MemoryTool_Linux &memTool);
 
         /**
         * Locate the address of required sections in memory
         */
-        virtual void locateRequiredSecAndSeg();
+        virtual bool locateRequiredSecAndSeg();
 
         /**
         * Find elf section in memory and return start and end address
         */
-        virtual void
+        virtual bool
         findELFSecInMemory(ELFParser_Linux &elfParser, std::string secName, void *&startAddr, void *endAddr,
                            void *boundStartAddr, void *boundEndAddr);
 
@@ -188,10 +192,15 @@ namespace scaler {
 
             const ElfW(Dyn) *dynEntryPtr = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, elemType);
             if (dynEntryPtr == nullptr) {
-                throwScalerException(-1, "Cannot find a dyn entry");
+                ERR_LOG("Cannot find a dyn entry");
+                return nullptr;
             }
+            //DBG_LOGS("d_tag=%16lx d_value=%16lx", dynEntryPtr->d_tag, dynEntryPtr->d_un.d_val);
             uint8_t *curBaseAddr = pmParser.autoAddBaseAddr(curELFImgInfo.baseAddrStart, curFileID,
                                                             dynEntryPtr->d_un.d_ptr);
+//            DBG_LOGS("curBaseAddr(%p) + dynEntryPtr->d_un.d_ptr(%p) =%16lx", (void *) curBaseAddr,
+//                     (void *) dynEntryPtr->d_un.d_ptr,
+//                     (long unsigned int) curBaseAddr + dynEntryPtr->d_un.d_ptr);
             return (SEGTYPE) (curBaseAddr + dynEntryPtr->d_un.d_ptr);
         }
 
@@ -203,13 +212,14 @@ namespace scaler {
 
             const ElfW(Dyn) *dynEntryPtr = elfParser.findDynEntryByTag(curELFImgInfo._DYNAMICAddr, elemType);
             if (dynEntryPtr == nullptr) {
-                throwScalerException(0, "Cannot find a dyn entry");
+                ERR_LOG("Cannot find a dyn entry");
+                return 0;
             }
             return (SEGTYPE) (dynEntryPtr->d_un.d_val);
         }
 
 
-        virtual void parseRelaSymbol(ELFImgInfo &curELFImgInfo, FileID curFileID);
+        virtual bool parseRelaSymbol(ELFImgInfo &curELFImgInfo, FileID curFileID);
 
         inline bool isSymbolAddrResolved(ExtSymInfo &symInfo) {
             //Check whether its value has 6 bytes offset as its plt entry start address

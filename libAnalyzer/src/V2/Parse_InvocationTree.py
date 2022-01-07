@@ -357,7 +357,7 @@ def getSymbol(jsonDict, libID, funcAddr):
 # ================================================================================================
 # ====================================== Debugging Functions =====================================
 
-def printTreeByLevel(node):
+def printTreeByLevel(node) -> object:
     """
     Performs Level Order Traversal to print each level
     :param node: An Invocation Tree Node. Typically the root node should be passed in to print the whole tree.

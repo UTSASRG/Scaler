@@ -2,10 +2,8 @@
 #include <FuncWithDiffParms.h>
 #include <CallFunctionCall.h>
 #include <TenThousandFunc.h>
-#include <util/hook/install.h>
 #include <sys/prctl.h>
 #include <thread>
-#include <util/tool/MemTool.h>
 #include <cassert>
 
 using namespace std;
@@ -42,13 +40,14 @@ int main() {
 
     printf("My id is: %lu\n", pthread_self());
 
+    //int rlt=system("ls -al");
 //    prctl(PR_SET_DUMPABLE, 1);
 
 //    while (1) {
 //        std::this_thread::sleep_for(std::chrono::seconds(1));
 //    }
 
-    func1();
+    /*func1();
     func2();
     func3();
     func4();
@@ -1046,7 +1045,8 @@ int main() {
     func996();
     func997();
     func998();
-    func999();
+    func999();*/
+
 
     return 0;
 }

@@ -1,7 +1,3 @@
-//
-// Created by steven on 6/26/21.
-//
-
 #include <c++/7/string>
 #include <util/tool/Config.h>
 #include <c++/7/sstream>
@@ -10,9 +6,11 @@ scaler::Config *scaler::Config::instance = nullptr;
 
 scaler::Config::Config(std::string fileName) : fileName(fileName) {
     reader = new INIReader(fileName);
+    if (!reader) {
+        fatalError("Cannot allocate memory for reader");
+    }
     if (reader->ParseError() == -1) {
-        throwScalerExceptionS(ErrCode::CONFIG_PARSE_FAILED, "Config parsing failed for Path=%s",
-                              this->fileName.c_str());
+        ERR_LOGS("Config parsing failed for Path=%s", this->fileName.c_str());
     }
 
 }
@@ -20,6 +18,10 @@ scaler::Config::Config(std::string fileName) : fileName(fileName) {
 scaler::Config *scaler::Config::getInst(std::string fileName) {
     if (instance == nullptr) {
         instance = new Config(fileName);
+        if (!instance) {
+            fatalError("Cannot allocate memory for instance");
+            return nullptr;
+        }
         return instance;
     } else {
         return instance;

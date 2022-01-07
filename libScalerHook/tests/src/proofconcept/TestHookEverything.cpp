@@ -25,7 +25,7 @@ int main() {
     printf("Calling func1472\n");
     func1472();
 
-
+#ifdef __AVX__
     printf("Calling funcEverything\n");
     structparm strP;
     structparm s;
@@ -35,6 +35,7 @@ int main() {
     __m256 y;
     __m512 z;
     funcEverything(e, f, s, g, h, ld, m, y, z, n, i, j, k);
+#endif
 
     printf("Calling callFuncA\n");
     callFuncA();

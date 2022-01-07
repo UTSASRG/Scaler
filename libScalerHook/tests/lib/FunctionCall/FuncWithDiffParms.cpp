@@ -58,6 +58,7 @@ void resolveSystemFunc() {
     }
 }
 
+#ifdef __AVX__
 #include <immintrin.h>
 void funcEverything(int e, int f, structparm s, int g, int h, long double ld,
                     double m, __m256 y, __m512 z, double n, int i, int j, int k) {
@@ -101,6 +102,7 @@ __m512 funcRetm512() {
                                   1235623435.23235373453423);
     return rlt512;
 }
+#endif
 long double funcRetLongDouble() {
     long double rltLongD = 2242.612879712;
     return rltLongD;
@@ -117,9 +119,12 @@ void *getFuncAddr(std::string funcName) {
         return (void *) funcD;
     } else if (funcName == "funcE") {
         return (void *) funcE;
-    } else if (funcName == "funcEverything") {
+    }
+#ifdef __AVX__
+    else if (funcName == "funcEverything") {
         return (void *) funcEverything;
     }
+#endif
     return nullptr;
 }
 

@@ -16,7 +16,7 @@ namespace scaler {
     //Initialize instance
     MemoryTool_Linux *MemoryTool_Linux::instance = nullptr;
 
-    void MemoryTool_Linux::adjustMemPerm(void *startPtr, void *endPtr, int prem) {
+    bool MemoryTool_Linux::adjustMemPerm(void *startPtr, void *endPtr, int prem) {
         //Get page size
         ssize_t pageSize = sysconf(_SC_PAGESIZE);
         //Get Page Bound
@@ -28,18 +28,20 @@ namespace scaler {
         //todo:(uint8_t *) endPtrBound - (uint8_t  *) startPtrBound,
         ssize_t memoryLength =
                 (ceil(((uint8_t *) endPtrBound - (uint8_t *) startPtrBound) / (double) pageSize)) * pageSize;
-        if (mprotect(startPtrBound, memoryLength, prem) != 0) {
-            throwScalerExceptionS(ErrCode::CANNOT_CHANGE_PERMISSION,
-                                  "Could not change the process memory permission at %p-%p",
-                                  startPtrBound, endPtrBound);
+        if (mprotect(startPtrBound, memoryLength, prem)!=0) {
+            ERR_LOGS("Could not change the process memory permission at %p-%p because: %s", startPtrBound, endPtrBound,strerror(errno));
+            return false;
         }
-
+        return true;
     }
 
     MemoryTool_Linux *scaler::MemoryTool_Linux::getInst() {
         //MemoryTool_Linux::instance memory leak
         if (MemoryTool_Linux::instance == nullptr) {
             MemoryTool_Linux::instance = new MemoryTool_Linux();
+            if (!MemoryTool_Linux::instance) {
+                fatalError("Cannot allocate memory for MemoryTool_Linux");
+            }
         }
         return MemoryTool_Linux::instance;
     }

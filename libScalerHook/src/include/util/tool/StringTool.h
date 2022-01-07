@@ -15,6 +15,13 @@ namespace scaler {
 
     bool strContains(std::string const &fullString, std::string const &ending);
 
+    /**
+     * Replace multiple space by one
+     * @param butterOutput This buffer should have the same size as oriString.size
+     * @return true->success false->fail
+     */
+    bool collapseStrSpace(const std::string &oriString,std::string& outString);
+
 }
 
 

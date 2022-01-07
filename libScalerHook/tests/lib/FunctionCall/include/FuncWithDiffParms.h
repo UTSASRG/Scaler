@@ -33,12 +33,6 @@ typedef struct {
     double d;
 } structparm;
 
-void funcEverything(int e, int f,
-                    structparm s, int g, int h,
-                    long double ld, double m,
-                    __m256 y,
-                    __m512 z,
-                    double n, int i, int j, int k);
 
 void *getFuncAddr(std::string funcName);
 
@@ -46,10 +40,19 @@ void *findRdbg();
 
 void *findDYNAMIC();
 
+#ifdef __AVX__
+
+
+void funcEverything(int e, int f,
+                    structparm s, int g, int h,
+                    long double ld, double m,
+                    __m256 y,
+                    __m512 z,
+                    double n, int i, int j, int k);
 __m256 funcRetm256();
 
 __m512 funcRetm512();
-
+#endif
 class A {
 public:
     static int asdf;
