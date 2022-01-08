@@ -3,7 +3,7 @@ cmake_policy(SET CMP0079 NEW)
 project(Scaler)
 
 # Adding protobuffers to this project
-add_subdirectory(proto)
+add_subdirectory(protobuffer)
 
 # Adding scalerhook to this project
 add_subdirectory(libHook)

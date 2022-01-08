@@ -10,7 +10,7 @@ endif ()
 message("SHOULD_DOWNLOAD_PROTOBUFFER=${SHOULD_DOWNLOAD_PROTOBUFFER} ${HASH_PROTOBUFFER_3_19_2}")
 if (${SHOULD_DOWNLOAD_PROTOBUFFER})
     message("Downloading protobuf_3_19_2.tar.xz")
-    file(DOWNLOAD https://driveus.xttech.top/s/9m6XPST3AZEs8gZ/download ${CMAKE_CURRENT_SOURCE_DIR}/protobuf_3_19_2/protobuf_3_19_2.tar.xz SHOW_PROGRESS TLS_VERIFY ON)
+    file(DOWNLOAD https://driveus.xttech.top/s/9m6XPST3AZEs8gZ/download ${CMAKE_CURRENT_SOURCE_DIR}/lib/protobuf_3_19_2/protobuf_3_19_2.tar.xz SHOW_PROGRESS TLS_VERIFY ON)
 endif ()
 
 
