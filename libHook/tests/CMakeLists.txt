@@ -48,10 +48,15 @@ add_executable(libScalerHook-unittests
         src/unittests/util/datastructure/TestVector.cpp
         src/unittests/util/datastructure/TestHashmap.cpp
         src/unittests/util/datastructure/TestELFInfo.cpp
-        src/unittests/TestStr.cpp)
-target_link_libraries(libScalerHook-unittests PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread)
+        src/unittests/TestStr.cpp
+        src/unittests/TestProtobuf.cpp
+        ${PROTO_SRCS}
+        ${PROTO_HDRS})
+
+target_link_libraries(libScalerHook-unittests PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall KuBoPltHook gtest ${Protobuf_LIBRARIES} gtest_main dl pthread)
 target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHook-Tests_SOURCE_DIR}/linkerscripts/mylinker.ld")
 target_compile_options(libScalerHook-unittests PRIVATE "-fno-access-control" ${TEST_FLAGS} -Werror)
+target_include_directories(libScalerHook-unittests PRIVATE ${PROTO_HDR_PATH})
 
 # ============================================================
 # Demo Application
@@ -288,11 +293,5 @@ target_link_libraries(libScalerHook-proof-threadlocalasmarray pthread)
 #target_link_libraries(TestFindRdebug libTest dl)
 
 #protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ../meta/addressbook.proto)
-add_executable(TestProtobuffer src/unittests/TestProtobuf.cpp ${PROTO_SRCS} ${PROTO_HDRS} )
-target_include_directories(TestProtobuffer PRIVATE ${PROTO_HDR_PATH})
-target_link_libraries(TestProtobuffer ${Protobuf_LIBRARIES})
 
-message("PROTO_SRCS=${PROTO_SRCS}")
-message("PROTO_HDRS=${PROTO_HDRS}")
-message("PROTO_HDR_PATH=${PROTO_HDR_PATH}")
-message("Protobuf_LIBRARIES=${Protobuf_LIBRARIES}")
+
