@@ -82,9 +82,7 @@ Control bits of *MXCSR* register are callee-saved, status bits are caller saved.
 
 The end of the input argument area shall be aligned on a 16 (32, if__m256 is passed on stack) byte boundary.
 
-
-
-![image-20210519104820457](imgs/image-20210519104820457.png)
+![image-20210519104820457](https://user-images.githubusercontent.com/19838874/148663936-1fbd651c-e58f-4fb2-b619-f3f317b31a15.png)
 
 **Finding values in the stack**
 
@@ -196,11 +194,11 @@ Parameters are placed either in stack or in register.
   - For the processors that do not support the \_\_m256 type, if the size of an object is larger than two eight bytes and the first eight byte is not SSE or any other eight byte is not SSEUP, it still has class MEMORY.
   - A C++ object has either a non-trivial copy constructor or a non-trivial destructor, it is passed by invisible reference. (The object is replaced in the parameter list by a pointer that has class INTEGER)
 
-For objects:
+For objects:!
 
-![image-20210519131243809](imgs/image-20210519131243809.png)
+[image-20210519131243809](https://user-images.githubusercontent.com/19838874/148663940-f07eea8f-22c6-42a3-ba86-1adf27a5edfc.png)
 
-![image-20210519131349764](imgs/image-20210519131349764.png)
+![image-20210519131349764](https://user-images.githubusercontent.com/19838874/148663945-3e4771ba-e75f-4410-8b68-4d4af8d3703b.png)
 
 ### Arguments passing
 
@@ -249,7 +247,7 @@ extern void func (int e, int f,
 func (e, f, s, g, h, ld, m, y, n, i, j, k);
 ```
 
-![image-20210519135500282](imgs/image-20210519135500282.png)
+![image-20210519135500282](https://user-images.githubusercontent.com/19838874/148663947-e28e75b2-ed3a-4314-879d-bf5fb74f83cb.png)
 
 ## Code models
 
@@ -318,11 +316,12 @@ leaq     _GLOBAL_OFFSET_TABLE_(%rip),%r15 # GOTPC32 reloc
 
 Position independent direct function call:
 
-![image-20210519162325167](imgs/image-20210519162325167.png)
+![image-20210519162325167](https://user-images.githubusercontent.com/19838874/148663954-d86bde74-9f48-4a88-8a99-268a55c4e239.png)
 
 Position independent indirect function call:
 
-![image-20210519162417666](imgs/image-20210519162417666.png)
+![image-20210519162417666](https://user-images.githubusercontent.com/19838874/148663960-9fd4f5b3-7fc3-4f9f-af0e-c0bec5bfc1bc.png)
+
 
 #### Large Models
 
@@ -330,11 +329,13 @@ Absolute Direct and Indirect function call
 
 > movabs moves an absolute immediate rather than rip-relative LEA to registers.
 
-![image-20210519163307467](imgs/image-20210519163307467.png)
+![image-20210519163307467](https://user-images.githubusercontent.com/19838874/148663967-364cae84-18ad-47fa-8fc4-a62a300467cf.png)
+
 
 Position-independent direct and indirect function call
 
-![image-20210519163441828](imgs/image-20210519163441828.png)
+![image-20210519163441828](https://user-images.githubusercontent.com/19838874/148663974-6c9e0c11-7e7a-47cf-a008-228e90e32d00.png)
+
 
 ## Calling convention
 
