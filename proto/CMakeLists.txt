@@ -47,9 +47,6 @@ include(lib/protobuf_3_19_2/${PROTOBUFFER_SUB_DIR}/lib/cmake/protobuf/protobuf-o
 include(lib/protobuf_3_19_2/${PROTOBUFFER_SUB_DIR}/lib/cmake/protobuf/protobuf-targets.cmake)
 find_package(Protobuf REQUIRED HINTS lib/protobuf_3_19_2/${PROTOBUFFER_SUB_DIR}/lib/cmake/protobuf)
 
-
-
-
 message("Build protobuffer models")
 # https://stackoverflow.com/questions/41430991/cmake-with-protobuf-file-in-subdirectory
 file(TO_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src PROTOMODEL_PATH)
@@ -67,8 +64,13 @@ FOREACH (proto ${DATAMODEL_PROTOS})
 ENDFOREACH (proto)
 
 # Make protobuffer variables avalable to other modules
-set(PROTO_HDR_PATH ${PROTOBINDING_PATH} CACHE INTERNAL "")
-set(Protobuf_INCLUDE_DIRS ${Protobuf_INCLUDE_DIRS} CACHE INTERNAL "")
-set(Protobuf_LIBRARIES ${Protobuf_LIBRARIES} CACHE INTERNAL "")
 FILE(GLOB_RECURSE PROTO_HDRS "${PROTOBINDING_PATH}/*.h")
 FILE(GLOB_RECURSE PROTO_SRCS "${PROTOBINDING_PATH}/*.cc")
+
+
+message("Exporting global variables for built protobuffer models ${PROTOBINDING_PATH}")
+set(PROTO_HDR_PATH ${Protobuf_INCLUDE_DIRS} ${PROTOBINDING_PATH} CACHE INTERNAL "")
+set(Protobuf_LIBRARIES ${Protobuf_LIBRARIES} CACHE INTERNAL "")
+set(Protobuf_LITE_LIBRARIES ${Protobuf_LITE_LIBRARIES} CACHE INTERNAL "")
+set(PROTO_HDRS ${PROTO_HDRS} CACHE INTERNAL "")
+set(PROTO_SRCS ${PROTO_SRCS} CACHE INTERNAL "")

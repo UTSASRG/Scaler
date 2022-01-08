@@ -22,14 +22,10 @@ set(HookSrc
         src/Serilizable.cpp
         src/InvocationTree.cpp
         src/StringTool.cpp
-        ${PROTO_SRCS}
        )
 #src/VMEmulator.cpp
 
-find_package(Protobuf REQUIRED HINTS lib/protobuf_3_19_2/${PROTOBUFFER_SUB_DIR}/lib/cmake/protobuf)
-#protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS meta/addressbook.proto)
-
-list(APPEND CMAKE_PREFIX_PATH "/media/umass/datasystem/steven/lib/intel/build/kits/xed-install-base-2021-08-26-lin-x86-64")
+#list(APPEND CMAKE_PREFIX_PATH "/media/umass/datasystem/steven/lib/intel/build/kits/xed-install-base-2021-08-26-lin-x86-64")
 #find_package(XED REQUIRED)
 
 
@@ -54,8 +50,8 @@ list(APPEND CMAKE_PREFIX_PATH "/media/umass/datasystem/steven/lib/intel/build/ki
 # Scaler hook library itself. Users need to manually install scalerhook through library functions.
 add_library(ScalerHook-HookManualAsm SHARED
         ${HookSrc})
-target_include_directories(ScalerHook-HookManualAsm PUBLIC src/include lib/inireader ${CMAKE_CURRENT_BINARY_DIR} ${Protobuf_INCLUDE_DIRS})
-target_link_libraries(ScalerHook-HookManualAsm PUBLIC pthread dl nlohmann_json::nlohmann_json ${Protobuf_LIBRARIES})
+target_include_directories(ScalerHook-HookManualAsm PUBLIC src/include lib/inireader)
+target_link_libraries(ScalerHook-HookManualAsm PUBLIC pthread dl nlohmann_json::nlohmann_json )
 target_compile_definitions(ScalerHook-HookManualAsm PUBLIC XED_ENCODER)
 target_compile_options(ScalerHook-HookManualAsm PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
 #
@@ -66,8 +62,8 @@ add_executable(ScalerRun
 
 #ScalerHook with auto installation enabled. Scaler hook will run automatically before main.
 add_library(ScalerHook-HookAuto SHARED src/autoinstall.cpp ${HookSrc})
-target_include_directories(ScalerHook-HookAuto PUBLIC src/include lib/inireader ${CMAKE_CURRENT_BINARY_DIR} ${Protobuf_INCLUDE_DIRS})
-target_link_libraries(ScalerHook-HookAuto PUBLIC pthread dl nlohmann_json::nlohmann_json ${Protobuf_LIBRARIES})
+target_include_directories(ScalerHook-HookAuto PUBLIC src/include lib/inireader)
+target_link_libraries(ScalerHook-HookAuto PUBLIC pthread dl nlohmann_json::nlohmann_json)
 target_compile_definitions(ScalerHook-HookAuto PUBLIC XED_ENCODER)#NDEBUG
 target_link_options(ScalerHook-HookAuto PRIVATE -static-libgcc -static-libstdc++) #Todo; Statically link libc is not advised. Change to re-compile in o
 target_compile_options(ScalerHook-HookAuto PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})

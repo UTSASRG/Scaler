@@ -289,6 +289,10 @@ target_link_libraries(libScalerHook-proof-threadlocalasmarray pthread)
 
 #protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ../meta/addressbook.proto)
 add_executable(TestProtobuffer src/unittests/TestProtobuf.cpp ${PROTO_SRCS} ${PROTO_HDRS} )
-target_include_directories(TestProtobuffer PRIVATE ${PROTO_HDR_PATH} ${Protobuf_INCLUDE_DIRS})
+target_include_directories(TestProtobuffer PRIVATE ${PROTO_HDR_PATH})
 target_link_libraries(TestProtobuffer ${Protobuf_LIBRARIES})
-message("Protobuf_INCLUDE_DIRS=${Protobuf_INCLUDE_DIRS}")
+
+message("PROTO_SRCS=${PROTO_SRCS}")
+message("PROTO_HDRS=${PROTO_HDRS}")
+message("PROTO_HDR_PATH=${PROTO_HDR_PATH}")
+message("Protobuf_LIBRARIES=${Protobuf_LIBRARIES}")
