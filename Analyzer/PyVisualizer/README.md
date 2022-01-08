@@ -1,1 +1,1 @@
-/home/st/Projects/Scaler/docs/Analyzer/PyVisualizer/README.md
+../../docs/Analyzer/PyVisualizer/README.md
