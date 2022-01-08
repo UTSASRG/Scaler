@@ -35,10 +35,10 @@ Use /proc/self/map to check loading address
 
 ### PLT and GOT
 
-![image-20201227233912176](imgs/image-20201227233912176.png)
+![image-20201227233912176](https://user-images.githubusercontent.com/19838874/148663894-ca49502b-e2de-4ebe-b888-a3bdacaaa52b.png)
 
+![image-20201227234009474](https://user-images.githubusercontent.com/19838874/148663897-4934d4c4-c2d0-41ca-ad56-9bc1577a9011.png)
 
-![image-20201227234009474](imgs/image-20201227234009474.png)
 
 ## X86 Assembly
 
@@ -47,13 +47,15 @@ The correct way to do things is to take intel's x86 assembly manual as a referen
 
 ## Replace GOT Entry
 
-![image-20201228000248959](imgs/image-20201228000248959.png)
+![image-20201228000248959](https://user-images.githubusercontent.com/19838874/148663906-c86c0d12-64bc-4876-af2d-076c16953c45.png)
+
+
 
 ### JMP
 
 I should use far jump.
 
-![image-20201227235905340](imgs/image-20201227235905340.png)
+![image-20201227235905340](https://user-images.githubusercontent.com/19838874/148663909-9721f619-4c71-4e00-a6f4-868c754ca4af.png)
 
 [Intel Brochure 3-488   Vol. 2A](https://www.intel.com/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf)
 
