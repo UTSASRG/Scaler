@@ -5,17 +5,13 @@
 Perf can already report figures in ReadMe.md
 
 - Perf is able to profile external functions in both application and library.
-
-![image-20210527104938420](imgs/Perf/image-20210527104938420.png)
+  ![image-20210527104938420](https://user-images.githubusercontent.com/19838874/148664064-17b1f2d3-f893-4db8-8149-a444f2328cf4.png)
 
 - Perf is able to report kernel functions
-
-  ![image-20210527105015373](imgs/Perf/image-20210527105015373.png)
+  ![image-20210527105015373](https://user-images.githubusercontent.com/19838874/148664071-b8b5fedf-ad13-4bce-9b9c-f1fba0d23ae4.png)
 
 - Perf is able to report of the percentage of each function.
-
-![image-20210527105046824](imgs/Perf/image-20210527105046824.png)
-
+  ![image-20210527105046824](https://user-images.githubusercontent.com/19838874/148664078-3917725f-2fd3-4c6c-81ed-4fabd7942e46.png)
 - Perf doesn't require debugging symbol
 - Perf uses kernel supported CPU performance counters, tracepoints, kprobes, and uprobes to intercept function execution. While scaler intercepts PLT table to implement hook. 
 
