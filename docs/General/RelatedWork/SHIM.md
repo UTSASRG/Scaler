@@ -52,8 +52,8 @@ SHIM’s Implementation:
 
 <p id="gdcalert1" ><span style="color: red; font-weight: bold">>>>>>  gd2md-html alert: inline image link here (to images/image1.png). Store image on your image server and adjust path/filename/extension if necessary. </span><br>(<a href="#">Back to top</a>)(<a href="#gdcalert2">Next alert</a>)<br><span style="color: red; font-weight: bold">>>>>> </span></p>
 
+![image-20210519163441828](https://user-images.githubusercontent.com/19838874/148664016-e7c51a86-d526-4c44-bd4f-d901218223b8.png)
 
-![alt_text](images/image1.png "image_tooltip")
 
         11. Makes use of rdtscp() instruction to have “high fidelity in-order” measurements of counters and rates
     3. Software signal generator
