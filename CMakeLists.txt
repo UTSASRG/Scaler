@@ -10,3 +10,4 @@ add_subdirectory(libHook)
 
 # Adding scalerhook to this project
 add_subdirectory(Analyzer)
+

@@ -56,10 +56,6 @@ target_compile_definitions(ScalerHook-HookManualAsm PUBLIC XED_ENCODER)
 target_compile_options(ScalerHook-HookManualAsm PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
 #
 
-add_executable(ScalerRun
-        src/injector.cpp)
-
-
 #ScalerHook with auto installation enabled. Scaler hook will run automatically before main.
 add_library(ScalerHook-HookAuto SHARED src/autoinstall.cpp ${HookSrc})
 target_include_directories(ScalerHook-HookAuto PUBLIC src/include lib/inireader)
