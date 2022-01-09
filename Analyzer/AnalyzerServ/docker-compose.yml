@@ -1,0 +1,20 @@
+version: '3'
+services:
+  neo4j:
+    image: neo4j:3.5
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:7474:7474
+      - 127.0.0.1:7687:7687
+    volumes:
+      - ./neo4jdata/conf:/conf
+      - ./neo4jdata/data:/data
+      - ./neo4jdata/import:/import
+      - ./neo4jdata/logs:/logs
+      - ./neo4jdata/plugins:/plugins
+    environment:
+      # Raise memory limits
+      - NEO4J_AUTH=neo4j/test
+      - NEO4J_dbms_memory_pagecache_size=1G
+      - NEO4J_dbms.memory.heap.initial_size=1G
+      - NEO4J_dbms_memory_heap_max__size=1G

@@ -1,0 +1,81 @@
+plugins {
+    id 'org.springframework.boot' version '2.6.2'
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'java'
+    id 'com.google.protobuf' version "0.8.18"
+}
+
+group = 'com.xttechgroup.scaler'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '11'
+
+repositories {
+    mavenCentral()
+}
+
+//For GRPC config check: https://yidongnan.github.io/grpc-spring-boot-starter/en/server/getting-started.html
+//I merge interface project and server project into one
+
+dependencies {
+    //Srpingboot starter
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    //Srpingboot Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    //Neo4j starter
+    implementation 'org.springframework.boot:spring-boot-starter-data-neo4j'
+    //GRPC stuff
+    implementation "io.grpc:grpc-protobuf:1.43.0"
+    implementation "io.grpc:grpc-stub:1.43.0"
+    implementation 'io.grpc:grpc-netty-shaded:1.43.0'
+
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.18.1"
+    }
+    generatedFilesBaseDir = "$projectDir/build/generated"
+    clean {
+        delete generatedFilesBaseDir
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:1.43.0"
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {}
+        }
+    }
+}
+
+
+sourceSets {
+    main {
+        proto {
+            //Reference https://github.com/google/protobuf-gradle-plugin
+            // In addition to the default 'src/main/proto'
+            srcDir 'src/main/protobuf'
+            srcDir 'src/main/protocolbuffers'
+            // In addition to the default '**/*.proto' (use with caution).
+            // Using an extension other than 'proto' is NOT recommended,
+            // because when proto files are published along with class files, we can
+            // only tell the type of a file from its extension.
+            //include '**/*.protodevel'
+        }
+        java {
+            srcDir 'src/main/java'
+        }
+    }
+    test {
+        proto {
+            // In addition to the default 'src/test/proto'
+            srcDir 'src/test/protocolbuffers'
+        }
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
