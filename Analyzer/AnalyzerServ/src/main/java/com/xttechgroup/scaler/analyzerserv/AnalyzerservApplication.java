@@ -1,11 +1,10 @@
-package com.xttechgroup.scaler.analyzerserv.application;
+package com.xttechgroup.scaler.analyzerserv;
 
+import com.xttechgroup.scaler.analyzerserv.annotation.GrpcService;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.stereotype.Component;
 
-import java.lang.annotation.*;
 import java.util.Map;
 
 @SpringBootApplication

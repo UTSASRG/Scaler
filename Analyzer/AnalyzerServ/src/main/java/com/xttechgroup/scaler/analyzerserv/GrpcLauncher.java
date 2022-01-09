@@ -1,15 +1,13 @@
-package com.xttechgroup.scaler.analyzerserv.application;
+package com.xttechgroup.scaler.analyzerserv;
 
 import io.grpc.BindableService;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.logging.Logger;
 
 //Reference: https://zhuanlan.zhihu.com/p/46268200
 @Component("grpcLauncher")

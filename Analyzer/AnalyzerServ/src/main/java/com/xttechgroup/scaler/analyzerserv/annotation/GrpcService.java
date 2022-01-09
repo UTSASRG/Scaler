@@ -1,4 +1,4 @@
-package com.xttechgroup.scaler.analyzerserv.application;
+package com.xttechgroup.scaler.analyzerserv.annotation;
 
 import org.springframework.stereotype.Component;
 
