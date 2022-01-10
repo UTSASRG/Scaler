@@ -1,6 +1,8 @@
 syntax = "proto2";
 
 package scaler.test;
+option java_multiple_files = true;
+option java_package = "com.xttechgroup.scaler.test";
 
 message Person {
   optional string name = 1;

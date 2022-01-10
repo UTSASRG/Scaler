@@ -1,10 +1,8 @@
 syntax = "proto3";
 
-package com.xttechgroup.scaler.analyzerserv.grpc.proto.servertests;
-
+package scaler.test;
 option java_multiple_files = true;
-option java_package = "com.xttechgroup.scaler.analyzerserv.grpc.proto.servertests";
-option java_outer_classname = "HelloWorldProto";
+option java_package = "com.xttechgroup.scaler.test";
 
 //Reference
 

@@ -1,0 +1,7 @@
+app:
+  name: ScalerAnalyzer
+  version: ${project.version}
+
+grpc:
+  server:
+    port: 3060

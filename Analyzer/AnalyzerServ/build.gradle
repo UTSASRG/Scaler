@@ -27,6 +27,8 @@ dependencies {
     implementation "io.grpc:grpc-protobuf:1.43.0"
     implementation "io.grpc:grpc-stub:1.43.0"
     implementation 'io.grpc:grpc-netty-shaded:1.43.0'
+    //GRPC starter
+    implementation 'net.devh:grpc-server-spring-boot-starter:2.13.1.RELEASE'
 
 }
 
@@ -34,7 +36,7 @@ protobuf {
     protoc {
         artifact = "com.google.protobuf:protoc:3.18.1"
     }
-    generatedFilesBaseDir = "$projectDir/build/generated"
+    generatedFilesBaseDir = "${project.buildDir}/generated/proto"
     clean {
         delete generatedFilesBaseDir
     }
@@ -65,7 +67,8 @@ sourceSets {
             //include '**/*.protodevel'
         }
         java {
-            srcDir 'src/main/java'
+            srcDir 'build/generated/proto/main/grpc'
+            srcDir 'build/generated/proto/main/java'
         }
     }
     test {
@@ -78,4 +81,10 @@ sourceSets {
 
 test {
     useJUnitPlatform()
+}
+
+processResources {
+    filesMatching('application.yml') {
+        expand(project.properties)
+    }
 }
