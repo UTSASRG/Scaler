@@ -1,3 +1,4 @@
+
 # Compile LibPltHook
 project(ScalerHook-Tests)
 
@@ -31,6 +32,11 @@ target_include_directories(KuBoPltHook PUBLIC lib/plthook)
 # ============================================================
 # Unit Test
 # ============================================================
+list(PREPEND CMAKE_PREFIX_PATH
+        "${CMAKE_SOURCE_DIR}/proto/lib/grpc_1_43_0/release")
+message("CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} ${CMAKE_MODULE_PATH}")
+find_package(Protobuf REQUIRED)
+find_package(gRPC REQUIRED)
 
 add_executable(libScalerHook-unittests
         src/unittests/TestPMParser.cpp
@@ -50,13 +56,13 @@ add_executable(libScalerHook-unittests
         src/unittests/util/datastructure/TestELFInfo.cpp
         src/unittests/TestStr.cpp
         src/unittests/TestProtobuf.cpp
-        ${PROTO_SRCS}
-        ${PROTO_HDRS})
-
-target_link_libraries(libScalerHook-unittests PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall KuBoPltHook gtest ${Protobuf_LIBRARIES} gtest_main dl pthread)
+        ${SCALER_PROTO_SRCS})
+message("SCALER_PROTO_SRCS=1${SCLAER_GRPC_INCLUDE} 2${SCALER_PROTO_SRCS} ")
+target_link_libraries(libScalerHook-unittests PUBLIC ScalerHook-HookManualAsm libScalerHook-testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread protobuf::libprotobuf gRPC::grpc++)
 target_link_options(libScalerHook-unittests PUBLIC "LINKER:SHELL: -T ${ScalerHook-Tests_SOURCE_DIR}/linkerscripts/mylinker.ld")
 target_compile_options(libScalerHook-unittests PRIVATE "-fno-access-control" ${TEST_FLAGS} -Werror)
-target_include_directories(libScalerHook-unittests PRIVATE ${PROTO_HDR_PATH})
+target_include_directories(libScalerHook-unittests PRIVATE ${SCLAER_GRPC_INCLUDE})
+message("include is ${SCLAER_GRPC++_LIBRARY}")
 
 # ============================================================
 # Demo Application

@@ -1,5 +1,7 @@
+
 # Set global (Relative this folder until reset) compiler options
-set(CMAKE_C_STANDARD 11)
+
+
 set(SCALER_HOOK_COMPILATION_FLAGS "-O0" "-g" "-Werror")
 # https://json.nlohmann.me/integration/cmake/
 set(JSON_BuildTests OFF CACHE INTERNAL "")
@@ -22,7 +24,9 @@ set(HookSrc
         src/Serilizable.cpp
         src/InvocationTree.cpp
         src/StringTool.cpp
-       )
+        src/InfoServiceGprc.cpp
+        ${SCALER_PROTO_SRCS}
+        )
 #src/VMEmulator.cpp
 
 #list(APPEND CMAKE_PREFIX_PATH "/media/umass/datasystem/steven/lib/intel/build/kits/xed-install-base-2021-08-26-lin-x86-64")
@@ -46,20 +50,29 @@ set(HookSrc
 #target_compile_definitions(ScalerHook-HookBrkpoint PUBLIC XED_ENCODER)
 #target_compile_options(ScalerHook-HookBrkpoint PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
 
+list(PREPEND CMAKE_PREFIX_PATH
+        "${CMAKE_SOURCE_DIR}/proto/lib/grpc_1_43_0/release")
+message("CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} ${CMAKE_MODULE_PATH}")
+find_package(Protobuf REQUIRED)
+find_package(gRPC REQUIRED)
 
 # Scaler hook library itself. Users need to manually install scalerhook through library functions.
 add_library(ScalerHook-HookManualAsm SHARED
         ${HookSrc})
-target_include_directories(ScalerHook-HookManualAsm PUBLIC src/include lib/inireader)
-target_link_libraries(ScalerHook-HookManualAsm PUBLIC pthread dl nlohmann_json::nlohmann_json )
+target_include_directories(ScalerHook-HookManualAsm PUBLIC src/include lib/inireader ${SCLAER_GRPC_INCLUDE})
+target_link_libraries(ScalerHook-HookManualAsm PUBLIC pthread dl nlohmann_json::nlohmann_json protobuf::libprotobuf gRPC::grpc++)
 target_compile_definitions(ScalerHook-HookManualAsm PUBLIC XED_ENCODER)
 target_compile_options(ScalerHook-HookManualAsm PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
-#
+
+
+#message(" ${PROTO_SRCS}  ${GRPC_SRCS}")
+
+
 
 #ScalerHook with auto installation enabled. Scaler hook will run automatically before main.
-add_library(ScalerHook-HookAuto SHARED src/autoinstall.cpp ${HookSrc})
-target_include_directories(ScalerHook-HookAuto PUBLIC src/include lib/inireader)
-target_link_libraries(ScalerHook-HookAuto PUBLIC pthread dl nlohmann_json::nlohmann_json)
+add_library(ScalerHook-HookAuto SHARED src/autoinstall.cpp ${HookSrc})# ${PROTO_SRCS} ${GRPC_SRCS})
+target_include_directories(ScalerHook-HookAuto PUBLIC src/include lib/inireader ${SCLAER_GRPC_INCLUDE})# ${PROTO_SRC_DIR})
+target_link_libraries(ScalerHook-HookAuto PUBLIC pthread dl nlohmann_json::nlohmann_json protobuf::libprotobuf gRPC::grpc++)
 target_compile_definitions(ScalerHook-HookAuto PUBLIC XED_ENCODER)#NDEBUG
 target_link_options(ScalerHook-HookAuto PRIVATE -static-libgcc -static-libstdc++) #Todo; Statically link libc is not advised. Change to re-compile in o
 target_compile_options(ScalerHook-HookAuto PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})

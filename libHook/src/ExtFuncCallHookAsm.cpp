@@ -24,6 +24,8 @@
 #include <nlohmann/json.hpp>
 #include <util/datastructure/FStack.h>
 #include <type/InvocationTree.h>
+#include <grpcpp/grpcpp.h>
+#include <gprc/InfoServiceGprc.h>
 //#include <addressbook.pb.h>
 //extern "C" {
 //#include "xed/xed-interface.h"
@@ -154,6 +156,8 @@ namespace scaler {
 
 
     bool ExtFuncCallHookAsm::install(Hook::SYMBOL_FILTER *filterCallB) {
+        ERR_LOG("Connecting to GPRC server");
+
         auto ldPreloadVal = getenv("LD_PRELOAD");
         if (setenv("LD_PRELOAD", "", true) != 0) {
             fatalErrorS("Cannot set environment variable, reason: %s", strerror(errno));
@@ -347,6 +351,11 @@ namespace scaler {
         if (ldPreloadVal) {
             setenv("LD_PRELOAD", ldPreloadVal, true);
         }
+
+        InfoServiceGprc infoService(
+                grpc::CreateChannel("localhost:3060", grpc::InsecureChannelCredentials()));
+        infoService.SayHello();
+
         return true;
     }
 

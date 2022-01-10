@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package scaler.test;
+package scaler.analyzerserv;
 option java_multiple_files = true;
 option java_package = "com.xttechgroup.scaler.analyzerserv";
 
