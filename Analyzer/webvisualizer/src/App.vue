@@ -1,11 +1,25 @@
 <template>
   <v-app>
     <v-app-bar app clipped-left>
-      <v-toolbar-title>{{ componentDisplayName }}</v-toolbar-title>
+      <v-toolbar-title class="overflow-visible">
+        <v-img
+          :src="require('./assets/logo.svg')"
+          class="my-3"
+          contain
+          width="80px"
+      /></v-toolbar-title>
+      <v-tabs align-with-title v-model="active_tab">
+        <v-tab v-for="item in mainMenuItems" :to="item.path" :key="item.id">{{
+          item.name
+        }}</v-tab>
+      </v-tabs>
     </v-app-bar>
 
     <v-main>
-      <router-view class="subcomponentview" @updateDisplayName="componentDisplayName = $event" />
+      <router-view
+        class="subcomponentview"
+        @updateDisplayName="componentDisplayName = $event"
+      />
     </v-main>
   </v-app>
 </template>
@@ -18,15 +32,17 @@ export default {
 
   data: () => ({
     drawer: null,
-    componentDisplayName: "",
-    items: [
-      { title: "Dashboard", icon: "mdi-view-dashboard" },
-      { title: "Photos", icon: "mdi-image" },
-      { title: "About", icon: "mdi-help-box" },
+    active_tab: 2,
+    mainMenuItems: [
+      { id: 0, name: "Run", path: "/run" },
+      { id: 1, name: "Visualize", path: "/visualize" },
+      { id: 2, name: "About", path: "/about" },
     ],
   }),
-
   methods: {},
+  computed:{
+   
+  },
   mounted() {
     console.log("Change display name");
   },
@@ -35,22 +51,19 @@ export default {
 
 <style lang="css">
 html {
-  overflow: hidden;
   overflow-y: auto;
 }
 body {
   margin: 0;
   padding: 0;
-  overflow: hidden;
   /* Hide scrollbar */
   scrollbar-width: none;
 }
 body::-webkit-scrollbar {
   /* Hide scrollbar */
-  display: none; 
+  display: none;
 }
-.subcomponentview{
+.subcomponentview {
   scrollbar-width: auto;
 }
-
 </style>

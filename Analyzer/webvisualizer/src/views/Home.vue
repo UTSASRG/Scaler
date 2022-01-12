@@ -1,6 +1,6 @@
 <template>
   <div class="home">
-    <v-navigation-drawer v-model="drawer" clipped app>
+    <v-navigation-drawer v-model="drawer" :permanent="permanent" clipped app>
       <v-list-item>
         <v-list-item-content>
           <v-list-item-title class="text-h6"> Application </v-list-item-title>
@@ -28,23 +28,14 @@
 
 <script>
 // @ is an alias to /src
-import Welcome from "@/components/Welcome.vue";
+// import Welcome from "@/components/Welcome.vue";
 
 export default {
   name: "Home",
   components: {
-    Welcome,
+    // Welcome,
   },
   prop: {},
-  data: () => ({
-    drawer:null,
-    componentDisplayName:"",
-     items: [
-          { title: 'Dashboard', icon: 'mdi-view-dashboard' },
-          { title: 'Photos', icon: 'mdi-image' },
-          { title: 'About', icon: 'mdi-help-box' },
-        ],
-  }),
   model: {},
   beforeMount() {
     this.$emit("updateDisplayName", "Welcome");
