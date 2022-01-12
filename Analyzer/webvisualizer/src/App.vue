@@ -26,25 +26,22 @@
 
 <script>
 export default {
-  name: "App",
-
+  name: "Test",
   components: {},
-
   data: () => ({
     drawer: null,
     active_tab: 2,
     mainMenuItems: [
       { id: 0, name: "Run", path: "/run" },
-      { id: 1, name: "Analysis", path: "/Analysis" },
+      { id: 1, name: "Analysis", path: "/analysis" },
       { id: 2, name: "About", path: "/about" },
     ],
   }),
   methods: {},
-  computed:{
-   
+  computed: {},
+  created(){
   },
   mounted() {
-    console.log("Change display name");
   },
 };
 </script>
