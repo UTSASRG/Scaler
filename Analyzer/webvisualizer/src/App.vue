@@ -35,7 +35,7 @@ export default {
     active_tab: 2,
     mainMenuItems: [
       { id: 0, name: "Run", path: "/run" },
-      { id: 1, name: "Visualize", path: "/visualize" },
+      { id: 1, name: "Analysis", path: "/Analysis" },
       { id: 2, name: "About", path: "/about" },
     ],
   }),

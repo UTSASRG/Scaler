@@ -1,151 +1,84 @@
 <template>
   <v-container>
-    <v-row class="text-center">
-      <v-col cols="12">
-        <v-img
-          :src="require('../../assets/logo.svg')"
-          class="my-3"
-          contain
-          height="200"
-        />
-      </v-col>
-
-      <v-col class="mb-4">
-        <h1 class="display-2 font-weight-bold mb-3">
-          Welcome to Vuetify
-        </h1>
-
-        <p class="subheading font-weight-regular">
-          For help and collaboration with other Vuetify developers,
-          <br>please join our online
-          <a
-            href="https://community.vuetifyjs.com"
-            target="_blank"
-          >Discord Community</a>
+    <v-row>
+      <v-col>
+        <p class="text-h4">What is scaler?</p>
+        <p class="text--primary">
+          Scaler is a tool to holistically pinpoint scalability bottleneck in
+          whole system stack.
+        </p>
+        <p class="text--primary">
+          Scaler is composed of the following components:
         </p>
       </v-col>
-
+    </v-row>
+    <v-row>
       <v-col
-        class="mb-5"
-        cols="12"
+        v-for="coreCompDesc in coreCompDescs"
+        :key="coreCompDesc.name"
+        class="d-flex"
       >
-        <h2 class="headline font-weight-bold mb-3">
-          What's next?
-        </h2>
-
-        <v-row justify="center">
-          <a
-            v-for="(next, i) in whatsNext"
-            :key="i"
-            :href="next.href"
-            class="subheading mx-3"
-            target="_blank"
-          >
-            {{ next.text }}
-          </a>
-        </v-row>
-      </v-col>
-
-      <v-col
-        class="mb-5"
-        cols="12"
-      >
-        <h2 class="headline font-weight-bold mb-3">
-          Important Links
-        </h2>
-
-        <v-row justify="center">
-          <a
-            v-for="(link, i) in importantLinks"
-            :key="i"
-            :href="link.href"
-            class="subheading mx-3"
-            target="_blank"
-          >
-            {{ link.text }}
-          </a>
-        </v-row>
-      </v-col>
-
-      <v-col
-        class="mb-5"
-        cols="12"
-      >
-        <h2 class="headline font-weight-bold mb-3">
-          Ecosystem
-        </h2>
-
-        <v-row justify="center">
-          <a
-            v-for="(eco, i) in ecosystem"
-            :key="i"
-            :href="eco.href"
-            class="subheading mx-3"
-            target="_blank"
-          >
-            {{ eco.text }}
-          </a>
-        </v-row>
+        <v-card class="mx-auto d-flex flex-column" min-width="344" max-width="344">
+          <v-card-text>
+            <div>{{ coreCompDesc.role }}</div>
+            <div class="d-flex">
+              <p class="text-h5 text--primary">
+                {{ coreCompDesc.name }}
+              </p>
+              <v-chip
+                v-if="coreCompDesc.deprecated"
+                class="ma-2 borderless"
+                x-small
+                color="primary"
+              >
+                deprecated
+              </v-chip>
+            </div>
+            <div class="text--primary">{{ coreCompDesc.desc }}.<br /></div>
+          </v-card-text>
+           <v-spacer></v-spacer>
+          <v-card-actions>
+            <v-btn text :href="coreCompDesc.url" target="_blank">
+              Source
+            </v-btn>
+          </v-card-actions>
+        </v-card>
       </v-col>
     </v-row>
   </v-container>
 </template>
 
 <script>
-  export default {
-    name: 'Welcome',
-
-    data: () => ({
-      ecosystem: [
-        {
-          text: 'vuetify-loader',
-          href: 'https://github.com/vuetifyjs/vuetify-loader',
-        },
-        {
-          text: 'github',
-          href: 'https://github.com/vuetifyjs/vuetify',
-        },
-        {
-          text: 'awesome-vuetify',
-          href: 'https://github.com/vuetifyjs/awesome-vuetify',
-        },
-      ],
-      importantLinks: [
-        {
-          text: 'Documentation',
-          href: 'https://vuetifyjs.com',
-        },
-        {
-          text: 'Chat',
-          href: 'https://community.vuetifyjs.com',
-        },
-        {
-          text: 'Made with Vuetify',
-          href: 'https://madewithvuejs.com/vuetify',
-        },
-        {
-          text: 'Twitter',
-          href: 'https://twitter.com/vuetifyjs',
-        },
-        {
-          text: 'Articles',
-          href: 'https://medium.com/vuetify',
-        },
-      ],
-      whatsNext: [
-        {
-          text: 'Explore components',
-          href: 'https://vuetifyjs.com/components/api-explorer',
-        },
-        {
-          text: 'Select a layout',
-          href: 'https://vuetifyjs.com/getting-started/pre-made-layouts',
-        },
-        {
-          text: 'Frequently Asked Questions',
-          href: 'https://vuetifyjs.com/getting-started/frequently-asked-questions',
-        },
-      ],
-    }),
-  }
+export default {
+  data: () => ({
+    coreCompDescs: [
+      {
+        name: "ScalerHook",
+        role: "Profiler",
+        desc: "A library that performs profiling and records profiling data",
+        url: "https://github.com/UTSASRG/Scaler/tree/feature-analyzeScaleroutput/libHook",
+      },
+      {
+        name: "ScalerWeb",
+        role: "Analysis, Configurator",
+        desc: "Frontend for scaler. A comprehensive visualization, analysis and configurator for Scaler",
+        url: "https://github.com/UTSASRG/Scaler/tree/feature-analyzeScaleroutput/Analyzer/webvisualizer",
+      },
+      {
+        name: "ScalerRun",
+        role: "Configurator",
+        desc: "A convenient tool to run scaler. It controls scaler behavior through commandline options or WebVisualizer",
+        url: "https://github.com/UTSASRG/Scaler/tree/feature-analyzeScaleroutput/Analyzer/ScalerRun",
+        deprecated: false,
+      },
+      {
+        name: "PyVisualizer",
+        role: "Visualization",
+        desc: "A python-written visualizer for profiling data visualization. Supports both scaler format and perf format",
+        url: "https://github.com/UTSASRG/Scaler/tree/feature-analyzeScaleroutput/Analyzer/PyVisualizer",
+        deprecated: true,
+      },
+    ],
+  }),
+};
 </script>
