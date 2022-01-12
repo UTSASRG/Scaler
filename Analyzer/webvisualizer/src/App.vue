@@ -1,52 +1,56 @@
 <template>
   <v-app>
-     <v-navigation-drawer
-      v-model="drawer"
-      app
-    >
-    </v-navigation-drawer>
-    
-    <v-app-bar
-      app
-      color="primary"
-      dark
-    >
-      <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
-
-      <v-toolbar-title>{{componentDisplayName}}</v-toolbar-title>
-
+    <v-app-bar app clipped-left>
+      <v-toolbar-title>{{ componentDisplayName }}</v-toolbar-title>
     </v-app-bar>
 
     <v-main>
-       <router-view @updateDisplayName="componentDisplayName=$event"/>
+      <router-view class="subcomponentview" @updateDisplayName="componentDisplayName = $event" />
     </v-main>
   </v-app>
 </template>
 
 <script>
-
 export default {
-  name: 'App',
+  name: "App",
 
-  components: {
-  },
+  components: {},
 
   data: () => ({
-    drawer:null,
-    componentDisplayName:""
+    drawer: null,
+    componentDisplayName: "",
+    items: [
+      { title: "Dashboard", icon: "mdi-view-dashboard" },
+      { title: "Photos", icon: "mdi-image" },
+      { title: "About", icon: "mdi-help-box" },
+    ],
   }),
 
-  methods:{
-
-  },
+  methods: {},
   mounted() {
-    console.log("Change display name")
-  }
-
+    console.log("Change display name");
+  },
 };
-
 </script>
 
-<style lang="scss">
+<style lang="css">
+html {
+  overflow: hidden;
+  overflow-y: auto;
+}
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  /* Hide scrollbar */
+  scrollbar-width: none;
+}
+body::-webkit-scrollbar {
+  /* Hide scrollbar */
+  display: none; 
+}
+.subcomponentview{
+  scrollbar-width: auto;
+}
 
 </style>
