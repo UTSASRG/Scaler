@@ -13,28 +13,40 @@
     >
       <v-app-bar-nav-icon @click="drawer = !drawer"></v-app-bar-nav-icon>
 
-      <v-toolbar-title></v-toolbar-title>
+      <v-toolbar-title>{{componentDisplayName}}</v-toolbar-title>
 
     </v-app-bar>
 
     <v-main>
-      <Welcome/>
+       <router-view @updateDisplayName="componentDisplayName=$event"/>
     </v-main>
   </v-app>
 </template>
 
 <script>
-import Welcome from './components/Welcome';
 
 export default {
   name: 'App',
 
   components: {
-    Welcome,
   },
 
   data: () => ({
-    drawer:null
+    drawer:null,
+    componentDisplayName:""
   }),
+
+  methods:{
+
+  },
+  mounted() {
+    console.log("Change display name")
+  }
+
 };
+
 </script>
+
+<style lang="scss">
+
+</style>
