@@ -27,6 +27,14 @@ const routes = [
     component: () => import('../views/Analysis/About.vue')
   },
   {
+    path: '/analysis/:resultid',
+    name: 'Analysis',
+    // route level code-splitting
+    // this generates a separate chunk (about.[hash].js) for this route
+    // which is lazy-loaded when the route is visited.
+    component: () => import('../views/Analysis/Analysis.vue')
+  },
+  {
     path: '/run',
     name: 'Run',
     // route level code-splitting

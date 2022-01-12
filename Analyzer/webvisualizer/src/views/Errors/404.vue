@@ -14,6 +14,8 @@ export default {
   components: {},
   prop: {},
   model: {},
-  beforeMount() {},
+   beforeMount() {
+    this.$emit("updateDisplayName", "");
+  },
 };
 </script>

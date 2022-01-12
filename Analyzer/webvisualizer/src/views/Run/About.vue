@@ -5,7 +5,10 @@
         <p class="text-h4">How to run scaler?</p>
         <ol class="text-primary">
           <li>ScalerRun [Commands]</li>
-          <li>Visit the link on the screen to come back to this page and config scaler</li>
+          <li>
+            Visit the link on the screen to come back to this page and config
+            scaler
+          </li>
           <li>Hit run and the recording will start</li>
         </ol>
       </v-col>
@@ -19,6 +22,8 @@ export default {
   components: {},
   prop: {},
   model: {},
-  beforeMount() {},
+  beforeMount() {
+    this.$emit("updateDisplayName", "Run");
+  },
 };
 </script>

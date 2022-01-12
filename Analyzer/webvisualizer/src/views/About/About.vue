@@ -18,7 +18,11 @@
         :key="coreCompDesc.name"
         class="d-flex"
       >
-        <v-card class="mx-auto d-flex flex-column" min-width="344" max-width="344">
+        <v-card
+          class="mx-auto d-flex flex-column"
+          min-width="344"
+          max-width="344"
+        >
           <v-card-text>
             <div>{{ coreCompDesc.role }}</div>
             <div class="d-flex">
@@ -36,7 +40,7 @@
             </div>
             <div class="text--primary">{{ coreCompDesc.desc }}.<br /></div>
           </v-card-text>
-           <v-spacer></v-spacer>
+          <v-spacer></v-spacer>
           <v-card-actions>
             <v-btn text :href="coreCompDesc.url" target="_blank">
               Source
@@ -80,5 +84,8 @@ export default {
       },
     ],
   }),
+  beforeMount() {
+    this.$emit("updateDisplayName", "About");
+  },
 };
 </script>
