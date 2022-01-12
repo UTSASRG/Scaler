@@ -33,7 +33,12 @@ const routes = [
     // this generates a separate chunk (about.[hash].js) for this route
     // which is lazy-loaded when the route is visited.
     component: () => import('../views/Run/About.vue')
-  }
+  },
+  {
+    path: '*',
+    name: '404 Error',
+    component: () => import('../views/Errors/404.vue')
+  },
 ]
 
 const router = new VueRouter({
