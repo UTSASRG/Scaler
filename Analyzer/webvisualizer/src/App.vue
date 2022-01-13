@@ -16,7 +16,9 @@
         }}</v-tab>
       </v-tabs>
       <v-spacer />
-      <div  v-if="showReducedMainMenu" class="text-h6">{{componentDisplayName}}</div>
+      <div v-if="showReducedMainMenu" class="text-h6">
+        {{ componentDisplayName }}
+      </div>
       <v-spacer />
       <v-menu v-if="showReducedMainMenu">
         <template v-slot:activator="{ on, attrs }">
@@ -28,7 +30,11 @@
           <v-list-item
             v-for="item in mainMenuItems"
             :key="item.id"
-            @click="() => {$router.push({ path: item.path })}"
+            @click="
+              () => {
+                $router.push({ path: item.path });
+              }
+            "
           >
             <v-list-item-title>{{ item.name }}</v-list-item-title>
           </v-list-item>
@@ -52,11 +58,11 @@ export default {
   data: () => ({
     drawer: null,
     active_tab: 2,
-    componentDisplayName:"",
+    componentDisplayName: "",
     mainMenuItems: [
-      { id: 0, name: "Run", path: "/run"},
-      { id: 1, name: "Analysis", path: "/analysis"},
-      { id: 2, name: "About", path: "/about"},
+      { id: 0, name: "Run", path: "/run" },
+      { id: 1, name: "Analysis", path: "/analysis" },
+      { id: 2, name: "About", path: "/about" },
     ],
   }),
   methods: {},

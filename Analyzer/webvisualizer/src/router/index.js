@@ -13,7 +13,7 @@ const routes = [
     path: '/about',
     name: 'About',
     component: () => import('@/views/About/About.vue')
-    
+
   },
   {
     path: '/analysis',
@@ -24,7 +24,29 @@ const routes = [
     path: '/analysis/:id',
     name: 'Analysis',
     component: () => import('@/views/Analysis/Analysis.vue'),
-    props: true
+    props: true,
+    children: [
+      {
+        path: 'execution',
+        component: () => import('@/views/Analysis/Components/Execution.vue')
+      },
+      {
+        path: 'symbol',
+        component: () => import('@/views/Analysis/Components/Symbol.vue')
+      },
+      {
+        path: 'time',
+        component: () => import('@/views/Analysis/Components/Time.vue')
+      },
+      {
+        path: 'callgraph',
+        component: () => import('@/views/Analysis/Components/CallGraph.vue')
+      },
+      {
+        path: '',
+        redirect: '/analysis'
+      }
+    ]
   },
   {
     path: '/run',
