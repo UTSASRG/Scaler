@@ -3,8 +3,8 @@
     <v-navigation-drawer v-model="drawer" permanent expand-on-hover clipped app>
       <v-list-item>
         <v-list-item-content>
-          <v-list-item-title class="text-h6"> Application </v-list-item-title>
-          <v-list-item-subtitle> subtext </v-list-item-subtitle>
+          <v-list-item-title class="text-h6">Analyzing</v-list-item-title>
+          <v-list-item-subtitle>ID={{ id }}</v-list-item-subtitle>
         </v-list-item-content>
       </v-list-item>
       <v-divider></v-divider>
@@ -39,27 +39,27 @@ export default {
     menuItems: [
       {
         id: 0,
-        title: "Hello",
-        icon: "a",
+        title: "Execution",
+        icon: "mdi-information-outline",
       },
       {
         id: 1,
-        title: "Hello",
-        icon: "a",
+        title: "Symbols",
+        icon: "mdi-function",
       },
       {
         id: 2,
-        title: "Hello",
-        icon: "a",
+        title: "Time analysis",
+        icon: "mdi-chart-timeline-variant-shimmer",
       },
       {
         id: 3,
-        title: "Hello",
-        icon: "a",
+        title: "Call graph",
+        icon: "mdi-graph",
       },
     ],
   }),
-  prop: {},
+  props: ["id"],
   model: {},
   beforeMount() {
     this.$emit("updateDisplayName", "Analysis");

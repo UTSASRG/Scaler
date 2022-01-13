@@ -12,40 +12,35 @@ const routes = [
   {
     path: '/about',
     name: 'About',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import('../views/About/About.vue')
+    component: () => import('@/views/About/About.vue')
     
   },
   {
     path: '/analysis',
     name: 'Analysis',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import('../views/Analysis/About.vue')
+    component: () => import('@/views/Analysis/About.vue')
   },
   {
-    path: '/analysis/:resultid',
+    path: '/analysis/:id',
     name: 'Analysis',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import('../views/Analysis/Analysis.vue')
+    component: () => import('@/views/Analysis/Analysis.vue'),
+    props: true
   },
   {
     path: '/run',
     name: 'Run',
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () => import('../views/Run/About.vue')
+    component: () => import('@/views/Run/About.vue')
+  },
+  {
+    path: '/run/:id',
+    name: 'Run',
+    component: () => import('@/views/Run/Run.vue'),
+    props: true
   },
   {
     path: '*',
     name: '404 Error',
-    component: () => import('../views/Errors/404.vue')
+    component: () => import('@/views/Errors/404.vue')
   },
 ]
 

@@ -3,7 +3,7 @@
     <v-app-bar app clipped-left>
       <v-toolbar-title class="overflow-visible">
         <v-img
-          :src="require('./assets/logo.svg')"
+          :src="require('@/assets/logo.svg')"
           class="my-3"
           contain
           width="80px"
@@ -54,9 +54,9 @@ export default {
     active_tab: 2,
     componentDisplayName:"",
     mainMenuItems: [
-      { id: 0, name: "Run", path: "/run" },
-      { id: 1, name: "Analysis", path: "/analysis" },
-      { id: 2, name: "About", path: "/about" },
+      { id: 0, name: "Run", path: "/run"},
+      { id: 1, name: "Analysis", path: "/analysis"},
+      { id: 2, name: "About", path: "/about"},
     ],
   }),
   methods: {},
