@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 
 @GrpcService
 public class InfoRpcController extends InfoGrpc.InfoImplBase {
-    private final String api = "rest";
+    private final String api = "grpe";
     @Value("${app.name}")
     private String appName;
     @Value("${app.version}")

@@ -7,7 +7,7 @@
 
         // Assembles the client's payload, sends it and presents the response back
         // from the server.
-        void SayHello();
+        bool SayHello();
 
     private:
         std::unique_ptr<scaler::analyzerserv::Info::Stub> stub_;
