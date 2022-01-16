@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <sstream>
 
+
 int main(int argc, char **argv) {
     std::stringstream ss;
     std::string scalerBin(argv[1]);

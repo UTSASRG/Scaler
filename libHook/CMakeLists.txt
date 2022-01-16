@@ -8,6 +8,8 @@ set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(lib/json)
 add_subdirectory(lib/watcher)
 
+add_library(ScalerHook-Config INTERFACE)
+target_include_directories(ScalerHook-Config INTERFACE src/include/config)
 
 #Add all files for libscalerhook
 set(HookSrc
@@ -57,7 +59,7 @@ include(${CMAKE_SOURCE_DIR}/proto/findThisGrpc.cmake)
 add_library(ScalerHook-HookManualAsm SHARED
         ${HookSrc})
 target_include_directories(ScalerHook-HookManualAsm PUBLIC src/include lib/inireader ${SCLAER_GRPC_INCLUDE})
-target_link_libraries(ScalerHook-HookManualAsm PUBLIC pthread dl nlohmann_json::nlohmann_json protobuf::libprotobuf gRPC::grpc++)
+target_link_libraries(ScalerHook-HookManualAsm PUBLIC pthread dl nlohmann_json::nlohmann_json protobuf::libprotobuf gRPC::grpc++ ScalerHook-Config)
 target_compile_definitions(ScalerHook-HookManualAsm PUBLIC XED_ENCODER)
 target_compile_options(ScalerHook-HookManualAsm PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
 
@@ -65,11 +67,10 @@ target_compile_options(ScalerHook-HookManualAsm PRIVATE ${SCALER_HOOK_COMPILATIO
 #message(" ${PROTO_SRCS}  ${GRPC_SRCS}")
 
 
-
 #ScalerHook with auto installation enabled. Scaler hook will run automatically before main.
 add_library(ScalerHook-HookAuto SHARED src/autoinstall.cpp ${HookSrc})# ${PROTO_SRCS} ${GRPC_SRCS})
 target_include_directories(ScalerHook-HookAuto PUBLIC src/include lib/inireader ${SCLAER_GRPC_INCLUDE})# ${PROTO_SRC_DIR})
-target_link_libraries(ScalerHook-HookAuto PUBLIC pthread dl nlohmann_json::nlohmann_json protobuf::libprotobuf gRPC::grpc++)
+target_link_libraries(ScalerHook-HookAuto PUBLIC pthread dl nlohmann_json::nlohmann_json protobuf::libprotobuf gRPC::grpc++ ScalerHook-Config)
 target_compile_definitions(ScalerHook-HookAuto PUBLIC XED_ENCODER)#NDEBUG
 target_link_options(ScalerHook-HookAuto PRIVATE -static-libgcc -static-libstdc++) #Todo; Statically link libc is not advised. Change to re-compile in o
 target_compile_options(ScalerHook-HookAuto PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
