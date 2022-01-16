@@ -25,7 +25,7 @@
 #include <util/datastructure/FStack.h>
 #include <type/InvocationTree.h>
 #include <grpcpp/grpcpp.h>
-#include <gprc/InfoServiceGprc.h>
+#include <gprc/InfoServiceGrpc.h>
 //#include <addressbook.pb.h>
 //extern "C" {
 //#include "xed/xed-interface.h"
@@ -352,7 +352,7 @@ namespace scaler {
             setenv("LD_PRELOAD", ldPreloadVal, true);
         }
 
-        InfoServiceGprc infoService(
+        InfoServiceGrpc infoService(
                 grpc::CreateChannel("localhost:3060", grpc::InsecureChannelCredentials()));
         infoService.SayHello();
 

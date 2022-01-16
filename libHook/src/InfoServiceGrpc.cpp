@@ -1,4 +1,4 @@
-#include<gprc/InfoServiceGprc.h>
+#include<gprc/InfoServiceGrpc.h>
 #include <memory>
 #include <util/tool/Logging.h>
 
@@ -9,13 +9,13 @@ using grpc::ClientContext;
 using grpc::Status;
 using google::protobuf::Empty;
 
-InfoServiceGprc::InfoServiceGprc(std::shared_ptr<ChannelInterface> channel) : stub_(
+InfoServiceGrpc::InfoServiceGrpc(std::shared_ptr<ChannelInterface> channel) : stub_(
         scaler::analyzerserv::Info::NewStub(channel)) {
 
 
 }
 
-void InfoServiceGprc::SayHello() {
+void InfoServiceGrpc::SayHello() {
     // Container for the data we expect from the server.
     HelloMsg reply;
     Empty emptyParam;
@@ -30,7 +30,7 @@ void InfoServiceGprc::SayHello() {
         ERR_LOGS("Connection successful\napi:%s\nappName:%s\nversion=%s\nslogan:%s\n", reply.api().c_str(),
                  reply.appname().c_str(), reply.appversion().c_str(), reply.slogan().c_str());
     } else {
-        ERR_LOG("Connection faile.");
+        ERR_LOG("Cannot connect to Analyzer Server failed.");
     }
 
 }

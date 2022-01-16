@@ -24,7 +24,7 @@ set(HookSrc
         src/Serilizable.cpp
         src/InvocationTree.cpp
         src/StringTool.cpp
-        src/InfoServiceGprc.cpp
+        src/InfoServiceGrpc.cpp
         ${SCALER_PROTO_SRCS}
         )
 #src/VMEmulator.cpp
@@ -50,11 +50,8 @@ set(HookSrc
 #target_compile_definitions(ScalerHook-HookBrkpoint PUBLIC XED_ENCODER)
 #target_compile_options(ScalerHook-HookBrkpoint PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
 
-list(PREPEND CMAKE_PREFIX_PATH
-        "${CMAKE_SOURCE_DIR}/proto/lib/grpc_1_43_0/release")
-message("CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} ${CMAKE_MODULE_PATH}")
-find_package(Protobuf REQUIRED)
-find_package(gRPC REQUIRED)
+
+include(${CMAKE_SOURCE_DIR}/proto/findThisGrpc.cmake)
 
 # Scaler hook library itself. Users need to manually install scalerhook through library functions.
 add_library(ScalerHook-HookManualAsm SHARED

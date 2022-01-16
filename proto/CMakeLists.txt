@@ -30,10 +30,7 @@ endif ()
 
 #The following is modified from https://github.com/IvanSafonov/grpc-cmake-example
 
-list(PREPEND CMAKE_PREFIX_PATH
-        "${CMAKE_CURRENT_SOURCE_DIR}/lib/grpc_1_43_0/release")
-find_package(Protobuf REQUIRED)
-find_package(gRPC REQUIRED)
+include(${CMAKE_SOURCE_DIR}/proto/findThisGrpc.cmake)
 
 message("Build protobuffer models")
 set(GRPC_CPP_PLUGIN ${CMAKE_CURRENT_SOURCE_DIR}/lib/grpc_1_43_0/release/bin/grpc_cpp_plugin)
@@ -61,6 +58,7 @@ FOREACH (proto ${DATAMODEL_PROTOS})
     endif ()
 ENDFOREACH (proto)
 
+message("PROTOBUF_PROTOC_EXECUTABLE=${PROTOBUF_PROTOC_EXECUTABLE} CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
 # Make protobuffer variables avalable to other modules
 FILE(GLOB_RECURSE PROTO_HDRS "${PROTOBINDING_PATH}/*.h")
 FILE(GLOB_RECURSE PROTO_SRCS "${PROTOBINDING_PATH}/*.cc")

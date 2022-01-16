@@ -1,9 +1,9 @@
 #include <analyzerserver/InfoService.grpc.pb.h>
 
 
-    class InfoServiceGprc {
+    class InfoServiceGrpc {
     public:
-        explicit InfoServiceGprc(std::shared_ptr<grpc::ChannelInterface> channel);
+        explicit InfoServiceGrpc(std::shared_ptr<grpc::ChannelInterface> channel);
 
         // Assembles the client's payload, sends it and presents the response back
         // from the server.

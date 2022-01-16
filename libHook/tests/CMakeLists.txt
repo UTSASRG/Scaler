@@ -32,11 +32,7 @@ target_include_directories(KuBoPltHook PUBLIC lib/plthook)
 # ============================================================
 # Unit Test
 # ============================================================
-list(PREPEND CMAKE_PREFIX_PATH
-        "${CMAKE_SOURCE_DIR}/proto/lib/grpc_1_43_0/release")
-message("CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH} ${CMAKE_MODULE_PATH}")
-find_package(Protobuf REQUIRED)
-find_package(gRPC REQUIRED)
+include(${CMAKE_SOURCE_DIR}/proto/findThisGrpc.cmake)
 
 add_executable(libScalerHook-unittests
         src/unittests/TestPMParser.cpp
@@ -76,7 +72,7 @@ target_link_libraries(libScalerHook-demoapps-Exceptions PUBLIC ScalerHook-HookAu
 target_compile_options(libScalerHook-demoapps-Exceptions PRIVATE ${TEST_FLAGS} -Werror)
 
 add_executable(libScalerHook-demoapps-FuncCall src/demoapps/TestFuncCall.cpp)
-target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC libScalerHook-testlib-FuncCall
+target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC ScalerHook-HookAuto libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall KuBoPltHook dl)
 target_compile_options(libScalerHook-demoapps-FuncCall PRIVATE ${TEST_FLAGS} -Werror)
 
