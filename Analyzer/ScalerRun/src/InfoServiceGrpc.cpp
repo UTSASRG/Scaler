@@ -34,7 +34,7 @@ bool InfoServiceGrpc::SayHello() {
         INFO_LOGS("-> slogan:%s", reply.slogan().c_str());
         return true;
     } else {
-        ERR_LOG("Cannot connect to Analyzer Server failed.");
+        ERR_LOG("Cannot connect to Analyzer Server.");
         return false;
     }
 

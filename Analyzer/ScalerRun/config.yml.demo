@@ -1,0 +1,9 @@
+hook:
+  gccpath: "/usr/bin/gcc-9" #The path of the gcc compiler. Recommend version >9
+  analyzerserv:
+    address: 127.0.0.1 # Address of the analyzer server
+    grpcPort: 3060 # Port of the analyzer server grpc api
+  modes: normal #[norma|counting]
+  logging:
+    error: true #Print error log
+    info: true #Print info log

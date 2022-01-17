@@ -8,7 +8,7 @@ add_executable(ScalerRun src/injector.cpp
         ${SCALER_PROTO_SRCS}
         )
 target_include_directories(ScalerRun PUBLIC src/include ${SCLAER_GRPC_INCLUDE})
-target_link_libraries(ScalerRun yaml-cpp::yaml-cpp protobuf::libprotobuf gRPC::grpc++ ScalerHook-Config)
+target_link_libraries(ScalerRun PRIVATE yaml-cpp protobuf::libprotobuf gRPC::grpc++ ScalerHook-Config)
 target_compile_definitions(ScalerRun PRIVATE CMAKE_SCALERRUN_VERSION="${PROJECT_VERSION}")
 
 
