@@ -23,7 +23,6 @@ set(HookSrc
         src/FileTool.cpp
         src/install.cpp
         src/Timer.cpp
-        src/HookConfig.cpp
         src/Serilizable.cpp
         src/InvocationTree.cpp
         src/StringTool.cpp

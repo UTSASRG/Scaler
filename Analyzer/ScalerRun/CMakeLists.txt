@@ -3,10 +3,10 @@ project(ScalerRun VERSION 0.1.0)
 include(${CMAKE_SOURCE_DIR}/proto/findThisGrpc.cmake)
 
 add_subdirectory(lib/yamlcpp_0_7_0)
+target_compile_options(yaml-cpp PRIVATE "-fPIC")
 
 add_executable(ScalerRun src/injector.cpp
         src/InfoServiceGrpc.cpp
-        src/HookConfig.cpp
         ${SCALER_PROTO_SRCS}
         )
 target_include_directories(ScalerRun PUBLIC src/include ${SCLAER_GRPC_INCLUDE})

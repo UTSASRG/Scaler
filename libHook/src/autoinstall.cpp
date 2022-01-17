@@ -3,6 +3,7 @@
 #include <util/tool/Logging.h>
 #include <dlfcn.h>
 #include <util/tool/FileTool.h>
+#include <util/config/Config.h>
 #include <exceptions/ScalerException.h>
 
 typedef int (*main_fn_t)(int, char **, char **);
@@ -18,6 +19,17 @@ int doubletake_main(int argc, char **argv, char **envp) {
 
     if (!SCALER_HOOK_CONFIG_FILE || std::string(SCALER_HOOK_CONFIG_FILE).empty()) {
         ERR_LOG("Cannot find SCALER_HOOK_CONFIG_FILE, please consider using scaler run or manually set this environment variable to the absolute path of the config file.");
+        exit(-1);
+    }
+
+    DBG_LOG("Parsing config file.");
+    try {
+        scaler::globalConf = YAML::LoadFile(SCALER_HOOK_CONFIG_FILE);
+    } catch (YAML::Exception &e) {
+        ERR_LOGS("Cannot parse %s ErrMsg: %s", SCALER_HOOK_CONFIG_FILE, e.what());
+        exit(-1);
+    } catch (std::ios_base::failure &e) {
+        ERR_LOGS("Cannot parse %s ErrMsg: %s", SCALER_HOOK_CONFIG_FILE, e.what());
         exit(-1);
     }
 
