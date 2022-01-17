@@ -161,12 +161,7 @@ namespace scaler {
             fatalErrorS("Cannot set environment variable, reason: %s", strerror(errno));
             return false;
         }
-        //load plt hook address
-        pthread_create_orig = (pthread_create_origt) dlsym(RTLD_NEXT, "pthread_create");
-        if (!pthread_create_orig) {
-            fatalError("Cannot find the address of pthread_create");
-            return false;
-        }
+
 
         memTool = MemoryTool_Linux::getInst();
         if (!memTool) {
@@ -1148,7 +1143,14 @@ void *dummy_thread_function(void *data) {
 // Main Pthread wrapper functions.
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)(void *), void *arg) {
     bypassCHooks = SCALER_TRUE;
-    assert(scaler::pthread_create_orig != nullptr);
+    if(scaler::pthread_create_orig == nullptr){
+        //load plt hook address
+        scaler::pthread_create_orig = (scaler::pthread_create_origt) dlsym(RTLD_NEXT, "pthread_create");
+        if (!scaler::pthread_create_orig) {
+            fatalError("Cannot find the address of pthread_create");
+            return false;
+        }
+    }
     auto threadID = pthread_self();
     DBG_LOGS("pthread_create %lu", pthread_self());
 

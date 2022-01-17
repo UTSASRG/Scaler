@@ -5,6 +5,9 @@
 #include <util/tool/FileTool.h>
 #include <util/config/Config.h>
 #include <exceptions/ScalerException.h>
+#include <grpcpp/create_channel.h>
+#include <grpc/JobServiceGrpc.h>
+#include <grpc/ChannelPool.h>
 
 typedef int (*main_fn_t)(int, char **, char **);
 
@@ -25,13 +28,22 @@ int doubletake_main(int argc, char **argv, char **envp) {
     DBG_LOG("Parsing config file.");
     try {
         scaler::Config::globalConf = YAML::LoadFile(SCALER_HOOK_CONFIG_FILE);
-        DBG_LOGS("%s",scaler::Config::globalConf["hook"]["gccpath"].as<std::string>("null").c_str());
+        DBG_LOGS("%s", scaler::Config::globalConf["hook"]["gccpath"].as<std::string>("null").c_str());
     } catch (YAML::Exception &e) {
         ERR_LOGS("Cannot parse %s ErrMsg: %s", SCALER_HOOK_CONFIG_FILE, e.what());
         exit(-1);
     } catch (std::ios_base::failure &e) {
         ERR_LOGS("Cannot parse %s ErrMsg: %s", SCALER_HOOK_CONFIG_FILE, e.what());
         exit(-1);
+    }
+
+    DBG_LOG("Requesting a new jobid");
+    std::string grpcAddr = scaler::Config::globalConf["hook"]["analyzerserv"]["address"].as<std::string>(
+            "null").c_str();
+    bool isSecure = !scaler::Config::globalConf["hook"]["analyzerserv"]["insecure"].as<bool>(false);
+    if (isSecure) {
+        fatalError("grpc secure mode currently not implemented, please temporarily set grps.insecure to true");
+        return -1;
     }
 
 
@@ -224,6 +236,19 @@ int doubletake_main(int argc, char **argv, char **envp) {
             return true;
         }
     }, INSTALL_TYPE::ASM);
+
+
+    INFO_LOGS("Creating a new job in analyzer server at %s ......", grpcAddr.c_str());
+    scaler::ChannelPool::channel = grpc::CreateChannel(grpcAddr, grpc::InsecureChannelCredentials());
+
+    //Find server address and port from config file
+    JobServiceGrpc jobService(scaler::ChannelPool::channel);
+    scaler::Config::curJobId = jobService.createJob();
+
+    if(scaler::Config::curJobId==-1){
+        //todo: Handle offline profiling mode
+        ERR_LOG("Cannot create job. Data will not be sent to analyzer server.");
+    }
 
     // Call the program's main function
     int ret = real_main(argc, argv, envp);

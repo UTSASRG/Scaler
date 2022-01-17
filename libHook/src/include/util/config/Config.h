@@ -8,6 +8,7 @@ namespace scaler {
     class Config {
     public:
         static YAML::Node globalConf;
+        static long curJobId;
     };
 }
 

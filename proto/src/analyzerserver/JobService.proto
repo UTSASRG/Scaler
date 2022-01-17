@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package scaler.analyzerserv;
+option java_multiple_files = true;
+option java_package = "com.xttechgroup.scaler.analyzerserv";
+
+import "google/protobuf/empty.proto";
+
+// The greeting service definition.
+service Job {
+  // Sends a greeting
+  rpc createJob (google.protobuf.Empty) returns (JobInfoMsg) {
+  }
+}
+
+// The request message containing the user's name.
+
+// The response message containing the greetings
+message JobInfoMsg {
+  int64 id = 1;
+}
