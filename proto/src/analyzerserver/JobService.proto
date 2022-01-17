@@ -6,16 +6,52 @@ option java_package = "com.xttechgroup.scaler.analyzerserv";
 
 import "google/protobuf/empty.proto";
 
-// The greeting service definition.
-service Job {
-  // Sends a greeting
-  rpc createJob (google.protobuf.Empty) returns (JobInfoMsg) {
-  }
-}
 
 // The request message containing the user's name.
 
 // The response message containing the greetings
 message JobInfoMsg {
   int64 id = 1;
+}
+
+
+message ELFSymbolInfoMsg {
+  int64 scalerId = 1;
+  string symbolName = 2;
+  string symbolType = 3;
+  string bindType = 4;
+  int64 libFileId = 5;
+  int64 gotAddr = 6;
+  bool hooked = 7;
+}
+
+message ELFImgInfoMsg {
+  int64 scalerId = 1;
+  string filePath = 3;
+  int64 addrStart = 4;
+  int64 addrEnd = 5;
+  int64 pltStartAddr = 6;
+  int64 pltSecStartAddr = 7;
+
+  repeated ELFSymbolInfoMsg symbolInfoInThisFile = 8;
+
+  optional int64 jobId = 9; //scaler run id
+
+}
+
+message BinaryExecResult{
+  bool success = 1;
+  optional string errorMsg = 2;
+}
+
+
+
+// The greeting service definition.
+service Job {
+  // Create a job and save the job id
+  rpc createJob (google.protobuf.Empty) returns (JobInfoMsg) {
+  }
+  //Add elfimage info to current job
+  rpc appendElfImgInfo(stream ELFImgInfoMsg) returns(BinaryExecResult){
+  }
 }

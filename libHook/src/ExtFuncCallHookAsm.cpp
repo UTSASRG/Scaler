@@ -25,6 +25,10 @@
 #include <type/InvocationTree.h>
 #include <grpcpp/grpcpp.h>
 #include <util/config/Config.h>
+#include <grpc/JobServiceGrpc.h>
+#include <grpc/ChannelPool.h>
+#include <unistd.h>
+
 //#include <addressbook.pb.h>
 //extern "C" {
 //#include "xed/xed-interface.h"
@@ -73,33 +77,45 @@ public:
             return;
         }
 
-        std::stringstream ss;
-        ss << execWorkDir << "/scaler_time" << getpid() << "_" << pthread_self() << ".bin";
+        if (pthread_self() == scaler::Config::mainthreadID) {
+            INFO_LOG("Sending symbol info");
+            scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
 
-        char fileName[255];
-        DBG_LOGS("Save rawrecord of pid=%d thread %lu", getpid(), pthread_self());
-        FILE *fp = NULL;
-        //todo: check open success or not
-        fp = fopen(ss.str().c_str(), "wb");
-        if (!fp) {
-            ERR_LOGS("Fail to create file \"%s\" reason:%s", ss.str().c_str(), strerror(errno));
-            return;
+            if (!jobServiceGrpc.appendElfImgInfo(*scaler_extFuncCallHookAsm_thiz)) {
+                ERR_LOG("Cannot send elf info to server");
+            }
         }
-        const uint64_t &arrSize = scaler_extFuncCallHookAsm_thiz->allExtSymbol.getSize();
-        const uint64_t &entrySize = sizeof(scaler::RawRecordEntry);
+//        std::stringstream ss;
+//        ss << execWorkDir << "/scaler_time" << getpid() << "_" << pthread_self() << ".bin";
+//
+//        char fileName[255];
+//        DBG_LOGS("Save rawrecord of pid=%d thread %lu", getpid(), pthread_self());
+//        FILE *fp = NULL;
+//        //todo: check open success or not
+//        fp = fopen(ss.str().c_str(), "wb");
+//        if (!fp) {
+//            ERR_LOGS("Fail to create file \"%s\" reason:%s", ss.str().c_str(), strerror(errno));
+//            return;
+//        }
+//        const uint64_t &arrSize = scaler_extFuncCallHookAsm_thiz->allExtSymbol.getSize();
+//        const uint64_t &entrySize = sizeof(scaler::RawRecordEntry);
+//
+//        if (!fwrite(&arrSize, sizeof(uint64_t), 1, fp)) {
+//            fatalErrorS("Fail to write data into file, reason:%s", strerror(errno));
+//        }
+//        if (!fwrite(&entrySize, sizeof(uint64_t), 1, fp)) {
+//            fatalErrorS("Fail to write data into file, reason:%s", strerror(errno));
+//        }
+//        //Write entire array
+//        if (!fwrite(curContext->rawRecord, sizeof(scaler::RawRecordEntry), arrSize, fp)) {
+//            fatalErrorS("Fail to write data into file, reason:%s", strerror(errno));
+//        }
+//        //todo: check close success or not
+//        fclose(fp);
+        if (pthread_self() == scaler::Config::mainthreadID) {
+            INFO_LOGS("Check report at http://127.0.0.1:8080/analysis/%ld/execution", scaler::Config::curJobId);
+        }
 
-        if (!fwrite(&arrSize, sizeof(uint64_t), 1, fp)) {
-            fatalErrorS("Fail to write data into file, reason:%s", strerror(errno));
-        }
-        if (!fwrite(&entrySize, sizeof(uint64_t), 1, fp)) {
-            fatalErrorS("Fail to write data into file, reason:%s", strerror(errno));
-        }
-        //Write entire array
-        if (!fwrite(curContext->rawRecord, sizeof(scaler::RawRecordEntry), arrSize, fp)) {
-            fatalErrorS("Fail to write data into file, reason:%s", strerror(errno));
-        }
-        //todo: check close success or not
-        fclose(fp);
         //Only save once
         delete[] curContext->rawRecord;
         curContext->rawRecord = nullptr;
@@ -736,7 +752,7 @@ namespace scaler {
 //                                 *curSymbol.gotEntry, "true");
                         curSymbol.addr = *curSymbol.gotEntry;
                         curSymbol.libraryFileID = pmParser.findExecNameByAddr(curSymbol.addr);
-                        assert( curSymbol.libraryFileID !=-1);
+                        assert(curSymbol.libraryFileID != -1);
                     } else {
                         //DBG_LOGS("%s:%s  *%p=%p not resolved=%s", curELFImgInfo.filePath.c_str(),
                         //         curSymbol.symbolName.c_str(), curSymbol.gotEntry, *curSymbol.gotEntry, "false");
@@ -1085,7 +1101,7 @@ void *cAfterHookHandlerLinux() {
     //Resolve library id
     scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = _this->allExtSymbol[extSymbolID];
     if (curSymbol.libraryFileID == -1) {
-        curSymbol.addr=*curSymbol.gotEntry;
+        curSymbol.addr = *curSymbol.gotEntry;
         assert(_this->isSymbolAddrResolved(curSymbol));
         assert(curSymbol.addr != nullptr);
         //Resolve address

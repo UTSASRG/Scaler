@@ -460,3 +460,122 @@ MATCH ()-[]->() RETURN { name:'relationships', data: count(*)} AS result
 2022-01-17 07:10:42.511+0000 INFO [o.n.k.i.s.c.CountsTracker] Rotated counts store at transaction 8 to [/data/databases/graph.db/neostore.counts.db.a], from [/data/databases/graph.db/neostore.counts.db.b].
 2022-01-17 07:10:42.587+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 8 checkpoint completed in 101ms
 2022-01-17 07:10:42.587+0000 INFO [o.n.k.i.t.l.p.LogPruningImpl] No log version pruned, last checkpoint was made in version 0
+2022-01-17 13:27:08.608+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 23163 seconds: OPTIONAL MATCH (hlp:`Job`) WHERE id(hlp) = $__id__ WITH hlp WHERE hlp IS NULL CREATE (jobEntity:`Job`) SET jobEntity = $__properties__ RETURN jobEntity UNION MATCH (jobEntity:`Job`) WHERE id(jobEntity) = $__id__ SET jobEntity += $__properties__ RETURN jobEntity
+2022-01-17 13:27:12.964+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 9 checkpoint started...
+2022-01-17 13:27:13.030+0000 INFO [o.n.k.i.s.c.CountsTracker] Rotated counts store at transaction 9 to [/data/databases/graph.db/neostore.counts.db.b], from [/data/databases/graph.db/neostore.counts.db.a].
+2022-01-17 13:27:13.100+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 9 checkpoint completed in 135ms
+2022-01-17 13:27:13.100+0000 INFO [o.n.k.i.t.l.p.LogPruningImpl] No log version pruned, last checkpoint was made in version 0
+2022-01-17 13:42:13.117+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 10 checkpoint started...
+2022-01-17 13:42:13.146+0000 INFO [o.n.k.i.s.c.CountsTracker] Rotated counts store at transaction 10 to [/data/databases/graph.db/neostore.counts.db.a], from [/data/databases/graph.db/neostore.counts.db.b].
+2022-01-17 13:42:13.226+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 10 checkpoint completed in 109ms
+2022-01-17 13:42:13.227+0000 INFO [o.n.k.i.t.l.p.LogPruningImpl] No log version pruned, last checkpoint was made in version 0
+2022-01-17 17:36:10.734+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 14942 seconds: OPTIONAL MATCH (hlp:`Job`) WHERE id(hlp) = $__id__ WITH hlp WHERE hlp IS NULL CREATE (jobEntity:`Job`) SET jobEntity = $__properties__ RETURN jobEntity UNION MATCH (jobEntity:`Job`) WHERE id(jobEntity) = $__id__ SET jobEntity += $__properties__ RETURN jobEntity
+2022-01-17 17:36:13.450+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 11 checkpoint started...
+2022-01-17 17:36:13.480+0000 INFO [o.n.k.i.s.c.CountsTracker] Rotated counts store at transaction 11 to [/data/databases/graph.db/neostore.counts.db.b], from [/data/databases/graph.db/neostore.counts.db.a].
+2022-01-17 17:36:13.541+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 11 checkpoint completed in 91ms
+2022-01-17 17:36:13.541+0000 INFO [o.n.k.i.t.l.p.LogPruningImpl] No log version pruned, last checkpoint was made in version 0
+2022-01-17 17:51:13.556+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 17 checkpoint started...
+2022-01-17 17:51:13.585+0000 INFO [o.n.k.i.s.c.CountsTracker] Rotated counts store at transaction 17 to [/data/databases/graph.db/neostore.counts.db.a], from [/data/databases/graph.db/neostore.counts.db.b].
+2022-01-17 17:51:13.671+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 17 checkpoint completed in 114ms
+2022-01-17 17:51:13.671+0000 INFO [o.n.k.i.t.l.p.LogPruningImpl] No log version pruned, last checkpoint was made in version 0
+2022-01-17 17:53:47.320+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 39373 seconds: 
+CALL db.labels() YIELD label
+RETURN {name:'labels', data:COLLECT(label)[..1000]} AS result
+UNION ALL
+CALL db.relationshipTypes() YIELD relationshipType
+RETURN {name:'relationshipTypes', data:COLLECT(relationshipType)[..1000]} AS result
+UNION ALL
+CALL db.propertyKeys() YIELD propertyKey
+RETURN {name:'propertyKeys', data:COLLECT(propertyKey)[..1000]} AS result
+UNION ALL
+CALL dbms.functions() YIELD name, signature, description
+RETURN {name:'functions', data: collect({name: name, signature: signature, description: description})} AS result
+UNION ALL
+CALL dbms.procedures() YIELD name, signature, description
+RETURN {name:'procedures', data:collect({name: name, signature: signature, description: description})} AS result
+UNION ALL
+MATCH () RETURN { name:'nodes', data:count(*) } AS result
+UNION ALL
+MATCH ()-[]->() RETURN { name:'relationships', data: count(*)} AS result
+
+2022-01-17 17:54:03.185+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 39191 seconds: MATCH (a)-[r]->(b) WHERE id(a) IN $existingNodeIds AND id(b) IN $newNodeIds RETURN r;
+2022-01-17 18:02:05.057+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 1554 seconds: OPTIONAL MATCH (hlp:`Job`) WHERE id(hlp) = $__id__ WITH hlp WHERE hlp IS NULL CREATE (jobEntity:`Job`) SET jobEntity = $__properties__ RETURN jobEntity UNION MATCH (jobEntity:`Job`) WHERE id(jobEntity) = $__id__ SET jobEntity += $__properties__ RETURN jobEntity
+2022-01-17 18:03:20.785+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 1629 seconds: MATCH (jobEntity:`Job`) WHERE id(jobEntity) = $__id__ RETURN jobEntity{.id, __nodeLabels__: labels(jobEntity), __internalNeo4jId__: id(jobEntity), Job_DIRECTED_ElfImgInfo: [(jobEntity)-[:`DIRECTED`]->(jobEntity_elfInfos:`ElfImgInfo`) | jobEntity_elfInfos{.addrEnd, .addrStart, .filePath, .pltSecStartAddr, .pltStartAddr, .scalerId, .symbolType, __nodeLabels__: labels(jobEntity_elfInfos), __internalNeo4jId__: id(jobEntity_elfInfos), ElfImgInfo_HAS_ELFSymbol: [(jobEntity_elfInfos)-[:`HAS`]->(jobEntity_elfInfos_symbolsInThisFile:`ELFSymbol`) | jobEntity_elfInfos_symbolsInThisFile{.bindType, .gotAddr, .hooked, .libFileId, .scalerId, .symbolName, .symbolType, __nodeLabels__: labels(jobEntity_elfInfos_symbolsInThisFile), __internalNeo4jId__: id(jobEntity_elfInfos_symbolsInThisFile)}]}]}
+2022-01-17 18:06:13.684+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 29 checkpoint started...
+2022-01-17 18:06:13.707+0000 INFO [o.n.k.i.s.c.CountsTracker] Rotated counts store at transaction 29 to [/data/databases/graph.db/neostore.counts.db.b], from [/data/databases/graph.db/neostore.counts.db.a].
+2022-01-17 18:06:13.773+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 29 checkpoint completed in 89ms
+2022-01-17 18:06:13.773+0000 INFO [o.n.k.i.t.l.p.LogPruningImpl] No log version pruned, last checkpoint was made in version 0
+2022-01-17 18:06:47.332+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 779 seconds: 
+CALL db.labels() YIELD label
+RETURN {name:'labels', data:COLLECT(label)[..1000]} AS result
+UNION ALL
+CALL db.relationshipTypes() YIELD relationshipType
+RETURN {name:'relationshipTypes', data:COLLECT(relationshipType)[..1000]} AS result
+UNION ALL
+CALL db.propertyKeys() YIELD propertyKey
+RETURN {name:'propertyKeys', data:COLLECT(propertyKey)[..1000]} AS result
+UNION ALL
+CALL dbms.functions() YIELD name, signature, description
+RETURN {name:'functions', data: collect({name: name, signature: signature, description: description})} AS result
+UNION ALL
+CALL dbms.procedures() YIELD name, signature, description
+RETURN {name:'procedures', data:collect({name: name, signature: signature, description: description})} AS result
+UNION ALL
+MATCH () RETURN { name:'nodes', data:count(*) } AS result
+UNION ALL
+MATCH ()-[]->() RETURN { name:'relationships', data: count(*)} AS result
+
+2022-01-17 18:11:34.410+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 569 seconds: OPTIONAL MATCH (hlp:`Job`) WHERE id(hlp) = $__id__ WITH hlp WHERE hlp IS NULL CREATE (jobEntity:`Job`) SET jobEntity = $__properties__ RETURN jobEntity UNION MATCH (jobEntity:`Job`) WHERE id(jobEntity) = $__id__ SET jobEntity += $__properties__ RETURN jobEntity
+2022-01-17 18:11:45.456+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 504 seconds: MATCH (jobEntity:`Job`) WHERE id(jobEntity) = $__id__ RETURN jobEntity{.id, __nodeLabels__: labels(jobEntity), __internalNeo4jId__: id(jobEntity), Job_DIRECTED_ElfImgInfo: [(jobEntity)-[:`DIRECTED`]->(jobEntity_elfInfos:`ElfImgInfo`) | jobEntity_elfInfos{.addrEnd, .addrStart, .filePath, .pltSecStartAddr, .pltStartAddr, .scalerId, .symbolType, __nodeLabels__: labels(jobEntity_elfInfos), __internalNeo4jId__: id(jobEntity_elfInfos), ElfImgInfo_HAS_ELFSymbol: [(jobEntity_elfInfos)-[:`HAS`]->(jobEntity_elfInfos_symbolsInThisFile:`ELFSymbol`) | jobEntity_elfInfos_symbolsInThisFile{.bindType, .gotAddr, .hooked, .libFileId, .scalerId, .symbolName, .symbolType, __nodeLabels__: labels(jobEntity_elfInfos_symbolsInThisFile), __internalNeo4jId__: id(jobEntity_elfInfos_symbolsInThisFile)}]}]}
+2022-01-17 18:12:08.608+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 437 seconds: OPTIONAL MATCH (hlp:`Job`) WHERE id(hlp) = $__id__ WITH hlp WHERE hlp IS NULL CREATE (jobEntity:`Job`) SET jobEntity = $__properties__ RETURN jobEntity UNION MATCH (jobEntity:`Job`) WHERE id(jobEntity) = $__id__ SET jobEntity += $__properties__ RETURN jobEntity
+2022-01-17 18:12:08.707+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 437 seconds: MATCH (startNode)-[rel:`DIRECTED`]->(:`ElfImgInfo`) WHERE (id(startNode) = $fromId AND NOT (id(rel) IN $__knownRelationShipIds__)) DELETE rel
+2022-01-17 18:12:08.806+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 437 seconds: MERGE (elfImgInfoEntity:`ElfImgInfo` {scalerId: $__id__}) SET elfImgInfoEntity += $__properties__ RETURN elfImgInfoEntity
+2022-01-17 18:12:08.871+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 436 seconds: MATCH (startNode) WHERE id(startNode) = $fromId MATCH (endNode) WHERE id(endNode) = $toId MERGE (startNode)-[relProps:`DIRECTED`]->(endNode) RETURN id(relProps)
+2022-01-17 18:12:27.427+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 339 seconds: 
+CALL db.labels() YIELD label
+RETURN {name:'labels', data:COLLECT(label)[..1000]} AS result
+UNION ALL
+CALL db.relationshipTypes() YIELD relationshipType
+RETURN {name:'relationshipTypes', data:COLLECT(relationshipType)[..1000]} AS result
+UNION ALL
+CALL db.propertyKeys() YIELD propertyKey
+RETURN {name:'propertyKeys', data:COLLECT(propertyKey)[..1000]} AS result
+UNION ALL
+CALL dbms.functions() YIELD name, signature, description
+RETURN {name:'functions', data: collect({name: name, signature: signature, description: description})} AS result
+UNION ALL
+CALL dbms.procedures() YIELD name, signature, description
+RETURN {name:'procedures', data:collect({name: name, signature: signature, description: description})} AS result
+UNION ALL
+MATCH () RETURN { name:'nodes', data:count(*) } AS result
+UNION ALL
+MATCH ()-[]->() RETURN { name:'relationships', data: count(*)} AS result
+
+2022-01-17 18:13:27.856+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 420 seconds: MERGE (eLFSymbolEntity:`ELFSymbol` {scalerId: $__id__}) SET eLFSymbolEntity += $__properties__ RETURN eLFSymbolEntity
+2022-01-17 18:13:27.885+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 420 seconds: MATCH (startNode:`ElfImgInfo`) WHERE startNode.scalerId = $fromId MATCH (endNode) WHERE id(endNode) = $toId MERGE (startNode)-[relProps:`HAS`]->(endNode) RETURN id(relProps)
+2022-01-17 18:13:47.445+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 79 seconds: 
+CALL db.labels() YIELD label
+RETURN {name:'labels', data:COLLECT(label)[..1000]} AS result
+UNION ALL
+CALL db.relationshipTypes() YIELD relationshipType
+RETURN {name:'relationshipTypes', data:COLLECT(relationshipType)[..1000]} AS result
+UNION ALL
+CALL db.propertyKeys() YIELD propertyKey
+RETURN {name:'propertyKeys', data:COLLECT(propertyKey)[..1000]} AS result
+UNION ALL
+CALL dbms.functions() YIELD name, signature, description
+RETURN {name:'functions', data: collect({name: name, signature: signature, description: description})} AS result
+UNION ALL
+CALL dbms.procedures() YIELD name, signature, description
+RETURN {name:'procedures', data:collect({name: name, signature: signature, description: description})} AS result
+UNION ALL
+MATCH () RETURN { name:'nodes', data:count(*) } AS result
+UNION ALL
+MATCH ()-[]->() RETURN { name:'relationships', data: count(*)} AS result
+
+2022-01-17 18:18:21.566+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 1458 seconds: MATCH (a)-[r]->(b) WHERE id(a) IN $existingNodeIds AND id(b) IN $newNodeIds RETURN r;
+2022-01-17 18:19:52.984+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 1382 seconds: EXPLAIN match (n:Job) where ID(n)=80 return n
+2022-01-17 18:21:13.791+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 39 checkpoint started...
+2022-01-17 18:21:13.823+0000 INFO [o.n.k.i.s.c.CountsTracker] Rotated counts store at transaction 39 to [/data/databases/graph.db/neostore.counts.db.a], from [/data/databases/graph.db/neostore.counts.db.b].
+2022-01-17 18:21:13.936+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 39 checkpoint completed in 145ms
+2022-01-17 18:21:13.937+0000 INFO [o.n.k.i.t.l.p.LogPruningImpl] No log version pruned, last checkpoint was made in version 0

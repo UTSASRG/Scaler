@@ -46,6 +46,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
         return -1;
     }
 
+    scaler::Config::mainthreadID=pthread_self();
 
     //todo: support different running modes
     DBG_LOG("Installing plthook");
@@ -242,7 +243,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
     scaler::ChannelPool::channel = grpc::CreateChannel(grpcAddr, grpc::InsecureChannelCredentials());
 
     //Find server address and port from config file
-    JobServiceGrpc jobService(scaler::ChannelPool::channel);
+    scaler::JobServiceGrpc jobService(scaler::ChannelPool::channel);
     scaler::Config::curJobId = jobService.createJob();
 
     if(scaler::Config::curJobId==-1){

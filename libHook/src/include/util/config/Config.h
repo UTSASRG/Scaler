@@ -9,6 +9,7 @@ namespace scaler {
     public:
         static YAML::Node globalConf;
         static long curJobId;
+        static pthread_t mainthreadID;
     };
 }
 
