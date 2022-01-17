@@ -27,6 +27,7 @@ set(HookSrc
         src/InvocationTree.cpp
         src/StringTool.cpp
         src/InfoServiceGrpc.cpp
+        src/Config.cpp
         ${SCALER_PROTO_SRCS}
         )
 #src/VMEmulator.cpp

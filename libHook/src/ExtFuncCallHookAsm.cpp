@@ -24,6 +24,7 @@
 #include <util/datastructure/FStack.h>
 #include <type/InvocationTree.h>
 #include <grpcpp/grpcpp.h>
+#include <util/config/Config.h>
 //#include <addressbook.pb.h>
 //extern "C" {
 //#include "xed/xed-interface.h"
@@ -554,8 +555,14 @@ namespace scaler {
         fclose(fp);
         //compile it
 
+        std::string gccPath = Config::globalConf["hook"]["gccpath"].as<std::string>("null");
+        if(gccPath=="null"){
+            fatalError("Please make sure hook.gccpath exists in the config file");
+            return nullptr;
+        }
+
         sstream.str("");
-        sstream << "gcc-9 -shared -fPIC ";
+        sstream <<gccPath<< " -shared -fPIC ";
         sstream << execWorkDir << "/redzoneJumper-" << getpid() << ".cpp ";
         sstream << "-o ";
         sstream << execWorkDir << "/redzoneJumper-" << getpid() << ".so ";
@@ -657,8 +664,15 @@ namespace scaler {
         fprintf(fp, "}\n");
         fclose(fp);
 
+        std::string gccPath = Config::globalConf["hook"]["gccpath"].as<std::string>("null");
+        if(gccPath=="null"){
+            fatalError("Please make sure hook.gccpath exists in the config file");
+            return nullptr;
+        }
+
         sstream.str("");
-        sstream << "gcc-9 -shared -fPIC -Werror ";
+
+        sstream <<gccPath<< " -shared -fPIC -Werror ";
         sstream << execWorkDir << "/pseudoPlt-" << getpid() << ".cpp ";
         sstream << "-o ";
         sstream << execWorkDir << "/pseudoPlt-" << getpid() << ".so ";

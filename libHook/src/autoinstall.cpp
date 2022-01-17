@@ -24,7 +24,8 @@ int doubletake_main(int argc, char **argv, char **envp) {
 
     DBG_LOG("Parsing config file.");
     try {
-        scaler::globalConf = YAML::LoadFile(SCALER_HOOK_CONFIG_FILE);
+        scaler::Config::globalConf = YAML::LoadFile(SCALER_HOOK_CONFIG_FILE);
+        DBG_LOGS("%s",scaler::Config::globalConf["hook"]["gccpath"].as<std::string>("null").c_str());
     } catch (YAML::Exception &e) {
         ERR_LOGS("Cannot parse %s ErrMsg: %s", SCALER_HOOK_CONFIG_FILE, e.what());
         exit(-1);
