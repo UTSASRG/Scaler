@@ -15,7 +15,6 @@
 #include <set>
 #include <immintrin.h>
 #include <util/tool/Logging.h>
-#include <util/tool/Config.h>
 #include <util/tool/PthreadParmExtractor.h>
 #include <semaphore.h>
 #include <util/tool/SemaphoreParmExtractor.h>

@@ -1,4 +1,4 @@
-#include<gprc/InfoServiceGrpc.h>
+#include<grpc/InfoServiceGrpc.h>
 #include <memory>
 #include <util/tool/Logging.h>
 
@@ -15,7 +15,7 @@ InfoServiceGrpc::InfoServiceGrpc(std::shared_ptr<ChannelInterface> channel) : st
 
 }
 
-void InfoServiceGrpc::SayHello() {
+bool InfoServiceGrpc::SayHello() {
     // Container for the data we expect from the server.
     HelloMsg reply;
     Empty emptyParam;
@@ -29,8 +29,10 @@ void InfoServiceGrpc::SayHello() {
     if (status.ok()) {
         ERR_LOGS("Connection successful\napi:%s\nappName:%s\nversion=%s\nslogan:%s\n", reply.api().c_str(),
                  reply.appname().c_str(), reply.appversion().c_str(), reply.slogan().c_str());
+        return true;
     } else {
         ERR_LOG("Cannot connect to Analyzer Server failed.");
+        return false;
     }
 
 }

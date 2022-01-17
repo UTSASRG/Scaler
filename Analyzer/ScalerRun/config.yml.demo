@@ -1,9 +1,14 @@
 hook:
+  scalerhome: "/media/umass/datasystem/steven/Scaler/cmake-build-release/libHook" #The absolute path of libHookAuto.so exists
   gccpath: "/usr/bin/gcc-9" #The path of the gcc compiler. Recommend version >9
   analyzerserv:
-    address: 127.0.0.1 # Address of the analyzer server
+    address: 127.0.0.1:3060 # Address of the analyzer server and port
     grpcPort: 3060 # Port of the analyzer server grpc api
-  modes: normal #[norma|counting]
+    insecure: true #[true|false] If false, grpc will transmit with plaintext.
+  mode: normal #[norma|counting] Normal or counting only?
   logging:
-    error: true #Print error log
-    info: true #Print info log
+    error: true #[true/false>] Print error log
+    info: true #[true/false>] Print info log
+  output:
+    fileOutput: "null" #[null/<absolute path>] hook needs to write recorded info on disk. If
+    sendToServer: true #[true/false>]#Whether to send information to analyserver or not

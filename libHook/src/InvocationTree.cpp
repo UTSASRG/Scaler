@@ -4,7 +4,6 @@
 #include <exceptions/ScalerException.h>
 #include <exceptions/ErrCode.h>
 #include <util/tool/Timer.h>
-#include <util/tool/Config.h>
 #include <vector>
 #include <queue>
 #include <util/hook/ExtFuncCallHookAsm.hh>

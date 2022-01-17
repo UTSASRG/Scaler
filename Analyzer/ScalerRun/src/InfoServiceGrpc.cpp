@@ -9,6 +9,7 @@ using grpc::ClientContext;
 using grpc::Status;
 using google::protobuf::Empty;
 
+
 InfoServiceGrpc::InfoServiceGrpc(std::shared_ptr<ChannelInterface> channel) : stub_(
         scaler::analyzerserv::Info::NewStub(channel)) {
 
@@ -34,7 +35,7 @@ bool InfoServiceGrpc::SayHello() {
         INFO_LOGS("-> slogan:%s", reply.slogan().c_str());
         return true;
     } else {
-        ERR_LOG("Cannot connect to Analyzer Server.");
+        ERR_LOGS("Cannot connect to Analyzer Server at because: %s",status.error_message().c_str());
         return false;
     }
 

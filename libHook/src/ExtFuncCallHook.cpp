@@ -9,7 +9,6 @@
 #include <elf.h>
 #include <set>
 #include <utility>
-#include <util/tool/Config.h>
 #include <util/tool/MemoryTool_Linux.h>
 #include <nlohmann/json.hpp>
 
