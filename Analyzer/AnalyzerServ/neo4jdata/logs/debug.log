@@ -456,3 +456,7 @@ UNION ALL
 MATCH ()-[]->() RETURN { name:'relationships', data: count(*)} AS result
 
 2022-01-17 07:01:04.730+0000 INFO [o.n.c.i.ExecutionEngine] Discarded stale query from the query cache after 328 seconds: OPTIONAL MATCH (hlp:`Job`) WHERE id(hlp) = $__id__ WITH hlp WHERE hlp IS NULL CREATE (jobEntity:`Job`) SET jobEntity = $__properties__ RETURN jobEntity UNION MATCH (jobEntity:`Job`) WHERE id(jobEntity) = $__id__ SET jobEntity += $__properties__ RETURN jobEntity
+2022-01-17 07:10:42.486+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 8 checkpoint started...
+2022-01-17 07:10:42.511+0000 INFO [o.n.k.i.s.c.CountsTracker] Rotated counts store at transaction 8 to [/data/databases/graph.db/neostore.counts.db.a], from [/data/databases/graph.db/neostore.counts.db.b].
+2022-01-17 07:10:42.587+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 8 checkpoint completed in 101ms
+2022-01-17 07:10:42.587+0000 INFO [o.n.k.i.t.l.p.LogPruningImpl] No log version pruned, last checkpoint was made in version 0

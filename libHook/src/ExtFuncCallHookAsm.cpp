@@ -551,13 +551,13 @@ namespace scaler {
         //compile it
 
         std::string gccPath = Config::globalConf["hook"]["gccpath"].as<std::string>("null");
-        if(gccPath=="null"){
+        if (gccPath == "null") {
             fatalError("Please make sure hook.gccpath exists in the config file");
             return nullptr;
         }
 
         sstream.str("");
-        sstream <<gccPath<< " -shared -fPIC ";
+        sstream << gccPath << " -shared -fPIC ";
         sstream << execWorkDir << "/redzoneJumper-" << getpid() << ".cpp ";
         sstream << "-o ";
         sstream << execWorkDir << "/redzoneJumper-" << getpid() << ".so ";
@@ -660,14 +660,14 @@ namespace scaler {
         fclose(fp);
 
         std::string gccPath = Config::globalConf["hook"]["gccpath"].as<std::string>("null");
-        if(gccPath=="null"){
+        if (gccPath == "null") {
             fatalError("Please make sure hook.gccpath exists in the config file");
             return nullptr;
         }
 
         sstream.str("");
 
-        sstream <<gccPath<< " -shared -fPIC -Werror ";
+        sstream << gccPath << " -shared -fPIC -Werror ";
         sstream << execWorkDir << "/pseudoPlt-" << getpid() << ".cpp ";
         sstream << "-o ";
         sstream << execWorkDir << "/pseudoPlt-" << getpid() << ".so ";
@@ -735,7 +735,8 @@ namespace scaler {
 //                                 curSymbol.gotEntry,
 //                                 *curSymbol.gotEntry, "true");
                         curSymbol.addr = *curSymbol.gotEntry;
-
+                        curSymbol.libraryFileID = pmParser.findExecNameByAddr(curSymbol.addr);
+                        assert( curSymbol.libraryFileID !=-1);
                     } else {
                         //DBG_LOGS("%s:%s  *%p=%p not resolved=%s", curELFImgInfo.filePath.c_str(),
                         //         curSymbol.symbolName.c_str(), curSymbol.gotEntry, *curSymbol.gotEntry, "false");
@@ -1076,14 +1077,21 @@ void *cAfterHookHandlerLinux() {
     Context *curContextPtr = curContext;
 
     scaler::SymID extSymbolID = curContextPtr->extSymbolId.peekpop();
-    //auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID);
-    // When after hook is called. Library address is resolved. We use searching mechanism to find the file name.
-    // To improve efficiency, we could sotre this value
+    //auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID)SymInfo.
     void *callerAddr = curContextPtr->callerAddr.peekpop();
     const long long &preHookTimestamp = curContextPtr->timeStamp.peekpop();
     DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) End: %llu",
              pthread_self(), extSymbolID, getunixtimestampms() - preHookTimestamp);
-
+    //Resolve library id
+    scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = _this->allExtSymbol[extSymbolID];
+    if (curSymbol.libraryFileID == -1) {
+        curSymbol.addr=*curSymbol.gotEntry;
+        assert(_this->isSymbolAddrResolved(curSymbol));
+        assert(curSymbol.addr != nullptr);
+        //Resolve address
+        curSymbol.libraryFileID = _this->pmParser.findExecNameByAddr(curSymbol.addr);
+        assert(curSymbol.libraryFileID != -1);
+    }
     //Save this operation
     assert(curContextPtr->rawRecord != nullptr);
     const long long duration = getunixtimestampms() - preHookTimestamp;
@@ -1143,7 +1151,7 @@ void *dummy_thread_function(void *data) {
 // Main Pthread wrapper functions.
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)(void *), void *arg) {
     bypassCHooks = SCALER_TRUE;
-    if(scaler::pthread_create_orig == nullptr){
+    if (scaler::pthread_create_orig == nullptr) {
         //load plt hook address
         scaler::pthread_create_orig = (scaler::pthread_create_origt) dlsym(RTLD_NEXT, "pthread_create");
         if (!scaler::pthread_create_orig) {
