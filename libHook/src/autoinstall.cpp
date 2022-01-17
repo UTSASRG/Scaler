@@ -12,7 +12,16 @@ main_fn_t real_main;
 std::string execFileName;
 
 int doubletake_main(int argc, char **argv, char **envp) {
-    printf("libscalerhook %s\n", argv[0]);
+    INFO_LOGS("libHook Ver %s", CMAKE_SCALERRUN_VERSION);
+
+    char *SCALER_HOOK_CONFIG_FILE = getenv("SCALER_HOOK_CONFIG_FILE");
+
+    if (!SCALER_HOOK_CONFIG_FILE || std::string(SCALER_HOOK_CONFIG_FILE).empty()) {
+        ERR_LOG("Cannot find SCALER_HOOK_CONFIG_FILE, please consider using scaler run or manually set this environment variable to the absolute path of the config file.");
+        exit(-1);
+    }
+
+
     //todo: support different running modes
     DBG_LOG("Installing plthook");
     install([](std::string fileName, std::string funcName) -> bool {

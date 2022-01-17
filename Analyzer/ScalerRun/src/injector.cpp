@@ -25,7 +25,7 @@ void printUsage(void) {
 }
 
 void printVersion() {
-    printf("ScalerRun Ver %s", CMAKE_SCALERRUN_VERSION);
+    INFO_LOGS("ScalerRun Ver %s", CMAKE_SCALERRUN_VERSION);
 }
 
 bool testConnection() {

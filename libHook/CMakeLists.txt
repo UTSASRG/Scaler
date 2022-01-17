@@ -1,3 +1,4 @@
+project(Hook VERSION 0.1.4)
 
 # Set global (Relative this folder until reset) compiler options
 
@@ -60,8 +61,8 @@ add_library(ScalerHook-HookManualAsm SHARED
         ${HookSrc})
 target_include_directories(ScalerHook-HookManualAsm PUBLIC src/include lib/inireader ${SCLAER_GRPC_INCLUDE})
 target_link_libraries(ScalerHook-HookManualAsm PUBLIC pthread dl nlohmann_json::nlohmann_json protobuf::libprotobuf gRPC::grpc++ yaml-cpp)
-target_compile_definitions(ScalerHook-HookManualAsm PUBLIC XED_ENCODER)
 target_compile_options(ScalerHook-HookManualAsm PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
+target_compile_definitions(ScalerHook-HookManualAsm PRIVATE XED_ENCODER CMAKE_SCALERRUN_VERSION="${PROJECT_VERSION}")
 
 
 #message(" ${PROTO_SRCS}  ${GRPC_SRCS}")
@@ -71,9 +72,9 @@ target_compile_options(ScalerHook-HookManualAsm PRIVATE ${SCALER_HOOK_COMPILATIO
 add_library(ScalerHook-HookAuto SHARED src/autoinstall.cpp ${HookSrc})# ${PROTO_SRCS} ${GRPC_SRCS})
 target_include_directories(ScalerHook-HookAuto PUBLIC src/include lib/inireader ${SCLAER_GRPC_INCLUDE})# ${PROTO_SRC_DIR})
 target_link_libraries(ScalerHook-HookAuto PUBLIC pthread dl nlohmann_json::nlohmann_json protobuf::libprotobuf gRPC::grpc++ yaml-cpp)
-target_compile_definitions(ScalerHook-HookAuto PUBLIC XED_ENCODER)#NDEBUG
 target_link_options(ScalerHook-HookAuto PRIVATE -static-libgcc -static-libstdc++) #Todo; Statically link libc is not advised. Change to re-compile in o
 target_compile_options(ScalerHook-HookAuto PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
+target_compile_definitions(ScalerHook-HookAuto PRIVATE XED_ENCODER CMAKE_SCALERRUN_VERSION="${PROJECT_VERSION}") #NDEBUG
 
 #protobufferStatic
 
