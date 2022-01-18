@@ -17,6 +17,7 @@ message("Extracting pre-compiled grpc library")
 file(GLOB RESULT ${CMAKE_CURRENT_SOURCE_DIR}/lib/grpc_1_43_0/*)
 list(REMOVE_ITEM RESULT ${CMAKE_CURRENT_SOURCE_DIR}/lib/grpc_1_43_0/grpc_1_43_0.tar.xz)
 list(REMOVE_ITEM RESULT ${CMAKE_CURRENT_SOURCE_DIR}/lib/grpc_1_43_0/.gitignore)
+list(REMOVE_ITEM RESULT ${CMAKE_CURRENT_SOURCE_DIR}/lib/grpc_1_43_0/ReadMe.md)
 list(LENGTH RESULT RES_LEN)
 if (RES_LEN EQUAL 0)
     message("Extracting grpc_1_43_0.tar.xz")
@@ -25,7 +26,7 @@ if (RES_LEN EQUAL 0)
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/lib/grpc_1_43_0
     )
 else ()
-    message("${CMAKE_CURRENT_SOURCE_DIR}/lib/grpc_1_43_0 has content other than (.gitignore and *.xz), won't re-extract grpc_1_43_0.tar.xz. If build failed, it might be because an extraction is in progress, please wait until it finishes and retry the build. If that doesn't solve it, try to delete everything in this folder except for .gitignore and *.tar.xz. You can also manually extract .tar.xz into this file if download fails.")
+    message("${CMAKE_CURRENT_SOURCE_DIR}/lib/grpc_1_43_0 has content other than (.gitignore, *.xz and ReadMe.md), won't re-extract grpc_1_43_0.tar.xz. If build failed, it might be because an extraction is in progress, please wait until it finishes and retry the build. If that doesn't solve it, try to delete everything in this folder except for .gitignore and *.tar.xz. You can also manually extract .tar.xz into this file if download fails.")
 endif ()
 
 #The following is modified from https://github.com/IvanSafonov/grpc-cmake-example
