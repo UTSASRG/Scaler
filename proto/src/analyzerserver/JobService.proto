@@ -14,12 +14,41 @@ message JobInfoMsg {
   int64 id = 1;
 }
 
+enum ELFSymType{
+  T_NOTYPE = 0;    /* Symbol type is unspecified */
+  T_OBJECT = 1;    /* Symbol is a data object */
+  T_FUNC = 2;    /* Symbol is a code object */
+  T_SECTION = 3;    /* Symbol associated with a section */
+  T_FILE = 4;    /* Symbol's name is file name */
+  T_COMMON = 5;    /* Symbol is a common data object */
+  T_TLS = 6;    /* Symbol is thread-local data object*/
+  T_NUM = 7;    /* Number of defined types.  */
+  T_LOOS = 8;    /* Start of OS-specific */
+  T_GNU_IFUNC = 9;    /* Symbol is indirect code object */
+  T_HIOS = 10;    /* End of OS-specific */
+  T_LOPROC = 11;    /* Start of processor-specific */
+  T_HIPROC = 12;    /* End of processor-specific */
+}
+
+enum ELFBindType{
+  B_UNSPECIFIED = 0;
+  B_LOCAL = 1;    /* Local symbol */
+  B_GLOBAL = 2;    /* Global symbol */
+  B_WEAK = 3;    /* Weak symbol */
+  B_NUM = 4;    /* Number of defined types.  */
+  B_LOOS = 5;    /* Start of OS-specific */
+  B_GNU_UNIQUE = 6;    /* Unique symbol.  */
+  B_HIOS = 7;    /* End of OS-specific */
+  B_LOPROC = 8;    /* Start of processor-specific */
+  B_HIPROC = 9;    /* End of processor-specific */
+}
+
 
 message ELFSymbolInfoMsg {
   int64 scalerId = 1;
   string symbolName = 2;
-  string symbolType = 3;
-  string bindType = 4;
+  ELFSymType symbolType = 3;
+  ELFBindType bindType = 4;
   int64 libFileId = 5;
   int64 gotAddr = 6;
   bool hooked = 7;

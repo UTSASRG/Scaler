@@ -25,7 +25,8 @@ public class JobRpcController extends JobGrpc.JobImplBase {
 
     @Override
     public void createJob(Empty request, StreamObserver<JobInfoMsg> responseObserver) {
-        JobEntity newJob = jobRepository.save(new JobEntity());
+        JobEntity newJob=new JobEntity();
+        newJob = jobRepository.save(newJob);
         JobInfoMsg reply = JobInfoMsg.newBuilder()
                 .setId(newJob.id)
                 .build();
@@ -38,18 +39,24 @@ public class JobRpcController extends JobGrpc.JobImplBase {
 
         return new StreamObserver<ELFImgInfoMsg>() {
             Long jobid = null;
-            Set<ElfImgInfoEntity> elfImgInfos=new HashSet<ElfImgInfoEntity>();
+            HashSet<ElfImgInfoEntity> elfImgInfos = new HashSet<ElfImgInfoEntity>();
+
             @Override
             public void onNext(ELFImgInfoMsg value) {
                 if (jobid == null) {
                     if (value.hasJobId()) {
-                        jobid=value.getJobId();
-                    }else{
+                        jobid = value.getJobId();
+                    } else {
                         onCompleted();
                     }
                 }
-                ElfImgInfoEntity newEntity = new ElfImgInfoEntity(value);
-                elfImgInfos.add(newEntity);
+                ElfImgInfoEntity newEntity = new ElfImgInfoEntity(jobid, value);
+//                elfImgInfos.add(newEntity);
+
+                Optional<JobEntity> _curJob = jobRepository.findById(jobid);
+                JobEntity curJob = _curJob.get();
+                curJob.getElfInfos().add(newEntity);
+                jobRepository.save(curJob);
 
             }
 
@@ -66,16 +73,18 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                     reply.setErrorMsg("Did not receive jobid in one of the elfImgInfo stream");
                 } else {
 
-                    Optional<JobEntity> _curJob = jobRepository.findById(jobid);
-                    if (!_curJob.isPresent()) {
-                        reply.setSuccess(false);
-                        reply.setErrorMsg("Cannot find jobid=" + jobid.toString());
-                    }
-                    JobEntity curJob=_curJob.get();
-                    curJob.setElfInfos(elfImgInfos);
-                    JobEntity savedJob=jobRepository.save(curJob);
-                    reply.setSuccess(true);
-                    responseObserver.onNext(reply.build());
+//                    Optional<JobEntity> _curJob = jobRepository.findById(jobid);
+//                    if (!_curJob.isPresent()) {
+//                        reply.setSuccess(false);
+//                        reply.setErrorMsg("Cannot find jobid=" + jobid.toString());
+//                    }
+//                    JobEntity curJob = _curJob.get();
+//                   for(int i=0;i<elfImgInfos.size();++i){
+//                       curJob.getElfInfos().add(arr[0]);
+//                   }
+//                    JobEntity savedJob = jobRepository.save(curJob);
+//                    reply.setSuccess(true);
+//                    responseObserver.onNext(reply.build());
                 }
                 responseObserver.onCompleted();
             }

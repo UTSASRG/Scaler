@@ -56,8 +56,8 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
     for (int fileID = 0; fileID < asmHook.elfImgInfoMap.getSize(); ++fileID) {
         const auto &elfImgInfo = asmHook.elfImgInfoMap[fileID];
         ELFImgInfoMsg elfInfoMsg;
-        elfInfoMsg.set_jobid(scaler::Config::curJobId);
-        elfInfoMsg.set_filepath(elfInfoMsg.filepath());
+        elfInfoMsg.set_scalerid(fileID);
+        elfInfoMsg.set_filepath(elfImgInfo.filePath);
         elfInfoMsg.set_addrstart(reinterpret_cast<long>(elfImgInfo.baseAddrStart));
         elfInfoMsg.set_addrend(reinterpret_cast<long>(elfImgInfo.baseAddrEnd));
         elfInfoMsg.set_pltstartaddr(reinterpret_cast<long>(elfImgInfo.pltStartAddr));
@@ -69,8 +69,8 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
             ELFSymbolInfoMsg &elfSymbolInfoMsg = *elfInfoMsg.add_symbolinfointhisfile();
             elfSymbolInfoMsg.set_scalerid(symbolInfo.scalerSymbolId);
             elfSymbolInfoMsg.set_symbolname(symbolInfo.symbolName);
-            elfSymbolInfoMsg.set_symboltype("Not Implemented");
-            elfSymbolInfoMsg.set_bindtype("Not Implemented");
+            elfSymbolInfoMsg.set_symboltype(static_cast<analyzerserv::ELFSymType>(symbolInfo.type));
+            elfSymbolInfoMsg.set_bindtype(static_cast<analyzerserv::ELFBindType>(symbolInfo.bind));
             elfSymbolInfoMsg.set_libfileid(symbolInfo.libraryFileID);
             elfSymbolInfoMsg.set_gotaddr(reinterpret_cast<long>(symbolInfo.gotEntry));
             elfSymbolInfoMsg.set_hooked(symbolInfo.isHooked());
@@ -84,7 +84,7 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
     }
     clientWriter->WritesDone();
     clientWriter->Finish();
-    if (reply.has_errormsg()) {
+    if (!reply.success()) {
         ERR_LOGS("Failed to send elfinfo to analyzer server, because: %s", reply.errormsg().c_str());
     }
 

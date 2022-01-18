@@ -13,8 +13,12 @@ spring:
       username: "neo4j"
       password: "test"
 
-log4j.rootLogger: DEBUG, stdout
-log4j.appender.stdout: org.apache.log4j.ConsoleAppender
-log4j.appender.stdout.layout: org.apache.log4j.PatternLayout
-
-log4j.category.org.springframework.data.neo4j: DEBUG
+logging:
+  level:
+    org:
+      neo4j:
+        ogm:
+          drivers:
+            bolt:
+              request:
+                BoltRequest=DEBUG:
