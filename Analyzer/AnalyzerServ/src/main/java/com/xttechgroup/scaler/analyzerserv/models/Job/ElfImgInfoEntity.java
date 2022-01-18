@@ -12,6 +12,10 @@ import static org.springframework.data.neo4j.core.schema.Relationship.Direction.
 @Node("ElfImgInfo")
 public class ElfImgInfoEntity {
     @Id
+    @GeneratedValue
+    public Long id;
+
+    @Property
     public Long scalerId;
     @Property
     public String filePath;

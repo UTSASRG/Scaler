@@ -52,16 +52,14 @@ namespace scaler {
             void *pseudoPltEntry = nullptr;                   //A pointer to pseudoPltEntry
             int type = -1;
             int bind = -1;
-            int hookedId = -1; //Indicating whether this symbol has been hooked or not. If it is hooked, hookedId is the index in
+            int hookedId = -1; //Indicating whether this symbol has been hooked or not. If it is hooked, hookedId is the index in scaler::ExtFuncCallHookAsm::hookedExtSymbol
             void *oriPltSecCode = nullptr;
             void *oriPltCode = nullptr;
 
-            bool operator==(const ExtSymInfo &rho) const {
-                if (&rho != this) {
-                    return fileId == rho.fileId && symIdInFile == rho.symIdInFile;
-                } else {
-                    return true;
-                }
+            bool operator==(const ExtSymInfo &rho) const;
+
+            inline bool isHooked() const {
+                return hookedId != -1;
             }
         };
 

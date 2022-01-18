@@ -487,6 +487,15 @@ namespace scaler {
             result.push_back(SEM_POST);
         return result;
     }
+
+
+    bool ExtFuncCallHook::ExtSymInfo::operator==(const ExtFuncCallHook::ExtSymInfo &rho) const {
+        if (&rho != this) {
+            return fileId == rho.fileId && symIdInFile == rho.symIdInFile;
+        } else {
+            return true;
+        }
+    }
 }
 
 

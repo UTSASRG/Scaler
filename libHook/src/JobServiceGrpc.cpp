@@ -73,7 +73,7 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
             elfSymbolInfoMsg.set_bindtype("Not Implemented");
             elfSymbolInfoMsg.set_libfileid(symbolInfo.libraryFileID);
             elfSymbolInfoMsg.set_gotaddr(reinterpret_cast<long>(symbolInfo.gotEntry));
-            elfSymbolInfoMsg.set_hooked(false);
+            elfSymbolInfoMsg.set_hooked(symbolInfo.isHooked());
         }
 
         // The actual RPC.
