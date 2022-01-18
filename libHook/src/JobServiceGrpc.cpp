@@ -90,3 +90,7 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
 
     return reply.success();
 }
+
+bool JobServiceGrpc::appendTimingInfo() {
+    return false;
+}

@@ -52,7 +52,7 @@ namespace scaler {
             void *pseudoPltEntry = nullptr;                   //A pointer to pseudoPltEntry
             int type = -1;
             int bind = -1;
-
+            int hookedId = -1; //Indicating whether this symbol has been hooked or not. If it is hooked, hookedId is the index in
             void *oriPltSecCode = nullptr;
             void *oriPltCode = nullptr;
 

@@ -207,6 +207,7 @@ namespace scaler {
 
                     if (filterCallB(curElfImgInfo.filePath, curSymbol.symbolName)) {
                         //The user wants this symbol
+                        curSymbol.hooked=true;
                         hookedExtSymbol.pushBack(scalerSymbolId);
 
                         DBG_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd, %s, %zd",

@@ -14,6 +14,8 @@ public:
 
     bool appendElfImgInfo(ExtFuncCallHookAsm& asmHook);
 
+    bool appendTimingInfo();
+
 
 private:
     std::unique_ptr<scaler::analyzerserv::Job::Stub> stub_;

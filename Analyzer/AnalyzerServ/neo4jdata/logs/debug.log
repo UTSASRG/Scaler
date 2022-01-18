@@ -579,3 +579,4 @@ MATCH ()-[]->() RETURN { name:'relationships', data: count(*)} AS result
 2022-01-17 18:21:13.823+0000 INFO [o.n.k.i.s.c.CountsTracker] Rotated counts store at transaction 39 to [/data/databases/graph.db/neostore.counts.db.a], from [/data/databases/graph.db/neostore.counts.db.b].
 2022-01-17 18:21:13.936+0000 INFO [o.n.k.i.t.l.c.CheckPointerImpl] Checkpoint triggered by "Scheduled checkpoint for time threshold" @ txId: 39 checkpoint completed in 145ms
 2022-01-17 18:21:13.937+0000 INFO [o.n.k.i.t.l.p.LogPruningImpl] No log version pruned, last checkpoint was made in version 0
+2022-01-17 23:20:48.896+0000 WARN [o.n.k.i.c.VmPauseMonitorComponent] Detected VM stop-the-world pause: {pauseTime=2608, gcTime=0, gcCount=0}
