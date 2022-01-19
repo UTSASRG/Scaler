@@ -1,10 +1,7 @@
 package com.xttechgroup.scaler.analyzerserv.models.Job;
 
 import org.springframework.data.annotation.Version;
-import org.springframework.data.neo4j.core.schema.GeneratedValue;
-import org.springframework.data.neo4j.core.schema.Id;
-import org.springframework.data.neo4j.core.schema.Node;
-import org.springframework.data.neo4j.core.schema.Relationship;
+import org.springframework.data.neo4j.core.schema.*;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -19,10 +16,7 @@ public class JobEntity {
     @GeneratedValue
     public Long id;
 
-    @Version
-    public Long version = 1L;
-
-    @Relationship(type = "HAS", direction = OUTGOING)
+    @Relationship(type = "HAS_IMG", direction = OUTGOING)
     private Set<ElfImgInfoEntity> elfInfos = new HashSet<>();
 
     public Long getId() {
@@ -31,10 +25,6 @@ public class JobEntity {
 
     public void setId(Long id) {
         this.id = id;
-    }
-
-    public void setElfInfos(Set<ElfImgInfoEntity> elfInfos) {
-        this.elfInfos = elfInfos;
     }
 
     public Set<ElfImgInfoEntity> getElfInfos() {
