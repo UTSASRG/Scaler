@@ -101,7 +101,9 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                                         "MATCH (parentImg:ElfImgInfo)\n"+
                                         "WHERE ID(parentImg)=data.elfImgInfoEntity\n"+
                                         "CREATE (n:ELFSymbol) <-[:HAS_SYM]- (parentImg)" + "\n" +
-                                        "SET n.symbolName =data.symbolName, n.symbolType=data.symbolType, n.imgid=data.elfImgInfoEntity";
+                                        "SET n.symbolName =data.symbolName, n.symbolType=data.symbolType, " +
+                                        "n.bindType=data.bindType, n.libFileId=data.libFileId, n.gotAddr=data.gotAddr," +
+                                        "n.hooked=data.hooked, n.symbolName=data.symbolName, n.elfImgInfoEntity=data.elfImgInfoEntity";
 
                         Result result = tx.run(query, params);
                         return null;
