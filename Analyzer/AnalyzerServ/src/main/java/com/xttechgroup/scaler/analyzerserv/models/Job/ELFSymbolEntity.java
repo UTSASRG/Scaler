@@ -5,10 +5,7 @@ import com.xttechgroup.scaler.analyzerserv.ELFSymbolInfoMsg;
 import org.springframework.data.annotation.Version;
 import org.springframework.data.neo4j.core.schema.*;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.springframework.data.neo4j.core.schema.Relationship.Direction.INCOMING;
 
@@ -32,22 +29,34 @@ public class ELFSymbolEntity {
     @Property
     boolean hooked;
 
-    @Relationship(type = "HAS_SYM", direction = INCOMING)
-    public ElfImgInfoEntity elfImgInfoEntity;
+//    @Relationship(type = "HAS_SYM", direction = INCOMING)
+//    public ElfImgInfoEntity elfImgInfoEntity;
+
+    //Used for HAS_SYM insertion internally
+    //public long elfImgIdIndex;
+
 
     ELFSymbolEntity() {
 
     }
 
-    public ELFSymbolEntity(ElfImgInfoEntity elfImgInfoEntity, ELFSymbolInfoMsg rho) {
-        this.scalerId = rho.getScalerId();
-        this.symbolType = rho.getSymbolType().name();
-        this.bindType = rho.getBindType().name();
-        this.libFileId = rho.getLibFileId();
-        this.gotAddr = rho.getGotAddr();
-        this.hooked = rho.getHooked();
-        this.symbolName = rho.getSymbolName();
-        this.elfImgInfoEntity = elfImgInfoEntity;
+    /**
+     * Convert protobuffer ELFSymbolInfoMsg to Map format for insertion to db.
+     */
+    public static Map<String, Object> protoToMap(ELFSymbolInfoMsg symbolInfoMsg, int elfImgIdIndex) {
+        Map<String, Object> n1 = new HashMap<>();
+
+        n1.put("scalerId", symbolInfoMsg.getScalerId());
+        n1.put("symbolType", symbolInfoMsg.getSymbolType().name());
+        n1.put("bindType", symbolInfoMsg.getBindType().name());
+        n1.put("libFileId", symbolInfoMsg.getLibFileId());
+        n1.put("gotAddr", symbolInfoMsg.getGotAddr());
+        n1.put("hooked", symbolInfoMsg.getHooked());
+        n1.put("symbolName", symbolInfoMsg.getSymbolName());
+
+        //This is used to find the real elfimgid after insertion
+        n1.put("elfImgId", elfImgIdIndex);
+        return n1;
     }
 
     @Override

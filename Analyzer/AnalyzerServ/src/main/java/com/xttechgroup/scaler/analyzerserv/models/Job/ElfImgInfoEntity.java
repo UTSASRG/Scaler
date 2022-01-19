@@ -30,8 +30,8 @@ public class ElfImgInfoEntity {
     @Property
     public long pltSecStartAddr;
 
-    @Relationship(type = "HAS_IMG", direction = INCOMING)
-    public JobEntity jobEntity;
+    //    @Relationship(type = "HAS_IMG", direction = INCOMING)
+    //    public JobEntity jobEntity;
 
     @Relationship(type = "HAS_SYM", direction = OUTGOING)
     private List<ELFSymbolEntity> symbolsInThisFile = new ArrayList<>();
@@ -40,14 +40,22 @@ public class ElfImgInfoEntity {
 
     }
 
-    public ElfImgInfoEntity(JobEntity jobEntity, ELFImgInfoMsg value) {
-        this.jobEntity = jobEntity;
-        this.scalerId = value.getScalerId();
-        this.filePath = value.getFilePath();
-        this.addrStart = value.getAddrStart();
-        this.addrEnd = value.getAddrEnd();
-        this.pltStartAddr = value.getPltStartAddr();
-        this.pltSecStartAddr = value.getPltSecStartAddr();
+    /**
+     * Convert protobuffer ELFSymbolInfoMsg to Map format for insertion to db.
+     */
+    public static Map<String, Object> protoToMap(ELFImgInfoMsg value, Long jobId) {
+        Map<String, Object> n1 = new HashMap<>();
+
+        n1.put("scalerId", value.getScalerId());
+        n1.put("filePath", value.getFilePath());
+        n1.put("addrStart", value.getAddrStart());
+        n1.put("addrEnd", value.getAddrEnd());
+        n1.put("pltStartAddr", value.getPltStartAddr());
+        n1.put("pltSecStartAddr", value.getPltSecStartAddr());
+
+        //Used for HAS_IMG relation
+        n1.put("jobId", jobId);
+        return n1;
     }
 
     public void setSymbolsInThisFile(List<ELFSymbolEntity> symbolsInThisFile) {

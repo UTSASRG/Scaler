@@ -10,9 +10,11 @@ import io.grpc.ServerInterceptor;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.neo4j.driver.Driver;
+import org.neo4j.driver.Record;
 import org.neo4j.driver.Result;
 import org.neo4j.driver.Session;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.neo4j.core.schema.Property;
 
 import java.util.*;
 
@@ -46,8 +48,8 @@ public class JobRpcController extends JobGrpc.JobImplBase {
         return new StreamObserver<ELFImgInfoMsg>() {
             Long jobid = null;
             JobEntity curJob = null;
-            ArrayList<ElfImgInfoEntity> imgNodes = new ArrayList<>();
-            ArrayList<ELFSymbolEntity> symNodes = new ArrayList<>();
+            ArrayList<Map<String, Object>> imgNodes = new ArrayList<>();
+            ArrayList<Map<String, Object>> symNodes = new ArrayList<>();
 
             @Override
             public void onNext(ELFImgInfoMsg value) {
@@ -66,53 +68,11 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                     }
                 }
 
-                ElfImgInfoEntity newEntity = new ElfImgInfoEntity(curJob, value);
-                imgNodes.add(newEntity);
-                newEntity = elfImgInfoRepo.save(newEntity);
-                System.out.println("id:"+newEntity.id);
-                List<Map<String, Object>> symbolInfoRaw = new ArrayList<>();
-                long startTime = System.currentTimeMillis();
+                imgNodes.add(ElfImgInfoEntity.protoToMap(value, jobid));
 
                 for (ELFSymbolInfoMsg symbolInfoMsg : value.getSymbolInfoInThisFileList()) {
-                    symNodes.add(new ELFSymbolEntity(newEntity, symbolInfoMsg));
-
-                    Map<String, Object> n1 = new HashMap<>();
-
-
-                    n1.put("scalerId", symbolInfoMsg.getScalerId());
-                    n1.put("symbolType", symbolInfoMsg.getSymbolType().name());
-                    n1.put("bindType", symbolInfoMsg.getBindType().name());
-                    n1.put("libFileId", symbolInfoMsg.getLibFileId());
-                    n1.put("gotAddr", symbolInfoMsg.getGotAddr());
-                    n1.put("hooked", symbolInfoMsg.getHooked());
-                    n1.put("symbolName", symbolInfoMsg.getSymbolName());
-                    n1.put("elfImgInfoEntity", newEntity.id);
-
-                    symbolInfoRaw.add(n1);
+                    symNodes.add(ELFSymbolEntity.protoToMap(symbolInfoMsg, imgNodes.size() - 1));
                 }
-                //elfSymInfoRepo.saveAll(symNodes);
-                try (Session session = neo4jDriver.session()) {
-                    session.writeTransaction(tx ->
-                    {
-                        Map<String, Object> params = new HashMap<>();
-                        params.put("mantdata", symbolInfoRaw);
-                        String query =
-                                "UNWIND $mantdata AS data" + "\n" +
-                                        "MATCH (parentImg:ElfImgInfo)\n"+
-                                        "WHERE ID(parentImg)=data.elfImgInfoEntity\n"+
-                                        "CREATE (n:ELFSymbol) <-[:HAS_SYM]- (parentImg)" + "\n" +
-                                        "SET n.symbolName =data.symbolName, n.symbolType=data.symbolType, " +
-                                        "n.bindType=data.bindType, n.libFileId=data.libFileId, n.gotAddr=data.gotAddr," +
-                                        "n.hooked=data.hooked, n.symbolName=data.symbolName, n.elfImgInfoEntity=data.elfImgInfoEntity";
-
-                        Result result = tx.run(query, params);
-                        return null;
-                    });
-                }
-                long endTime = System.currentTimeMillis();
-                System.out.println((endTime-startTime)/1000.0+"s");
-
-                symNodes.clear();
             }
 
             @Override
@@ -130,6 +90,65 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                     reply.setSuccess(false);
                     reply.setErrorMsg("Cannot find jobid=" + jobid.toString());
                 } else {
+                    //elfSymInfoRepo.saveAll(symNodes);
+                    try (Session session = neo4jDriver.session()) {
+                        session.writeTransaction(tx ->
+                        {
+                            Map<String, Object> params = new HashMap<>();
+                            params.put("imgNodes", imgNodes);
+                            //Bulk insert elf img
+                            String query = "UNWIND $imgNodes AS imgNode" + "\n" +
+                                    "MATCH (curJob:Job)\n" +
+                                    "WHERE ID(curJob)=imgNode.jobId\n" +
+                                    "CREATE (newImgNode:ElfImgInfo) <-[:HAS_IMG]- (curJob)" + "\n" +
+                                    "SET newImgNode.scalerId =imgNode.scalerId, " +
+                                    "newImgNode.filePath=imgNode.filePath, " +
+                                    "newImgNode.symbolType=imgNode.symbolType, " +
+                                    "newImgNode.addrStart=imgNode.addrStart, " +
+                                    "newImgNode.addrEnd=imgNode.addrEnd," +
+                                    "newImgNode.pltStartAddr=imgNode.pltStartAddr, " +
+                                    "newImgNode.pltSecStartAddr=imgNode.pltSecStartAddr\n" +
+                                    "return id(newImgNode)";
+                            List<Record> rltImg = tx.run(query, params).list();
+
+                            if (rltImg.size() != imgNodes.size()) {
+                                reply.setSuccess(false);
+                                reply.setErrorMsg("Saving image node failed, not every save was successful.");
+                                tx.rollback();
+                            } else {
+
+                                List<Long> insertedImgId = new ArrayList<>();
+                                for (int i = 0; i < rltImg.size(); ++i) {
+                                    insertedImgId.add(rltImg.get(i).get("id(newImgNode)").asLong());
+                                }
+
+                                params.put("insertedImgId", insertedImgId);
+                                params.put("symNodes", symNodes);
+                                query =
+                                        "UNWIND $symNodes AS symNode" + "\n" +
+                                                "MATCH (curImg:ElfImgInfo)\n" +
+                                                "WHERE ID(curImg)=$insertedImgId[symNode.elfImgId]\n" +
+                                                "CREATE (newSym:ELFSymbol) <-[:HAS_SYM]- (curImg)" + "\n" +
+                                                "SET newSym.symbolName =symNode.symbolName, " +
+                                                "newSym.symbolType=symNode.symbolType, " +
+                                                "newSym.bindType=symNode.bindType, " +
+                                                "newSym.libFileId=symNode.libFileId, " +
+                                                "newSym.gotAddr=symNode.gotAddr," +
+                                                "newSym.hooked=symNode.hooked, " +
+                                                "newSym.symbolName=symNode.symbolName, " +
+                                                "newSym.elfImgInfoEntity=symNode.elfImgInfoEntity";
+
+                                Result result = tx.run(query, params);
+                                if (rltImg.size() != imgNodes.size()) {
+                                    reply.setErrorMsg("Saving symbol node failed, not every save was successful");
+                                    tx.rollback();
+                                }
+                            }
+                            return null;
+                        });
+                    }
+
+
 //                    System.out.println("Saving imgnodes");
 //                    List<ELFImgInfoRepo> elfImgInfoRepo.saveAll(imgNodes);
 //                    System.out.println("Saving symnodes" + symNodes.size());
