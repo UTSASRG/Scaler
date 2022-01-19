@@ -28,18 +28,6 @@ namespace scaler {
 
     };
 
-    /**
-     * This struct stores the raw recording data (push or pop? Which function? Which file?)
-     */
-    class RawRecordEntry {
-    public:
-        int64_t timeStamp;
-        int64_t counting;
-
-        RawRecordEntry() = default;
-
-        RawRecordEntry(int64_t timeStamp, int64_t counting);
-    };
 
     class InvocationTreeNode : public SerializableMixIn {
     protected:

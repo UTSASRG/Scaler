@@ -73,7 +73,7 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
                 elfSymbolInfoMsg.set_symbolname(symbolInfo.symbolName);
                 elfSymbolInfoMsg.set_symboltype(static_cast<analyzerserv::ELFSymType>(symbolInfo.type));
                 elfSymbolInfoMsg.set_bindtype(static_cast<analyzerserv::ELFBindType>(symbolInfo.bind));
-                elfSymbolInfoMsg.set_libfileid(symbolInfo.libraryFileID);
+                elfSymbolInfoMsg.set_libfileid(symbolInfo.libraryFileScalerID);
                 elfSymbolInfoMsg.set_gotaddr(reinterpret_cast<long>(symbolInfo.gotEntry));
                 elfSymbolInfoMsg.set_hooked(symbolInfo.isHooked());
             }

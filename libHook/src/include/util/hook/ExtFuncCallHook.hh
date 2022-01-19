@@ -48,7 +48,7 @@ namespace scaler {
             FileID fileId = -1;             //Store fileID for this symbol
             SymID symIdInFile = -1;             //The id with respect to where this symbol is called. Store this symbol's ID (it's also called symbolID) //todo: change this to symbolID for consistency
             SymID scalerSymbolId = -1; //todo: change the definition of symbol id so we only need to save one id. (Put all symbols in one list, one simple id corresponds to one symbol in a file. Same simple in different file is considered as different)
-            FileID libraryFileID = -1;       //Store the libary file id that contains this
+            FileID libraryFileScalerID = -1;       //Store the libary file id that contains this
             void *pseudoPltEntry = nullptr;                   //A pointer to pseudoPltEntry
             int type = -1;
             int bind = -1;
@@ -123,6 +123,7 @@ namespace scaler {
 
 
             std::string filePath = "";                           //The absolute path of an ELF image (It's consistent with /proc/{pid}/maps)
+            SymID scalerId = -1;
             bool elfImgValid = true;
             void *pltStartAddr = nullptr;                   //The starting address of the PLT table
             void *pltEndAddr = nullptr;                     //The ending address of the PLT table
@@ -160,6 +161,7 @@ namespace scaler {
         MemoryTool_Linux &memTool;
 
         Vector<ELFImgInfo> elfImgInfoMap;//Mapping fileID to ELFImgInfo
+        ssize_t numOfHookedELFImg = 0; //Some fileID corresponds to invalid elf img.
         Vector<SymID> hookedExtSymbol;//External symbol ids that has already been hooked
         Vector<ExtSymInfo> allExtSymbol;//All external symbols in ELF image
 

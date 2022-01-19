@@ -38,23 +38,68 @@
 //#define PREHOOK_ONLY
 #define ENABLE_SAVE
 
-struct Context {
+class Context {
+public:
     //todo: Initialize using maximum stack size
     scaler::FStack<scaler::SymID, 8192> extSymbolId;
     //Variables used to determine whether it's called by hook handler or not
     scaler::FStack<void *, 8192> callerAddr;
     scaler::FStack<long long, 8192> timeStamp;
-    scaler::RawRecordEntry *rawRecord;
     char initializeMe = 0;
 
+    //Records which function calls which function for how long, the index is scalerid (Only contains hooked function)
+    int64_t **timingMatrix = nullptr;
+    //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
+    int64_t *countingMatrix = nullptr;
+    short initialized = 0;
+
+    Context(ssize_t hookedSymbolSize, ssize_t libFileSize);
+
+    ~Context();
 };
+
+const uint8_t SCALER_TRUE = 145;
+const uint8_t SCALER_FALSE = 167;
+
+Context::Context(ssize_t hookedSymbolSize, ssize_t libFileSize) {
+    timingMatrix = static_cast<int64_t **>( malloc(
+            (libFileSize + 1) * hookedSymbolSize * sizeof(int64_t)));
+    for (int i = 0; i < libFileSize; ++i) {
+        timingMatrix[i] = reinterpret_cast<int64_t *>(timingMatrix + (i + 1) * hookedSymbolSize);
+    }
+
+    for (int i = 0; i < libFileSize; ++i) {
+        for (int j = 0; j < hookedSymbolSize; ++j) {
+            timingMatrix[i][j] = 123;
+        }
+    }
+    if (!timingMatrix) {
+        fatalError("Failed to allocate memory for timingMatrix");
+        exit(-1);
+    }
+    countingMatrix = static_cast<int64_t *>(malloc(hookedSymbolSize * sizeof(int64_t)));
+    if (!countingMatrix) {
+        fatalError("Failed to allocate memory for countingMatrix");
+        exit(-1);
+    }
+
+    memset(timingMatrix+hookedSymbolSize, 0, libFileSize * hookedSymbolSize * sizeof(int64_t));
+    memset(countingMatrix, 0, hookedSymbolSize * sizeof(int64_t));
+    initialized = SCALER_TRUE;
+}
+
+Context::~Context() {
+    free(timingMatrix);
+    timingMatrix = nullptr;
+    free(countingMatrix);
+    countingMatrix = nullptr;
+}
 
 scaler::ExtFuncCallHookAsm *scaler_extFuncCallHookAsm_thiz = nullptr;
 
 __thread Context *curContext __attribute((tls_model("initial-exec")));
 
-const uint8_t SCALER_TRUE = 145;
-const uint8_t SCALER_FALSE = 167;
+
 __thread uint8_t bypassCHooks __attribute((tls_model("initial-exec"))) = SCALER_TRUE; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
 
 
@@ -67,24 +112,25 @@ public:
 
     ~DataSaver() {
         bypassCHooks = SCALER_TRUE;
-        if (!curContext->rawRecord) {
-            fatalError("rawRecord is not initialized");
-        }
-
-        std::string execWorkDir;
-        if (!scaler::getPWD(execWorkDir)) {
-            ERR_LOG("Cannot open PWD");
+        if (!curContext) {
+            fatalError("curContext is not initialized, won't save anything");
             return;
         }
 
-        if (pthread_self() == scaler::Config::mainthreadID) {
-            INFO_LOG("Sending symbol info");
-            scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
-
-            if (!jobServiceGrpc.appendElfImgInfo(*scaler_extFuncCallHookAsm_thiz)) {
-                ERR_LOG("Cannot send elf info to server");
-            }
-        }
+//        std::string execWorkDir;
+//        if (!scaler::getPWD(execWorkDir)) {
+//            ERR_LOG("Cannot open PWD");
+//            return;
+//        }
+//
+//        if (pthread_self() == scaler::Config::mainthreadID) {
+//            INFO_LOG("Sending symbol info");
+//            scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
+//
+//            if (!jobServiceGrpc.appendElfImgInfo(*scaler_extFuncCallHookAsm_thiz)) {
+//                ERR_LOG("Cannot send elf info to server");
+//            }
+//        }
 //        std::stringstream ss;
 //        ss << execWorkDir << "/scaler_time" << getpid() << "_" << pthread_self() << ".bin";
 //
@@ -116,10 +162,7 @@ public:
             INFO_LOGS("Check report at http://127.0.0.1:8080/analysis/%ld/execution", scaler::Config::curJobId);
         }
 
-        //Only save once
-        delete[] curContext->rawRecord;
-        curContext->rawRecord = nullptr;
-        free(curContext);
+        delete curContext;
         curContext = nullptr;
     }
 };
@@ -130,16 +173,11 @@ bool initTLS() {
     //Dont double initialize
     assert(bypassCHooks == SCALER_TRUE);
     //Initialize saving data structure
-//    curContext.initializeMe = ~curContext.initializeMe;
-    saverElem.initializeMe = ~saverElem.initializeMe;
-    curContext = new Context();
+    saverElem.initializeMe = 1;
+    curContext = new Context(scaler_extFuncCallHookAsm_thiz->hookedExtSymbol.getSize(),
+                             scaler_extFuncCallHookAsm_thiz->numOfHookedELFImg);
     if (!curContext) {
         fatalError("Failed to allocate memory for Context");
-        return false;
-    }
-    curContext->rawRecord = new scaler::RawRecordEntry[scaler_extFuncCallHookAsm_thiz->allExtSymbol.getSize()];
-    if (!curContext->rawRecord) {
-        fatalError("Failed to allocate memory for RawRecordEntry");
         return false;
     }
 
@@ -197,6 +235,7 @@ namespace scaler {
             auto &curElfImgInfo = elfImgInfoMap[curFileId];
 
             if (curElfImgInfo.elfImgValid) {
+                curElfImgInfo.scalerId = numOfHookedELFImg++;
                 //loop through external symbols, let user decide which symbol to hook through callback function
                 for (SymID scalerSymbolId:curElfImgInfo.scalerIdMap) {
                     auto &curSymbol = allExtSymbol[scalerSymbolId];
@@ -207,7 +246,7 @@ namespace scaler {
 
                     if (filterCallB(curElfImgInfo.filePath, curSymbol.symbolName)) {
                         //The user wants this symbol
-                        curSymbol.hookedId=hookedExtSymbol.getSize();
+                        curSymbol.hookedId = hookedExtSymbol.getSize();
                         hookedExtSymbol.pushBack(scalerSymbolId);
 
                         DBG_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd, %s, %zd",
@@ -752,8 +791,8 @@ namespace scaler {
 //                                 curSymbol.gotEntry,
 //                                 *curSymbol.gotEntry, "true");
                         curSymbol.addr = *curSymbol.gotEntry;
-                        curSymbol.libraryFileID = pmParser.findExecNameByAddr(curSymbol.addr);
-                        assert(curSymbol.libraryFileID != -1);
+                        curSymbol.libraryFileScalerID = pmParser.findExecNameByAddr(curSymbol.addr);
+                        assert(curSymbol.libraryFileScalerID != -1);
                     } else {
                         //DBG_LOGS("%s:%s  *%p=%p not resolved=%s", curELFImgInfo.filePath.c_str(),
                         //         curSymbol.symbolName.c_str(), curSymbol.gotEntry, *curSymbol.gotEntry, "false");
@@ -1060,12 +1099,11 @@ static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
     /**
     * Counting (Bypass afterhook)
     */
-    Context *curContextPtr = curContext;
-
-    assert(curContextPtr->rawRecord != nullptr);
-
-    ++curContextPtr->rawRecord[extSymbolId].counting;
-
+    assert(curContext != nullptr);
+    Context *curContextPtr = curContext; //Reduce thread local access
+    if (curContextPtr->initialized == SCALER_TRUE) {
+        curContextPtr->countingMatrix[0]++;
+    }
     //Skip afterhook
 //    asm volatile ("movq $1234, %%rdi" : /* No outputs. */
 //    :/* No inputs. */:"rdi");
@@ -1092,6 +1130,7 @@ void *cAfterHookHandlerLinux() {
     bypassCHooks = SCALER_TRUE;
     auto &_this = scaler_extFuncCallHookAsm_thiz;
     Context *curContextPtr = curContext;
+    assert(curContext != nullptr);
 
     scaler::SymID extSymbolID = curContextPtr->extSymbolId.peekpop();
     //auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID)SymInfo.
@@ -1099,25 +1138,24 @@ void *cAfterHookHandlerLinux() {
     const long long &preHookTimestamp = curContextPtr->timeStamp.peekpop();
     DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) End: %llu",
              pthread_self(), extSymbolID, getunixtimestampms() - preHookTimestamp);
+
     //Resolve library id
     scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = _this->allExtSymbol[extSymbolID];
-    if (curSymbol.libraryFileID == -1) {
+    if (curSymbol.libraryFileScalerID == -1) {
         curSymbol.addr = *curSymbol.gotEntry;
         assert(_this->isSymbolAddrResolved(curSymbol));
         assert(curSymbol.addr != nullptr);
         //Resolve address
-        curSymbol.libraryFileID = _this->pmParser.findExecNameByAddr(curSymbol.addr);
-        assert(curSymbol.libraryFileID != -1);
+        curSymbol.libraryFileScalerID = _this->elfImgInfoMap[_this->pmParser.findExecNameByAddr(
+                curSymbol.addr)].scalerId;
+        assert(curSymbol.libraryFileScalerID != -1);
     }
+
     //Save this operation
-    assert(curContextPtr->rawRecord != nullptr);
     const long long duration = getunixtimestampms() - preHookTimestamp;
-    curContextPtr->rawRecord[extSymbolID].timeStamp = duration;
-
-    if (!curContextPtr->extSymbolId.isEmpty()) {
-        curContextPtr->rawRecord[curContextPtr->extSymbolId.peek()].timeStamp -= duration;
+    if (curContextPtr->initialized == SCALER_TRUE) {
+        curContextPtr->timingMatrix[curSymbol.libraryFileScalerID][curSymbol.hookedId] = duration;
     }
-
     bypassCHooks = SCALER_FALSE;
     return callerAddr;
 }

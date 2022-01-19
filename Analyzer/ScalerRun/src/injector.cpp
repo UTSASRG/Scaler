@@ -4,7 +4,6 @@
 #include <cstdlib>
 #include <sstream>
 #include <grpc/InfoServiceGrpc.h>
-#include <grpc/ConfigServiceGrpc.h>
 #include <util/tool/Logging.h>
 #include <grpcpp/create_channel.h>
 #include <iostream>

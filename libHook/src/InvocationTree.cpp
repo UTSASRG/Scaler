@@ -225,9 +225,3 @@ bool scaler::SerializableMixIn::load(FILE *fp) {
 bool scaler::SerializableMixIn::save(FILE *fp) {
     return Serializable::save(fp);
 }
-
-scaler::RawRecordEntry::RawRecordEntry(int64_t timeStamp, int64_t counting)
-        : timeStamp(timeStamp),
-          counting(counting) {
-
-}
