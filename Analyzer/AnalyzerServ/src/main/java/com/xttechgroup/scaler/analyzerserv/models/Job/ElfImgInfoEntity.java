@@ -51,6 +51,7 @@ public class ElfImgInfoEntity {
         n1.put("addrStart", value.getAddrStart());
         n1.put("addrEnd", value.getAddrEnd());
         n1.put("pltStartAddr", value.getPltStartAddr());
+        n1.put("elfImgValid", value.getValid());
         n1.put("pltSecStartAddr", value.getPltSecStartAddr());
 
         //Used for HAS_IMG relation

@@ -103,6 +103,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                                     "CREATE (newImgNode:ElfImgInfo) <-[:HAS_IMG]- (curJob)" + "\n" +
                                     "SET newImgNode.scalerId =imgNode.scalerId, " +
                                     "newImgNode.filePath=imgNode.filePath, " +
+                                    "newImgNode.elfImgValid=imgNode.elfImgValid, " +
                                     "newImgNode.symbolType=imgNode.symbolType, " +
                                     "newImgNode.addrStart=imgNode.addrStart, " +
                                     "newImgNode.addrEnd=imgNode.addrEnd," +
@@ -147,17 +148,6 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                             return null;
                         });
                     }
-
-
-//                    System.out.println("Saving imgnodes");
-//                    List<ELFImgInfoRepo> elfImgInfoRepo.saveAll(imgNodes);
-//                    System.out.println("Saving symnodes" + symNodes.size());
-////                    elfSymInfoRepo.saveAll(symNodes);
-//
-//
-//                    try (Session session = neo4jDriver.session()) {
-//                        System.out.println("Here");
-//                    }
 
                     reply.setSuccess(true);
                     responseObserver.onNext(reply.build());
