@@ -57,31 +57,34 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
         const auto &elfImgInfo = asmHook.elfImgInfoMap[fileID];
         ELFImgInfoMsg elfInfoMsg;
         elfInfoMsg.set_scalerid(fileID);
-        elfInfoMsg.set_filepath(elfImgInfo.filePath);
-        elfInfoMsg.set_addrstart(reinterpret_cast<long>(elfImgInfo.baseAddrStart));
-        elfInfoMsg.set_addrend(reinterpret_cast<long>(elfImgInfo.baseAddrEnd));
-        elfInfoMsg.set_pltstartaddr(reinterpret_cast<long>(elfImgInfo.pltStartAddr));
-        elfInfoMsg.set_pltsecstartaddr(reinterpret_cast<long>(elfImgInfo.pltSecStartAddr));
-        elfInfoMsg.set_jobid(Config::curJobId);
-        INFO_LOGS("%d/%zd", fileID + 1, asmHook.elfImgInfoMap.getSize());
-        for (int symbolId = 0; symbolId < elfImgInfo.scalerIdMap.size(); ++symbolId) {
-            const auto &symbolInfo = asmHook.allExtSymbol[symbolId];
-            ELFSymbolInfoMsg &elfSymbolInfoMsg = *elfInfoMsg.add_symbolinfointhisfile();
-            elfSymbolInfoMsg.set_scalerid(symbolInfo.scalerSymbolId);
-            elfSymbolInfoMsg.set_symbolname(symbolInfo.symbolName);
-            elfSymbolInfoMsg.set_symboltype(static_cast<analyzerserv::ELFSymType>(symbolInfo.type));
-            elfSymbolInfoMsg.set_bindtype(static_cast<analyzerserv::ELFBindType>(symbolInfo.bind));
-            elfSymbolInfoMsg.set_libfileid(symbolInfo.libraryFileID);
-            elfSymbolInfoMsg.set_gotaddr(reinterpret_cast<long>(symbolInfo.gotEntry));
-            elfSymbolInfoMsg.set_hooked(symbolInfo.isHooked());
+        elfInfoMsg.set_valid(elfImgInfo.elfImgValid);
+        if (elfImgInfo.elfImgValid) {
+            elfInfoMsg.set_filepath(elfImgInfo.filePath);
+            elfInfoMsg.set_addrstart(reinterpret_cast<long>(elfImgInfo.baseAddrStart));
+            elfInfoMsg.set_addrend(reinterpret_cast<long>(elfImgInfo.baseAddrEnd));
+            elfInfoMsg.set_pltstartaddr(reinterpret_cast<long>(elfImgInfo.pltStartAddr));
+            elfInfoMsg.set_pltsecstartaddr(reinterpret_cast<long>(elfImgInfo.pltSecStartAddr));
+            elfInfoMsg.set_jobid(Config::curJobId);
+            DBG_LOGS("Sending %d/%zd", fileID + 1, asmHook.elfImgInfoMap.getSize());
+            for (int symbolId = 0; symbolId < elfImgInfo.scalerIdMap.size(); ++symbolId) {
+                const auto &symbolInfo = asmHook.allExtSymbol[symbolId];
+                ELFSymbolInfoMsg &elfSymbolInfoMsg = *elfInfoMsg.add_symbolinfointhisfile();
+                elfSymbolInfoMsg.set_scalerid(symbolInfo.scalerSymbolId);
+                elfSymbolInfoMsg.set_symbolname(symbolInfo.symbolName);
+                elfSymbolInfoMsg.set_symboltype(static_cast<analyzerserv::ELFSymType>(symbolInfo.type));
+                elfSymbolInfoMsg.set_bindtype(static_cast<analyzerserv::ELFBindType>(symbolInfo.bind));
+                elfSymbolInfoMsg.set_libfileid(symbolInfo.libraryFileID);
+                elfSymbolInfoMsg.set_gotaddr(reinterpret_cast<long>(symbolInfo.gotEntry));
+                elfSymbolInfoMsg.set_hooked(symbolInfo.isHooked());
+            }
         }
-
         // The actual RPC.
         if (!clientWriter->Write(elfInfoMsg)) {
             ERR_LOG("Failed to send elfinfo to analyzer server");
             return false;
         }
     }
+    INFO_LOG("Waiting for server processing of elfimgInfo to complete");
     clientWriter->WritesDone();
     clientWriter->Finish();
     if (!reply.success()) {

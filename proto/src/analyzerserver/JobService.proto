@@ -61,6 +61,7 @@ message ELFImgInfoMsg {
   int64 addrEnd = 5;
   int64 pltStartAddr = 6;
   int64 pltSecStartAddr = 7;
+  bool valid=10;
 
   repeated ELFSymbolInfoMsg symbolInfoInThisFile = 8;
 

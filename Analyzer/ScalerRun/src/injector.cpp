@@ -4,12 +4,15 @@
 #include <cstdlib>
 #include <sstream>
 #include <grpc/InfoServiceGrpc.h>
+#include <grpc/ConfigServiceGrpc.h>
 #include <util/tool/Logging.h>
 #include <grpcpp/create_channel.h>
 #include <iostream>
 #include <getopt.h>
 #include <yaml-cpp/eventhandler.h>
 #include <yaml-cpp/yaml.h>
+#include <fstream>
+#include "resource.cpp"
 
 using namespace std;
 
@@ -36,6 +39,21 @@ bool testConnection() {
     return infoService.SayHello();
 }
 
+bool parseConfig(std::string filePath) {
+    try {
+        config = YAML::LoadFile(filePath);
+        configFilePath = filePath;
+    } catch (YAML::Exception &e) {
+        ERR_LOGS("Cannot parse %s ErrMsg: %s", optarg, e.what());
+        return false;
+    } catch (std::ios_base::failure &e) {
+        ERR_LOGS("Cannot parse %s ErrMsg: %s", optarg, e.what());
+        return false;
+    }
+    return true;
+}
+
+
 int runScaler(int argc, char **argv) {
     //Say Hello to server
     if (!testConnection()) {
@@ -57,12 +75,12 @@ int runScaler(int argc, char **argv) {
              configFilePath.c_str());
     setenv("SCALER_HOOK_CONFIG_FILE", configFilePath.c_str(), true);
     std::string scalerBinPath = config["hook"]["scalerhome"].as<std::string>("null").c_str();
-    if(scalerBinPath=="null"){
+    if (scalerBinPath == "null") {
         ERR_LOG("You must specify scaler path");
         exit(-1);
     }
-    scalerBinPath+="/libScalerHook-HookAuto.so";
-    DBG_LOGS("Scaler binary is at %s according to the configuration",scalerBinPath.c_str());
+    scalerBinPath += "/libScalerHook-HookAuto.so";
+    DBG_LOGS("Scaler binary is at %s according to the configuration", scalerBinPath.c_str());
     std::stringstream ss;
     std::string scalerBin(argv[1]);
     ss << "LD_PRELOAD=" << scalerBinPath << " ";
@@ -73,14 +91,39 @@ int runScaler(int argc, char **argv) {
     return system(ss.str().c_str());
 }
 
+bool writeDefaultConfig() {
+    FILE *file = fopen("ScalerRunConfig.yml", "r");
+    if (!file) {
+        INFO_LOG("ScalerRunConfig.yml not found at PWD, using online config");
+        file = fopen("ScalerRunConfig.yml", "wb");
+        if (!file) {
+            ERR_LOGS("Cannot write to ScalerRunConfig.yml because: %s", strerror(errno));
+            exit(-1);
+        }
+        //Sending default config file to analyzer server
+        if(!fwrite(reinterpret_cast<const void *>(configBin), sizeof(unsigned char), sizeof(configBin), file)){
+            ERR_LOGS("Cannot write to ScalerRunConfig.yml because: %s", strerror(errno));
+            exit(-1);
+        }
+    } else {
+        INFO_LOG("Using ScalerRunConfig.yml in the PWD, use -c to override");
+    }
+    if (!parseConfig("ScalerRunConfig.yml")) {
+        exit(-1);
+    }
+    fclose(file);
+
+   return true;
+}
+
 int main(int argc, char **argv) {
     INFO_LOGS("ScalerRun Ver %s", CMAKE_SCALERRUN_VERSION);
     //Parse Commandline arguments
 
-    if (argc == 1) {
-        printUsage();
-        exit(0);
-    }
+//    if (argc == 1) {
+//        printUsage();
+//        exit(0);
+//    }
     static const struct option long_options[] =
             {
                     {"config",  required_argument, NULL, 'c'},
@@ -93,12 +136,12 @@ int main(int argc, char **argv) {
     int options_index = 0;
     bool testConnectionOnly = false;
     bool hasConfig = false;
-    bool cont=true;
+    bool cont = true;
 
-    int targetProgramArgIndex=0;
-    for(int i=0;i<argc;++i){
-        if(std::string(argv[i])=="--config" || std::string(argv[i])=="-c"){
-            targetProgramArgIndex=i+2;
+    int targetProgramArgIndex = 0;
+    for (int i = 0; i < argc; ++i) {
+        if (std::string(argv[i]) == "--config" || std::string(argv[i]) == "-c") {
+            targetProgramArgIndex = i + 2;
             break;
         }
     }
@@ -115,17 +158,10 @@ int main(int argc, char **argv) {
                 testConnectionOnly = true;
                 break;
             case 'c' :
-                try {
-                    config = YAML::LoadFile(optarg);
-                    configFilePath = optarg;
-                } catch (YAML::Exception &e) {
-                    ERR_LOGS("Cannot parse %s ErrMsg: %s", optarg, e.what());
-                    exit(-1);
-                } catch (std::ios_base::failure &e) {
-                    ERR_LOGS("Cannot parse %s ErrMsg: %s", optarg, e.what());
+                if (!parseConfig(optarg)) {
                     exit(-1);
                 }
-                cont=false;
+                cont = false;
                 break;
         }
     }
@@ -139,11 +175,11 @@ int main(int argc, char **argv) {
     }
 
     if (configFilePath == "") {
-        ERR_LOG("You need to specify -c in order to run scaler");
+        writeDefaultConfig();
     }
-    if(optind==argc){
+    if (optind == argc) {
         ERR_LOG("You must specify program and arguments to start profiling");
         exit(-1);
     }
-    return runScaler(argc-targetProgramArgIndex, argv+targetProgramArgIndex);
+    return runScaler(argc - targetProgramArgIndex, argv + targetProgramArgIndex);
 }
