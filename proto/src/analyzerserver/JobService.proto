@@ -52,6 +52,7 @@ message ELFSymbolInfoMsg {
   int64 libFileId = 5;
   int64 gotAddr = 6;
   bool hooked = 7;
+  int64 hookedId = 8;
 }
 
 message ELFImgInfoMsg {
@@ -61,7 +62,7 @@ message ELFImgInfoMsg {
   int64 addrEnd = 5;
   int64 pltStartAddr = 6;
   int64 pltSecStartAddr = 7;
-  bool valid=10;
+  bool valid = 10;
 
   repeated ELFSymbolInfoMsg symbolInfoInThisFile = 8;
 

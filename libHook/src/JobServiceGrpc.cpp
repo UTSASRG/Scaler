@@ -76,6 +76,7 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
                 elfSymbolInfoMsg.set_libfileid(symbolInfo.libraryFileScalerID);
                 elfSymbolInfoMsg.set_gotaddr(reinterpret_cast<long>(symbolInfo.gotEntry));
                 elfSymbolInfoMsg.set_hooked(symbolInfo.isHooked());
+                elfSymbolInfoMsg.set_hookedid(symbolInfo.hookedId);
             }
         }
         // The actual RPC.
