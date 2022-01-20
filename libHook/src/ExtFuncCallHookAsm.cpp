@@ -175,7 +175,7 @@ bool initTLS() {
     //Initialize saving data structure
     saverElem.initializeMe = 1;
     curContext = new Context(scaler_extFuncCallHookAsm_thiz->hookedExtSymbol.getSize(),
-                             scaler_extFuncCallHookAsm_thiz->numOfHookedELFImg);
+                             scaler_extFuncCallHookAsm_thiz->elfImgInfoMap.getSize());
     if (!curContext) {
         fatalError("Failed to allocate memory for Context");
         return false;
@@ -1154,7 +1154,20 @@ void *cAfterHookHandlerLinux() {
     //Save this operation
     const long long duration = getunixtimestampms() - preHookTimestamp;
     if (curContextPtr->initialized == SCALER_TRUE) {
-        curContextPtr->timingMatrix[curSymbol.libraryFileScalerID][curSymbol.hookedId] = duration;
+        curContextPtr->timingMatrix[curSymbol.fileId][curSymbol.hookedId] = duration;
+        if (!curContextPtr->extSymbolId.isEmpty()) {
+            scaler::ExtFuncCallHookAsm::ExtSymInfo &parentSym = _this->allExtSymbol[curContextPtr->extSymbolId.peek()];
+            if (parentSym.libraryFileScalerID == -1) {
+                parentSym.addr = *parentSym.gotEntry;
+                assert(_this->isSymbolAddrResolved(parentSym));
+                assert(parentSym.addr != nullptr);
+                //Resolve address
+                parentSym.libraryFileScalerID = _this->elfImgInfoMap[_this->pmParser.findExecNameByAddr(
+                        parentSym.addr)].scalerId;
+                assert(parentSym.libraryFileScalerID != -1);
+            }
+            curContextPtr->timingMatrix[parentSym.fileId][parentSym.hookedId] -= duration;
+        }
     }
     bypassCHooks = SCALER_FALSE;
     return callerAddr;
