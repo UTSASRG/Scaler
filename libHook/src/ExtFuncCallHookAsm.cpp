@@ -49,11 +49,16 @@ public:
 
     //Records which function calls which function for how long, the index is scalerid (Only contains hooked function)
     int64_t **timingMatrix = nullptr;
+    int64_t timingMatrixRows = -1;
+    int64_t timingMatrixCols = -1;
+
     //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
-    int64_t *countingMatrix = nullptr;
+    int64_t *countingVec = nullptr;
+    int64_t countingVecRows = -1;
+
     short initialized = 0;
 
-    Context(ssize_t hookedSymbolSize, ssize_t libFileSize);
+    Context(ssize_t libFileSize, ssize_t hookedSymbolSize);
 
     ~Context();
 };
@@ -61,38 +66,36 @@ public:
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
 
-Context::Context(ssize_t hookedSymbolSize, ssize_t libFileSize) {
+Context::Context(ssize_t libFileSize, ssize_t hookedSymbolSize) {
+    timingMatrixRows = libFileSize;
+    timingMatrixCols = hookedSymbolSize;
     timingMatrix = static_cast<int64_t **>( malloc(
-            (libFileSize + 1) * hookedSymbolSize * sizeof(int64_t)));
-    for (int i = 0; i < libFileSize; ++i) {
-        timingMatrix[i] = reinterpret_cast<int64_t *>(timingMatrix + (i + 1) * hookedSymbolSize);
+            (timingMatrixRows + 1) * timingMatrixCols * sizeof(int64_t)));
+    for (int i = 0; i < timingMatrixRows; ++i) {
+        timingMatrix[i] = reinterpret_cast<int64_t *>(timingMatrix + (i + 1) * timingMatrixCols);
     }
 
-    for (int i = 0; i < libFileSize; ++i) {
-        for (int j = 0; j < hookedSymbolSize; ++j) {
-            timingMatrix[i][j] = 123;
-        }
-    }
     if (!timingMatrix) {
         fatalError("Failed to allocate memory for timingMatrix");
         exit(-1);
     }
-    countingMatrix = static_cast<int64_t *>(malloc(hookedSymbolSize * sizeof(int64_t)));
-    if (!countingMatrix) {
+    countingVecRows = hookedSymbolSize;
+    countingVec = static_cast<int64_t *>(malloc(countingVecRows * sizeof(int64_t)));
+    if (!countingVec) {
         fatalError("Failed to allocate memory for countingMatrix");
         exit(-1);
     }
 
-    memset(timingMatrix+hookedSymbolSize, 0, libFileSize * hookedSymbolSize * sizeof(int64_t));
-    memset(countingMatrix, 0, hookedSymbolSize * sizeof(int64_t));
+    memset(timingMatrix + countingVecRows, 0, libFileSize * countingVecRows * sizeof(int64_t));
+    memset(countingVec, 0, countingVecRows * sizeof(int64_t));
     initialized = SCALER_TRUE;
 }
 
 Context::~Context() {
     free(timingMatrix);
     timingMatrix = nullptr;
-    free(countingMatrix);
-    countingMatrix = nullptr;
+    free(countingVec);
+    countingVec = nullptr;
 }
 
 scaler::ExtFuncCallHookAsm *scaler_extFuncCallHookAsm_thiz = nullptr;
@@ -117,20 +120,32 @@ public:
             return;
         }
 
+        if (pthread_self() == scaler::Config::mainthreadID) {
+            INFO_LOG("Sending symbol info");
+            scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
+
+            if (!jobServiceGrpc.appendElfImgInfo(*scaler_extFuncCallHookAsm_thiz)) {
+                ERR_LOG("Cannot send elf info to server");
+            }
+            Context *curContexPtr = curContext;
+            if (!jobServiceGrpc.appendTimingMatrix(curContexPtr->timingMatrixRows,
+                                                   curContexPtr->timingMatrixCols,
+                                                   curContexPtr->timingMatrix,
+                                                   curContexPtr->countingVecRows,
+                                                   curContexPtr->countingVec)) {
+                ERR_LOG("Cannot send timing and counting info to server");
+            }
+        }
+
+
+
+
 //        std::string execWorkDir;
 //        if (!scaler::getPWD(execWorkDir)) {
 //            ERR_LOG("Cannot open PWD");
 //            return;
 //        }
 //
-//        if (pthread_self() == scaler::Config::mainthreadID) {
-//            INFO_LOG("Sending symbol info");
-//            scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
-//
-//            if (!jobServiceGrpc.appendElfImgInfo(*scaler_extFuncCallHookAsm_thiz)) {
-//                ERR_LOG("Cannot send elf info to server");
-//            }
-//        }
 //        std::stringstream ss;
 //        ss << execWorkDir << "/scaler_time" << getpid() << "_" << pthread_self() << ".bin";
 //
@@ -174,8 +189,9 @@ bool initTLS() {
     assert(bypassCHooks == SCALER_TRUE);
     //Initialize saving data structure
     saverElem.initializeMe = 1;
-    curContext = new Context(scaler_extFuncCallHookAsm_thiz->hookedExtSymbol.getSize(),
-                             scaler_extFuncCallHookAsm_thiz->elfImgInfoMap.getSize());
+    curContext = new Context(
+            scaler_extFuncCallHookAsm_thiz->elfImgInfoMap.getSize(),
+            scaler_extFuncCallHookAsm_thiz->hookedExtSymbol.getSize());
     if (!curContext) {
         fatalError("Failed to allocate memory for Context");
         return false;
@@ -1102,7 +1118,7 @@ static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
     assert(curContext != nullptr);
     Context *curContextPtr = curContext; //Reduce thread local access
     if (curContextPtr->initialized == SCALER_TRUE) {
-        curContextPtr->countingMatrix[0]++;
+        curContextPtr->countingVec[0]++;
     }
     //Skip afterhook
 //    asm volatile ("movq $1234, %%rdi" : /* No outputs. */

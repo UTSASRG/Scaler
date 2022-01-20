@@ -75,6 +75,17 @@ message BinaryExecResult{
   optional string errorMsg = 2;
 }
 
+message TimingMsg{
+  int64 jobId = 1; //scaler run id
+  int64 timgMatrixrows = 2;
+  int64 timgMatrixcols = 3;
+  repeated int64 timgMatrixVal = 4;
+  int64 countingVecRows = 5;
+  repeated int64 countingVecVal = 6;
+}
+
+
+
 
 
 // The greeting service definition.
@@ -84,5 +95,8 @@ service Job {
   }
   //Add elfimage info to current job
   rpc appendElfImgInfo(stream ELFImgInfoMsg) returns(BinaryExecResult){
+  }
+
+  rpc appendTimingMatrix(TimingMsg) returns(BinaryExecResult){
   }
 }

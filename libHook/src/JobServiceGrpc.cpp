@@ -12,6 +12,7 @@ using scaler::analyzerserv::JobInfoMsg;
 using scaler::analyzerserv::BinaryExecResult;
 using scaler::analyzerserv::ELFImgInfoMsg;
 using scaler::analyzerserv::ELFSymbolInfoMsg;
+using scaler::analyzerserv::TimingMsg;
 
 
 using namespace scaler;
@@ -36,7 +37,7 @@ long JobServiceGrpc::createJob() {
         INFO_LOGS("New job id created in the analyzer server. ID=%ld", reply.id());
         return reply.id();
     } else {
-        ERR_LOGS("Failed to create new job, reason:%s", status.error_message().c_str());
+        ERR_LOGS("Failed to create new job because: %s", status.error_message().c_str());
         return -1;
     }
     return 0;
@@ -80,21 +81,57 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
             }
         }
         // The actual RPC.
-        if (!clientWriter->Write(elfInfoMsg)) {
-            ERR_LOG("Failed to send elfinfo to analyzer server");
-            return false;
-        }
+
+
+
     }
     INFO_LOG("Waiting for server processing of elfimgInfo to complete");
     clientWriter->WritesDone();
-    clientWriter->Finish();
-    if (!reply.success()) {
-        ERR_LOGS("Failed to send elfinfo to analyzer server, because: %s", reply.errormsg().c_str());
+    const auto &status = clientWriter->Finish();
+
+    if (!status.ok()) {
+        ERR_LOGS("Failed to send elfinfo to analyzer server because: %s", status.error_message().c_str());
+        return false;
+    } else if (!reply.success()) {
+        ERR_LOGS("Failed to send elfinfo info to analyzer server because: %s", reply.errormsg().c_str());
+        return false;
     }
 
-    return reply.success();
+    return true;
 }
 
-bool JobServiceGrpc::appendTimingInfo() {
-    return false;
+bool JobServiceGrpc::appendTimingMatrix(int64_t timingMatrixRows, int64_t timingMatrixCols, int64_t **timingMatrix,
+                                        int64_t countingVecRows, int64_t *countingVec) {
+    BinaryExecResult reply;
+    TimingMsg timingMsg;
+    // Context for the client. It could be used to convey extra information to
+    // the server and/or tweak certain RPC behaviors.
+
+    timingMsg.set_timgmatrixrows(timingMatrixRows);
+    timingMsg.set_timgmatrixcols(timingMatrixCols);
+    for (int i = 0; i < timingMatrixRows; ++i) {
+        for (int j = 0; j < timingMatrixCols; ++j) {
+            timingMsg.add_timgmatrixval(timingMatrix[i][j]);
+        }
+    }
+
+    timingMsg.set_countingvecrows(countingVecRows);
+    for (int i = 0; i < countingVecRows; ++i) {
+        timingMsg.add_countingvecval(countingVec[i]);
+    }
+
+
+    ClientContext context;
+    const auto &status = stub_->appendTimingMatrix(&context, timingMsg, &reply);
+    INFO_LOG("Waiting for server processing of timingMatrix to complete");
+
+    if (!status.ok()) {
+        ERR_LOGS("Failed to send timing info to analyzer server because: %s", status.error_message().c_str());
+        return false;
+    } else if (!reply.success()) {
+        ERR_LOGS("Failed to send timing info to analyzer server because: %s", reply.errormsg().c_str());
+        return false;
+    }
+
+    return true;
 }

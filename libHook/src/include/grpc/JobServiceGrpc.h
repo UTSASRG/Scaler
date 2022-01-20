@@ -5,21 +5,22 @@
 
 #ifndef SCALER_JOBSERVICEGRPC_H
 #define SCALER_JOBSERVICEGRPC_H
-namespace scaler{
-class JobServiceGrpc {
-public:
-    explicit JobServiceGrpc(std::shared_ptr<grpc::ChannelInterface> channel);
+namespace scaler {
+    class JobServiceGrpc {
+    public:
+        explicit JobServiceGrpc(std::shared_ptr<grpc::ChannelInterface> channel);
 
-    long createJob();
+        long createJob();
 
-    bool appendElfImgInfo(ExtFuncCallHookAsm& asmHook);
+        bool appendElfImgInfo(ExtFuncCallHookAsm &asmHook);
 
-    bool appendTimingInfo();
+        bool appendTimingMatrix(int64_t timingMatrixRows, int64_t timingMatrixCols, int64_t **timingMatrix,
+                                int64_t countingVecRows, int64_t *countingVec);
 
 
-private:
-    std::unique_ptr<scaler::analyzerserv::Job::Stub> stub_;
-};
+    private:
+        std::unique_ptr<scaler::analyzerserv::Job::Stub> stub_;
+    };
 }
 
 #endif //SCALER_JOBSERVICEGRPC_H
