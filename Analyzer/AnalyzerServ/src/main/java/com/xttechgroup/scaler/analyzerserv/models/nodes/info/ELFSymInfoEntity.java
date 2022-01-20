@@ -1,12 +1,12 @@
-package com.xttechgroup.scaler.analyzerserv.models.Job.nodes;
+package com.xttechgroup.scaler.analyzerserv.models.nodes.info;
 
 import com.xttechgroup.scaler.analyzerserv.ELFSymbolInfoMsg;
 import org.springframework.data.neo4j.core.schema.*;
 
 import java.util.*;
 
-@Node("ELFSymbol")
-public class ELFSymbolEntity {
+@Node("ElfSymInfo")
+public class ELFSymInfoEntity {
     @Id
     @GeneratedValue
     Long id;
@@ -32,7 +32,7 @@ public class ELFSymbolEntity {
     //public long elfImgIdIndex;
 
 
-    ELFSymbolEntity() {
+    ELFSymInfoEntity() {
 
     }
 
@@ -57,7 +57,7 @@ public class ELFSymbolEntity {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof ELFSymbolEntity) {
+        if (obj instanceof ELFSymInfoEntity) {
             return id.equals(((ElfImgInfoEntity) obj).id);
         } else {
             return false;

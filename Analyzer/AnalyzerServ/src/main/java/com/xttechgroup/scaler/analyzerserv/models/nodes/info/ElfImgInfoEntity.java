@@ -1,4 +1,4 @@
-package com.xttechgroup.scaler.analyzerserv.models.Job.nodes;
+package com.xttechgroup.scaler.analyzerserv.models.nodes.info;
 
 import com.xttechgroup.scaler.analyzerserv.ELFImgInfoMsg;
 import org.springframework.data.neo4j.core.schema.*;
@@ -31,8 +31,8 @@ public class ElfImgInfoEntity {
     //    @Relationship(type = "HAS_IMG", direction = INCOMING)
     //    public JobEntity jobEntity;
 
-    @Relationship(type = "HAS_SYM", direction = OUTGOING)
-    private List<ELFSymbolEntity> symbolsInThisFile = new ArrayList<>();
+    @Relationship(type = "HAS_SYMINFO", direction = OUTGOING)
+    private List<ELFSymInfoEntity> symbolsInThisFile = new ArrayList<>();
 
     public ElfImgInfoEntity() {
 
@@ -57,11 +57,11 @@ public class ElfImgInfoEntity {
         return n1;
     }
 
-    public void setSymbolsInThisFile(List<ELFSymbolEntity> symbolsInThisFile) {
+    public void setSymbolsInThisFile(List<ELFSymInfoEntity> symbolsInThisFile) {
         this.symbolsInThisFile = symbolsInThisFile;
     }
 
-    public List<ELFSymbolEntity> getSymbolsInThisFile() {
+    public List<ELFSymInfoEntity> getSymbolsInThisFile() {
         return symbolsInThisFile;
     }
 

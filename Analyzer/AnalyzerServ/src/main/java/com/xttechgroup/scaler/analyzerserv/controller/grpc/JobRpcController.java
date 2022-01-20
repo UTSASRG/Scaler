@@ -2,12 +2,12 @@ package com.xttechgroup.scaler.analyzerserv.controller.grpc;
 
 import com.google.protobuf.Empty;
 import com.xttechgroup.scaler.analyzerserv.*;
-import com.xttechgroup.scaler.analyzerserv.models.Job.nodes.ELFSymbolEntity;
-import com.xttechgroup.scaler.analyzerserv.models.Job.nodes.ElfImgInfoEntity;
-import com.xttechgroup.scaler.analyzerserv.models.Job.nodes.JobEntity;
-import com.xttechgroup.scaler.analyzerserv.models.Job.repository.ELFImgInfoRepo;
-import com.xttechgroup.scaler.analyzerserv.models.Job.repository.ELFSymInfoRepo;
-import com.xttechgroup.scaler.analyzerserv.models.Job.repository.JobRepo;
+import com.xttechgroup.scaler.analyzerserv.models.nodes.info.ELFSymInfoEntity;
+import com.xttechgroup.scaler.analyzerserv.models.nodes.info.ElfImgInfoEntity;
+import com.xttechgroup.scaler.analyzerserv.models.nodes.JobEntity;
+import com.xttechgroup.scaler.analyzerserv.models.repository.ELFImgInfoRepo;
+import com.xttechgroup.scaler.analyzerserv.models.repository.ELFSymInfoRepo;
+import com.xttechgroup.scaler.analyzerserv.models.repository.JobRepo;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.neo4j.driver.Driver;
@@ -69,7 +69,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                 imgNodes.add(ElfImgInfoEntity.protoToMap(value, jobid));
 
                 for (ELFSymbolInfoMsg symbolInfoMsg : value.getSymbolInfoInThisFileList()) {
-                    symNodes.add(ELFSymbolEntity.protoToMap(symbolInfoMsg, imgNodes.size() - 1));
+                    symNodes.add(ELFSymInfoEntity.protoToMap(symbolInfoMsg, imgNodes.size() - 1));
                 }
             }
 
@@ -98,7 +98,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                             String query = "UNWIND $imgNodes AS imgNode" + "\n" +
                                     "MATCH (curJob:Job)\n" +
                                     "WHERE ID(curJob)=imgNode.jobId\n" +
-                                    "CREATE (newImgNode:ElfImgInfo) <-[:HAS_IMG]- (curJob)" + "\n" +
+                                    "CREATE (newImgNode:ElfImgInfo) <-[:HAS_IMGINFO]- (curJob)" + "\n" +
                                     "SET newImgNode.scalerId =imgNode.scalerId, " +
                                     "newImgNode.filePath=imgNode.filePath, " +
                                     "newImgNode.elfImgValid=imgNode.elfImgValid, " +
@@ -127,7 +127,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                                         "UNWIND $symNodes AS symNode" + "\n" +
                                                 "MATCH (curImg:ElfImgInfo)\n" +
                                                 "WHERE ID(curImg)=$insertedImgId[symNode.elfImgId]\n" +
-                                                "CREATE (newSym:ELFSymbol) <-[:HAS_SYM]- (curImg)" + "\n" +
+                                                "CREATE (newSym:ElfSymInfo) <-[:HAS_SYMINFO]- (curImg)" + "\n" +
                                                 "SET newSym.symbolName =symNode.symbolName, " +
                                                 "newSym.symbolType=symNode.symbolType, " +
                                                 "newSym.bindType=symNode.bindType, " +
@@ -158,6 +158,66 @@ public class JobRpcController extends JobGrpc.JobImplBase {
 
     @Override
     public void appendTimingMatrix(TimingMsg request, StreamObserver<BinaryExecResult> responseObserver) {
+
+        try (Session session = neo4jDriver.session()) {
+            session.writeTransaction(tx ->
+            {
+//                Map<String, Object> params = new HashMap<>();
+//                params.put("imgNodes", imgNodes);
+//                //Bulk insert elf img
+//                String query = "UNWIND $imgNodes AS imgNode" + "\n" +
+//                        "MATCH (curJob:Job)\n" +
+//                        "WHERE ID(curJob)=imgNode.jobId\n" +
+//                        "CREATE (newImgNode:ElfImgInfo) <-[:HAS_IMG]- (curJob)" + "\n" +
+//                        "SET newImgNode.scalerId =imgNode.scalerId, " +
+//                        "newImgNode.filePath=imgNode.filePath, " +
+//                        "newImgNode.elfImgValid=imgNode.elfImgValid, " +
+//                        "newImgNode.symbolType=imgNode.symbolType, " +
+//                        "newImgNode.addrStart=imgNode.addrStart, " +
+//                        "newImgNode.addrEnd=imgNode.addrEnd," +
+//                        "newImgNode.pltStartAddr=imgNode.pltStartAddr, " +
+//                        "newImgNode.pltSecStartAddr=imgNode.pltSecStartAddr\n" +
+//                        "return id(newImgNode)";
+//                List<Record> rltImg = tx.run(query, params).list();
+//
+//                if (rltImg.size() != imgNodes.size()) {
+//                    reply.setSuccess(false);
+//                    reply.setErrorMsg("Saving image node failed, not every save was successful.");
+//                    tx.rollback();
+//                } else {
+//
+//                    List<Long> insertedImgId = new ArrayList<>();
+//                    for (int i = 0; i < rltImg.size(); ++i) {
+//                        insertedImgId.add(rltImg.get(i).get("id(newImgNode)").asLong());
+//                    }
+//
+//                    params.put("insertedImgId", insertedImgId);
+//                    params.put("symNodes", symNodes);
+//                    query =
+//                            "UNWIND $symNodes AS symNode" + "\n" +
+//                                    "MATCH (curImg:ElfImgInfo)\n" +
+//                                    "WHERE ID(curImg)=$insertedImgId[symNode.elfImgId]\n" +
+//                                    "CREATE (newSym:ELFSymbol) <-[:HAS_SYM]- (curImg)" + "\n" +
+//                                    "SET newSym.symbolName =symNode.symbolName, " +
+//                                    "newSym.symbolType=symNode.symbolType, " +
+//                                    "newSym.bindType=symNode.bindType, " +
+//                                    "newSym.libFileId=symNode.libFileId, " +
+//                                    "newSym.gotAddr=symNode.gotAddr," +
+//                                    "newSym.hooked=symNode.hooked, " +
+//                                    "newSym.symbolName=symNode.symbolName, " +
+//                                    "newSym.elfImgInfoEntity=symNode.elfImgInfoEntity";
+//
+//                    Result result = tx.run(query, params);
+//                    if (rltImg.size() != imgNodes.size()) {
+//                        reply.setErrorMsg("Saving symbol node failed, not every save was successful");
+//                        tx.rollback();
+//                    }
+//                }
+                return null;
+            });
+        }
+
+
         BinaryExecResult reply = BinaryExecResult.newBuilder()
                 .build();
         responseObserver.onNext(reply);

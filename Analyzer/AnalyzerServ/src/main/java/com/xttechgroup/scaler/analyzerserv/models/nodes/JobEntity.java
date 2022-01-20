@@ -1,9 +1,11 @@
-package com.xttechgroup.scaler.analyzerserv.models.Job.nodes;
+package com.xttechgroup.scaler.analyzerserv.models.nodes;
 
+import com.xttechgroup.scaler.analyzerserv.models.nodes.info.ElfImgInfoEntity;
+import com.xttechgroup.scaler.analyzerserv.models.relations.InvokeImg;
 import org.springframework.data.neo4j.core.schema.*;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.springframework.data.neo4j.core.schema.Relationship.Direction.OUTGOING;
 
@@ -13,8 +15,12 @@ public class JobEntity {
     @GeneratedValue
     public Long id;
 
-    @Relationship(type = "HAS_IMG", direction = OUTGOING)
-    private Set<ElfImgInfoEntity> elfInfos = new HashSet<>();
+    @Relationship(type = "HAS_IMGINFO", direction = OUTGOING)
+    private List<ElfImgInfoEntity> elfInfos = new ArrayList<>();
+
+
+    @Relationship(type = "HAS_TIMINGINFO", direction = OUTGOING)
+    private List<InvokeImg> invokeImgs = new ArrayList<>();
 
     public Long getId() {
         return id;
@@ -24,7 +30,7 @@ public class JobEntity {
         this.id = id;
     }
 
-    public Set<ElfImgInfoEntity> getElfInfos() {
+    public List<ElfImgInfoEntity> getElfInfos() {
         return elfInfos;
     }
 

@@ -1,12 +1,10 @@
-package com.xttechgroup.scaler.analyzerserv.models.Job;
+package com.xttechgroup.scaler.analyzerserv.models;
 
-import com.xttechgroup.scaler.analyzerserv.models.Job.nodes.ELFSymbolEntity;
-import com.xttechgroup.scaler.analyzerserv.models.Job.relations.InvokeLib;
-import com.xttechgroup.scaler.analyzerserv.models.Job.relations.InvokeSym;
+import com.xttechgroup.scaler.analyzerserv.models.relations.InvokeImg;
+import com.xttechgroup.scaler.analyzerserv.models.relations.InvokeSym;
 import org.springframework.data.neo4j.core.schema.*;
 
 import java.util.List;
-import java.util.Set;
 
 import static org.springframework.data.neo4j.core.schema.Relationship.Direction.OUTGOING;
 
@@ -25,6 +23,6 @@ public class TimingLibraryInfoEntity {
 
     //Library level counting and timing
     @Relationship(type = "INVOKED_LIB", direction = OUTGOING)
-    List<InvokeLib> invokedLibrary;
+    List<InvokeImg> invokedLibrary;
 
 }

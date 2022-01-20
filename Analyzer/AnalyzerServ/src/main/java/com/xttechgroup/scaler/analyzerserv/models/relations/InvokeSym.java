@@ -1,12 +1,10 @@
-package com.xttechgroup.scaler.analyzerserv.models.Job.relations;
+package com.xttechgroup.scaler.analyzerserv.models.relations;
 
-import com.xttechgroup.scaler.analyzerserv.models.Job.TimingLibraryInfoEntity;
-import com.xttechgroup.scaler.analyzerserv.models.Job.nodes.ELFSymbolEntity;
+import com.xttechgroup.scaler.analyzerserv.models.nodes.info.ELFSymInfoEntity;
 import org.springframework.data.neo4j.core.schema.Property;
 import org.springframework.data.neo4j.core.schema.RelationshipId;
 import org.springframework.data.neo4j.core.schema.RelationshipProperties;
-
-import java.util.List;
+import org.springframework.data.neo4j.core.schema.TargetNode;
 
 @RelationshipProperties
 public class InvokeSym {
@@ -20,6 +18,6 @@ public class InvokeSym {
     @Property
     Long counts;
 
-    @Property
-    ELFSymbolEntity symInfo;
+    @TargetNode
+    ELFSymInfoEntity symInfo;
 }
