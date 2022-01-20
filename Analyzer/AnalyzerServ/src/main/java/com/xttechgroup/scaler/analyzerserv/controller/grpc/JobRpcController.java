@@ -2,11 +2,12 @@ package com.xttechgroup.scaler.analyzerserv.controller.grpc;
 
 import com.google.protobuf.Empty;
 import com.xttechgroup.scaler.analyzerserv.*;
-import com.xttechgroup.scaler.analyzerserv.models.Job.*;
-import io.grpc.Metadata;
-import io.grpc.ServerCall;
-import io.grpc.ServerCallHandler;
-import io.grpc.ServerInterceptor;
+import com.xttechgroup.scaler.analyzerserv.models.Job.nodes.ELFSymbolEntity;
+import com.xttechgroup.scaler.analyzerserv.models.Job.nodes.ElfImgInfoEntity;
+import com.xttechgroup.scaler.analyzerserv.models.Job.nodes.JobEntity;
+import com.xttechgroup.scaler.analyzerserv.models.Job.repository.ELFImgInfoRepo;
+import com.xttechgroup.scaler.analyzerserv.models.Job.repository.ELFSymInfoRepo;
+import com.xttechgroup.scaler.analyzerserv.models.Job.repository.JobRepo;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.neo4j.driver.Driver;
@@ -14,11 +15,8 @@ import org.neo4j.driver.Record;
 import org.neo4j.driver.Result;
 import org.neo4j.driver.Session;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.neo4j.core.schema.Property;
 
 import java.util.*;
-
-import static org.neo4j.driver.Values.parameters;
 
 @GrpcService
 public class JobRpcController extends JobGrpc.JobImplBase {
@@ -158,4 +156,11 @@ public class JobRpcController extends JobGrpc.JobImplBase {
     }
 
 
+    @Override
+    public void appendTimingMatrix(TimingMsg request, StreamObserver<BinaryExecResult> responseObserver) {
+        BinaryExecResult reply = BinaryExecResult.newBuilder()
+                .build();
+        responseObserver.onNext(reply);
+        responseObserver.onCompleted();
+    }
 }

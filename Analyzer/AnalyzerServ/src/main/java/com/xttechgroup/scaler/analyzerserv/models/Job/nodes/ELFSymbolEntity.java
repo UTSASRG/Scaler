@@ -1,13 +1,9 @@
-package com.xttechgroup.scaler.analyzerserv.models.Job;
+package com.xttechgroup.scaler.analyzerserv.models.Job.nodes;
 
-import com.xttechgroup.scaler.analyzerserv.ELFImgInfoMsg;
 import com.xttechgroup.scaler.analyzerserv.ELFSymbolInfoMsg;
-import org.springframework.data.annotation.Version;
 import org.springframework.data.neo4j.core.schema.*;
 
 import java.util.*;
-
-import static org.springframework.data.neo4j.core.schema.Relationship.Direction.INCOMING;
 
 @Node("ELFSymbol")
 public class ELFSymbolEntity {

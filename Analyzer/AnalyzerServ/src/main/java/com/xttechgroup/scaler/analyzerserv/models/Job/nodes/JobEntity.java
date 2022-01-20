@@ -1,11 +1,8 @@
-package com.xttechgroup.scaler.analyzerserv.models.Job;
+package com.xttechgroup.scaler.analyzerserv.models.Job.nodes;
 
-import org.springframework.data.annotation.Version;
 import org.springframework.data.neo4j.core.schema.*;
 
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import static org.springframework.data.neo4j.core.schema.Relationship.Direction.OUTGOING;
