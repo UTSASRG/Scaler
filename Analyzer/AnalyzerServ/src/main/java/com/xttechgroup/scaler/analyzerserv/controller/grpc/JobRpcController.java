@@ -150,8 +150,8 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                     }
 
                     reply.setSuccess(true);
-                    responseObserver.onNext(reply.build());
                 }
+                responseObserver.onNext(reply.build());
                 responseObserver.onCompleted();
             }
         };

@@ -81,9 +81,7 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
             }
         }
         // The actual RPC.
-
-
-
+        clientWriter->Write(elfInfoMsg);
     }
     INFO_LOG("Waiting for server processing of elfimgInfo to complete");
     clientWriter->WritesDone();
