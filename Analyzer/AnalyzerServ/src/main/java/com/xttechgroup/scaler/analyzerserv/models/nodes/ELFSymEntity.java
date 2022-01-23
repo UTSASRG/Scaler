@@ -1,4 +1,4 @@
-package com.xttechgroup.scaler.analyzerserv.models.nodes.info;
+package com.xttechgroup.scaler.analyzerserv.models.nodes;
 
 import com.xttechgroup.scaler.analyzerserv.ELFSymbolInfoMsg;
 import org.springframework.data.neo4j.core.schema.*;
@@ -6,7 +6,7 @@ import org.springframework.data.neo4j.core.schema.*;
 import java.util.*;
 
 @Node("ElfSymInfo")
-public class ELFSymInfoEntity {
+public class ELFSymEntity {
     @Id
     @GeneratedValue
     Long id;
@@ -24,7 +24,8 @@ public class ELFSymInfoEntity {
     Long gotAddr;
     @Property
     boolean hooked;
-
+    @Property
+    Long hookedId;
 //    @Relationship(type = "HAS_SYM", direction = INCOMING)
 //    public ElfImgInfoEntity elfImgInfoEntity;
 
@@ -32,7 +33,7 @@ public class ELFSymInfoEntity {
     //public long elfImgIdIndex;
 
 
-    ELFSymInfoEntity() {
+    ELFSymEntity() {
 
     }
 
@@ -49,6 +50,7 @@ public class ELFSymInfoEntity {
         n1.put("gotAddr", symbolInfoMsg.getGotAddr());
         n1.put("hooked", symbolInfoMsg.getHooked());
         n1.put("symbolName", symbolInfoMsg.getSymbolName());
+        n1.put("hookedId", symbolInfoMsg.getHookedId());
 
         //This is used to find the real elfimgid after insertion
         n1.put("elfImgId", elfImgIdIndex);
@@ -57,8 +59,8 @@ public class ELFSymInfoEntity {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof ELFSymInfoEntity) {
-            return id.equals(((ElfImgInfoEntity) obj).id);
+        if (obj instanceof ELFSymEntity) {
+            return id.equals(((ElfImgEntity) obj).id);
         } else {
             return false;
         }

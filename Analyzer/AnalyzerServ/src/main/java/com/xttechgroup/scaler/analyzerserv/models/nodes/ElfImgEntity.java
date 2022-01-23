@@ -1,6 +1,7 @@
-package com.xttechgroup.scaler.analyzerserv.models.nodes.info;
+package com.xttechgroup.scaler.analyzerserv.models.nodes;
 
 import com.xttechgroup.scaler.analyzerserv.ELFImgInfoMsg;
+import com.xttechgroup.scaler.analyzerserv.models.relations.ImgInvokeSym;
 import org.springframework.data.neo4j.core.schema.*;
 
 import java.util.*;
@@ -8,7 +9,7 @@ import java.util.*;
 import static org.springframework.data.neo4j.core.schema.Relationship.Direction.OUTGOING;
 
 @Node("ElfImgInfo")
-public class ElfImgInfoEntity {
+public class ElfImgEntity {
     @Id
     @GeneratedValue
     public Long id;
@@ -32,9 +33,13 @@ public class ElfImgInfoEntity {
     //    public JobEntity jobEntity;
 
     @Relationship(type = "HAS_SYMINFO", direction = OUTGOING)
-    private List<ELFSymInfoEntity> symbolsInThisFile = new ArrayList<>();
+    private List<ELFSymEntity> symbolsInThisFile = new ArrayList<>();
 
-    public ElfImgInfoEntity() {
+    //Only stores timing info
+    @Relationship(type = "ImgInvokeSym", direction = OUTGOING)
+    private List<ImgInvokeSym> invokeSyms = new ArrayList<>();
+
+    public ElfImgEntity() {
 
     }
 
@@ -57,18 +62,18 @@ public class ElfImgInfoEntity {
         return n1;
     }
 
-    public void setSymbolsInThisFile(List<ELFSymInfoEntity> symbolsInThisFile) {
+    public void setSymbolsInThisFile(List<ELFSymEntity> symbolsInThisFile) {
         this.symbolsInThisFile = symbolsInThisFile;
     }
 
-    public List<ELFSymInfoEntity> getSymbolsInThisFile() {
+    public List<ELFSymEntity> getSymbolsInThisFile() {
         return symbolsInThisFile;
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (obj instanceof ElfImgInfoEntity) {
-            return id.equals(((ElfImgInfoEntity) obj).id);
+        if (obj instanceof ElfImgEntity) {
+            return id.equals(((ElfImgEntity) obj).id);
         } else {
             return false;
         }

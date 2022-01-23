@@ -1,7 +1,7 @@
 package com.xttechgroup.scaler.analyzerserv.models;
 
-import com.xttechgroup.scaler.analyzerserv.models.relations.InvokeImg;
-import com.xttechgroup.scaler.analyzerserv.models.relations.InvokeSym;
+import com.xttechgroup.scaler.analyzerserv.models.relations.ImgInvokeSym;
+import com.xttechgroup.scaler.analyzerserv.models.relations.JobInvokeSym;
 import org.springframework.data.neo4j.core.schema.*;
 
 import java.util.List;
@@ -19,10 +19,10 @@ public class TimingLibraryInfoEntity {
 
     //Symbol level counting and timing
     @Relationship(type = "INVOKED_SYM", direction = OUTGOING)
-    List<InvokeSym> invokedSymbol;
+    List<JobInvokeSym> invokedSymbol;
 
     //Library level counting and timing
     @Relationship(type = "INVOKED_LIB", direction = OUTGOING)
-    List<InvokeImg> invokedLibrary;
+    List<ImgInvokeSym> invokedLibrary;
 
 }

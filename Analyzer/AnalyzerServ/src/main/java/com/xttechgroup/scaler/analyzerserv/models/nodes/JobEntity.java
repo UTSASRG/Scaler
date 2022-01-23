@@ -1,7 +1,6 @@
 package com.xttechgroup.scaler.analyzerserv.models.nodes;
 
-import com.xttechgroup.scaler.analyzerserv.models.nodes.info.ElfImgInfoEntity;
-import com.xttechgroup.scaler.analyzerserv.models.relations.InvokeImg;
+import com.xttechgroup.scaler.analyzerserv.models.relations.JobInvokeSym;
 import org.springframework.data.neo4j.core.schema.*;
 
 import java.util.ArrayList;
@@ -16,11 +15,11 @@ public class JobEntity {
     public Long id;
 
     @Relationship(type = "HAS_IMGINFO", direction = OUTGOING)
-    private List<ElfImgInfoEntity> elfInfos = new ArrayList<>();
+    private List<ElfImgEntity> elfInfos = new ArrayList<>();
 
-
-    @Relationship(type = "HAS_TIMINGINFO", direction = OUTGOING)
-    private List<InvokeImg> invokeImgs = new ArrayList<>();
+    //Only stores counting info
+    @Relationship(type = "JobInvokeSym", direction = OUTGOING)
+    private List<JobInvokeSym> invokeSyms = new ArrayList<>();
 
     public Long getId() {
         return id;
@@ -30,7 +29,7 @@ public class JobEntity {
         this.id = id;
     }
 
-    public List<ElfImgInfoEntity> getElfInfos() {
+    public List<ElfImgEntity> getElfInfos() {
         return elfInfos;
     }
 

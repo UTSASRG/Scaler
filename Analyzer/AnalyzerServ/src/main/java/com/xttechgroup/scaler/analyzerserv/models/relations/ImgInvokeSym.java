@@ -1,13 +1,14 @@
 package com.xttechgroup.scaler.analyzerserv.models.relations;
 
-import com.xttechgroup.scaler.analyzerserv.models.nodes.info.ELFSymInfoEntity;
+import com.xttechgroup.scaler.analyzerserv.models.nodes.ELFSymEntity;
+import com.xttechgroup.scaler.analyzerserv.models.nodes.ElfImgEntity;
 import org.springframework.data.neo4j.core.schema.Property;
 import org.springframework.data.neo4j.core.schema.RelationshipId;
 import org.springframework.data.neo4j.core.schema.RelationshipProperties;
 import org.springframework.data.neo4j.core.schema.TargetNode;
 
 @RelationshipProperties
-public class InvokeSym {
+public class ImgInvokeSym {
 
     @RelationshipId
     private Long id;
@@ -15,9 +16,7 @@ public class InvokeSym {
     @Property
     Long duration;
 
-    @Property
-    Long counts;
-
     @TargetNode
-    ELFSymInfoEntity symInfo;
+    ELFSymEntity symInfo;
+
 }

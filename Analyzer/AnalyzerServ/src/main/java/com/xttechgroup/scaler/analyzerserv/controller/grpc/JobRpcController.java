@@ -2,8 +2,8 @@ package com.xttechgroup.scaler.analyzerserv.controller.grpc;
 
 import com.google.protobuf.Empty;
 import com.xttechgroup.scaler.analyzerserv.*;
-import com.xttechgroup.scaler.analyzerserv.models.nodes.info.ELFSymInfoEntity;
-import com.xttechgroup.scaler.analyzerserv.models.nodes.info.ElfImgInfoEntity;
+import com.xttechgroup.scaler.analyzerserv.models.nodes.ELFSymEntity;
+import com.xttechgroup.scaler.analyzerserv.models.nodes.ElfImgEntity;
 import com.xttechgroup.scaler.analyzerserv.models.nodes.JobEntity;
 import com.xttechgroup.scaler.analyzerserv.models.repository.ELFImgInfoRepo;
 import com.xttechgroup.scaler.analyzerserv.models.repository.ELFSymInfoRepo;
@@ -66,10 +66,10 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                     }
                 }
 
-                imgNodes.add(ElfImgInfoEntity.protoToMap(value, jobid));
+                imgNodes.add(ElfImgEntity.protoToMap(value, jobid));
 
                 for (ELFSymbolInfoMsg symbolInfoMsg : value.getSymbolInfoInThisFileList()) {
-                    symNodes.add(ELFSymInfoEntity.protoToMap(symbolInfoMsg, imgNodes.size() - 1));
+                    symNodes.add(ELFSymEntity.protoToMap(symbolInfoMsg, imgNodes.size() - 1));
                 }
             }
 
@@ -157,62 +157,69 @@ public class JobRpcController extends JobGrpc.JobImplBase {
 
 
     @Override
-    public void appendTimingMatrix(TimingMsg request, StreamObserver<BinaryExecResult> responseObserver) {
-
+    public void appendTimingMatrix(TimingMsg timingMsg, StreamObserver<BinaryExecResult> responseObserver) {
+        ArrayList<Map<String, Object>> jobInvokeSymInfos = new ArrayList<>();
+        ArrayList<Map<String, Object>> imgInvokeSymInfos = new ArrayList<>();
         try (Session session = neo4jDriver.session()) {
             session.writeTransaction(tx ->
             {
-//                Map<String, Object> params = new HashMap<>();
-//                params.put("imgNodes", imgNodes);
-//                //Bulk insert elf img
-//                String query = "UNWIND $imgNodes AS imgNode" + "\n" +
-//                        "MATCH (curJob:Job)\n" +
-//                        "WHERE ID(curJob)=imgNode.jobId\n" +
-//                        "CREATE (newImgNode:ElfImgInfo) <-[:HAS_IMG]- (curJob)" + "\n" +
-//                        "SET newImgNode.scalerId =imgNode.scalerId, " +
-//                        "newImgNode.filePath=imgNode.filePath, " +
-//                        "newImgNode.elfImgValid=imgNode.elfImgValid, " +
-//                        "newImgNode.symbolType=imgNode.symbolType, " +
-//                        "newImgNode.addrStart=imgNode.addrStart, " +
-//                        "newImgNode.addrEnd=imgNode.addrEnd," +
-//                        "newImgNode.pltStartAddr=imgNode.pltStartAddr, " +
-//                        "newImgNode.pltSecStartAddr=imgNode.pltSecStartAddr\n" +
-//                        "return id(newImgNode)";
-//                List<Record> rltImg = tx.run(query, params).list();
-//
-//                if (rltImg.size() != imgNodes.size()) {
-//                    reply.setSuccess(false);
-//                    reply.setErrorMsg("Saving image node failed, not every save was successful.");
-//                    tx.rollback();
-//                } else {
-//
-//                    List<Long> insertedImgId = new ArrayList<>();
-//                    for (int i = 0; i < rltImg.size(); ++i) {
-//                        insertedImgId.add(rltImg.get(i).get("id(newImgNode)").asLong());
-//                    }
-//
-//                    params.put("insertedImgId", insertedImgId);
-//                    params.put("symNodes", symNodes);
-//                    query =
-//                            "UNWIND $symNodes AS symNode" + "\n" +
-//                                    "MATCH (curImg:ElfImgInfo)\n" +
-//                                    "WHERE ID(curImg)=$insertedImgId[symNode.elfImgId]\n" +
-//                                    "CREATE (newSym:ELFSymbol) <-[:HAS_SYM]- (curImg)" + "\n" +
-//                                    "SET newSym.symbolName =symNode.symbolName, " +
-//                                    "newSym.symbolType=symNode.symbolType, " +
-//                                    "newSym.bindType=symNode.bindType, " +
-//                                    "newSym.libFileId=symNode.libFileId, " +
-//                                    "newSym.gotAddr=symNode.gotAddr," +
-//                                    "newSym.hooked=symNode.hooked, " +
-//                                    "newSym.symbolName=symNode.symbolName, " +
-//                                    "newSym.elfImgInfoEntity=symNode.elfImgInfoEntity";
-//
-//                    Result result = tx.run(query, params);
-//                    if (rltImg.size() != imgNodes.size()) {
-//                        reply.setErrorMsg("Saving symbol node failed, not every save was successful");
-//                        tx.rollback();
-//                    }
-//                }
+                long timingMatrixRows = timingMsg.getTimgMatrixrows();
+                long timingMatrixCols = timingMsg.getTimgMatrixrows();
+                long countingVecRows = timingMsg.getCountingVecRows();
+
+                //Insert JobInvokeSym info
+                for (int symHookID = 0; symHookID < countingVecRows; ++symHookID) {
+                    Map<String, Object> curInvokedSymInfo = new HashMap<>();
+                    curInvokedSymInfo.put("counts", timingMsg.getCountingVecVal(symHookID));
+                    curInvokedSymInfo.put("symInfo", symHookID);
+                    imgInvokeSymInfos.add(curInvokedSymInfo);
+                }
+
+                //Insert ImgInvokeSym info
+                assert timingMsg.getTimgMatrixrows() == timingMsg.getCountingVecRows();
+                for (int libFileId = 0; libFileId < timingMatrixRows; ++libFileId) {
+                    for (int symHookedID = 0; symHookedID < timingMatrixCols; ++symHookedID) {
+                        Map<String, Object> curInvokedSymInfo = new HashMap<>();
+                        //todo: Maybe using int is better?
+                        curInvokedSymInfo.put("duration", timingMsg.getTimgMatrixVal((int) (libFileId * timingMatrixRows + symHookedID)));
+                        curInvokedSymInfo.put("libFileId", libFileId);
+                        curInvokedSymInfo.put("symHookedID", symHookedID);
+                        jobInvokeSymInfos.add(curInvokedSymInfo);
+                    }
+                }
+
+
+                //Then, insert all nodes in one request
+                Map<String, Object> params = new HashMap<>();
+                params.put("jobInvokeSymInfos", jobInvokeSymInfos);
+                params.put("imgInvokeSymInfos", imgInvokeSymInfos);
+                params.put("jobId", timingMsg.getJobId());
+
+                //Bulk insert elf img
+                String query =
+                        //Expand $jobInvokeSymInfos
+                        "UNWIND $jobInvokeSymInfos AS jobInvokeImgInfo" + "\n" +
+                                //Find job
+                                "MATCH (curJob:Job)\n" +
+                                "WHERE ID(curJob)=$jobId\n" +
+                                //Find symbol
+                                "MATCH (jobInvokedSym:ElfSymInfo)\n" +
+                                "WHERE jobInvokedSym.hookedID=symCountingInfo.symHookedID\n" +
+                                //Insert JobInvokeSym relation
+                                "CREATE (curJob)-[jobInvokeSym:JobInvokeSym {counts:jobInvokeImgInfo.counts}]-> (jobInvokedSym)" + "\n" +
+
+                                //Expand $jobInvokeSymInfos
+                                "UNWIND $imgInvokeSymInfos AS imgInvokeSymInfo" + "\n" +
+                                //Find image
+                                "MATCH (curImg:ElfImgInfo)\n" +
+                                "WHERE curImg.scalerId=imgInvokeSymInfo.libFileId\n" +
+                                //Find symbol
+                                "MATCH (imgInvokedSym: ElfSymInfo)\n" +
+                                "WHERE imgInvokedSym.hookedId=imgInvokeSymInfo.symHookedID\n" +
+                                //Insert ImgInvokeSym relation
+                                "CREATE (curImg)-[imgInvokeSym:ImgInvokeSym {duration:jobInvokeImgInfo.duration}]-> (jobInvokedImg)" + "\n" +
+                                "return id(jobInvokeSym),id(imgInvokeSym)";
+                List<Record> rltImg = tx.run(query, params).list();
                 return null;
             });
         }
