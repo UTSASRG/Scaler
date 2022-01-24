@@ -207,35 +207,27 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                                 "WHERE ID(curJob)=$jobId \n" +
                                 "UNWIND $jobInvokeSymInfos AS jobInvokeSymInfo" + "\n" +
                                 "MATCH (curJob)-[]->()-[]->(targetSymbol:ElfSymInfo)\n" +
-                                "USING INDEX targetSymbol:ElfSymInfo(hookedId)\n"+
+                                "USING INDEX targetSymbol:ElfSymInfo(hookedId)\n" +
                                 "WHERE targetSymbol.hookedId=jobInvokeSymInfo.symInfo\n" +
                                 //Insert JobInvokeSym relation
                                 "CREATE (curJob)-[jobInvokeSym:JobInvokeSym {counts:jobInvokeSymInfo.counts}]-> (targetSymbol)\n" +
-                                "return jobInvokeSym\n";
+                                "\n";
                 List<Record> result = tx.run(query, params).list();
-
-                if (result.size() != jobInvokeSymInfos.size()) {
+                if ( result.size() != jobInvokeSymInfos.size()) {
                     reply.setSuccess(false);
                     reply.setErrorMsg("Saving JobInvokeSym failed.");
                     tx.rollback();
                 } else {
+                    //Expand $imgInvokeSymInfos
+                    query  = "UNWIND $imgInvokeSymInfos AS imgInvokeSymInfo" + "\n" +
+                            //Find image
+                            "MATCH (curJob:Job)-[:HAS_IMGINFO]->(curImg:ElfImgInfo)-[:HAS_SYMINFO]->(curSym:ElfSymInfo)\n" +
+                            "WHERE ID(curJob)=$jobId AND curImg.scalerId=0 AND curSym.hookedId=imgInvokeSymInfo.symHookedID\n" +
+                            //Insert ImgInvokeSym relation
+                            "CREATE (curImg)-[p:ImgInvokeSym {duration:imgInvokeSymInfo.duration}]-> (curSym)\n" +
+                            "return imgInvokeSymInfo";
+                    result  = tx.run(query, params).list();
 
-                    //Expand $jobInvokeSymInfos
-//                    query = "UNWIND $imgInvokeSymInfos AS imgInvokeSymInfo" + "\n" +
-//                            //Find image
-//                            "MATCH (curImg:ElfImgInfo)\n" +
-//                            "WHERE curImg.scalerId=imgInvokeSymInfo.symInfo\n" +
-//                            //Find symbol
-//                            "MATCH (imgInvokedSym: ElfSymInfo)\n" +
-//                            "WHERE imgInvokedSym.hookedId=imgInvokeSymInfo.symInfo\n" +
-//                            //Insert ImgInvokeSym relation
-//                            "CREATE (curImg)-[imgInvokeSym:ImgInvokeSym {duration:imgInvokeSymInfo.duration}]-> (imgInvokedSym)\n";
-//                    rltImg = tx.run(query, params).list();
-//                    if (rltImg.size() != imgInvokeSymInfos.size()) {
-//                        reply.setSuccess(false);
-//                        reply.setErrorMsg("Saving ImgInvokeSym failed.");
-//                        tx.rollback();
-//                    }
                 }
 
                 return null;
