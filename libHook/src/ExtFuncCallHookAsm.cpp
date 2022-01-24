@@ -128,6 +128,7 @@ public:
                 ERR_LOG("Cannot send elf info to server");
             }
             Context *curContexPtr = curContext;
+            INFO_LOG("Sending timing info");
             if (!jobServiceGrpc.appendTimingMatrix(curContexPtr->timingMatrixRows,
                                                    curContexPtr->timingMatrixCols,
                                                    curContexPtr->timingMatrix,
@@ -264,7 +265,6 @@ namespace scaler {
                         //The user wants this symbol
                         curSymbol.hookedId = hookedExtSymbol.getSize();
                         hookedExtSymbol.pushBack(scalerSymbolId);
-
                         DBG_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd, %s, %zd",
                                  curElfImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.scalerSymbolId,
                                  curSymbol.symbolName.c_str(), curSymbol.symIdInFile);

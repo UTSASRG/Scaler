@@ -67,7 +67,7 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
             elfInfoMsg.set_pltsecstartaddr(reinterpret_cast<long>(elfImgInfo.pltSecStartAddr));
             elfInfoMsg.set_jobid(Config::curJobId);
             DBG_LOGS("Sending %d/%zd", fileID + 1, asmHook.elfImgInfoMap.getSize());
-            for (int symbolId = 0; symbolId < elfImgInfo.scalerIdMap.size(); ++symbolId) {
+            for (int symbolId:elfImgInfo.scalerIdMap) {
                 const auto &symbolInfo = asmHook.allExtSymbol[symbolId];
                 ELFSymbolInfoMsg &elfSymbolInfoMsg = *elfInfoMsg.add_symbolinfointhisfile();
                 elfSymbolInfoMsg.set_scalerid(symbolInfo.scalerSymbolId);
@@ -104,7 +104,7 @@ bool JobServiceGrpc::appendTimingMatrix(int64_t timingMatrixRows, int64_t timing
     TimingMsg timingMsg;
     // Context for the client. It could be used to convey extra information to
     // the server and/or tweak certain RPC behaviors.
-
+    timingMsg.set_jobid(Config::curJobId);
     timingMsg.set_timgmatrixrows(timingMatrixRows);
     timingMsg.set_timgmatrixcols(timingMatrixCols);
     for (int i = 0; i < timingMatrixRows; ++i) {

@@ -135,7 +135,9 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                                                 "newSym.gotAddr=symNode.gotAddr," +
                                                 "newSym.hooked=symNode.hooked, " +
                                                 "newSym.symbolName=symNode.symbolName, " +
-                                                "newSym.elfImgInfoEntity=symNode.elfImgInfoEntity";
+                                                "newSym.elfImgInfoEntity=symNode.elfImgInfoEntity," +
+                                                "newSym.hookedId=symNode.hookedId";
+
 
                                 Result result = tx.run(query, params);
                                 if (rltImg.size() != imgNodes.size()) {
@@ -160,12 +162,16 @@ public class JobRpcController extends JobGrpc.JobImplBase {
     public void appendTimingMatrix(TimingMsg timingMsg, StreamObserver<BinaryExecResult> responseObserver) {
         ArrayList<Map<String, Object>> jobInvokeSymInfos = new ArrayList<>();
         ArrayList<Map<String, Object>> imgInvokeSymInfos = new ArrayList<>();
+        BinaryExecResult.Builder reply = BinaryExecResult.newBuilder();
         try (Session session = neo4jDriver.session()) {
             session.writeTransaction(tx ->
             {
                 long timingMatrixRows = timingMsg.getTimgMatrixrows();
-                long timingMatrixCols = timingMsg.getTimgMatrixrows();
+                long timingMatrixCols = timingMsg.getTimgMatrixcols();
                 long countingVecRows = timingMsg.getCountingVecRows();
+                timingMatrixRows=1;
+                timingMatrixCols=1;
+                countingVecRows=1;
 
                 //Insert JobInvokeSym info
                 for (int symHookID = 0; symHookID < countingVecRows; ++symHookID) {
@@ -200,34 +206,46 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                         //Expand $jobInvokeSymInfos
                         "UNWIND $jobInvokeSymInfos AS jobInvokeImgInfo" + "\n" +
                                 //Find job
-                                "MATCH (curJob:Job)\n" +
-                                "WHERE ID(curJob)=$jobId\n" +
                                 //Find symbol
-                                "MATCH (jobInvokedSym:ElfSymInfo)\n" +
-                                "WHERE jobInvokedSym.hookedID=symCountingInfo.symHookedID\n" +
+                                "MATCH (curJob)-[:HAS_IMGINFO]->()-[:HAS_SYMINFO]->(jobInvokedSym:ElfSymInfo)\n" +
+                                "WHERE ID(curJob)=$jobId AND jobInvokedSym.hookedId=jobInvokeImgInfo.symHookedID\n" +
                                 //Insert JobInvokeSym relation
-                                "CREATE (curJob)-[jobInvokeSym:JobInvokeSym {counts:jobInvokeImgInfo.counts}]-> (jobInvokedSym)" + "\n" +
-
-                                //Expand $jobInvokeSymInfos
-                                "UNWIND $imgInvokeSymInfos AS imgInvokeSymInfo" + "\n" +
-                                //Find image
-                                "MATCH (curImg:ElfImgInfo)\n" +
-                                "WHERE curImg.scalerId=imgInvokeSymInfo.libFileId\n" +
-                                //Find symbol
-                                "MATCH (imgInvokedSym: ElfSymInfo)\n" +
-                                "WHERE imgInvokedSym.hookedId=imgInvokeSymInfo.symHookedID\n" +
-                                //Insert ImgInvokeSym relation
-                                "CREATE (curImg)-[imgInvokeSym:ImgInvokeSym {duration:jobInvokeImgInfo.duration}]-> (jobInvokedImg)" + "\n" +
-                                "return id(jobInvokeSym),id(imgInvokeSym)";
+                                "CREATE (curJob)-[jobInvokeSym:JobInvokeSym {counts:jobInvokeImgInfo.counts}]-> (jobInvokedSym)\n" +
+                                "return curJob,jobInvokedSym";
                 List<Record> rltImg = tx.run(query, params).list();
+                if (rltImg.size() != jobInvokeSymInfos.size()) {
+                    reply.setSuccess(false);
+                    reply.setErrorMsg("Saving JobInvokeSym failed.");
+                    tx.rollback();
+                } else {
+
+                    //Expand $jobInvokeSymInfos
+                    query = "UNWIND $imgInvokeSymInfos AS imgInvokeSymInfo" + "\n" +
+                            //Find image
+                            "MATCH (curImg:ElfImgInfo)\n" +
+                            "WHERE curImg.scalerId=imgInvokeSymInfo.symInfo\n" +
+                            //Find symbol
+                            "MATCH (imgInvokedSym: ElfSymInfo)\n" +
+                            "WHERE imgInvokedSym.hookedId=imgInvokeSymInfo.symInfo\n" +
+                            //Insert ImgInvokeSym relation
+                            "CREATE (curImg)-[imgInvokeSym:ImgInvokeSym {duration:imgInvokeSymInfo.duration}]-> (imgInvokedSym)\n"
+                            + "return imgInvokeSym";
+                    rltImg = tx.run(query, params).list();
+                    if (rltImg.size() != imgInvokeSymInfos.size()) {
+                        reply.setSuccess(false);
+                        reply.setErrorMsg("Saving ImgInvokeSym failed.");
+                        tx.rollback();
+                    }
+                }
+
                 return null;
             });
+
         }
 
 
-        BinaryExecResult reply = BinaryExecResult.newBuilder()
-                .build();
-        responseObserver.onNext(reply);
+        responseObserver.onNext(reply.build());
         responseObserver.onCompleted();
+
     }
 }
