@@ -5,6 +5,9 @@ import org.springframework.data.neo4j.core.schema.*;
 
 import java.util.*;
 
+// CREATE INDEX ON :ElfSymInfo(scalerId)
+// CREATE INDEX ON :ElfSymInfo(libFileId)
+// CREATE INDEX ON :ElfSymInfo(hookedId)
 @Node("ElfSymInfo")
 public class ELFSymEntity {
     @Id
@@ -26,8 +29,9 @@ public class ELFSymEntity {
     boolean hooked;
     @Property
     Long hookedId;
-//    @Relationship(type = "HAS_SYM", direction = INCOMING)
-//    public ElfImgInfoEntity elfImgInfoEntity;
+
+    @Property
+    ElfImgEntity job;
 
     //Used for HAS_SYM insertion internally
     //public long elfImgIdIndex;

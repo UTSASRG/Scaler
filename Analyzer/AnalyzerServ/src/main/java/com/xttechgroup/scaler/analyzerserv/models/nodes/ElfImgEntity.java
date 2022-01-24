@@ -8,6 +8,9 @@ import java.util.*;
 
 import static org.springframework.data.neo4j.core.schema.Relationship.Direction.OUTGOING;
 
+// CREATE INDEX ON :ElfImgInfo(scalerId)
+// CREATE INDEX ON :ElfImgInfo(jobID)
+
 @Node("ElfImgInfo")
 public class ElfImgEntity {
     @Id
@@ -28,6 +31,9 @@ public class ElfImgEntity {
     public long pltStartAddr;
     @Property
     public long pltSecStartAddr;
+
+    @Property
+    ElfImgEntity job;
 
     //    @Relationship(type = "HAS_IMG", direction = INCOMING)
     //    public JobEntity jobEntity;
