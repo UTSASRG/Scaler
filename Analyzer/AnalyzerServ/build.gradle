@@ -29,6 +29,11 @@ dependencies {
     implementation 'io.grpc:grpc-netty-shaded:1.43.0'
     //GRPC starter
     implementation 'net.devh:grpc-server-spring-boot-starter:2.13.1.RELEASE'
+    //lomhook
+    compileOnly 'org.projectlombok:lombok:1.18.22'
+    annotationProcessor 'org.projectlombok:lombok:1.18.22'
+    testCompileOnly 'org.projectlombok:lombok:1.18.22'
+    testAnnotationProcessor 'org.projectlombok:lombok:1.18.22'
 
 }
 

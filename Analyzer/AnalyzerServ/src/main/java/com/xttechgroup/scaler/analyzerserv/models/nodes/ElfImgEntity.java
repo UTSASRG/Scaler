@@ -2,6 +2,7 @@ package com.xttechgroup.scaler.analyzerserv.models.nodes;
 
 import com.xttechgroup.scaler.analyzerserv.ELFImgInfoMsg;
 import com.xttechgroup.scaler.analyzerserv.models.relations.ImgInvokeSym;
+import lombok.Data;
 import org.springframework.data.neo4j.core.schema.*;
 
 import java.util.*;
@@ -11,6 +12,7 @@ import static org.springframework.data.neo4j.core.schema.Relationship.Direction.
 // CREATE INDEX ON :ElfImgInfo(scalerId)
 // CREATE INDEX ON :ElfImgInfo(jobID)
 
+@Data
 @Node("ElfImgInfo")
 public class ElfImgEntity {
     @Id
@@ -34,9 +36,7 @@ public class ElfImgEntity {
 
 
     @Relationship(type = "HAS_SYMINFO", direction = OUTGOING)
-    private List<ELFSymEntity> symbolsInThisFile = new ArrayList<>();
-
-    public long totalSymbolsInThisFile = 0;
+    public List<ELFSymEntity> symbolsInThisFile = new ArrayList<>();
 
     //Only stores timing info
     @Relationship(type = "ImgInvokeSym", direction = OUTGOING)

@@ -21,7 +21,7 @@ public class ElfInfoRestController {
     ELFSymRepo elfSymRepo;
 
     @GetMapping()
-    public String getELFImg(Long jobid, Integer symPagingNum) {
+    public List<ElfImgInfoQueryResult> getELFImg(Long jobid, Integer symPagingNum) {
         if (symPagingNum == null) {
             symPagingNum = 5;
         }
@@ -32,7 +32,7 @@ public class ElfInfoRestController {
             curImg.setSymbolsInThisFile(allSyms);
         }
 
-        return "Yes";
+        return allImgs;
     }
 
 //    @GetMapping("/{jobid}/{imgid}")

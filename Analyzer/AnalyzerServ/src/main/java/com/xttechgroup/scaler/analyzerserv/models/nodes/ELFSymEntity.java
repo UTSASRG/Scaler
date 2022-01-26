@@ -1,6 +1,7 @@
 package com.xttechgroup.scaler.analyzerserv.models.nodes;
 
 import com.xttechgroup.scaler.analyzerserv.ELFSymbolInfoMsg;
+import lombok.Data;
 import org.springframework.data.neo4j.core.schema.*;
 
 import java.util.*;
@@ -8,6 +9,7 @@ import java.util.*;
 // CREATE INDEX ON :ElfSymInfo(scalerId)
 // CREATE INDEX ON :ElfSymInfo(libFileId)
 // CREATE INDEX ON :ElfSymInfo(hookedId)
+@Data
 @Node("ElfSymInfo")
 public class ELFSymEntity {
     @Id
