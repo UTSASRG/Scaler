@@ -30,9 +30,6 @@ public class ELFSymEntity {
     @Property
     Long hookedId;
 
-    @Property
-    ElfImgEntity job;
-
     //Used for HAS_SYM insertion internally
     //public long elfImgIdIndex;
 

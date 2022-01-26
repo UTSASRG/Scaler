@@ -5,13 +5,12 @@ import com.xttechgroup.scaler.analyzerserv.*;
 import com.xttechgroup.scaler.analyzerserv.models.nodes.ELFSymEntity;
 import com.xttechgroup.scaler.analyzerserv.models.nodes.ElfImgEntity;
 import com.xttechgroup.scaler.analyzerserv.models.nodes.JobEntity;
-import com.xttechgroup.scaler.analyzerserv.models.repository.ELFImgInfoRepo;
-import com.xttechgroup.scaler.analyzerserv.models.repository.ELFSymInfoRepo;
+import com.xttechgroup.scaler.analyzerserv.models.repository.ELFImgRepo;
+import com.xttechgroup.scaler.analyzerserv.models.repository.ELFSymRepo;
 import com.xttechgroup.scaler.analyzerserv.models.repository.JobRepo;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.neo4j.driver.*;
-import org.neo4j.driver.summary.ResultSummary;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.*;
@@ -21,9 +20,9 @@ public class JobRpcController extends JobGrpc.JobImplBase {
     @Autowired
     JobRepo jobRepository;
     @Autowired
-    ELFSymInfoRepo elfSymInfoRepo;
+    ELFSymRepo elfSymInfoRepo;
     @Autowired
-    ELFImgInfoRepo elfImgInfoRepo;
+    ELFImgRepo elfImgInfoRepo;
     @Autowired
     Driver neo4jDriver;
 
@@ -129,6 +128,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                                                 "WHERE ID(curImg)=$insertedImgId[symNode.elfImgId]\n" +
                                                 "CREATE (newSym:ElfSymInfo) <-[:HAS_SYMINFO]- (curImg)" + "\n" +
                                                 "SET newSym.symbolName =symNode.symbolName, " +
+                                                "newSym.scalerId=symNode.scalerId, " +
                                                 "newSym.symbolType=symNode.symbolType, " +
                                                 "newSym.bindType=symNode.bindType, " +
                                                 "newSym.libFileId=symNode.libFileId, " +

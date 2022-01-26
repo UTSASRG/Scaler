@@ -29,10 +29,6 @@ public class JobEntity {
         this.id = id;
     }
 
-    public List<ElfImgEntity> getElfInfos() {
-        return elfInfos;
-    }
-
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof JobEntity) {

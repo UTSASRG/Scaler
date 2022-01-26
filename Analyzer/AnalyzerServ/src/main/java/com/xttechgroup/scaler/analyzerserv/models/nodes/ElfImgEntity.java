@@ -32,14 +32,11 @@ public class ElfImgEntity {
     @Property
     public long pltSecStartAddr;
 
-    @Property
-    ElfImgEntity job;
-
-    //    @Relationship(type = "HAS_IMG", direction = INCOMING)
-    //    public JobEntity jobEntity;
 
     @Relationship(type = "HAS_SYMINFO", direction = OUTGOING)
     private List<ELFSymEntity> symbolsInThisFile = new ArrayList<>();
+
+    public long totalSymbolsInThisFile = 0;
 
     //Only stores timing info
     @Relationship(type = "ImgInvokeSym", direction = OUTGOING)
