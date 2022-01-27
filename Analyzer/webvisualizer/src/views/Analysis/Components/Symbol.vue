@@ -36,7 +36,7 @@
           :expanded.sync="expanded"
           :server-items-length="elfItem.totalSymNumber"
           item-key="scalerId"
-          show-expand
+          @pagination="updateSymbol($event, itemIndex)"
           class="elevation-1"
         >
         </v-data-table>
@@ -61,7 +61,7 @@ export default {
     return {
       expanded: [],
       singleExpand: false,
-
+      pageLoaded: false, //When this is ture, pagination won't trigger an update on the server, thus sva
       elfSymInfoHeaders: [
         { text: "ScalerId", value: "scalerId" },
         { text: "Name", value: "symbolName" },
@@ -160,27 +160,67 @@ export default {
     getELFTableData: function (elfID) {
       return this.symbolList[elfID];
     },
-    getTotalSymNumber:function (elfItem){
-      console.log(elfItem)
-      return elfItem.totalSymNumber;
-    }
+    updateSymbol(pagingInfo, elfItemIndex) {
+      if (this.pageLoaded) {
+        var thiz = this;
+        // Data is not enough, requesting more
+        console.log("Data is not enough, requesting more");
+        axios
+          .get(
+            scalerConfig.$ANALYZER_SERVER_URL +
+              "/elfInfo/symbol?jobid=" +
+              this.jobid +
+              "&elfImgId=" +
+              this.elfList[elfItemIndex].nodeId +
+              "&symPagingStart=" +
+              pagingInfo.pageStart +
+              "&symPagingNum=" +
+              pagingInfo.itemsPerPage
+          )
+          .then(function (response) {
+            var curElfSymList = thiz.symbolList[elfItemIndex];
+            curElfSymList.splice(0);
+
+            for (var j = 0; j < response.data.length; j++) {
+              var curSym = response.data[j];
+
+              curElfSymList.push({
+                scalerId: curSym.scalerId,
+                symbolName: curSym.symbolName,
+                symbolType: curSym.symbolType,
+                bindType: curSym.bindType,
+                callerFileId: curSym.callerFileId,
+                symIdInFile: "N/A",
+                libFileId: curSym.libFileId,
+                gotAddr: curSym.gotAddr,
+                hooked: curSym.hooked,
+              });
+            }
+            // thiz.symbolList[elfItemIndex] = curElfSymList;
+            // console.log(thiz.symbolList[elfItemIndex])
+          });
+      }
+    },
   },
   mounted: function () {
-    console.log(
-      scalerConfig.$ANALYZER_SERVER_URL + "/elfInfo?jobid=" + this.jobid+''
-    );
     let thiz = this;
     //Getting ELFimgInfo from the server
     axios
-      .get(scalerConfig.$ANALYZER_SERVER_URL + "/elfInfo?jobid=" + this.jobid+"&symPagingNum=10")
+      .get(
+        scalerConfig.$ANALYZER_SERVER_URL +
+          "/elfInfo?jobid=" +
+          this.jobid +
+          "&symPagingNum=10"
+      )
       .then(function (response) {
         for (var i = 0; i < response.data.length; i++) {
           var curImg = response.data[i].curImg;
-          
+
           if (curImg.elfImgValid) {
             //Adding elfImgInfo
             thiz.elfList.push({
               elfName: path.basename(curImg.filePath),
+              nodeId: curImg.id,
               scalerId: 0,
               totalSymNumber: response.data[i].totalSymNumber,
               config: [
@@ -194,8 +234,7 @@ export default {
             });
             var curElfSymList = [];
             //Adding elfSymInfo
-            var j = 0
-            for (; j < curImg.symbolsInThisFile.length; j++) {
+            for (var j = 0; j < curImg.symbolsInThisFile.length; j++) {
               var curSym = curImg.symbolsInThisFile[j];
               curElfSymList.push({
                 scalerId: curSym.scalerId,
@@ -210,12 +249,10 @@ export default {
               });
             }
 
-            // for (; j < totalSymNumber; j++) {
-            //   curElfSymList.push({})
-            // }
             thiz.symbolList.push(curElfSymList);
           }
         }
+        thiz.pageLoaded=true;
       });
   },
 };

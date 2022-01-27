@@ -13,6 +13,9 @@ public interface ELFSymRepo extends Neo4jRepository<ELFSymEntity, Long> {
             "MATCH (curImg)-[:HAS_SYMINFO]->(curSym:ElfSymInfo)\n" +
             "WHERE id(curImg)=$elfImgId\n" +
             "return curSym\n" +
-            "LIMIT $pagingNum")
-    List<ELFSymEntity> getELFSyms(Long jobid, Long elfImgId, Integer pagingNum);
+            "SKIP $pagingStart\n" +
+            "LIMIT $pagingNum\n"
+            )
+    List<ELFSymEntity> getELFSyms(Long jobid, Long elfImgId, Integer pagingNum, Integer pagingStart);
+
 }
