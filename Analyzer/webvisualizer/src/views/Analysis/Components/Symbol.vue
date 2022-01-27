@@ -1,9 +1,9 @@
 <template>
   <v-container>
-    <v-row v-for="(elfItem, itemIndex) in elfList" :key="elfItem.elfName">
-      <v-col  sm="12" lg="4" >
+    <v-row class="mt-9" v-for="(elfItem, itemIndex) in elfList" :key="elfItem.elfName">
+      <v-col  lg="12" xl="4" >
       <v-list subheader three-line>
-        <v-subheader class="text-h4">{{ elfItem.elfName }}</v-subheader>
+        <v-subheader class="text-h5">{{ elfItem.elfName }}</v-subheader>
 
         <v-list-item
           v-for="elfConfigItem in elfItem.config"
@@ -26,7 +26,7 @@
         </v-list-item>
       </v-list>
       </v-col>
-      <v-col  sm="12" lg="8" >
+      <v-col  lg="12" xl="8" >
 
       <v-data-table
         :headers="elfSymInfoHeaders"
@@ -37,6 +37,7 @@
         item-key="scalerId"
         @pagination="updateSymbol($event, itemIndex)"
         class="elevation-1"
+        :footer-props="{'items-per-page-options':[5, 10, 30, 50, 100]}"
       >
       </v-data-table>
       </v-col>
@@ -73,79 +74,10 @@ export default {
       ],
       desserts: [],
       elfList: [
-        // {
-        //   elfName: "test.so",
-        //   scalerId: 0,
-        //   config: [
-        //     { key: "File Name", value: "test.so" },
-        //     { key: "File Path", value: "N/A" },
-        //     { key: "Addr Start", value: "N/A" },
-        //     { key: "Addr End", value: "N/A" },
-        //     { key: ".plt Start Addr", value: "N/A" },
-        //     { key: ".plt.sec Start Addr", value: "N/A" },
-        //   ],
-        // },{
-        //   elfName: "test1.so",
-        //   scalerId: 1,
-        //   config: [
-        //     { key: "File Name", value: "test1.so" },
-        //     { key: "File Path", value: "N/A" },
-        //     { key: "Addr Start", value: "N/A" },
-        //     { key: "Addr End", value: "N/A" },
-        //     { key: ".plt Start Addr", value: "N/A" },
-        //     { key: ".plt.sec Start Addr", value: "N/A" },
-        //   ],
-        // },
+        
       ],
       symbolList: [
-        // [
-        //   {
-        //     scalerId: "0",
-        //     symbolName: "N/A",
-        //     symbolType: "N/A",
-        //     bindType: "N/A",
-        //     callerFileId: "N/A",
-        //     symIdInFile: "N/A",
-        //     libFileId: "N/A",
-        //     gotAddr: "N/A",
-        //     hooked: "N/A",
-        //   },
-        //   {
-        //     scalerId: "1",
-        //     symbolName: "N/A",
-        //     symbolType: "N/A",
-        //     bindType: "N/A",
-        //     callerFileId: "N/A",
-        //     symIdInFile: "N/A",
-        //     libFileId: "N/A",
-        //     gotAddr: "N/A",
-        //     hooked: "N/A",
-        //   },
-        // ],
-        // [
-        //   {
-        //     scalerId: "0",
-        //     symbolName: "N/A",
-        //     symbolType: "N/A",
-        //     bindType: "N/A",
-        //     callerFileId: "N/A",
-        //     symIdInFile: "N/A",
-        //     libFileId: "N/A",
-        //     gotAddr: "N/A",
-        //     hooked: "N/A",
-        //   },
-        //   {
-        //     scalerId: "1",
-        //     symbolName: "N/A",
-        //     symbolType: "N/A",
-        //     bindType: "N/A",
-        //     callerFileId: "N/A",
-        //     symIdInFile: "N/A",
-        //     libFileId: "N/A",
-        //     gotAddr: "N/A",
-        //     hooked: "N/A",
-        //   },
-        // ]
+        
       ],
     };
   },
@@ -164,7 +96,6 @@ export default {
       if (this.pageLoaded) {
         var thiz = this;
         // Data is not enough, requesting more
-        console.log("Data is not enough, requesting more");
         axios
           .get(
             scalerConfig.$ANALYZER_SERVER_URL +
@@ -192,7 +123,7 @@ export default {
                 callerFileId: curSym.callerFileId,
                 symIdInFile: "N/A",
                 libFileId: curSym.libFileId,
-                gotAddr: curSym.gotAddr,
+                gotAddr: curSym.gotAddr.toString(16),
                 hooked: curSym.hooked,
               });
             }
@@ -224,12 +155,11 @@ export default {
               scalerId: 0,
               totalSymNumber: response.data[i].totalSymNumber,
               config: [
-                { key: "File Name", value: path.basename(curImg.filePath) },
                 { key: "File Path", value: curImg.filePath },
                 { key: "Addr Start", value: "N/A" },
                 { key: "Addr End", value: "N/A" },
-                { key: ".plt Start Addr", value: curImg.pltStartAddr },
-                { key: ".plt.sec Start Addr", value: curImg.pltSecStartAddr },
+                { key: ".plt Start Addr", value: curImg.pltStartAddr.toString(16) },
+                { key: ".plt.sec Start Addr", value: curImg.pltSecStartAddr.toString(16) },
               ],
             });
             var curElfSymList = [];
