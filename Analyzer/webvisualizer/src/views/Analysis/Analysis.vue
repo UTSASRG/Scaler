@@ -14,7 +14,7 @@
           v-for="item in menuItems"
           :key="item.id"
           link
-          :href="itemIdPath(id, item.path)"
+          :href="itemIdPath(jobid, item.path)"
         >
           <v-list-item-icon>
             <v-icon>{{ item.icon }}</v-icon>

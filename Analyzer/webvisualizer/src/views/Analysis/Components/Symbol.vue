@@ -146,7 +146,6 @@ export default {
       .then(function (response) {
         for (var i = 0; i < response.data.length; i++) {
           var curImg = response.data[i].curImg;
-
           if (curImg.elfImgValid) {
             //Adding elfImgInfo
             thiz.elfList.push({
@@ -156,10 +155,12 @@ export default {
               totalSymNumber: response.data[i].totalSymNumber,
               config: [
                 { key: "File Path", value: curImg.filePath },
-                { key: "Addr Start", value: "N/A" },
-                { key: "Addr End", value: "N/A" },
-                { key: ".plt Start Addr", value: curImg.pltStartAddr.toString(16) },
-                { key: ".plt.sec Start Addr", value: curImg.pltSecStartAddr.toString(16) },
+                { key: "Addr Start", value: curImg.addrStart.toString(16) },
+                { key: "Addr End", value: curImg.addrEnd.toString(16) },
+                { key: ".plt Start Addr", value: curImg.pltStartAddr==0?"N/A":curImg.pltStartAddr.toString(16) },
+                { key: ".plt.sec Start Addr", value: curImg.pltSecStartAddr==0?"N/A":curImg.pltSecStartAddr.toString(16) },
+                { key: "Symbol Count", value: response.data[i].totalSymNumber+"" },
+                { key: "Hooked percentage", value: response.data[i].hookedSymNumber/response.data[i].totalSymNumber },
               ],
             });
             var curElfSymList = [];

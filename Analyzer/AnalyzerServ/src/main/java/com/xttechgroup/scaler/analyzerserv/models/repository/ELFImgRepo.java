@@ -8,34 +8,28 @@ import org.springframework.data.neo4j.repository.query.Query;
 import java.util.List;
 
 public interface ELFImgRepo extends Neo4jRepository<ElfImgEntity, Long> {
-    /**
-     * Get all ELF img info and symbol info
-     *
-     * @return
-     */
-    @Query("MATCH (curJob:Job)-[:HAS_IMGINFO]->(curImg:ElfImgInfo)\n" +
-            "WHERE id(curJob)=0\n" +
-            "CALL {\n" +
-            "    WITH curImg\n" +
-            "    MATCH (curImg)-[r:HAS_SYMINFO]->(curSym:ElfSymInfo)\n" +
-            "    RETURN curSym,r\n" +
-            "    LIMIT 20\n" +
-            "}\n" +
-            "// Counting symbols\n" +
-            "MATCH (curImg)-[:HAS_SYMINFO]->(curSym1:ElfSymInfo)\n" +
-            "RETURN curImg,r AS symbolsInThisFile,curSym,count(curSym1)  AS totalSymbols")
-    List<ElfImgInfoQueryResult> getSymOfAnElfImg();
-
 
     /**
      * Get all ELF img info
      */
     @Query("MATCH (curJob:Job)-[:HAS_IMGINFO]->(curImg:ElfImgInfo)\n" +
             "WHERE id(curJob)=$jobID\n" +
-            "MATCH (curImg)-[:HAS_SYMINFO]->(curSym:ElfSymInfo)" +
-            "RETURN curImg,count(curSym) AS totalSymNumber")
-    List<ElfImgInfoQueryResult> getELFImgEntity(Long jobID);
+            "RETURN curImg\n"
+    )
+    List<ElfImgEntity> getELFImgEntity(Long jobID);
 
+    @Query("MATCH (curJob:Job)-[:HAS_IMGINFO]->(curImg:ElfImgInfo)\n" +
+            "WHERE id(curJob)=$jobID AND id(curImg)=$imgId\n" +
+            "MATCH (curImg)-[:HAS_SYMINFO]->(curSym:ElfSymInfo)\n" +
+            "WHERE  curSym.hooked=true\n" +
+            "RETURN count(curSym)")
+    Long getHookedSymSum(Long jobID, Long imgId);
+
+    @Query("MATCH (curJob:Job)-[:HAS_IMGINFO]->(curImg:ElfImgInfo)\n" +
+            "WHERE id(curJob)=$jobID AND id(curImg)=$imgId\n" +
+            "MATCH (curImg)-[:HAS_SYMINFO]->(curSym:ElfSymInfo)\n" +
+            "RETURN count(curSym)\n")
+    Long getAllSymSum(Long jobID, Long imgId);
 
 }
 

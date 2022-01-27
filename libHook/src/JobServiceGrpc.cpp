@@ -72,8 +72,57 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
                 ELFSymbolInfoMsg &elfSymbolInfoMsg = *elfInfoMsg.add_symbolinfointhisfile();
                 elfSymbolInfoMsg.set_scalerid(symbolInfo.scalerSymbolId);
                 elfSymbolInfoMsg.set_symbolname(symbolInfo.symbolName);
-                elfSymbolInfoMsg.set_symboltype(static_cast<analyzerserv::ELFSymType>(symbolInfo.type));
-                elfSymbolInfoMsg.set_bindtype(static_cast<analyzerserv::ELFBindType>(symbolInfo.bind));
+                std::string symbolType = "";
+                switch (symbolInfo.type) {
+                    case STT_NOTYPE:
+                        symbolType = "STT_NOTYPE";
+                        break;
+                    case STT_OBJECT:
+                        symbolType = "STT_OBJECT";
+                        break;
+                    case STT_FUNC:
+                        symbolType = "STT_FUNC";
+                        break;
+                    case STT_SECTION:
+                        symbolType = "STT_SECTION";
+                        break;
+                    case STT_FILE:
+                        symbolType = "STT_FILE";
+                        break;
+                    case STT_COMMON:
+                        symbolType = "STT_COMMON";
+                        break;
+                    case STT_TLS:
+                        symbolType = "STT_TLS";
+                        break;
+                    case STT_NUM:
+                        symbolType = "STT_NUM";
+                        break;
+                    default:
+                        symbolType = "UNKNOWN(" + std::to_string(symbolInfo.type) + ")";
+                        break;
+                }
+                elfSymbolInfoMsg.set_symboltype(symbolType);
+                std::string bindType = "";
+
+                switch (symbolInfo.bind) {
+                    case STB_LOCAL:
+                        bindType = "STB_LOCAL";
+                        break;
+                    case STB_GLOBAL:
+                        bindType = "STB_GLOBAL";
+                        break;
+                    case STB_WEAK:
+                        bindType = "STB_WEAK";
+                        break;
+                    case STB_NUM:
+                        bindType = "STB_NUM";
+                        break;
+                    default:
+                        bindType = "UNKNOWN(" + std::to_string(symbolInfo.type) + ")";
+                        break;
+                }
+                elfSymbolInfoMsg.set_bindtype(bindType);
                 elfSymbolInfoMsg.set_libfileid(symbolInfo.libraryFileScalerID);
                 elfSymbolInfoMsg.set_gotaddr(reinterpret_cast<long>(symbolInfo.gotEntry));
                 elfSymbolInfoMsg.set_hooked(symbolInfo.isHooked());

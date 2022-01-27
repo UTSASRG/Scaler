@@ -9,6 +9,7 @@ import java.util.*;
 // CREATE INDEX ON :ElfSymInfo(scalerId)
 // CREATE INDEX ON :ElfSymInfo(libFileId)
 // CREATE INDEX ON :ElfSymInfo(hookedId)
+// CREATE INDEX ON :ElfSymInfo(hooked)
 @Data
 @Node("ElfSymInfo")
 public class ELFSymEntity {
@@ -47,8 +48,8 @@ public class ELFSymEntity {
         Map<String, Object> n1 = new HashMap<>();
 
         n1.put("scalerId", symbolInfoMsg.getScalerId());
-        n1.put("symbolType", symbolInfoMsg.getSymbolType().name());
-        n1.put("bindType", symbolInfoMsg.getBindType().name());
+        n1.put("symbolType", symbolInfoMsg.getSymbolType());
+        n1.put("bindType", symbolInfoMsg.getBindType());
         n1.put("libFileId", symbolInfoMsg.getLibFileId());
         n1.put("gotAddr", symbolInfoMsg.getGotAddr());
         n1.put("hooked", symbolInfoMsg.getHooked());
