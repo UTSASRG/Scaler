@@ -4,7 +4,7 @@
       <v-list-item>
         <v-list-item-content>
           <v-list-item-title class="text-h6">Analyzing</v-list-item-title>
-          <v-list-item-subtitle>ID={{ id }}</v-list-item-subtitle>
+          <v-list-item-subtitle>ID={{ jobid }}</v-list-item-subtitle>
         </v-list-item-content>
       </v-list-item>
       <v-divider></v-divider>
@@ -26,7 +26,7 @@
         </v-list-item>
       </v-list>
     </v-navigation-drawer>
-    <router-view> </router-view>
+    <router-view :jobid="jobid"> </router-view>
   </v-container>
 </template>
 
@@ -73,7 +73,7 @@ export default {
       return "/analysis/"+id + "/" + itemPath;
     },
   },
-  props: ["id"],
+  props: ["jobid","id"],
   model: {},
   beforeMount() {
     this.$emit("updateDisplayName", "Analysis");

@@ -61,6 +61,7 @@
 
 export default {
   name: "",
+  props: ["jobid"],
   components: {
     // Welcome,
   },
@@ -97,5 +98,6 @@ export default {
       this.isDialogShown = shouldShow;
     },
   },
+  
 };
 </script>

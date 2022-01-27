@@ -3,7 +3,7 @@
     <v-app-bar app clipped-left>
       <v-toolbar-title class="overflow-visible">
         <v-img
-          :src="require('@/assets/logo.svg')"
+          :src="require('@/assets/imgs/logo.svg')"
           class="my-3"
           contain
           width="80px"

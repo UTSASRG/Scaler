@@ -1,5 +1,6 @@
 package com.xttechgroup.scaler.analyzerserv.models.nodes;
 
+import com.fasterxml.jackson.databind.annotation.JsonAppend;
 import com.xttechgroup.scaler.analyzerserv.ELFImgInfoMsg;
 import com.xttechgroup.scaler.analyzerserv.models.relations.ImgInvokeSym;
 import lombok.Data;
@@ -33,7 +34,8 @@ public class ElfImgEntity {
     public long pltStartAddr;
     @Property
     public long pltSecStartAddr;
-
+    @Property
+    public boolean elfImgValid;
 
     @Relationship(type = "HAS_SYMINFO", direction = OUTGOING)
     public List<ELFSymEntity> symbolsInThisFile = new ArrayList<>();
@@ -59,7 +61,6 @@ public class ElfImgEntity {
         n1.put("pltStartAddr", value.getPltStartAddr());
         n1.put("elfImgValid", value.getValid());
         n1.put("pltSecStartAddr", value.getPltSecStartAddr());
-
         //Used for HAS_IMG relation
         n1.put("jobId", jobId);
         return n1;

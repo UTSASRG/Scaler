@@ -1,6 +1,6 @@
 <template>
   <v-container>
-    <v-row v-for="elfItem in elfList" :key="elfItem.elfName">
+    <v-row v-for="(elfItem, itemIndex) in elfList" :key="elfItem.elfName">
       <v-col xl="12">
         <v-list subheader three-line>
           <v-subheader class="text-h4">{{ elfItem.elfName }}</v-subheader>
@@ -31,9 +31,10 @@
       <v-col xl="12">
         <v-data-table
           :headers="elfSymInfoHeaders"
-          :items="getELFTableData(elfItem.scalerId)"
+          :items="getELFTableData(itemIndex)"
           :single-expand="singleExpand"
           :expanded.sync="expanded"
+          :server-items-length="elfItem.totalSymNumber"
           item-key="scalerId"
           show-expand
           class="elevation-1"
@@ -47,6 +48,9 @@
 <script>
 // @ is an alias to /src
 // import Welcome from "@/components/Welcome.vue";
+import path from "path";
+import axios from "axios";
+import { scalerConfig } from "../../../../scalerconfig.js";
 
 export default {
   name: "",
@@ -69,83 +73,83 @@ export default {
       ],
       desserts: [],
       elfList: [
-        {
-          elfName: "test.so",
-          scalerId: 0,
-          config: [
-            { key: "File Name", value: "test.so" },
-            { key: "File Path", value: "N/A" },
-            { key: "Addr Start", value: "N/A" },
-            { key: "Addr End", value: "N/A" },
-            { key: ".plt Start Addr", value: "N/A" },
-            { key: ".plt.sec Start Addr", value: "N/A" },
-          ],
-        },{
-          elfName: "test1.so",
-          scalerId: 1,
-          config: [
-            { key: "File Name", value: "test1.so" },
-            { key: "File Path", value: "N/A" },
-            { key: "Addr Start", value: "N/A" },
-            { key: "Addr End", value: "N/A" },
-            { key: ".plt Start Addr", value: "N/A" },
-            { key: ".plt.sec Start Addr", value: "N/A" },
-          ],
-        },
+        // {
+        //   elfName: "test.so",
+        //   scalerId: 0,
+        //   config: [
+        //     { key: "File Name", value: "test.so" },
+        //     { key: "File Path", value: "N/A" },
+        //     { key: "Addr Start", value: "N/A" },
+        //     { key: "Addr End", value: "N/A" },
+        //     { key: ".plt Start Addr", value: "N/A" },
+        //     { key: ".plt.sec Start Addr", value: "N/A" },
+        //   ],
+        // },{
+        //   elfName: "test1.so",
+        //   scalerId: 1,
+        //   config: [
+        //     { key: "File Name", value: "test1.so" },
+        //     { key: "File Path", value: "N/A" },
+        //     { key: "Addr Start", value: "N/A" },
+        //     { key: "Addr End", value: "N/A" },
+        //     { key: ".plt Start Addr", value: "N/A" },
+        //     { key: ".plt.sec Start Addr", value: "N/A" },
+        //   ],
+        // },
       ],
       symbolList: [
-        [
-          {
-            scalerId: "0",
-            symbolName: "N/A",
-            symbolType: "N/A",
-            bindType: "N/A",
-            callerFileId: "N/A",
-            symIdInFile: "N/A",
-            libFileId: "N/A",
-            gotAddr: "N/A",
-            hooked: "N/A",
-          },
-          {
-            scalerId: "1",
-            symbolName: "N/A",
-            symbolType: "N/A",
-            bindType: "N/A",
-            callerFileId: "N/A",
-            symIdInFile: "N/A",
-            libFileId: "N/A",
-            gotAddr: "N/A",
-            hooked: "N/A",
-          },
-        ],
-        [
-          {
-            scalerId: "0",
-            symbolName: "N/A",
-            symbolType: "N/A",
-            bindType: "N/A",
-            callerFileId: "N/A",
-            symIdInFile: "N/A",
-            libFileId: "N/A",
-            gotAddr: "N/A",
-            hooked: "N/A",
-          },
-          {
-            scalerId: "1",
-            symbolName: "N/A",
-            symbolType: "N/A",
-            bindType: "N/A",
-            callerFileId: "N/A",
-            symIdInFile: "N/A",
-            libFileId: "N/A",
-            gotAddr: "N/A",
-            hooked: "N/A",
-          },
-        ]
+        // [
+        //   {
+        //     scalerId: "0",
+        //     symbolName: "N/A",
+        //     symbolType: "N/A",
+        //     bindType: "N/A",
+        //     callerFileId: "N/A",
+        //     symIdInFile: "N/A",
+        //     libFileId: "N/A",
+        //     gotAddr: "N/A",
+        //     hooked: "N/A",
+        //   },
+        //   {
+        //     scalerId: "1",
+        //     symbolName: "N/A",
+        //     symbolType: "N/A",
+        //     bindType: "N/A",
+        //     callerFileId: "N/A",
+        //     symIdInFile: "N/A",
+        //     libFileId: "N/A",
+        //     gotAddr: "N/A",
+        //     hooked: "N/A",
+        //   },
+        // ],
+        // [
+        //   {
+        //     scalerId: "0",
+        //     symbolName: "N/A",
+        //     symbolType: "N/A",
+        //     bindType: "N/A",
+        //     callerFileId: "N/A",
+        //     symIdInFile: "N/A",
+        //     libFileId: "N/A",
+        //     gotAddr: "N/A",
+        //     hooked: "N/A",
+        //   },
+        //   {
+        //     scalerId: "1",
+        //     symbolName: "N/A",
+        //     symbolType: "N/A",
+        //     bindType: "N/A",
+        //     callerFileId: "N/A",
+        //     symIdInFile: "N/A",
+        //     libFileId: "N/A",
+        //     gotAddr: "N/A",
+        //     hooked: "N/A",
+        //   },
+        // ]
       ],
     };
   },
-  prop: {},
+  props: ["jobid"],
   model: {},
   methods: {
     showDialog: function (title, content, shouldShow) {
@@ -154,9 +158,65 @@ export default {
       this.isDialogShown = shouldShow;
     },
     getELFTableData: function (elfID) {
-      console.log(this.symbolList[elfID]);
       return this.symbolList[elfID];
     },
+    getTotalSymNumber:function (elfItem){
+      console.log(elfItem)
+      return elfItem.totalSymNumber;
+    }
+  },
+  mounted: function () {
+    console.log(
+      scalerConfig.$ANALYZER_SERVER_URL + "/elfInfo?jobid=" + this.jobid+''
+    );
+    let thiz = this;
+    //Getting ELFimgInfo from the server
+    axios
+      .get(scalerConfig.$ANALYZER_SERVER_URL + "/elfInfo?jobid=" + this.jobid+"&symPagingNum=10")
+      .then(function (response) {
+        for (var i = 0; i < response.data.length; i++) {
+          var curImg = response.data[i].curImg;
+          
+          if (curImg.elfImgValid) {
+            //Adding elfImgInfo
+            thiz.elfList.push({
+              elfName: path.basename(curImg.filePath),
+              scalerId: 0,
+              totalSymNumber: response.data[i].totalSymNumber,
+              config: [
+                { key: "File Name", value: path.basename(curImg.filePath) },
+                { key: "File Path", value: curImg.filePath },
+                { key: "Addr Start", value: "N/A" },
+                { key: "Addr End", value: "N/A" },
+                { key: ".plt Start Addr", value: curImg.pltStartAddr },
+                { key: ".plt.sec Start Addr", value: curImg.pltSecStartAddr },
+              ],
+            });
+            var curElfSymList = [];
+            //Adding elfSymInfo
+            var j = 0
+            for (; j < curImg.symbolsInThisFile.length; j++) {
+              var curSym = curImg.symbolsInThisFile[j];
+              curElfSymList.push({
+                scalerId: curSym.scalerId,
+                symbolName: curSym.symbolName,
+                symbolType: curSym.symbolType,
+                bindType: curSym.bindType,
+                callerFileId: curSym.callerFileId,
+                symIdInFile: "N/A",
+                libFileId: curSym.libFileId,
+                gotAddr: curSym.gotAddr,
+                hooked: curSym.hooked,
+              });
+            }
+
+            // for (; j < totalSymNumber; j++) {
+            //   curElfSymList.push({})
+            // }
+            thiz.symbolList.push(curElfSymList);
+          }
+        }
+      });
   },
 };
 </script>

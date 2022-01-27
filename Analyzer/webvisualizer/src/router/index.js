@@ -21,7 +21,7 @@ const routes = [
     component: () => import('@/views/Analysis/About.vue')
   },
   {
-    path: '/analysis/:id',
+    path: '/analysis/:jobid',
     name: 'Analysis',
     component: () => import('@/views/Analysis/Analysis.vue'),
     props: true,
@@ -54,7 +54,7 @@ const routes = [
     component: () => import('@/views/Run/About.vue')
   },
   {
-    path: '/run/:id',
+    path: '/run/:jobid',
     name: 'Run',
     component: () => import('@/views/Run/Run.vue'),
     props: true
