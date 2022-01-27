@@ -1,46 +1,46 @@
 <template>
   <v-container>
     <v-row v-for="(elfItem, itemIndex) in elfList" :key="elfItem.elfName">
-      <v-col xl="12">
-        <v-list subheader three-line>
-          <v-subheader class="text-h4">{{ elfItem.elfName }}</v-subheader>
+      <v-col  sm="12" lg="4" >
+      <v-list subheader three-line>
+        <v-subheader class="text-h4">{{ elfItem.elfName }}</v-subheader>
 
-          <v-list-item
-            v-for="elfConfigItem in elfItem.config"
-            :key="elfConfigItem.key"
-          >
-            <v-list-item-content>
-              <v-list-item-title>{{ elfConfigItem.key }}</v-list-item-title>
-              <v-list-item-subtitle>{{
-                elfConfigItem.value
-              }}</v-list-item-subtitle>
-            </v-list-item-content>
-            <v-list-item-action v-if="elfConfigItem.extra">
-              <v-btn
-                icon
-                @click="
-                  showDialog(elfConfigItem.key, elfConfigItem.extra, true)
-                "
-              >
-                <v-icon color="grey lighten-1">mdi-information</v-icon>
-              </v-btn>
-            </v-list-item-action>
-          </v-list-item>
-        </v-list>
-      </v-col>
-      <v-col xl="12">
-        <v-data-table
-          :headers="elfSymInfoHeaders"
-          :items="getELFTableData(itemIndex)"
-          :single-expand="singleExpand"
-          :expanded.sync="expanded"
-          :server-items-length="elfItem.totalSymNumber"
-          item-key="scalerId"
-          @pagination="updateSymbol($event, itemIndex)"
-          class="elevation-1"
+        <v-list-item
+          v-for="elfConfigItem in elfItem.config"
+          :key="elfConfigItem.key"
         >
-        </v-data-table>
+          <v-list-item-content>
+            <v-list-item-title>{{ elfConfigItem.key }}</v-list-item-title>
+            <v-list-item-subtitle>{{
+              elfConfigItem.value
+            }}</v-list-item-subtitle>
+          </v-list-item-content>
+          <v-list-item-action v-if="elfConfigItem.extra">
+            <v-btn
+              icon
+              @click="showDialog(elfConfigItem.key, elfConfigItem.extra, true)"
+            >
+              <v-icon color="grey lighten-1">mdi-information</v-icon>
+            </v-btn>
+          </v-list-item-action>
+        </v-list-item>
+      </v-list>
       </v-col>
+      <v-col  sm="12" lg="8" >
+
+      <v-data-table
+        :headers="elfSymInfoHeaders"
+        :items="getELFTableData(itemIndex)"
+        :single-expand="singleExpand"
+        :expanded.sync="expanded"
+        :server-items-length="elfItem.totalSymNumber"
+        item-key="scalerId"
+        @pagination="updateSymbol($event, itemIndex)"
+        class="elevation-1"
+      >
+      </v-data-table>
+      </v-col>
+
     </v-row>
   </v-container>
 </template>
@@ -252,7 +252,7 @@ export default {
             thiz.symbolList.push(curElfSymList);
           }
         }
-        thiz.pageLoaded=true;
+        thiz.pageLoaded = true;
       });
   },
 };
