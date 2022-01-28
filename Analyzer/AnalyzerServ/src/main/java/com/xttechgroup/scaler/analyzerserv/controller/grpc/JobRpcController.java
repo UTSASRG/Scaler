@@ -220,16 +220,26 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                     reply.setErrorMsg("Saving JobInvokeSym failed.");
                     tx.rollback();
                 } else {
-                    //Expand $imgInvokeSymInfos
+
+
                     query = "UNWIND $imgInvokeSymInfos AS imgInvokeSymInfo" + "\n" +
                             //Find image
-                            "MATCH (curJob:Job)-[:HAS_IMGINFO]->(curImg:ElfImgInfo)-[:HAS_SYMINFO]->(curSym:ElfSymInfo)\n" +
-                            "WHERE ID(curJob)=$jobId AND curImg.scalerId=0 AND curSym.hookedId=imgInvokeSymInfo.symHookedID\n" +
+                            "MATCH (curJob:Job)-[:HAS_IMGINFO]->(curImg:ElfImgInfo)\n" +
+                            "WHERE ID(curJob)=$jobId AND curImg.scalerId=imgInvokeSymInfo.libFileId\n" +
+                            "MATCH (curJob:Job)-[:HAS_IMGINFO]->()-[:HAS_SYMINFO]->(curSym:ElfSymInfo)\n" +
+                            "USING INDEX curSym:ElfSymInfo(hookedId)\n" +
+                            "WHERE ID(curJob)=$jobId AND curSym.hookedId=imgInvokeSymInfo.symHookedID\n" +
                             //Insert ImgInvokeSym relation
                             "CREATE (curImg)-[p:ImgInvokeSym {duration:imgInvokeSymInfo.duration,threadId:$threadId}]-> (curSym)\n" +
-                            "return imgInvokeSymInfo";
+                            "return curImg.scalerId,p,curSym.hookedId";
                     result = tx.run(query, params).list();
-
+                    if (result.size() != imgInvokeSymInfos.size()) {
+                        reply.setSuccess(false);
+                        reply.setErrorMsg("Saving JobInvokeSym failed.");
+                        tx.rollback();
+                    }else{
+                        reply.setSuccess(true);
+                    }
                 }
 
                 return null;
