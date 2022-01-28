@@ -34,7 +34,7 @@ endif ()
 include(${CMAKE_SOURCE_DIR}/proto/findThisGrpc.cmake)
 
 message("Build protobuffer models")
-set(GRPC_CPP_PLUGIN ${CMAKE_CURRENT_SOURCE_DIR}/lib/grpc_1_43_0/release/bin/grpc_cpp_plugin)
+set(GRPC_CPP_PLUGIN ${CMAKE_CURRENT_SOURCE_DIR}/lib/grpc_1_43_0/debug/bin/grpc_cpp_plugin)
 # https://stackoverflow.com/questions/41430991/cmake-with-protobuf-file-in-subdirectory
 file(TO_NATIVE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/src PROTOMODEL_PATH)
 file(TO_NATIVE_PATH ${CMAKE_CURRENT_BINARY_DIR}/build PROTOBINDING_PATH)

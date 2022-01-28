@@ -2,8 +2,6 @@
 #include <pthread.h>
 #include <thread>
 #include <chrono>
-#include "../../../src/include/util/hook/install.h"
-#include "../../../src/include/util/tool/StringTool.h"
 
 using namespace std;
 

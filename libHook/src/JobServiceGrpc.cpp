@@ -147,13 +147,15 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
     return true;
 }
 
-bool JobServiceGrpc::appendTimingMatrix(int64_t timingMatrixRows, int64_t timingMatrixCols, int64_t **timingMatrix,
+bool JobServiceGrpc::appendTimingMatrix(int64_t threadId, int64_t timingMatrixRows, int64_t timingMatrixCols,
+                                        int64_t **timingMatrix,
                                         int64_t countingVecRows, int64_t *countingVec) {
     BinaryExecResult reply;
     TimingMsg timingMsg;
     // Context for the client. It could be used to convey extra information to
     // the server and/or tweak certain RPC behaviors.
     timingMsg.set_jobid(Config::curJobId);
+    timingMsg.set_threadid(threadId);
     timingMsg.set_timgmatrixrows(timingMatrixRows);
     timingMsg.set_timgmatrixcols(timingMatrixCols);
     for (int i = 0; i < timingMatrixRows; ++i) {
@@ -173,10 +175,12 @@ bool JobServiceGrpc::appendTimingMatrix(int64_t timingMatrixRows, int64_t timing
     INFO_LOG("Waiting for server processing of timingMatrix to complete");
 
     if (!status.ok()) {
-        ERR_LOGS("Failed to send timing info to analyzer server because: %s", status.error_message().c_str());
+        ERR_LOGS("Failed to send timing info to analyzer server for thread %lu because: %s", pthread_self(),
+                 status.error_message().c_str());
         return false;
     } else if (!reply.success()) {
-        ERR_LOGS("Failed to send timing info to analyzer server because: %s", reply.errormsg().c_str());
+        ERR_LOGS("Failed to send timing info to analyzer server for thread %lu because: %s", pthread_self(),
+                 reply.errormsg().c_str());
         return false;
     }
 

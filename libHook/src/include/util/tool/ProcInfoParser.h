@@ -126,7 +126,6 @@ namespace scaler {
 
         std::map<uint8_t *, FileID> startAddrFileMap;
 
-
         // Map id to file name
         std::vector<std::string> idFileMap;
 

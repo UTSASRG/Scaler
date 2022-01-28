@@ -294,6 +294,7 @@ namespace scaler {
             fileBaseAddrMap.emplace_back(std::make_pair<uint8_t *, uint8_t *>((uint8_t *) curEntry.addrStart, nullptr));
 
             fileIDMap[curEntry.pathName] = idFileMap.size() - 1;
+
         } else {
             FileID fileID = fileIDMap.at(curEntry.pathName);
             //Assume address is incremental

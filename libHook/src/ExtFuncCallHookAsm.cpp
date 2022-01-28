@@ -56,6 +56,7 @@ public:
     int64_t *countingVec = nullptr;
     int64_t countingVecRows = -1;
 
+    bool isThreadCratedByMyself = false;
     short initialized = 0;
 
     Context(ssize_t libFileSize, ssize_t hookedSymbolSize);
@@ -127,21 +128,22 @@ public:
             if (!jobServiceGrpc.appendElfImgInfo(*scaler_extFuncCallHookAsm_thiz)) {
                 ERR_LOG("Cannot send elf info to server");
             }
-            Context *curContexPtr = curContext;
-            INFO_LOG("Sending timing info");
-            if (!jobServiceGrpc.appendTimingMatrix(curContexPtr->timingMatrixRows,
+
+        }
+        Context *curContexPtr = curContext;
+        if (!curContexPtr->isThreadCratedByMyself) {
+            INFO_LOGS("Sending timing info for thread %lu", pthread_self());
+            scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
+
+            if (!jobServiceGrpc.appendTimingMatrix(pthread_self(), curContexPtr->timingMatrixRows,
                                                    curContexPtr->timingMatrixCols,
                                                    curContexPtr->timingMatrix,
                                                    curContexPtr->countingVecRows,
                                                    curContexPtr->countingVec)) {
                 ERR_LOG("Cannot send timing and counting info to server");
-            }
-        }
 
 
-
-
-//        std::string execWorkDir;
+//        std::string execWorkDir;`
 //        if (!scaler::getPWD(execWorkDir)) {
 //            ERR_LOG("Cannot open PWD");
 //            return;
@@ -174,12 +176,18 @@ public:
 //        }
 //        //todo: check close success or not
 //        fclose(fp);
-        if (pthread_self() == scaler::Config::mainthreadID) {
-            INFO_LOGS("Check report at http://127.0.0.1:8080/analysis/%ld/execution", scaler::Config::curJobId);
-        }
+                INFO_LOGS("Data uploaded for thread %lu", pthread_self());
 
-        delete curContext;
-        curContext = nullptr;
+            } else {
+                INFO_LOGS("Thread %lu is created by myself", pthread_self());
+            }
+
+            if (pthread_self() == scaler::Config::mainthreadID) {
+                INFO_LOGS("Check report at http://127.0.0.1:8080/analysis/%ld/execution", scaler::Config::curJobId);
+            }
+            delete curContext;
+            curContext = nullptr;
+        }
     }
 };
 
@@ -246,6 +254,21 @@ namespace scaler {
             return false;
         }
 
+        //Record libHookAuto's address range
+        bool foundLibHookAuto = false;
+        for (int i = 0; i < pmParser.idFileMap.size(); ++i) {
+            //INFO_LOGS("%s",pmParser.idFileMap[i].c_str());
+            if (strEndsWith(pmParser.idFileMap[i], "libScalerHook-HookAuto.so")) {
+                foundLibHookAuto = true;
+                Config::libHookStartingAddr = reinterpret_cast<uint64_t>(pmParser.fileBaseAddrMap[i].first);
+                Config::libHookEndingAddr = reinterpret_cast<uint64_t>(pmParser.fileBaseAddrMap[i].second);
+                break;
+            }
+        }
+        if (!foundLibHookAuto) {
+            fatalError("Cannot find the address range of libScalerHook-HookAuto.so is there a name change?")
+            exit(-1);
+        }
 
         //Step3: Use callback to determine which ID to hook
         for (FileID curFileId = 0; curFileId < elfImgInfoMap.getSize(); ++curFileId) {
@@ -412,6 +435,8 @@ namespace scaler {
         //Allocate tls storage, set hook type to FULL
         if (!initTLS()) {
             ERR_LOG("Failed to initialize TLS");
+            //This is the main thread
+            curContext->isThreadCratedByMyself = false;
         }
         if (ldPreloadVal) {
             setenv("LD_PRELOAD", ldPreloadVal, true);
@@ -1118,7 +1143,7 @@ static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
     assert(curContext != nullptr);
     Context *curContextPtr = curContext; //Reduce thread local access
     if (curContextPtr->initialized == SCALER_TRUE) {
-        curContextPtr->countingVec[0]++;
+        curContextPtr->countingVec[curSymbol.hookedId]++;
     }
     //Skip afterhook
 //    asm volatile ("movq $1234, %%rdi" : /* No outputs. */
@@ -1214,6 +1239,7 @@ void *dummy_thread_function(void *data) {
      * Perform required actions at beginning of thread
      */
     initTLS();
+
     /**
      * Call actual thread function
      */
@@ -1224,6 +1250,18 @@ void *dummy_thread_function(void *data) {
     free(args);
     args = nullptr;
     bypassCHooks = SCALER_FALSE;
+
+    if (reinterpret_cast<uint64_t>(actualFuncPtr) < scaler::Config::libHookStartingAddr ||
+        reinterpret_cast<uint64_t>(actualFuncPtr) > scaler::Config::libHookEndingAddr) {
+        //This thread is created by the hook itself, we don't save anything
+        Context *curContextPtr = curContext;
+        INFO_LOGS("thread %lu is not created by myself", pthread_self());
+    } else {
+        Context *curContextPtr = curContext;
+        curContextPtr->isThreadCratedByMyself = true;
+        INFO_LOGS("thread %lu is created by myself", pthread_self());
+    }
+
     actualFuncPtr(argData);
     /**
      * Perform required actions after each thread function completes
@@ -1235,6 +1273,17 @@ void *dummy_thread_function(void *data) {
 // Main Pthread wrapper functions.
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)(void *), void *arg) {
     bypassCHooks = SCALER_TRUE;
+    //register uint64_t rbp asm ("rbp");
+    register uint64_t rsp asm ("rsp");
+    //void **callerAddr1 = reinterpret_cast<void **>(rbp+8);
+    //void *callerAddrPtr = *reinterpret_cast<void **>(rsp + 0x8 + 0x40);
+    //uint8_t callOpCode = *reinterpret_cast<uint8_t *>((uint64_t) callerAddrPtr - 0x5);
+    //if (callOpCode != 0xE8 && callOpCode != 0xFF && callOpCode != 0x9A) {
+    //    fatalError("Failed to parse the caller address for pthread_create")
+    //    exit(-1);
+    //}
+    INFO_LOGS("pthread_create %lu", pthread_self());
+
     if (scaler::pthread_create_orig == nullptr) {
         //load plt hook address
         scaler::pthread_create_orig = (scaler::pthread_create_origt) dlsym(RTLD_NEXT, "pthread_create");
@@ -1243,6 +1292,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
             return false;
         }
     }
+
     auto threadID = pthread_self();
     DBG_LOGS("pthread_create %lu", pthread_self());
 

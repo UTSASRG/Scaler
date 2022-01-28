@@ -49,11 +49,12 @@ message BinaryExecResult{
 
 message TimingMsg{
   int64 jobId = 1; //scaler run id
-  int64 timgMatrixrows = 2;
-  int64 timgMatrixcols = 3;
-  repeated int64 timgMatrixVal = 4;
-  int64 countingVecRows = 5;
-  repeated int64 countingVecVal = 6;
+  int64 threadId = 2; //scaler run id
+  int64 timgMatrixrows = 3;
+  int64 timgMatrixcols = 4;
+  repeated int64 timgMatrixVal = 5;
+  int64 countingVecRows = 6;
+  repeated int64 countingVecVal = 7;
 }
 
 

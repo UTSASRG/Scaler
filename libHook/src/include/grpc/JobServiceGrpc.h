@@ -14,8 +14,9 @@ namespace scaler {
 
         bool appendElfImgInfo(ExtFuncCallHookAsm &asmHook);
 
-        bool appendTimingMatrix(int64_t timingMatrixRows, int64_t timingMatrixCols, int64_t **timingMatrix,
-                                int64_t countingVecRows, int64_t *countingVec);
+        bool
+        appendTimingMatrix(int64_t threadId, int64_t timingMatrixRows, int64_t timingMatrixCols, int64_t **timingMatrix,
+                           int64_t countingVecRows, int64_t *countingVec);
 
 
     private:

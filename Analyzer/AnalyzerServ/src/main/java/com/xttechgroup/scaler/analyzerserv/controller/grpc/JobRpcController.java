@@ -166,6 +166,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
         try (Session session = neo4jDriver.session()) {
             session.writeTransaction(tx ->
             {
+                long threadId = timingMsg.getThreadId();
                 long timingMatrixRows = timingMsg.getTimgMatrixrows();
                 long timingMatrixCols = timingMsg.getTimgMatrixcols();
                 long countingVecRows = timingMsg.getCountingVecRows();
@@ -198,6 +199,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                 params.put("jobInvokeSymInfos", jobInvokeSymInfos);
                 params.put("imgInvokeSymInfos", imgInvokeSymInfos);
                 params.put("jobId", timingMsg.getJobId());
+                params.put("threadId", threadId);
 
 
                 //Bulk insert elf img
@@ -210,23 +212,23 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                                 "USING INDEX targetSymbol:ElfSymInfo(hookedId)\n" +
                                 "WHERE targetSymbol.hookedId=jobInvokeSymInfo.symInfo\n" +
                                 //Insert JobInvokeSym relation
-                                "CREATE (curJob)-[jobInvokeSym:JobInvokeSym {counts:jobInvokeSymInfo.counts}]-> (targetSymbol)\n" +
-                                "\n";
+                                "CREATE (curJob)-[jobInvokeSym:JobInvokeSym {counts:jobInvokeSymInfo.counts,threadId:$threadId}]-> (targetSymbol)\n" +
+                                "RETURN jobInvokeSym\n";
                 List<Record> result = tx.run(query, params).list();
-                if ( result.size() != jobInvokeSymInfos.size()) {
+                if (result.size() != jobInvokeSymInfos.size()) {
                     reply.setSuccess(false);
                     reply.setErrorMsg("Saving JobInvokeSym failed.");
                     tx.rollback();
                 } else {
                     //Expand $imgInvokeSymInfos
-                    query  = "UNWIND $imgInvokeSymInfos AS imgInvokeSymInfo" + "\n" +
+                    query = "UNWIND $imgInvokeSymInfos AS imgInvokeSymInfo" + "\n" +
                             //Find image
                             "MATCH (curJob:Job)-[:HAS_IMGINFO]->(curImg:ElfImgInfo)-[:HAS_SYMINFO]->(curSym:ElfSymInfo)\n" +
                             "WHERE ID(curJob)=$jobId AND curImg.scalerId=0 AND curSym.hookedId=imgInvokeSymInfo.symHookedID\n" +
                             //Insert ImgInvokeSym relation
-                            "CREATE (curImg)-[p:ImgInvokeSym {duration:imgInvokeSymInfo.duration}]-> (curSym)\n" +
+                            "CREATE (curImg)-[p:ImgInvokeSym {duration:imgInvokeSymInfo.duration,threadId:$threadId}]-> (curSym)\n" +
                             "return imgInvokeSymInfo";
-                    result  = tx.run(query, params).list();
+                    result = tx.run(query, params).list();
 
                 }
 
