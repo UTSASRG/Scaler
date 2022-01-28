@@ -176,10 +176,6 @@ public:
 //        }
 //        //todo: check close success or not
 //        fclose(fp);
-                INFO_LOGS("Data uploaded for thread %lu", pthread_self());
-
-            } else {
-                INFO_LOGS("Thread %lu is created by myself", pthread_self());
             }
 
             if (pthread_self() == scaler::Config::mainthreadID) {
@@ -1251,15 +1247,14 @@ void *dummy_thread_function(void *data) {
     args = nullptr;
     bypassCHooks = SCALER_FALSE;
 
-    if (reinterpret_cast<uint64_t>(actualFuncPtr) < scaler::Config::libHookStartingAddr ||
-        reinterpret_cast<uint64_t>(actualFuncPtr) > scaler::Config::libHookEndingAddr) {
+    if (scaler::Config::libHookStartingAddr <= reinterpret_cast<uint64_t>(actualFuncPtr) &&
+        scaler::Config::libHookEndingAddr <= reinterpret_cast<uint64_t>(actualFuncPtr)) {
         //This thread is created by the hook itself, we don't save anything
-        Context *curContextPtr = curContext;
-        INFO_LOGS("thread %lu is not created by myself", pthread_self());
+        DBG_LOGS("thread %lu is not created by myself", pthread_self());
     } else {
         Context *curContextPtr = curContext;
         curContextPtr->isThreadCratedByMyself = true;
-        INFO_LOGS("thread %lu is created by myself", pthread_self());
+        DBG_LOGS("thread %lu is created by myself", pthread_self());
     }
 
     actualFuncPtr(argData);
