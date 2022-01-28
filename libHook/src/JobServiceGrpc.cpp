@@ -147,6 +147,7 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
     return true;
 }
 
+pthread_mutex_t timingLock=PTHREAD_MUTEX_INITIALIZER;
 bool JobServiceGrpc::appendTimingMatrix(int64_t threadId, int64_t timingMatrixRows, int64_t timingMatrixCols,
                                         int64_t **timingMatrix,
                                         int64_t countingVecRows, int64_t *countingVec) {

@@ -109,6 +109,8 @@ __thread uint8_t bypassCHooks __attribute((tls_model("initial-exec"))) = SCALER_
 
 
 long long threadLocalOffsetToTCB = 0;
+pthread_mutex_t elfInfoUploadLock = PTHREAD_MUTEX_INITIALIZER;
+bool elfInfoUploaded = false;
 
 class DataSaver {
 public:
@@ -121,15 +123,19 @@ public:
             return;
         }
 
-        if (pthread_self() == scaler::Config::mainthreadID) {
+        pthread_mutex_lock(&elfInfoUploadLock);
+        if (!elfInfoUploaded) {
+
             INFO_LOG("Sending symbol info");
             scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
 
             if (!jobServiceGrpc.appendElfImgInfo(*scaler_extFuncCallHookAsm_thiz)) {
                 ERR_LOG("Cannot send elf info to server");
             }
-
+            elfInfoUploaded = true;
         }
+        pthread_mutex_unlock(&elfInfoUploadLock);
+
         Context *curContexPtr = curContext;
         if (!curContexPtr->isThreadCratedByMyself) {
             INFO_LOGS("Sending timing info for thread %lu", pthread_self());
@@ -1248,12 +1254,13 @@ void *dummy_thread_function(void *data) {
     bypassCHooks = SCALER_FALSE;
 
     if (scaler::Config::libHookStartingAddr <= reinterpret_cast<uint64_t>(actualFuncPtr) &&
-        scaler::Config::libHookEndingAddr <= reinterpret_cast<uint64_t>(actualFuncPtr)) {
+        reinterpret_cast<uint64_t>(actualFuncPtr) <= scaler::Config::libHookEndingAddr) {
         //This thread is created by the hook itself, we don't save anything
         DBG_LOGS("thread %lu is not created by myself", pthread_self());
-    } else {
         Context *curContextPtr = curContext;
         curContextPtr->isThreadCratedByMyself = true;
+    } else {
+
         DBG_LOGS("thread %lu is created by myself", pthread_self());
     }
 
@@ -1277,7 +1284,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     //    fatalError("Failed to parse the caller address for pthread_create")
     //    exit(-1);
     //}
-    INFO_LOGS("pthread_create %lu", pthread_self());
+    DBG_LOGS("%lu created a thread pthread_create", pthread_self());
 
     if (scaler::pthread_create_orig == nullptr) {
         //load plt hook address
