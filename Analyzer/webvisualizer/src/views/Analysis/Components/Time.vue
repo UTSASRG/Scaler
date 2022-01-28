@@ -11,7 +11,9 @@
                 multiple
                 chips
                 hint=""
+                v-model="selectedELFImg"
                 :items="countingELfImg"
+                @change="updateCountingGraph"
                 persistent-hint
               ></v-select>
             </v-list-item-content>
@@ -19,7 +21,7 @@
         </v-list>
       </v-col>
       <v-col lg="5">
-        <v-chart class="chart" :option="treeViewOption" />
+        <v-chart class="chart" :option="sunburstOption" />
       </v-col>
     </v-row>
     <v-spacer></v-spacer>
@@ -65,224 +67,10 @@ export default {
   components: {
     VChart,
   },
-  props: ["jobid"],
+  props: ["jobid",],
   data() {
-    const item1 = {
-      color: "#F54F4A",
-    };
-    const item2 = {
-      color: "#FF8C75",
-    };
-    const item3 = {
-      color: "#FFB499",
-    };
-    const chartData = [
-      {
-        children: [
-          {
-            value: 5,
-            children: [
-              {
-                value: 1,
-                itemStyle: item1,
-              },
-              {
-                value: 2,
-                children: [
-                  {
-                    value: 1,
-                    itemStyle: item2,
-                  },
-                ],
-              },
-              {
-                children: [
-                  {
-                    value: 1,
-                  },
-                ],
-              },
-            ],
-            itemStyle: item1,
-          },
-          {
-            value: 10,
-            children: [
-              {
-                value: 6,
-                children: [
-                  {
-                    value: 1,
-                    itemStyle: item1,
-                  },
-                  {
-                    value: 1,
-                  },
-                  {
-                    value: 1,
-                    itemStyle: item2,
-                  },
-                  {
-                    value: 1,
-                  },
-                ],
-                itemStyle: item3,
-              },
-              {
-                value: 2,
-                children: [
-                  {
-                    value: 1,
-                  },
-                ],
-                itemStyle: item3,
-              },
-              {
-                children: [
-                  {
-                    value: 1,
-                    itemStyle: item2,
-                  },
-                ],
-              },
-            ],
-            itemStyle: item1,
-          },
-        ],
-        itemStyle: item1,
-      },
-      {
-        value: 9,
-        children: [
-          {
-            value: 4,
-            children: [
-              {
-                value: 2,
-                itemStyle: item2,
-              },
-              {
-                children: [
-                  {
-                    value: 1,
-                    itemStyle: item1,
-                  },
-                ],
-              },
-            ],
-            itemStyle: item1,
-          },
-          {
-            children: [
-              {
-                value: 3,
-                children: [
-                  {
-                    value: 1,
-                  },
-                  {
-                    value: 1,
-                    itemStyle: item2,
-                  },
-                ],
-              },
-            ],
-            itemStyle: item3,
-          },
-        ],
-        itemStyle: item2,
-      },
-      {
-        value: 7,
-        children: [
-          {
-            children: [
-              {
-                value: 1,
-                itemStyle: item3,
-              },
-              {
-                value: 3,
-                children: [
-                  {
-                    value: 1,
-                    itemStyle: item2,
-                  },
-                  {
-                    value: 1,
-                  },
-                ],
-                itemStyle: item2,
-              },
-              {
-                value: 2,
-                children: [
-                  {
-                    value: 1,
-                  },
-                  {
-                    value: 1,
-                    itemStyle: item1,
-                  },
-                ],
-                itemStyle: item1,
-              },
-            ],
-            itemStyle: item3,
-          },
-        ],
-        itemStyle: item1,
-      },
-      {
-        children: [
-          {
-            value: 6,
-            children: [
-              {
-                value: 1,
-                itemStyle: item2,
-              },
-              {
-                value: 2,
-                children: [
-                  {
-                    value: 2,
-                    itemStyle: item2,
-                  },
-                ],
-                itemStyle: item1,
-              },
-              {
-                value: 1,
-                itemStyle: item3,
-              },
-            ],
-            itemStyle: item3,
-          },
-          {
-            value: 3,
-            children: [
-              {
-                value: 1,
-              },
-              {
-                children: [
-                  {
-                    value: 1,
-                    itemStyle: item2,
-                  },
-                ],
-              },
-              {
-                value: 1,
-              },
-            ],
-            itemStyle: item3,
-          },
-        ],
-        itemStyle: item1,
-      },
-    ];
+    let countingData = [];
+
     return {
       sunburstOption: {
         series: [
@@ -301,61 +89,19 @@ export default {
               color: "#ddd",
               borderWidth: 2,
             },
-            data: chartData,
-          },
-        ],
-      },
-      treeMapOption: {
-        series: [
-          {
-            name: "Disk Usage",
-            type: "treemap",
-            visibleMin: 300,
-            label: {
-              show: true,
-              formatter: "{b}",
-            },
-            itemStyle: {
-              borderColor: "#fff",
-            },
-            data: chartData,
-          },
-        ],
-      },
-      treeViewOption: {
-        series: [
-          {
-            type: "tree",
-            data: chartData,
-            top: "1%",
-            left: "7%",
-            bottom: "1%",
-            right: "20%",
-            symbolSize: 7,
-            label: {
-              position: "left",
-              verticalAlign: "middle",
-              align: "right",
-              fontSize: 9,
-            },
-            leaves: {
-              label: {
-                position: "right",
-                verticalAlign: "middle",
-                align: "left",
-              },
-            },
-            emphasis: {
-              focus: "descendant",
-            },
-            expandAndCollapse: true,
-            animationDuration: 550,
-            animationDurationUpdate: 750,
+            data: countingData,
+            countingData:countingData,
           },
         ],
       },
       countingELfImg: [],
+      selectedELFImg:null
     };
+  },
+  methods:{
+    updateCountingGraph:function(){
+      console.log(this.selectedELFImg)
+    }
   },
   mounted: function () {
     let thiz = this;
@@ -367,10 +113,10 @@ export default {
           "&elfImgValid=true"
       )
       .then(function (response) {
-        console.log(response.data)
-        for(var i=0;i<response.data.length;++i){
-          var curImg=response.data[i]
-          thiz.countingELfImg.push(path.basename(curImg.filePath))
+        console.log(response.data);
+        for (var i = 0; i < response.data.length; ++i) {
+          var curImg = response.data[i];
+          thiz.countingELfImg.push(path.basename(curImg.filePath));
         }
       });
   },

@@ -174,10 +174,12 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                 //Insert JobInvokeSym info
                 for (int symHookID = 0; symHookID < countingVecRows; ++symHookID) {
                     Map<String, Object> curInvokedSymInfo = new HashMap<>();
-                    curInvokedSymInfo.put("counts", timingMsg.getCountingVecVal(symHookID));
-                    curInvokedSymInfo.put("symInfo", symHookID);
-                    jobInvokeSymInfos.add(curInvokedSymInfo);
-
+                    long counts = timingMsg.getCountingVecVal(symHookID);
+                    if (counts > 0) {
+                        curInvokedSymInfo.put("counts", counts);
+                        curInvokedSymInfo.put("symInfo", symHookID);
+                        jobInvokeSymInfos.add(curInvokedSymInfo);
+                    }
                 }
 
                 //Insert ImgInvokeSym info
@@ -185,11 +187,14 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                 for (int libFileId = 0; libFileId < timingMatrixRows; ++libFileId) {
                     for (int symHookedID = 0; symHookedID < timingMatrixCols; ++symHookedID) {
                         Map<String, Object> curInvokedSymInfo = new HashMap<>();
+                        long duration = timingMsg.getTimgMatrixVal((int) (libFileId * timingMatrixRows + symHookedID));
                         //todo: Maybe using int is better?
-                        curInvokedSymInfo.put("duration", timingMsg.getTimgMatrixVal((int) (libFileId * timingMatrixRows + symHookedID)));
-                        curInvokedSymInfo.put("libFileId", libFileId);
-                        curInvokedSymInfo.put("symHookedID", symHookedID);
-                        imgInvokeSymInfos.add(curInvokedSymInfo);
+                        if (duration > 0) {
+                            curInvokedSymInfo.put("duration", duration);
+                            curInvokedSymInfo.put("libFileId", libFileId);
+                            curInvokedSymInfo.put("symHookedID", symHookedID);
+                            imgInvokeSymInfos.add(curInvokedSymInfo);
+                        }
                     }
                 }
 
@@ -237,7 +242,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                         reply.setSuccess(false);
                         reply.setErrorMsg("Saving JobInvokeSym failed.");
                         tx.rollback();
-                    }else{
+                    } else {
                         reply.setSuccess(true);
                     }
                 }
