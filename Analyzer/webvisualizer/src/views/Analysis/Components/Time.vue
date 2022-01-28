@@ -3,17 +3,17 @@
     <v-row>
       <v-col lg="6">
         <v-list subheader three-line>
-          <v-subheader class="text-h4">Settings</v-subheader>
+          <v-subheader class="text-h4">Counting</v-subheader>
           <v-list-item>
             <v-list-item-content>
-              <v-list-item-title>Visibility Layers</v-list-item-title>
-              <v-range-slider max="50" min="-50"></v-range-slider>
-            </v-list-item-content>
-          </v-list-item>
-          <v-list-item>
-            <v-list-item-content>
-              <v-list-item-title>Visible Processes</v-list-item-title>
-              <v-select :items="items"></v-select>
+              <v-select
+                label="Select visible ELF Image"
+                multiple
+                chips
+                hint=""
+                :items="countingELfImg"
+                persistent-hint
+              ></v-select>
             </v-list-item-content>
           </v-list-item>
         </v-list>
@@ -23,16 +23,12 @@
       </v-col>
     </v-row>
     <v-spacer></v-spacer>
-    <v-row>
-      <v-chart class="chart" :option="treeMapOption" />
-      <v-spacer></v-spacer>
-      <v-chart class="chart" :option="sunburstOption" />
-    </v-row>
-    <v-spacer></v-spacer>
   </v-container>
 </template>
 
 <script>
+import path from "path";
+import axios from "axios";
 import { use } from "echarts/core";
 import { CanvasRenderer } from "echarts/renderers";
 import {
@@ -49,6 +45,7 @@ import {
   PolarComponent,
 } from "echarts/components";
 import VChart from "vue-echarts";
+import { scalerConfig } from "../../../../scalerconfig.js";
 
 use([
   CanvasRenderer,
@@ -68,6 +65,7 @@ export default {
   components: {
     VChart,
   },
+  props: ["jobid"],
   data() {
     const item1 = {
       color: "#F54F4A",
@@ -356,7 +354,25 @@ export default {
           },
         ],
       },
+      countingELfImg: [],
     };
+  },
+  mounted: function () {
+    let thiz = this;
+    axios
+      .get(
+        scalerConfig.$ANALYZER_SERVER_URL +
+          "/elfInfo/image?jobid=" +
+          thiz.jobid +
+          "&elfImgValid=true"
+      )
+      .then(function (response) {
+        console.log(response.data)
+        for(var i=0;i<response.data.length;++i){
+          var curImg=response.data[i]
+          thiz.countingELfImg.push(path.basename(curImg.filePath))
+        }
+      });
   },
 };
 </script>

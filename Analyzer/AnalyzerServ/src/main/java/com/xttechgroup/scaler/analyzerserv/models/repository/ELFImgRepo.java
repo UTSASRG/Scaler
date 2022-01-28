@@ -1,7 +1,6 @@
 package com.xttechgroup.scaler.analyzerserv.models.repository;
 
 import com.xttechgroup.scaler.analyzerserv.models.nodes.ElfImgEntity;
-import com.xttechgroup.scaler.analyzerserv.models.queries.ElfImgInfoQueryResult;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 
@@ -13,10 +12,10 @@ public interface ELFImgRepo extends Neo4jRepository<ElfImgEntity, Long> {
      * Get all ELF img info
      */
     @Query("MATCH (curJob:Job)-[:HAS_IMGINFO]->(curImg:ElfImgInfo)\n" +
-            "WHERE id(curJob)=$jobID\n" +
+            "WHERE id(curJob)=$jobID AND (curImg.elfImgValid=$elfImgValid OR ($elfImgValid is null))\n" +
             "RETURN curImg\n"
     )
-    List<ElfImgEntity> getELFImgEntity(Long jobID);
+    List<ElfImgEntity> getELFImgEntity(Long jobID, Boolean elfImgValid);
 
     @Query("MATCH (curJob:Job)-[:HAS_IMGINFO]->(curImg:ElfImgInfo)\n" +
             "WHERE id(curJob)=$jobID AND id(curImg)=$imgId\n" +

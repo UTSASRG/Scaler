@@ -139,7 +139,7 @@ export default {
     axios
       .get(
         scalerConfig.$ANALYZER_SERVER_URL +
-          "/elfInfo?jobid=" +
+          "/elfInfo/all?jobid=" +
           this.jobid +
           "&symPagingNum=10"
       )
