@@ -67,7 +67,7 @@ export default {
   components: {
     VChart,
   },
-  props: ["jobid",],
+  props: ["jobid"],
   data() {
     let countingData = [];
 
@@ -90,21 +90,24 @@ export default {
               borderWidth: 2,
             },
             data: countingData,
-            countingData:countingData,
+            countingData: countingData,
           },
         ],
       },
       countingELfImg: [],
-      selectedELFImg:null
+      selectedELFImg: null,
     };
   },
-  methods:{
-    updateCountingGraph:function(){
-      console.log(this.selectedELFImg)
-    }
+  methods: {
+    updateCountingGraph: function () {
+      // Fetching calling info for that specific image
+      console.log(this.selectedELFImg);
+    },
   },
   mounted: function () {
     let thiz = this;
+    //Get the number of symbols invoked by a elf image
+
     axios
       .get(
         scalerConfig.$ANALYZER_SERVER_URL +
@@ -112,12 +115,26 @@ export default {
           thiz.jobid +
           "&elfImgValid=true"
       )
-      .then(function (response) {
-        console.log(response.data);
-        for (var i = 0; i < response.data.length; ++i) {
-          var curImg = response.data[i];
-          thiz.countingELfImg.push(path.basename(curImg.filePath));
-        }
+      .then(function (responseImgInfo) {
+        // console.log(responseImgInfo.data.map((elfImg) => elfImg.id))
+        axios
+          .post(
+            scalerConfig.$ANALYZER_SERVER_URL +
+              "/elfInfo/image/invokedSymNum",
+            {
+              jobid: thiz.jobid,
+              elfImgIds: responseImgInfo.data.map((elfImg) => elfImg.id),
+            }
+          )
+          .then(function (responseInvokeNum) {
+            console.log(responseInvokeNum)
+            for (var i = 0; i < responseImgInfo.data.length; ++i) {
+              if (responseInvokeNum[i] > 0) {
+                var curImg = responseImgInfo.data[i];
+                thiz.countingELfImg.push(path.basename(curImg.filePath));
+              }
+            }
+          });
       });
   },
 };

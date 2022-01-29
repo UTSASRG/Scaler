@@ -1,8 +1,7 @@
 package com.xttechgroup.scaler.analyzerserv.models.repository;
 
-import com.xttechgroup.scaler.analyzerserv.models.nodes.ELFSymEntity;
 import com.xttechgroup.scaler.analyzerserv.models.nodes.JobEntity;
-import com.xttechgroup.scaler.analyzerserv.models.queries.JobInvokedSymQueryResult;
+import com.xttechgroup.scaler.analyzerserv.models.POJO.JobInvokedSymQueryResult;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
 

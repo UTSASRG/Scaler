@@ -1,18 +1,18 @@
 package com.xttechgroup.scaler.analyzerserv.controller.restful;
 
+import com.xttechgroup.scaler.analyzerserv.models.POJO.ElfImgInvokedRequestBody;
 import com.xttechgroup.scaler.analyzerserv.models.nodes.ELFSymEntity;
 import com.xttechgroup.scaler.analyzerserv.models.nodes.ElfImgEntity;
-import com.xttechgroup.scaler.analyzerserv.models.queries.ElfImgInfoQueryResult;
+import com.xttechgroup.scaler.analyzerserv.models.POJO.ElfImgInfoQueryResult;
 import com.xttechgroup.scaler.analyzerserv.models.repository.ELFImgRepo;
 import com.xttechgroup.scaler.analyzerserv.models.repository.ELFSymRepo;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -46,6 +46,12 @@ public class ElfInfoRestController {
     public List<ElfImgEntity> getELFImg(Long jobid, Boolean elfImgValid) {
         List<ElfImgEntity> allImgs = elfImgRepo.getELFImgEntity(jobid, elfImgValid);
         return allImgs;
+    }
+
+    @PostMapping("/image/invokedSymNum")
+    public List<Long> getELFImgInvokedSum(@RequestBody ElfImgInvokedRequestBody requestBody) {
+        List<Long> result = elfImgRepo.getELFImgInvokedSymNum(requestBody.jobid, Arrays.asList(requestBody.elfImgIds));
+        return result;
     }
 
     @GetMapping("/symbol")

@@ -30,5 +30,12 @@ public interface ELFImgRepo extends Neo4jRepository<ElfImgEntity, Long> {
             "RETURN count(curSym)\n")
     Long getAllSymSum(Long jobID, Long imgId);
 
+    @Query("UNWIND $elfImgIds AS elfImgId\n" +
+            "MATCH (curJob:Job)-[p:JobInvokeSym]->(curSym:ElfSymInfo)\n" +
+            "WHERE id(curJob)=$jobid\n" +
+            "MATCH (curSym)<-[:HAS_SYMINFO]-(curImg:ElfImgInfo)\n" +
+            "WHERE id(curImg)=elfImgId\n" +
+            "RETURN curSym")
+    List<Long> getELFImgInvokedSymNum(Long jobid, List<Long> elfImgIds);
 }
 

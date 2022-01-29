@@ -80,7 +80,6 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
                     case STT_OBJECT:
                         symbolType = "STT_OBJECT";
                         break;
-                    case STT_FUNC:
                         symbolType = "STT_FUNC";
                         break;
                     case STT_SECTION:
@@ -88,6 +87,9 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
                         break;
                     case STT_FILE:
                         symbolType = "STT_FILE";
+
+
+                        
                         break;
                     case STT_COMMON:
                         symbolType = "STT_COMMON";

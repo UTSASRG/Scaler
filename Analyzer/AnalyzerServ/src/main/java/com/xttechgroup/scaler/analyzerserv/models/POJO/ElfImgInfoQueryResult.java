@@ -1,6 +1,5 @@
-package com.xttechgroup.scaler.analyzerserv.models.queries;
+package com.xttechgroup.scaler.analyzerserv.models.POJO;
 
-import com.xttechgroup.scaler.analyzerserv.models.nodes.ELFSymEntity;
 import com.xttechgroup.scaler.analyzerserv.models.nodes.ElfImgEntity;
 import lombok.Data;
 

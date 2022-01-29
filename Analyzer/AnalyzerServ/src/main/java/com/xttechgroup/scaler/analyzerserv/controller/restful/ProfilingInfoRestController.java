@@ -1,19 +1,5 @@
 package com.xttechgroup.scaler.analyzerserv.controller.restful;
 
-import com.xttechgroup.scaler.analyzerserv.models.nodes.ELFSymEntity;
-import com.xttechgroup.scaler.analyzerserv.models.nodes.ElfImgEntity;
-import com.xttechgroup.scaler.analyzerserv.models.queries.ElfImgInfoQueryResult;
-import com.xttechgroup.scaler.analyzerserv.models.repository.ELFImgRepo;
-import com.xttechgroup.scaler.analyzerserv.models.repository.ELFSymRepo;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.util.ArrayList;
-import java.util.List;
 //
 //@RestController
 //@RequestMapping("/profiling")
