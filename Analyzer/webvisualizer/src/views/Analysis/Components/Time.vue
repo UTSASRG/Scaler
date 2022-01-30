@@ -31,7 +31,13 @@
         </v-list>
       </v-col>
       <v-col lg="5">
-        <v-chart class="chart" :option="sunburstOption"/>
+        <v-chart
+          class="chart"
+          ref="countingChart"
+          :option="sunburstOption"
+          @click="nodeClick"
+          @finished="renderFinished"
+        />
       </v-col>
     </v-row>
     <v-spacer></v-spacer>
@@ -73,47 +79,48 @@ use([
 ]);
 
 export default {
-  name: "HelloWorld",
   components: {
     VChart,
   },
   props: ["jobid"],
   data() {
-    let _countingData = [
-     
-    ];
-
+    let _countingData = [];
+    let _countingLabel = [];
     return {
       sunburstOption: {
+        tooltip: { show: true },
+
         series: [
           {
             radius: ["15%", "80%"],
             type: "sunburst",
             sort: undefined,
-            emphasis: {
-              focus: "ancestor",
+            legend: {
+              data: ["Invocation counts"],
             },
             label: {
-              rotate: "radial",
+              show: false,
             },
             levels: [],
-            itemStyle: {
-              color: "#ddd",
-              borderWidth: 2,
-            },
             data: _countingData,
+            categories: _countingLabel,
           },
         ],
       },
       countingData: _countingData,
+      countingLabel: _countingLabel,
       countingELfImg: [],
       selectedELFImg: null,
+      updatePieChartFlag: null,
+      zoomToRootId: null,
+      curRootId: null,
     };
   },
   methods: {
     updateCountingGraph: function () {
       let thiz = this;
       var selectedIds = this.selectedELFImg.map((x) => x.id);
+
       axios
         .post(
           scalerConfig.$ANALYZER_SERVER_URL +
@@ -122,10 +129,18 @@ export default {
           { elfImgIds: selectedIds }
         )
         .then(function (responseCountingInfo) {
-          thiz.countingData.splice(0)
-          for(var i=0;i<thiz.selectedELFImg.length;i+=1){
-            //var curImg=thiz.selectedELFImg[i];
-            thiz.countingData.push({value:responseCountingInfo.data[i]})
+          thiz.countingData.splice(0);
+          thiz.countingLabel.splice(0);
+          for (var i = 0; i < thiz.selectedELFImg.length; i += 1) {
+            var curImg = thiz.selectedELFImg[i];
+            thiz.countingData.push({
+              value: responseCountingInfo.data[i],
+              name: curImg.filePath,
+              imgObj: curImg,
+              id: "" + curImg.id,
+              children: [],
+            });
+            thiz.countingLabel.push(curImg.filePath);
           }
         });
 
@@ -133,6 +148,53 @@ export default {
     },
     asdfwef: function (Hello) {
       return Hello;
+    },
+    renderFinished: function () {
+      if (this.zoomToRootId != null) {
+        let _curRootID = this.zoomToRootId;
+        this.zoomToRootId = null;
+        let countingChart = this.$refs.countingChart;
+
+        // setTimeout(function () {
+        console.log("Zoom back", countingChart, "" + _curRootID);
+        countingChart.dispatchAction({
+          type: "sunburstRootToNode",
+          targetNode: "" + _curRootID,
+        });
+        // }, 5000);
+      }
+    },
+    nodeClick: function (params) {
+      if (params.treePathInfo.length == 2) {
+        let thiz = this;
+        if (this.countingData.at(params.dataIndex - 1).children.length == 0) {
+          axios
+            .get(
+              scalerConfig.$ANALYZER_SERVER_URL +
+                "/elfInfo/image/counting/symbols?jobid=" +
+                thiz.jobid +
+                "&elfImgId=" +
+                params.data.imgObj.id
+            )
+            .then(function (responseSymInfo) {
+              for (var i = 0; i < responseSymInfo.data.length; i += 1) {
+                thiz.countingData.at(params.dataIndex - 1).children.push({
+                  value: responseSymInfo.data[i].counts,
+                  name: responseSymInfo.data[i].symbolName,
+                });
+              }
+              thiz.zoomToRootId = params.data.id;
+              thiz.curRootId = params.dataIndex - 1;
+            });
+        }
+      } else if (params.treePathInfo.length == 1) {
+        //Root node clicked
+
+        if (this.curRootId != null) {
+          this.countingData.at(this.curRootId).children.splice(0);
+          this.curRootId = null;
+        }
+      }
     },
   },
   mounted: function () {

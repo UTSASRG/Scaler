@@ -1,6 +1,7 @@
 package com.xttechgroup.scaler.analyzerserv.controller.restful;
 
 import com.xttechgroup.scaler.analyzerserv.models.POJO.MultipleElfIds;
+import com.xttechgroup.scaler.analyzerserv.models.POJO.SymCountQueryResult;
 import com.xttechgroup.scaler.analyzerserv.models.nodes.ELFSymEntity;
 import com.xttechgroup.scaler.analyzerserv.models.nodes.ElfImgEntity;
 import com.xttechgroup.scaler.analyzerserv.models.POJO.ElfImgInfoQueryResult;
@@ -8,11 +9,13 @@ import com.xttechgroup.scaler.analyzerserv.models.repository.ELFImgRepo;
 import com.xttechgroup.scaler.analyzerserv.models.repository.ELFSymRepo;
 import com.xttechgroup.scaler.analyzerserv.models.repository.JobInvokedSymRepo;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 @RestController
@@ -24,6 +27,8 @@ public class ElfInfoRestController {
     ELFSymRepo elfSymRepo;
     @Autowired
     JobInvokedSymRepo jobInvokedSymRepo;
+    @Autowired
+    Neo4jClient neo4jClient;
 
     @GetMapping("/all")
     public List<ElfImgInfoQueryResult> getAll(Long jobid, Integer symPagingNum) {
@@ -52,8 +57,8 @@ public class ElfInfoRestController {
 
     @PostMapping("/image/counting")
     public List<Long> getELFImgCounting(Long jobid, @RequestBody MultipleElfIds body,
-                                                HttpServletRequest request,
-                                                HttpServletResponse response) {
+                                        HttpServletRequest request,
+                                        HttpServletResponse response) {
         if (jobid == null || body == null) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         }
@@ -65,6 +70,16 @@ public class ElfInfoRestController {
         return countingRlt;
     }
 
+    @GetMapping("/image/counting/symbols")
+    public Collection<SymCountQueryResult> getELFImgCountingSymbols(Long jobid, Long elfImgId,
+                                                                    HttpServletRequest request,
+                                                                    HttpServletResponse response) {
+        if (jobid == null || elfImgId == null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        }
+
+        return jobInvokedSymRepo.getELFImgCountSymbols(jobid, elfImgId);
+    }
 
     @GetMapping("/symbol")
     public List<ELFSymEntity> getELFSymbol(Long jobid, Long elfImgId, Integer symPagingStart, Integer symPagingNum,
