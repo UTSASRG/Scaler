@@ -13,15 +13,25 @@
                 hint=""
                 v-model="selectedELFImg"
                 :items="countingELfImg"
-                @change="updateCountingGraph"
+                @change="updateCountingGraph()"
+                item-text="baseName"
+                :item-value="asdfwef"
                 persistent-hint
               ></v-select>
+            </v-list-item-content>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-content>
+              <v-text-field
+                label="Visible symbol limit"
+                value="20"
+              ></v-text-field>
             </v-list-item-content>
           </v-list-item>
         </v-list>
       </v-col>
       <v-col lg="5">
-        <v-chart class="chart" :option="sunburstOption" />
+        <v-chart class="chart" :option="sunburstOption"/>
       </v-col>
     </v-row>
     <v-spacer></v-spacer>
@@ -69,7 +79,9 @@ export default {
   },
   props: ["jobid"],
   data() {
-    let countingData = [];
+    let _countingData = [
+     
+    ];
 
     return {
       sunburstOption: {
@@ -89,19 +101,38 @@ export default {
               color: "#ddd",
               borderWidth: 2,
             },
-            data: countingData,
-            countingData: countingData,
+            data: _countingData,
           },
         ],
       },
+      countingData: _countingData,
       countingELfImg: [],
       selectedELFImg: null,
     };
   },
   methods: {
     updateCountingGraph: function () {
+      let thiz = this;
+      var selectedIds = this.selectedELFImg.map((x) => x.id);
+      axios
+        .post(
+          scalerConfig.$ANALYZER_SERVER_URL +
+            "/elfInfo/image/counting?jobid=" +
+            thiz.jobid,
+          { elfImgIds: selectedIds }
+        )
+        .then(function (responseCountingInfo) {
+          thiz.countingData.splice(0)
+          for(var i=0;i<thiz.selectedELFImg.length;i+=1){
+            //var curImg=thiz.selectedELFImg[i];
+            thiz.countingData.push({value:responseCountingInfo.data[i]})
+          }
+        });
+
       // Fetching calling info for that specific image
-      console.log(this.selectedELFImg);
+    },
+    asdfwef: function (Hello) {
+      return Hello;
     },
   },
   mounted: function () {
@@ -117,24 +148,11 @@ export default {
       )
       .then(function (responseImgInfo) {
         // console.log(responseImgInfo.data.map((elfImg) => elfImg.id))
-        axios
-          .post(
-            scalerConfig.$ANALYZER_SERVER_URL +
-              "/elfInfo/image/invokedSymNum",
-            {
-              jobid: thiz.jobid,
-              elfImgIds: responseImgInfo.data.map((elfImg) => elfImg.id),
-            }
-          )
-          .then(function (responseInvokeNum) {
-            console.log(responseInvokeNum)
-            for (var i = 0; i < responseImgInfo.data.length; ++i) {
-              if (responseInvokeNum[i] > 0) {
-                var curImg = responseImgInfo.data[i];
-                thiz.countingELfImg.push(path.basename(curImg.filePath));
-              }
-            }
-          });
+        for (var i = 0; i < responseImgInfo.data.length; ++i) {
+          var curImg = responseImgInfo.data[i];
+          thiz.$set(curImg, "baseName", path.basename(curImg.filePath));
+          thiz.countingELfImg.push(curImg);
+        }
       });
   },
 };
