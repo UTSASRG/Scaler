@@ -7,7 +7,7 @@ import com.xttechgroup.scaler.analyzerserv.models.nodes.ElfImgEntity;
 import com.xttechgroup.scaler.analyzerserv.models.POJO.ElfImgInfoQueryResult;
 import com.xttechgroup.scaler.analyzerserv.models.repository.ELFImgRepo;
 import com.xttechgroup.scaler.analyzerserv.models.repository.ELFSymRepo;
-import com.xttechgroup.scaler.analyzerserv.models.repository.JobInvokedSymRepo;
+import com.xttechgroup.scaler.analyzerserv.models.repository.InvokedSymRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +26,7 @@ public class ElfInfoRestController {
     @Autowired
     ELFSymRepo elfSymRepo;
     @Autowired
-    JobInvokedSymRepo jobInvokedSymRepo;
+    InvokedSymRepo jobInvokedSymRepo;
     @Autowired
     Neo4jClient neo4jClient;
 

@@ -10,8 +10,8 @@ import java.util.*;
 
 import static org.springframework.data.neo4j.core.schema.Relationship.Direction.OUTGOING;
 
-// CREATE INDEX ON :ElfImgInfo(scalerId)
-// CREATE INDEX ON :ElfImgInfo(jobID)
+// CREATE INDEX ON :ElfImg(scalerId)
+// CREATE INDEX ON :ElfImg(jobID)
 
 @Data
 @Node("ElfImgInfo")
@@ -37,7 +37,7 @@ public class ElfImgEntity {
     @Property
     public boolean elfImgValid;
 
-    @Relationship(type = "HAS_SYMINFO", direction = OUTGOING)
+    @Relationship(type = "HAS_EXTSYM", direction = OUTGOING)
     public List<ELFSymEntity> symbolsInThisFile = new ArrayList<>();
 
     //Only stores timing info

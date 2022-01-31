@@ -97,7 +97,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                             String query = "UNWIND $imgNodes AS imgNode" + "\n" +
                                     "MATCH (curJob:Job)\n" +
                                     "WHERE ID(curJob)=imgNode.jobId\n" +
-                                    "CREATE (newImgNode:ElfImgInfo) <-[:HAS_IMGINFO]- (curJob)" + "\n" +
+                                    "CREATE (newImgNode:ElfImg) <-[:HAS_IMG]- (curJob)" + "\n" +
                                     "SET newImgNode.scalerId =imgNode.scalerId, " +
                                     "newImgNode.filePath=imgNode.filePath, " +
                                     "newImgNode.elfImgValid=imgNode.elfImgValid, " +
@@ -124,9 +124,9 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                                 params.put("symNodes", symNodes);
                                 query =
                                         "UNWIND $symNodes AS symNode" + "\n" +
-                                                "MATCH (curImg:ElfImgInfo)\n" +
+                                                "MATCH (curImg:ElfImg)\n" +
                                                 "WHERE ID(curImg)=$insertedImgId[symNode.elfImgId]\n" +
-                                                "CREATE (newSym:ElfSymInfo) <-[:HAS_SYMINFO]- (curImg)" + "\n" +
+                                                "CREATE (newSym:ElfSym) <-[:HAS_EXTSYM]- (curImg)" + "\n" +
                                                 "SET newSym.symbolName =symNode.symbolName, " +
                                                 "newSym.scalerId=symNode.scalerId, " +
                                                 "newSym.symbolType=symNode.symbolType, " +
@@ -135,9 +135,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                                                 "newSym.gotAddr=symNode.gotAddr," +
                                                 "newSym.hooked=symNode.hooked, " +
                                                 "newSym.symbolName=symNode.symbolName, " +
-                                                "newSym.elfImgInfoEntity=symNode.elfImgInfoEntity," +
                                                 "newSym.hookedId=symNode.hookedId";
-
 
                                 Result result = tx.run(query, params);
                                 if (rltImg.size() != imgNodes.size()) {
@@ -184,20 +182,20 @@ public class JobRpcController extends JobGrpc.JobImplBase {
 
                 //Insert ImgInvokeSym info
                 assert timingMsg.getTimgMatrixrows() == timingMsg.getCountingVecRows();
-                for (int libFileId = 0; libFileId < timingMatrixRows; ++libFileId) {
-                    for (int symHookedID = 0; symHookedID < timingMatrixCols; ++symHookedID) {
+                for (int symHookedID = 0; symHookedID < timingMatrixRows; ++symHookedID) {
+                    for (int libFileScalerID = 0; libFileScalerID < timingMatrixCols; ++libFileScalerID) {
                         Map<String, Object> curInvokedSymInfo = new HashMap<>();
-                        long duration = timingMsg.getTimgMatrixVal((int) (libFileId * timingMatrixRows + symHookedID));
+                        long duration = timingMsg.getTimgMatrixVal((int) (symHookedID * timingMatrixCols + libFileScalerID));
                         //todo: Maybe using int is better?
                         if (duration > 0) {
                             curInvokedSymInfo.put("duration", duration);
-                            curInvokedSymInfo.put("libFileId", libFileId);
                             curInvokedSymInfo.put("symHookedID", symHookedID);
+                            curInvokedSymInfo.put("libFileScalerID", libFileScalerID);
                             imgInvokeSymInfos.add(curInvokedSymInfo);
+                            //System.out.println(symHookedID + " called " + libFileScalerID );
                         }
                     }
                 }
-
 
                 //Then, insert all nodes in one request
                 Map<String, Object> params = new HashMap<>();
@@ -213,8 +211,8 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                         "MATCH (curJob:Job)\n" +
                                 "WHERE ID(curJob)=$jobId \n" +
                                 "UNWIND $jobInvokeSymInfos AS jobInvokeSymInfo" + "\n" +
-                                "MATCH (curJob)-[]->()-[]->(targetSymbol:ElfSymInfo)\n" +
-                                "USING INDEX targetSymbol:ElfSymInfo(hookedId)\n" +
+                                "MATCH (curJob)-[:HAS_IMG]->(:ElfImg)-[:HAS_SYM]->(targetSymbol:ElfSym)\n" +
+                                "USING INDEX targetSymbol:ElfSym(hookedId)\n" +
                                 "WHERE targetSymbol.hookedId=jobInvokeSymInfo.symInfo\n" +
                                 //Insert JobInvokeSym relation
                                 "CREATE (curJob)-[jobInvokeSym:JobInvokeSym {counts:jobInvokeSymInfo.counts,threadId:$threadId}]-> (targetSymbol)\n" +
@@ -227,24 +225,21 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                 } else {
 
 
-                    query = "UNWIND $imgInvokeSymInfos AS imgInvokeSymInfo" + "\n" +
-                            //Find image
-                            "MATCH (curJob:Job)-[:HAS_IMGINFO]->(curImg:ElfImgInfo)\n" +
-                            "WHERE ID(curJob)=$jobId AND curImg.scalerId=imgInvokeSymInfo.libFileId\n" +
-                            "MATCH (curJob:Job)-[:HAS_IMGINFO]->()-[:HAS_SYMINFO]->(curSym:ElfSymInfo)\n" +
-                            "USING INDEX curSym:ElfSymInfo(hookedId)\n" +
-                            "WHERE ID(curJob)=$jobId AND curSym.hookedId=imgInvokeSymInfo.symHookedID\n" +
-                            //Insert ImgInvokeSym relation
-                            "CREATE (curImg)-[p:ImgInvokeSym {duration:imgInvokeSymInfo.duration,threadId:$threadId}]-> (curSym)\n" +
-                            "return curImg.scalerId,p,curSym.hookedId";
-                    result = tx.run(query, params).list();
-                    if (result.size() != imgInvokeSymInfos.size()) {
-                        reply.setSuccess(false);
-                        reply.setErrorMsg("Saving JobInvokeSym failed.");
-                        tx.rollback();
-                    } else {
+//                    query = "UNWIND $imgInvokeSymInfos AS imgInvokeSymInfo" + "\n" +
+//                            //Find image
+//                            "MATCH (curJob:Job)-[:HAS_IMG]->(:ElfImg)-[:HAS_EXTSYM]->(curSym:ElfSym)\n" +
+//                            "WHERE ID(curJob)=$jobId AND curSym.hookedId=imgInvokeSymInfo.symHookedID\n" +
+//                            //Insert ImgInvokeSym relation
+//                            "CREATE (curSym)-[p:SymInvokeImg {duration:imgInvokeSymInfo.duration,threadId:$threadId}]-> (curImg)\n" +
+//                            "return curImg.scalerId,p,curSym.hookedId";
+//                    result = tx.run(query, params).list();
+//                    if (result.size() != imgInvokeSymInfos.size()) {
+//                        reply.setSuccess(false);
+//                        reply.setErrorMsg("Saving JobInvokeSym failed.");
+//                        tx.rollback();
+//                    } else {
                         reply.setSuccess(true);
-                    }
+//                    }
                 }
 
                 return null;

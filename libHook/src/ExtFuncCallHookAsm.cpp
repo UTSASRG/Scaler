@@ -68,13 +68,14 @@ const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
 
 Context::Context(ssize_t libFileSize, ssize_t hookedSymbolSize) {
-    timingMatrixRows = libFileSize;
-    timingMatrixCols = hookedSymbolSize;
+    timingMatrixRows = hookedSymbolSize;
+    timingMatrixCols = libFileSize;
     timingMatrix = static_cast<int64_t **>( malloc(
-            (timingMatrixRows + 1) * timingMatrixCols * sizeof(int64_t)));
+            (timingMatrixRows + timingMatrixRows * timingMatrixCols) * sizeof(int64_t)));
     for (int i = 0; i < timingMatrixRows; ++i) {
-        timingMatrix[i] = reinterpret_cast<int64_t *>(timingMatrix + (i + 1) * timingMatrixCols);
+        timingMatrix[i] = reinterpret_cast<int64_t *>(timingMatrix + timingMatrixRows + i * timingMatrixCols);
     }
+
 
     if (!timingMatrix) {
         fatalError("Failed to allocate memory for timingMatrix");
@@ -87,7 +88,7 @@ Context::Context(ssize_t libFileSize, ssize_t hookedSymbolSize) {
         exit(-1);
     }
 
-    memset(timingMatrix + countingVecRows, 0, libFileSize * countingVecRows * sizeof(int64_t));
+    memset(timingMatrix + timingMatrixRows, 0, timingMatrixRows * timingMatrixCols * sizeof(int64_t));
     memset(countingVec, 0, countingVecRows * sizeof(int64_t));
     initialized = SCALER_TRUE;
 }
@@ -143,7 +144,7 @@ public:
 
             if (!jobServiceGrpc.appendTimingMatrix(pthread_self(), curContexPtr->timingMatrixRows,
                                                    curContexPtr->timingMatrixCols,
-                                                   curContexPtr->timingMatrix,
+                                                   curContexPtr->timingMatrix, //Skip index column
                                                    curContexPtr->countingVecRows,
                                                    curContexPtr->countingVec)) {
                 ERR_LOG("Cannot send timing and counting info to server");
@@ -1197,7 +1198,7 @@ void *cAfterHookHandlerLinux() {
     //Save this operation
     const long long duration = getunixtimestampms() - preHookTimestamp;
     if (curContextPtr->initialized == SCALER_TRUE) {
-        curContextPtr->timingMatrix[curSymbol.fileId][curSymbol.hookedId] = duration;
+        curContextPtr->timingMatrix[curSymbol.hookedId][curSymbol.libraryFileScalerID] += duration;
         if (!curContextPtr->extSymbolId.isEmpty()) {
             scaler::ExtFuncCallHookAsm::ExtSymInfo &parentSym = _this->allExtSymbol[curContextPtr->extSymbolId.peek()];
             if (parentSym.libraryFileScalerID == -1) {
@@ -1209,7 +1210,7 @@ void *cAfterHookHandlerLinux() {
                         parentSym.addr)].scalerId;
                 assert(parentSym.libraryFileScalerID != -1);
             }
-            curContextPtr->timingMatrix[parentSym.fileId][parentSym.hookedId] -= duration;
+            curContextPtr->timingMatrix[parentSym.hookedId][parentSym.libraryFileScalerID] -= duration;
         }
     }
     bypassCHooks = SCALER_FALSE;

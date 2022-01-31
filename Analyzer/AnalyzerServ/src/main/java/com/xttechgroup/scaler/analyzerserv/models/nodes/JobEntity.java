@@ -14,7 +14,7 @@ public class JobEntity {
     @GeneratedValue
     public Long id;
 
-    @Relationship(type = "HAS_IMGINFO", direction = OUTGOING)
+    @Relationship(type = "HAS_IMG", direction = OUTGOING)
     private List<ElfImgEntity> elfInfos = new ArrayList<>();
 
     //Only stores counting info

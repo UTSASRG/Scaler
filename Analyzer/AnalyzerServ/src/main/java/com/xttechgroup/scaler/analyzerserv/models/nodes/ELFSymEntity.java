@@ -6,10 +6,10 @@ import org.springframework.data.neo4j.core.schema.*;
 
 import java.util.*;
 
-// CREATE INDEX ON :ElfSymInfo(scalerId)
-// CREATE INDEX ON :ElfSymInfo(libFileId)
-// CREATE INDEX ON :ElfSymInfo(hookedId)
-// CREATE INDEX ON :ElfSymInfo(hooked)
+// CREATE INDEX ON :ElfSym(scalerId)
+// CREATE INDEX ON :ElfSym(libFileId)
+// CREATE INDEX ON :ElfSym(hookedId)
+// CREATE INDEX ON :ElfSym(hooked)
 @Data
 @Node("ElfSymInfo")
 public class ELFSymEntity {

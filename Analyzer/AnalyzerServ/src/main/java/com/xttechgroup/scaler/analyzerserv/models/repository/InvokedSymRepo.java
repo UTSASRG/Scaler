@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collection;
 import java.util.List;
 
-public interface JobInvokedSymRepo {
+public interface InvokedSymRepo {
 
 
     @Transactional(readOnly = true)

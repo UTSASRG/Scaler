@@ -8,9 +8,9 @@ import java.util.List;
 
 public interface ELFSymRepo extends Neo4jRepository<ELFSymEntity, Long> {
 
-    @Query("MATCH (curJob:Job)-[:HAS_IMGINFO]->(curImg:ElfImgInfo)\n" +
+    @Query("MATCH (curJob:Job)-[:HAS_IMG]->(curImg:ElfImg)\n" +
             "WHERE id(curJob)=$jobid\n" +
-            "MATCH (curImg)-[:HAS_SYMINFO]->(curSym:ElfSymInfo)\n" +
+            "MATCH (curImg)-[:HAS_EXTSYM]->(curSym:ElfSym)\n" +
             "WHERE id(curImg)=$elfImgId\n" +
             "return curSym\n" +
             "SKIP $pagingStart\n" +
