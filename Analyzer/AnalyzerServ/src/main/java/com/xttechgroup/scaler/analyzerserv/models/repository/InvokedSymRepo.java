@@ -18,12 +18,13 @@ public interface InvokedSymRepo {
 
 
     @Transactional(readOnly = true)
-    Collection<SymCountQueryResult> getELFImgCountSymbols(Long jobid, Long elfImgId, Long skipSymbol,
+    Collection<SymCountQueryResult> getELFImgCountSymbols(Long jobid, Long elfImgId, Long threadId, Long skipSymbol,
                                                           Long visibleSymbolLimit);
+
     @Transactional(readOnly = true)
     public Long getELFImgTiming(Long jobid, Long elfImgId);
 
     @Transactional(readOnly = true)
-    Collection<SymTimingQueryResult> getELFImgTimingSymbols(Long jobid, Long elfImgId, Long skipSymbol,
+    Collection<SymTimingQueryResult> getELFImgTimingSymbols(Long jobid, Long elfImgId, Long threadId, Long skipSymbol,
                                                             Long visibleSymbolLimit);
 }

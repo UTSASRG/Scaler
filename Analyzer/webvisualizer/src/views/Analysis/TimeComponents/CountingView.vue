@@ -28,6 +28,19 @@
               ></v-text-field>
             </v-list-item-content>
           </v-list-item>
+          <v-list-item>
+            <v-list-item-content>
+              <v-select
+                label="Select visible threads"
+                multiple
+                chips
+                hint=""
+                v-model="selectedELFImg"
+                :items="selectedThreads"
+                persistent-hint
+              ></v-select>
+            </v-list-item-content>
+          </v-list-item>
         </v-list>
       </v-col>
       <v-col lg="5">
@@ -175,11 +188,11 @@ export default {
                 thiz.jobid +
                 "&elfImgId=" +
                 params.data.imgObj.id +
-                "&visibleSymbolLimit="+
+                "&visibleSymbolLimit=" +
                 thiz.visibleSymbolLimit
             )
             .then(function (responseSymInfo) {
-              console.log(responseSymInfo)
+              console.log(responseSymInfo);
               for (var i = 0; i < responseSymInfo.data.length; i += 1) {
                 thiz.countingData.at(params.dataIndex - 1).children.push({
                   value: responseSymInfo.data[i].counts,

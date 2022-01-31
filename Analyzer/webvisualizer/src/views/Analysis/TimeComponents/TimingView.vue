@@ -28,6 +28,19 @@
               ></v-text-field>
             </v-list-item-content>
           </v-list-item>
+          <v-list-item>
+            <v-list-item-content>
+              <v-select
+                label="Select visible threads"
+                multiple
+                chips
+                hint=""
+                v-model="selectedELFImg"
+                :items="selectedThreads"
+                persistent-hint
+              ></v-select>
+            </v-list-item-content>
+          </v-list-item>
         </v-list>
       </v-col>
       <v-col lg="5">
@@ -111,7 +124,9 @@ export default {
       timingData: _timingData,
       timingLabel: _timingLabel,
       timingELfImg: [],
+      threadList:[],
       selectedELFImg: null,
+      selectedThreads:null,
       updatePieChartFlag: null,
       zoomToRootId: null,
       curRootId: null,
@@ -181,7 +196,7 @@ export default {
             .then(function (responseSymInfo) {
               //console.log(responseSymInfo)
               for (var i = 0; i < responseSymInfo.data.length; i += 1) {
-                  console.log(responseSymInfo.data[i])
+                console.log(responseSymInfo.data[i]);
                 thiz.timingData.at(params.dataIndex - 1).children.push({
                   value: responseSymInfo.data[i].durations,
                   name: responseSymInfo.data[i].symbolName,

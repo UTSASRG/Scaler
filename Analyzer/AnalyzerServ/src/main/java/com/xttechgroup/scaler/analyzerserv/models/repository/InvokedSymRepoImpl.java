@@ -30,7 +30,7 @@ public class InvokedSymRepoImpl implements InvokedSymRepo {
     }
 
     @Override
-    public Collection<SymCountQueryResult> getELFImgCountSymbols(Long jobid, Long elfImgId, Long skipSymbolNum,
+    public Collection<SymCountQueryResult> getELFImgCountSymbols(Long jobid, Long elfImgId, Long threadId,  Long skipSymbolNum,
                                                                  Long visibleSymbolLimit) {
         StringBuilder sb = new StringBuilder();
         sb.append("MATCH (curJob:Job)\n" +
@@ -74,7 +74,7 @@ public class InvokedSymRepoImpl implements InvokedSymRepo {
     }
 
     @Override
-    public Collection<SymTimingQueryResult> getELFImgTimingSymbols(Long jobid, Long elfImgId, Long skipSymbolNum,
+    public Collection<SymTimingQueryResult> getELFImgTimingSymbols(Long jobid, Long elfImgId, Long threadId,  Long skipSymbolNum,
                                                                    Long visibleSymbolLimit) {
         StringBuilder sb = new StringBuilder();
         sb.append("MATCH (curJob:Job)\n" +

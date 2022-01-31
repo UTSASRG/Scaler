@@ -57,7 +57,7 @@ public class ElfInfoRestController {
     }
 
     @PostMapping("/image/counting")
-    public List<Long> getELFImgCounting(Long jobid, @RequestBody MultipleElfIds body,
+    public List<Long> getELFImgCounting(Long jobid, Long threadId, @RequestBody MultipleElfIds body,
                                         HttpServletRequest request,
                                         HttpServletResponse response) {
         if (jobid == null || body == null) {
@@ -72,7 +72,7 @@ public class ElfInfoRestController {
     }
 
     @GetMapping("/image/counting/symbols")
-    public Collection<SymCountQueryResult> getELFImgCountingSymbols(Long jobid, Long elfImgId,
+    public Collection<SymCountQueryResult> getELFImgCountingSymbols(Long jobid, Long threadId, Long elfImgId,
                                                                     Long visibleSymbolLimit,
                                                                     HttpServletRequest request,
                                                                     HttpServletResponse response) {
@@ -80,10 +80,10 @@ public class ElfInfoRestController {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         }
         //Get symbol within limit first
-        Collection<SymCountQueryResult> symbolWithinLimit = jobInvokedSymRepo.getELFImgCountSymbols(jobid, elfImgId,
+        Collection<SymCountQueryResult> symbolWithinLimit = jobInvokedSymRepo.getELFImgCountSymbols(jobid, elfImgId, threadId,
                 null, visibleSymbolLimit);
         //Get the counitng sum of the rest of symbol
-        Collection<SymCountQueryResult> restSyms = jobInvokedSymRepo.getELFImgCountSymbols(jobid, elfImgId,
+        Collection<SymCountQueryResult> restSyms = jobInvokedSymRepo.getELFImgCountSymbols(jobid, elfImgId, threadId,
                 visibleSymbolLimit, null);
         Long restCounts = 0L;
         for (SymCountQueryResult restSym : restSyms) {
@@ -96,9 +96,9 @@ public class ElfInfoRestController {
 
 
     @PostMapping("/image/timing")
-    public List<Long> getELFImgTiming(Long jobid, @RequestBody MultipleElfIds body,
-                                        HttpServletRequest request,
-                                        HttpServletResponse response) {
+    public List<Long> getELFImgTiming(Long jobid, Long threadId, @RequestBody MultipleElfIds body,
+                                      HttpServletRequest request,
+                                      HttpServletResponse response) {
         if (jobid == null || body == null) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         }
@@ -111,7 +111,7 @@ public class ElfInfoRestController {
     }
 
     @GetMapping("/image/timing/symbols")
-    public Collection<SymTimingQueryResult> getELFImgTimingSymbols(Long jobid, Long elfImgId,
+    public Collection<SymTimingQueryResult> getELFImgTimingSymbols(Long jobid, Long threadId, Long elfImgId,
                                                                    Long visibleSymbolLimit,
                                                                    HttpServletRequest request,
                                                                    HttpServletResponse response) {
@@ -119,10 +119,10 @@ public class ElfInfoRestController {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         }
         //Get symbol within limit first
-        Collection<SymTimingQueryResult> symbolWithinLimit = jobInvokedSymRepo.getELFImgTimingSymbols(jobid, elfImgId,
+        Collection<SymTimingQueryResult> symbolWithinLimit = jobInvokedSymRepo.getELFImgTimingSymbols(jobid, elfImgId, threadId,
                 null, visibleSymbolLimit);
         //Get the counitng sum of the rest of symbol
-        Collection<SymTimingQueryResult> restSyms = jobInvokedSymRepo.getELFImgTimingSymbols(jobid, elfImgId,
+        Collection<SymTimingQueryResult> restSyms = jobInvokedSymRepo.getELFImgTimingSymbols(jobid, elfImgId, threadId,
                 visibleSymbolLimit, null);
         Long restDurations = 0L;
         for (SymTimingQueryResult restSym : restSyms) {
