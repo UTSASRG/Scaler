@@ -2,7 +2,7 @@
 
 ## Overview
 
-A tool to identify scalability issues in C/C++ programs. Then we will consider to extend to identify issues for machine learning programs. 
+A tool to identify scalability issues in C/C++ programs by using temporal flow analysis. Then we will consider to extend to identify issues for machine learning programs. We propose a new temporal flow analysis by monitroing the time spending on each components in the whole software stack. 
 
 About scaler, we may verify it on Firefox application (with multiple tabs to store, see Shan Lu's paper-2012), or other applications used in wPerf. 
 
