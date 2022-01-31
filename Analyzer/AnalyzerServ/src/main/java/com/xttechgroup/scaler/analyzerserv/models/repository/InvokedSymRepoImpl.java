@@ -80,7 +80,7 @@ public class InvokedSymRepoImpl implements InvokedSymRepo {
         sb.append("MATCH (curJob:Job)\n" +
                 "WHERE id(curJob)=$jobid\n" +
                 "MATCH (curImg)<-[r:ExtSymInvokeImg]-(invokedSym:ElfSym)\n" +
-                "WHERE id(curElfImg)=$elfImgId\n");
+                "WHERE id(curImg)=$elfImgId\n");
 
         sb.append("RETURN invokedSym.symbolName,r.duration\n");
 

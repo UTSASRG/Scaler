@@ -4,11 +4,11 @@ import lombok.Data;
 
 @Data
 public class SymTimingQueryResult {
-    public Long cycles;
+    public Long durations;
     public String symbolName;
 
-    public SymTimingQueryResult(Long cycles, String symbolName) {
-        this.cycles = cycles;
+    public SymTimingQueryResult(Long durations, String symbolName) {
+        this.durations = durations;
         this.symbolName = symbolName;
     }
 }

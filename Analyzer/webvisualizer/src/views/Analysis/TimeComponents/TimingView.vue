@@ -12,8 +12,8 @@
                 chips
                 hint=""
                 v-model="selectedELFImg"
-                :items="countingELfImg"
-                @change="updateCountingGraph()"
+                :items="timingELfImg"
+                @change="updateTimingGraph()"
                 item-text="baseName"
                 :item-value="asdfwef"
                 persistent-hint
@@ -33,7 +33,7 @@
       <v-col lg="5">
         <v-chart
           class="chart"
-          ref="countingChart"
+          ref="timingChart"
           :option="sunburstOption"
           @click="nodeClick"
           @finished="renderFinished"
@@ -85,8 +85,8 @@ export default {
   },
   props: ["jobid"],
   data() {
-    let _countingData = [];
-    let _countingLabel = [];
+    let _timingData = [];
+    let _timingLabel = [];
     return {
       sunburstOption: {
         tooltip: { show: true },
@@ -97,20 +97,20 @@ export default {
             type: "sunburst",
             sort: undefined,
             legend: {
-              data: ["Invocation counts"],
+              data: ["Invocation cycles"],
             },
             label: {
               show: false,
             },
             levels: [],
-            data: _countingData,
-            categories: _countingLabel,
+            data: _timingData,
+            categories: _timingLabel,
           },
         ],
       },
-      countingData: _countingData,
-      countingLabel: _countingLabel,
-      countingELfImg: [],
+      timingData: _timingData,
+      timingLabel: _timingLabel,
+      timingELfImg: [],
       selectedELFImg: null,
       updatePieChartFlag: null,
       zoomToRootId: null,
@@ -119,30 +119,30 @@ export default {
     };
   },
   methods: {
-    updateCountingGraph: function () {
+    updateTimingGraph: function () {
       let thiz = this;
       var selectedIds = this.selectedELFImg.map((x) => x.id);
-
       axios
         .post(
           scalerConfig.$ANALYZER_SERVER_URL +
-            "/elfInfo/image/counting?jobid=" +
+            "/elfInfo/image/timing?jobid=" +
             thiz.jobid,
           { elfImgIds: selectedIds }
         )
-        .then(function (responseCountingInfo) {
-          thiz.countingData.splice(0);
-          thiz.countingLabel.splice(0);
+        .then(function (responseTimingInfo) {
+          console.log(responseTimingInfo);
+          thiz.timingData.splice(0);
+          thiz.timingLabel.splice(0);
           for (var i = 0; i < thiz.selectedELFImg.length; i += 1) {
             var curImg = thiz.selectedELFImg[i];
-            thiz.countingData.push({
-              value: responseCountingInfo.data[i],
+            thiz.timingData.push({
+              value: responseTimingInfo.data[i],
               name: curImg.filePath,
               imgObj: curImg,
               id: "" + curImg.id,
               children: [],
             });
-            thiz.countingLabel.push(curImg.filePath);
+            thiz.timingLabel.push(curImg.filePath);
           }
         });
 
@@ -155,46 +155,48 @@ export default {
       if (this.zoomToRootId != null) {
         let _curRootID = this.zoomToRootId;
         this.zoomToRootId = null;
-        let countingChart = this.$refs.countingChart;
+        let timingChart = this.$refs.timingChart;
 
-        console.log("Zoom back", countingChart, "" + _curRootID);
-        countingChart.dispatchAction({
+        timingChart.dispatchAction({
           type: "sunburstRootToNode",
           targetNode: "" + _curRootID,
         });
       }
     },
     nodeClick: function (params) {
+      console.log("nodeclick");
       if (params.treePathInfo.length == 2) {
         let thiz = this;
-        if (this.countingData.at(params.dataIndex - 1).children.length == 0) {
+        if (this.timingData.at(params.dataIndex - 1).children.length == 0) {
           axios
             .get(
               scalerConfig.$ANALYZER_SERVER_URL +
-                "/elfInfo/image/counting/symbols?jobid=" +
+                "/elfInfo/image/timing/symbols?jobid=" +
                 thiz.jobid +
                 "&elfImgId=" +
                 params.data.imgObj.id +
-                "&visibleSymbolLimit="+
+                "&visibleSymbolLimit=" +
                 thiz.visibleSymbolLimit
             )
             .then(function (responseSymInfo) {
-              console.log(responseSymInfo)
+              //console.log(responseSymInfo)
               for (var i = 0; i < responseSymInfo.data.length; i += 1) {
-                thiz.countingData.at(params.dataIndex - 1).children.push({
-                  value: responseSymInfo.data[i].counts,
+                  console.log(responseSymInfo.data[i])
+                thiz.timingData.at(params.dataIndex - 1).children.push({
+                  value: responseSymInfo.data[i].durations,
                   name: responseSymInfo.data[i].symbolName,
                 });
               }
               thiz.zoomToRootId = params.data.id;
               thiz.curRootId = params.dataIndex - 1;
+              console.log(thiz.timingData);
             });
         }
       } else if (params.treePathInfo.length == 1) {
         //Root node clicked
 
         if (this.curRootId != null) {
-          this.countingData.at(this.curRootId).children.splice(0);
+          this.timingData.at(this.curRootId).children.splice(0);
           this.curRootId = null;
         }
       }
@@ -216,7 +218,7 @@ export default {
         for (var i = 0; i < responseImgInfo.data.length; ++i) {
           var curImg = responseImgInfo.data[i];
           thiz.$set(curImg, "baseName", path.basename(curImg.filePath));
-          thiz.countingELfImg.push(curImg);
+          thiz.timingELfImg.push(curImg);
         }
       });
   },

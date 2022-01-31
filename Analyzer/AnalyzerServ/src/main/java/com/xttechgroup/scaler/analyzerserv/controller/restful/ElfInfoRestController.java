@@ -2,6 +2,7 @@ package com.xttechgroup.scaler.analyzerserv.controller.restful;
 
 import com.xttechgroup.scaler.analyzerserv.models.POJO.MultipleElfIds;
 import com.xttechgroup.scaler.analyzerserv.models.POJO.SymCountQueryResult;
+import com.xttechgroup.scaler.analyzerserv.models.POJO.SymTimingQueryResult;
 import com.xttechgroup.scaler.analyzerserv.models.nodes.ELFSymEntity;
 import com.xttechgroup.scaler.analyzerserv.models.nodes.ElfImgEntity;
 import com.xttechgroup.scaler.analyzerserv.models.POJO.ElfImgInfoQueryResult;
@@ -90,6 +91,45 @@ public class ElfInfoRestController {
         }
 
         symbolWithinLimit.add(new SymCountQueryResult(restCounts, "Others..."));
+        return symbolWithinLimit;
+    }
+
+
+    @PostMapping("/image/timing")
+    public List<Long> getELFImgTiming(Long jobid, @RequestBody MultipleElfIds body,
+                                        HttpServletRequest request,
+                                        HttpServletResponse response) {
+        if (jobid == null || body == null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        }
+
+        ArrayList<Long> timingRlt = new ArrayList<>();
+        for (Long elfImgId : body.elfImgIds) {
+            timingRlt.add(jobInvokedSymRepo.getELFImgTiming(jobid, elfImgId));
+        }
+        return timingRlt;
+    }
+
+    @GetMapping("/image/timing/symbols")
+    public Collection<SymTimingQueryResult> getELFImgTimingSymbols(Long jobid, Long elfImgId,
+                                                                   Long visibleSymbolLimit,
+                                                                   HttpServletRequest request,
+                                                                   HttpServletResponse response) {
+        if (jobid == null || elfImgId == null) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        }
+        //Get symbol within limit first
+        Collection<SymTimingQueryResult> symbolWithinLimit = jobInvokedSymRepo.getELFImgTimingSymbols(jobid, elfImgId,
+                null, visibleSymbolLimit);
+        //Get the counitng sum of the rest of symbol
+        Collection<SymTimingQueryResult> restSyms = jobInvokedSymRepo.getELFImgTimingSymbols(jobid, elfImgId,
+                visibleSymbolLimit, null);
+        Long restDurations = 0L;
+        for (SymTimingQueryResult restSym : restSyms) {
+            restDurations += restSym.durations;
+        }
+
+        symbolWithinLimit.add(new SymTimingQueryResult(restDurations, "Others..."));
         return symbolWithinLimit;
     }
 
