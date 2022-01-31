@@ -1190,8 +1190,7 @@ void *cAfterHookHandlerLinux() {
         assert(_this->isSymbolAddrResolved(curSymbol));
         assert(curSymbol.addr != nullptr);
         //Resolve address
-        curSymbol.libraryFileScalerID = _this->elfImgInfoMap[_this->pmParser.findExecNameByAddr(
-                curSymbol.addr)].scalerId;
+        curSymbol.libraryFileScalerID = _this->pmParser.findExecNameByAddr(curSymbol.addr);
         assert(curSymbol.libraryFileScalerID != -1);
     }
 
@@ -1206,8 +1205,8 @@ void *cAfterHookHandlerLinux() {
                 assert(_this->isSymbolAddrResolved(parentSym));
                 assert(parentSym.addr != nullptr);
                 //Resolve address
-                parentSym.libraryFileScalerID = _this->elfImgInfoMap[_this->pmParser.findExecNameByAddr(
-                        parentSym.addr)].scalerId;
+                parentSym.libraryFileScalerID = _this->pmParser.findExecNameByAddr(
+                        parentSym.addr);
                 assert(parentSym.libraryFileScalerID != -1);
             }
             curContextPtr->timingMatrix[parentSym.hookedId][parentSym.libraryFileScalerID] -= duration;
