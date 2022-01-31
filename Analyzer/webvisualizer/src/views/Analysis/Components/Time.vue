@@ -24,7 +24,7 @@
             <v-list-item-content>
               <v-text-field
                 label="Visible symbol limit"
-                value="20"
+                v-model="visibleSymbolLimit"
               ></v-text-field>
             </v-list-item-content>
           </v-list-item>
@@ -114,6 +114,7 @@ export default {
       updatePieChartFlag: null,
       zoomToRootId: null,
       curRootId: null,
+      visibleSymbolLimit: 20,
     };
   },
   methods: {
@@ -155,13 +156,11 @@ export default {
         this.zoomToRootId = null;
         let countingChart = this.$refs.countingChart;
 
-        // setTimeout(function () {
         console.log("Zoom back", countingChart, "" + _curRootID);
         countingChart.dispatchAction({
           type: "sunburstRootToNode",
           targetNode: "" + _curRootID,
         });
-        // }, 5000);
       }
     },
     nodeClick: function (params) {
@@ -174,9 +173,12 @@ export default {
                 "/elfInfo/image/counting/symbols?jobid=" +
                 thiz.jobid +
                 "&elfImgId=" +
-                params.data.imgObj.id
+                params.data.imgObj.id +
+                "&visibleSymbolLimit="+
+                thiz.visibleSymbolLimit
             )
             .then(function (responseSymInfo) {
+              console.log(responseSymInfo)
               for (var i = 0; i < responseSymInfo.data.length; i += 1) {
                 thiz.countingData.at(params.dataIndex - 1).children.push({
                   value: responseSymInfo.data[i].counts,

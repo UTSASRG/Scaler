@@ -72,13 +72,25 @@ public class ElfInfoRestController {
 
     @GetMapping("/image/counting/symbols")
     public Collection<SymCountQueryResult> getELFImgCountingSymbols(Long jobid, Long elfImgId,
+                                                                    Long visibleSymbolLimit,
                                                                     HttpServletRequest request,
                                                                     HttpServletResponse response) {
         if (jobid == null || elfImgId == null) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
         }
+        //Get symbol within limit first
+        Collection<SymCountQueryResult> symbolWithinLimit = jobInvokedSymRepo.getELFImgCountSymbols(jobid, elfImgId,
+                null, visibleSymbolLimit);
+        //Get the counitng sum of the rest of symbol
+        Collection<SymCountQueryResult> restSyms = jobInvokedSymRepo.getELFImgCountSymbols(jobid, elfImgId,
+                visibleSymbolLimit, null);
+        Long restCounts = 0L;
+        for (SymCountQueryResult restSym : restSyms) {
+            restCounts += restSym.counts;
+        }
 
-        return jobInvokedSymRepo.getELFImgCountSymbols(jobid, elfImgId);
+        symbolWithinLimit.add(new SymCountQueryResult(restCounts, "Others..."));
+        return symbolWithinLimit;
     }
 
     @GetMapping("/symbol")

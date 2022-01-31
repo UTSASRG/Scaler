@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -30,17 +31,31 @@ public class JobInvokedSymRepoImpl implements JobInvokedSymRepo {
     }
 
     @Override
-    public Collection<SymCountQueryResult> getELFImgCountSymbols(Long jobid, Long elfImgId) {
+    public Collection<SymCountQueryResult> getELFImgCountSymbols(Long jobid, Long elfImgId, Long skipSymbolNum,
+                                                                 Long visibleSymbolLimit) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("MATCH (curJob:Job)\n" +
+                "WHERE id(curJob)=$jobid\n" +
+                "MATCH (curJob)-[r:JobInvokeSym]->(curSymbol:ElfSymInfo)<-[:HAS_SYMINFO]-(curElfImg:ElfImgInfo)\n" +
+                "WHERE id(curElfImg)=$elfImgId\n");
+
+        sb.append("RETURN curSymbol.symbolName,r.counts\n");
+
+        if (skipSymbolNum != null) {
+            sb.append("SKIP $skipSymbolNum\n");
+        }
+        if (visibleSymbolLimit != null) {
+            sb.append("LIMIT $visibleSymbolLimit\n");
+        }
         return this.neo4jClient
-                .query("MATCH (curJob:Job)\n" +
-                        "WHERE id(curJob)=$jobid\n" +
-                        "MATCH (curJob)-[r:JobInvokeSym]->(curSymbol:ElfSymInfo)<-[:HAS_SYMINFO]-(curElfImg:ElfImgInfo)\n" +
-                        "WHERE id(curElfImg)=$elfImgId\n" +
-                        "RETURN curSymbol.symbolName,r.counts")
+                .query(sb.toString())
                 .bind(jobid).to("jobid")
                 .bind(elfImgId).to("elfImgId")
+                .bind(skipSymbolNum).to("skipSymbolNum")
+                .bind(visibleSymbolLimit).to("visibleSymbolLimit")
                 .fetchAs(SymCountQueryResult.class)
                 .mappedBy((typeSystem, record) -> new SymCountQueryResult(record.get(1).asLong(), record.get(0).asString()))
                 .all();
+
     }
 }

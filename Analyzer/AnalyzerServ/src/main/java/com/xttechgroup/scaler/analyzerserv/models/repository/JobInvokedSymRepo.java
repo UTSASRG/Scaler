@@ -17,6 +17,7 @@ public interface JobInvokedSymRepo {
 
 
     @Transactional(readOnly = true)
-    Collection<SymCountQueryResult> getELFImgCountSymbols(Long jobid, Long elfImgId);
+    Collection<SymCountQueryResult> getELFImgCountSymbols(Long jobid, Long elfImgId, Long skipSymbol,
+                                                          Long visibleSymbolLimit);
 
 }
