@@ -14,7 +14,7 @@ import static org.springframework.data.neo4j.core.schema.Relationship.Direction.
 // CREATE INDEX ON :ElfImg(jobID)
 
 @Data
-@Node("ElfImgInfo")
+@Node("ElfImg")
 public class ElfImgEntity {
     @Id
     @GeneratedValue

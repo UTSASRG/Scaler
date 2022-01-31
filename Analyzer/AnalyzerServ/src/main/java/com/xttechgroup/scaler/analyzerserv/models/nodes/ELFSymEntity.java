@@ -11,7 +11,7 @@ import java.util.*;
 // CREATE INDEX ON :ElfSym(hookedId)
 // CREATE INDEX ON :ElfSym(hooked)
 @Data
-@Node("ElfSymInfo")
+@Node("ElfSym")
 public class ELFSymEntity {
     @Id
     @GeneratedValue
@@ -33,7 +33,7 @@ public class ELFSymEntity {
     @Property
     Long hookedId;
 
-    //Used for HAS_SYM insertion internally
+    //Used for HAS_EXTSYM insertion internally
     //public long elfImgIdIndex;
 
 

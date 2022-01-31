@@ -159,7 +159,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
     @Override
     public void appendTimingMatrix(TimingMsg timingMsg, StreamObserver<BinaryExecResult> responseObserver) {
         ArrayList<Map<String, Object>> jobInvokeSymInfos = new ArrayList<>();
-        ArrayList<Map<String, Object>> imgInvokeSymInfos = new ArrayList<>();
+        ArrayList<Map<String, Object>> extSymInvokeImgInfos = new ArrayList<>();
         BinaryExecResult.Builder reply = BinaryExecResult.newBuilder();
         try (Session session = neo4jDriver.session()) {
             session.writeTransaction(tx ->
@@ -191,7 +191,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                             curInvokedSymInfo.put("duration", duration);
                             curInvokedSymInfo.put("symHookedID", symHookedID);
                             curInvokedSymInfo.put("libFileScalerID", libFileScalerID);
-                            imgInvokeSymInfos.add(curInvokedSymInfo);
+                            extSymInvokeImgInfos.add(curInvokedSymInfo);
                             //System.out.println(symHookedID + " called " + libFileScalerID );
                         }
                     }
@@ -200,7 +200,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                 //Then, insert all nodes in one request
                 Map<String, Object> params = new HashMap<>();
                 params.put("jobInvokeSymInfos", jobInvokeSymInfos);
-                params.put("imgInvokeSymInfos", imgInvokeSymInfos);
+                params.put("extSymInvokeImgInfos", extSymInvokeImgInfos);
                 params.put("jobId", timingMsg.getJobId());
                 params.put("threadId", threadId);
 
@@ -211,7 +211,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                         "MATCH (curJob:Job)\n" +
                                 "WHERE ID(curJob)=$jobId \n" +
                                 "UNWIND $jobInvokeSymInfos AS jobInvokeSymInfo" + "\n" +
-                                "MATCH (curJob)-[:HAS_IMG]->(:ElfImg)-[:HAS_SYM]->(targetSymbol:ElfSym)\n" +
+                                "MATCH (curJob)-[:HAS_IMG]->(:ElfImg)-[:HAS_EXTSYM]->(targetSymbol:ElfSym)\n" +
                                 "USING INDEX targetSymbol:ElfSym(hookedId)\n" +
                                 "WHERE targetSymbol.hookedId=jobInvokeSymInfo.symInfo\n" +
                                 //Insert JobInvokeSym relation
@@ -224,22 +224,22 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                     tx.rollback();
                 } else {
 
-
-//                    query = "UNWIND $imgInvokeSymInfos AS imgInvokeSymInfo" + "\n" +
-//                            //Find image
-//                            "MATCH (curJob:Job)-[:HAS_IMG]->(:ElfImg)-[:HAS_EXTSYM]->(curSym:ElfSym)\n" +
-//                            "WHERE ID(curJob)=$jobId AND curSym.hookedId=imgInvokeSymInfo.symHookedID\n" +
-//                            //Insert ImgInvokeSym relation
-//                            "CREATE (curSym)-[p:SymInvokeImg {duration:imgInvokeSymInfo.duration,threadId:$threadId}]-> (curImg)\n" +
-//                            "return curImg.scalerId,p,curSym.hookedId";
-//                    result = tx.run(query, params).list();
-//                    if (result.size() != imgInvokeSymInfos.size()) {
-//                        reply.setSuccess(false);
-//                        reply.setErrorMsg("Saving JobInvokeSym failed.");
-//                        tx.rollback();
-//                    } else {
+                    query = "UNWIND $extSymInvokeImgInfos AS extSymInvokeImgInfo\n" +
+                    "MATCH (curJob:Job)-[:HAS_IMG]->(calleeImg:ElfImg)\n" +
+                            "WHERE id(curJob)=$jobId AND calleeImg.scalerId=extSymInvokeImgInfo.libFileScalerID\n" +
+                            "MATCH (curJob:Job)-[:HAS_IMG]->(callerImg:ElfImg)-[:HAS_EXTSYM]->(invokedSym:ElfSym)\n" +
+                            "USING INDEX invokedSym:ElfSym(hookedId)\n" +
+                            "WHERE id(curJob)=$jobId AND invokedSym.hookedId=extSymInvokeImgInfo.symHookedID\n" +
+                            "CREATE (invokedSym)-[r:extSymInvokeImg {duration:extSymInvokeImgInfo.duration}]->(calleeImg)\n" +
+                            "RETURN r\n";
+                    result = tx.run(query, params).list();
+                    if (result.size() != extSymInvokeImgInfos.size()) {
+                        reply.setSuccess(false);
+                        reply.setErrorMsg("Saving JobInvokeSym failed.");
+                        tx.rollback();
+                    } else {
                         reply.setSuccess(true);
-//                    }
+                    }
                 }
 
                 return null;
