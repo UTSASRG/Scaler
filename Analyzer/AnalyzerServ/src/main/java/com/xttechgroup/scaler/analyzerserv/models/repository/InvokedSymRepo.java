@@ -1,6 +1,7 @@
 package com.xttechgroup.scaler.analyzerserv.models.repository;
 
 import com.xttechgroup.scaler.analyzerserv.models.POJO.SymCountQueryResult;
+import com.xttechgroup.scaler.analyzerserv.models.POJO.SymTimingQueryResult;
 import com.xttechgroup.scaler.analyzerserv.models.relations.JobInvokeSym;
 import org.springframework.data.neo4j.repository.Neo4jRepository;
 import org.springframework.data.neo4j.repository.query.Query;
@@ -19,5 +20,10 @@ public interface InvokedSymRepo {
     @Transactional(readOnly = true)
     Collection<SymCountQueryResult> getELFImgCountSymbols(Long jobid, Long elfImgId, Long skipSymbol,
                                                           Long visibleSymbolLimit);
+    @Transactional(readOnly = true)
+    public Long getELFImgTiming(Long jobid, Long elfImgId);
 
+    @Transactional(readOnly = true)
+    Collection<SymTimingQueryResult> getELFImgTimingSymbols(Long jobid, Long elfImgId, Long skipSymbol,
+                                                            Long visibleSymbolLimit);
 }
