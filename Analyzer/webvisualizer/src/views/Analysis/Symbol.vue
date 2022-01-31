@@ -51,7 +51,7 @@
 // import Welcome from "@/components/Welcome.vue";
 import path from "path";
 import axios from "axios";
-import { scalerConfig } from "../../../../scalerconfig.js";
+import { scalerConfig } from "@/scalerconfig.js";
 
 export default {
   name: "",

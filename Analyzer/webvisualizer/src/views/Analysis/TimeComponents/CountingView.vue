@@ -63,7 +63,7 @@ import {
   PolarComponent,
 } from "echarts/components";
 import VChart from "vue-echarts";
-import { scalerConfig } from "../../../../scalerconfig.js";
+import { scalerConfig } from "@/scalerconfig.js";
 
 use([
   CanvasRenderer,
@@ -79,6 +79,7 @@ use([
 ]);
 
 export default {
+  name: "CountingView",
   components: {
     VChart,
   },

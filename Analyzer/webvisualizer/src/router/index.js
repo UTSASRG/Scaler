@@ -28,19 +28,19 @@ const routes = [
     children: [
       {
         path: 'execution',
-        component: () => import('@/views/Analysis/Components/Execution.vue')
+        component: () => import('@/views/Analysis/Execution.vue')
       },
       {
         path: 'symbol',
-        component: () => import('@/views/Analysis/Components/Symbol.vue')
+        component: () => import('@/views/Analysis/Symbol.vue')
       },
       {
         path: 'time',
-        component: () => import('@/views/Analysis/Components/Time.vue')
+        component: () => import('@/views/Analysis/Time.vue'),
       },
       {
         path: 'callgraph',
-        component: () => import('@/views/Analysis/Components/CallGraph.vue')
+        component: () => import('@/views/Analysis/CallGraph.vue')
       },
       {
         path: '',
