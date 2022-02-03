@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+    scalerBuilder:
+        build: .
+        restart: always
+        volumes:
+           - ./out:/out
+        command: ["tail","-f", "/dev/null"]
+
