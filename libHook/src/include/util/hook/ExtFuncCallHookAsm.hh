@@ -101,6 +101,9 @@ __attribute__((used)) static void *cAfterHookHandlerLinux();
 extern "C" {
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)(void *), void *arg);
 //void pthread_exit(void *__retval);
+
+__pid_t fork(void);
+
 }
 
 #endif

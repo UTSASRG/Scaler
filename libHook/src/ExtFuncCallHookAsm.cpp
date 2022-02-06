@@ -218,11 +218,16 @@ bool initTLS() {
 namespace scaler {
     typedef int (*pthread_create_origt)(pthread_t *, const pthread_attr_t *, void *(*)(void *), void *);
 
+    typedef __pid_t (*fork_origt)(void);
+
     typedef void (*pthread_exit_origt)(void *__retval);
 
     typedef int (*pthread_cancel_origt)(pthread_t __th);
 
     pthread_create_origt pthread_create_orig;
+
+    fork_origt fork_orig;
+
 
     //Declare hook handler written in assembly code
 
@@ -1308,6 +1313,24 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     return scaler::pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
 }
 
+__pid_t fork(void) {
+    if (!scaler::fork_orig) {
+        scaler::fork_orig = (scaler::fork_origt) dlsym(RTLD_NEXT, "fork");
+        fatalError("Cannot find the address of fork_orig");
+        return false;
+    }
+
+
+    assert(scaler::fork_orig != nullptr);
+    __pid_t result = (*scaler::fork_orig)();
+    if (result == 0) {
+        //Child process
+        //Clear recording buffer
+
+
+    }
+    return result;
+}
 
 
 //void pthread_exit(void *__retval) {
