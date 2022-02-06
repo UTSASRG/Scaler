@@ -89,7 +89,6 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
                         symbolType = "STT_FILE";
 
 
-                        
                         break;
                     case STT_COMMON:
                         symbolType = "STT_COMMON";
@@ -149,8 +148,10 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
     return true;
 }
 
-pthread_mutex_t timingLock=PTHREAD_MUTEX_INITIALIZER;
-bool JobServiceGrpc::appendTimingMatrix(int64_t threadId, int64_t timingMatrixRows, int64_t timingMatrixCols,
+pthread_mutex_t timingLock = PTHREAD_MUTEX_INITIALIZER;
+
+bool JobServiceGrpc::appendTimingMatrix(int64_t processId, int64_t threadId, int64_t timingMatrixRows,
+                                        int64_t timingMatrixCols,
                                         int64_t **timingMatrix,
                                         int64_t countingVecRows, int64_t *countingVec) {
     BinaryExecResult reply;
@@ -158,6 +159,7 @@ bool JobServiceGrpc::appendTimingMatrix(int64_t threadId, int64_t timingMatrixRo
     // Context for the client. It could be used to convey extra information to
     // the server and/or tweak certain RPC behaviors.
     timingMsg.set_jobid(Config::curJobId);
+    timingMsg.set_processid(processId);
     timingMsg.set_threadid(threadId);
     timingMsg.set_timgmatrixrows(timingMatrixRows);
     timingMsg.set_timgmatrixcols(timingMatrixCols);

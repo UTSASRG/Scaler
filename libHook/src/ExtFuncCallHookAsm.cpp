@@ -142,7 +142,7 @@ public:
             INFO_LOGS("Sending timing info for thread %lu", pthread_self());
             scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
 
-            if (!jobServiceGrpc.appendTimingMatrix(pthread_self(), curContexPtr->timingMatrixRows,
+            if (!jobServiceGrpc.appendTimingMatrix(getpid(), pthread_self(), curContexPtr->timingMatrixRows,
                                                    curContexPtr->timingMatrixCols,
                                                    curContexPtr->timingMatrix, //Skip index column
                                                    curContexPtr->countingVecRows,

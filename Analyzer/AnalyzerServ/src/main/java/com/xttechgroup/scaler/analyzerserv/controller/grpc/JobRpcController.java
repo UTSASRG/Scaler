@@ -164,6 +164,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
         try (Session session = neo4jDriver.session()) {
             session.writeTransaction(tx ->
             {
+                long processId = timingMsg.getProcessId();
                 long threadId = timingMsg.getThreadId();
                 long timingMatrixRows = timingMsg.getTimgMatrixrows();
                 long timingMatrixCols = timingMsg.getTimgMatrixcols();
@@ -203,7 +204,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                 params.put("extSymInvokeImgInfos", extSymInvokeImgInfos);
                 params.put("jobId", timingMsg.getJobId());
                 params.put("threadId", threadId);
-
+                params.put("processId", processId);
 
                 //Bulk insert elf img
                 String query =
@@ -215,7 +216,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                                 "USING INDEX targetSymbol:ElfSym(hookedId)\n" +
                                 "WHERE targetSymbol.hookedId=jobInvokeSymInfo.symInfo\n" +
                                 //Insert JobInvokeSym relation
-                                "CREATE (curJob)-[jobInvokeSym:JobInvokeSym {counts:jobInvokeSymInfo.counts,threadId:$threadId}]-> (targetSymbol)\n" +
+                                "CREATE (curJob)-[jobInvokeSym:JobInvokeSym {counts:jobInvokeSymInfo.counts,threadId:$threadId,processId:$processId}]-> (targetSymbol)\n" +
                                 "RETURN jobInvokeSym\n";
                 List<Record> result = tx.run(query, params).list();
                 if (result.size() != jobInvokeSymInfos.size()) {
@@ -230,7 +231,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                             "MATCH (curJob:Job)-[:HAS_IMG]->(callerImg:ElfImg)-[:HAS_EXTSYM]->(invokedSym:ElfSym)\n" +
                             "USING INDEX invokedSym:ElfSym(hookedId)\n" +
                             "WHERE id(curJob)=$jobId AND invokedSym.hookedId=extSymInvokeImgInfo.symHookedID\n" +
-                            "CREATE (invokedSym)-[r:ExtSymInvokeImg {duration:extSymInvokeImgInfo.duration,threadId:$threadId}]->(calleeImg)\n" +
+                            "CREATE (invokedSym)-[r:ExtSymInvokeImg {duration:extSymInvokeImgInfo.duration,threadId:$threadId,processId:$processId}]->(calleeImg)\n" +
                             "RETURN r\n";
                     result = tx.run(query, params).list();
                     if (result.size() != extSymInvokeImgInfos.size()) {
