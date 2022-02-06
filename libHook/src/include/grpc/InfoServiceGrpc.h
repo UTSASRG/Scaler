@@ -1,5 +1,6 @@
 #include <analyzerserver/InfoService.grpc.pb.h>
 
+namespace scaler {
 
     class InfoServiceGrpc {
     public:
@@ -13,4 +14,4 @@
         std::unique_ptr<scaler::analyzerserv::Info::Stub> stub_;
     };
 
-
+}

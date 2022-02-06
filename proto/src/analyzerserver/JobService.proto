@@ -5,6 +5,7 @@ option java_multiple_files = true;
 option java_package = "com.xttechgroup.scaler.analyzerserv";
 
 import "google/protobuf/empty.proto";
+import "analyzerserver/BinaryExecResult.proto";
 
 
 // The request message containing the user's name.
@@ -40,11 +41,6 @@ message ELFImgInfoMsg {
 
   optional int64 jobId = 9; //scaler run id
 
-}
-
-message BinaryExecResult{
-  bool success = 1;
-  optional string errorMsg = 2;
 }
 
 message TimingMsg{
