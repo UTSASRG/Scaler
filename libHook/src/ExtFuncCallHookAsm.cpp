@@ -87,9 +87,11 @@ Context::Context(ssize_t libFileSize, ssize_t hookedSymbolSize) {
     if (timingMode == 0) {
         //Execute once a thread is created
         timingMatrix = new scaler::Matrix<int64_t>(hookedSymbolSize, libFileSize);
-    } else if (isMainThread && (timingMode == 1 || timingMode == 2)) {
+    } else if (timingMode == 1 || timingMode == 2) {
+        if(isMainThread){
+            sharedTimingMatrix = new scaler::MatrixWithLock<int64_t>(hookedSymbolSize, libFileSize);
+        }
         //Only execute once
-        sharedTimingMatrix = new scaler::MatrixWithLock<int64_t>(hookedSymbolSize, libFileSize);
         timingMatrix = sharedTimingMatrix;
     }
 
@@ -115,7 +117,9 @@ Context::~Context() {
     if (timingMode == 0) {
         delete timingMatrix;
         timingMatrix = nullptr;
-    } else if (isMainThread && (timingMode == 1 || timingMode == 2)) {
+    }
+
+    else if (isMainThread && (timingMode == 1 || timingMode == 2)) {
         //Only execute once
         delete timingMatrix;
         timingMatrix = nullptr;
@@ -188,7 +192,7 @@ public:
 
 
             if (pthread_self() == scaler::Config::mainthreadID) {
-                INFO_LOGS("Check report at http://127.0.0.1:8080/analysis/%ld/execution", scaler::Config::curJobId);
+                INFO_LOGS("Check report at http://127.0.0.1:8080/analysis/%ld/time", scaler::Config::curJobId);
             }
             delete curContext;
             curContext = nullptr;
