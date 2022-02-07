@@ -53,7 +53,7 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                 if (jobid == null) {
                     if (value.hasJobId()) {
                         jobid = value.getJobId();
-                        JobEntity curJob = jobRepository.findById(jobid);
+                        curJob = jobRepository.findById(jobid);
                         if (curJob == null) {
                             onCompleted();
                         }
