@@ -46,12 +46,15 @@ namespace scaler {
 
         bool active();
 
+        int getTimingMode();
+
     protected:
 
         //A parser to /proc/self/maps
         MemoryTool_Linux *memTool;
         static ExtFuncCallHookAsm *instance; //Singleton
-        bool installed=false;
+        bool installed = false;
+        int timingMode = -1;
 
         /**
          * Private constructor

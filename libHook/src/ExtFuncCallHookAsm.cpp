@@ -30,6 +30,8 @@
 #include <unistd.h>
 #include <grpc/ConfigServiceGrpc.h>
 #include <fstream>
+#include <util/datastructure/Matrix.h>
+#include <util/datastructure/MatrixWithLock.h>
 //#include <addressbook.pb.h>
 //extern "C" {
 //#include "xed/xed-interface.h"
@@ -38,6 +40,7 @@
 
 //#define PREHOOK_ONLY
 #define ENABLE_SAVE
+
 
 class Context {
 public:
@@ -49,9 +52,9 @@ public:
     char initializeMe = 0;
 
     //Records which function calls which function for how long, the index is scalerid (Only contains hooked function)
-    int64_t **timingMatrix = nullptr;
-    int64_t timingMatrixRows = -1;
-    int64_t timingMatrixCols = -1;
+    //todo: Replace timingMatrix to a class
+    scaler::Matrix<int64_t> *timingMatrix = nullptr;
+    int64_t curThreadNumber = 1; //The default one is main thread
 
     //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
     int64_t *countingVec = nullptr;
@@ -60,28 +63,36 @@ public:
     bool isThreadCratedByMyself = false;
     short initialized = 0;
 
+    static scaler::MatrixWithLock<int64_t> *sharedTimingMatrix;
+
+
     Context(ssize_t libFileSize, ssize_t hookedSymbolSize);
 
     ~Context();
 };
 
+//Be careful, the memory is released in context
+
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
 
+scaler::MatrixWithLock<int64_t> *Context::sharedTimingMatrix = nullptr;
+
+scaler::ExtFuncCallHookAsm *scaler_extFuncCallHookAsm_thiz = nullptr;
+
 Context::Context(ssize_t libFileSize, ssize_t hookedSymbolSize) {
-    timingMatrixRows = hookedSymbolSize;
-    timingMatrixCols = libFileSize;
-    timingMatrix = static_cast<int64_t **>( malloc(
-            (timingMatrixRows + timingMatrixRows * timingMatrixCols) * sizeof(int64_t)));
-    for (int i = 0; i < timingMatrixRows; ++i) {
-        timingMatrix[i] = reinterpret_cast<int64_t *>(timingMatrix + timingMatrixRows + i * timingMatrixCols);
+    bool isMainThread = scaler::Config::mainthreadID == pthread_self(); //Dont double initialize
+
+    int timingMode = scaler_extFuncCallHookAsm_thiz->getTimingMode();
+    if (timingMode == 0) {
+        //Execute once a thread is created
+        timingMatrix = new scaler::Matrix<int64_t>(hookedSymbolSize, libFileSize);
+    } else if (isMainThread && (timingMode == 1 || timingMode == 2)) {
+        //Only execute once
+        sharedTimingMatrix = new scaler::MatrixWithLock<int64_t>(hookedSymbolSize, libFileSize);
+        timingMatrix = sharedTimingMatrix;
     }
 
-
-    if (!timingMatrix) {
-        fatalError("Failed to allocate memory for timingMatrix");
-        exit(-1);
-    }
     countingVecRows = hookedSymbolSize;
     countingVec = static_cast<int64_t *>(malloc(countingVecRows * sizeof(int64_t)));
     if (!countingVec) {
@@ -89,19 +100,28 @@ Context::Context(ssize_t libFileSize, ssize_t hookedSymbolSize) {
         exit(-1);
     }
 
-    memset(timingMatrix + timingMatrixRows, 0, timingMatrixRows * timingMatrixCols * sizeof(int64_t));
     memset(countingVec, 0, countingVecRows * sizeof(int64_t));
     initialized = SCALER_TRUE;
 }
 
 Context::~Context() {
-    free(timingMatrix);
-    timingMatrix = nullptr;
+
     free(countingVec);
     countingVec = nullptr;
+
+    bool isMainThread = scaler::Config::mainthreadID == pthread_self(); //Dont double initialize
+
+    int timingMode = scaler_extFuncCallHookAsm_thiz->getTimingMode();
+    if (timingMode == 0) {
+        delete timingMatrix;
+        timingMatrix = nullptr;
+    } else if (isMainThread && (timingMode == 1 || timingMode == 2)) {
+        //Only execute once
+        delete timingMatrix;
+        timingMatrix = nullptr;
+    }
 }
 
-scaler::ExtFuncCallHookAsm *scaler_extFuncCallHookAsm_thiz = nullptr;
 
 __thread Context *curContext __attribute((tls_model("initial-exec")));
 
@@ -131,6 +151,7 @@ public:
             INFO_LOG("Sending symbol info");
             scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
 
+
             if (!jobServiceGrpc.appendElfImgInfo(*scaler_extFuncCallHookAsm_thiz)) {
                 ERR_LOG("Cannot send elf info to server");
             }
@@ -145,55 +166,34 @@ public:
         if (!curContexPtr->isThreadCratedByMyself) {
             INFO_LOGS("Sending timing info for thread %lu", pthread_self());
             scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
+            bool isMainThread = scaler::Config::mainthreadID == pthread_self(); //Dont double initialize
 
-            if (!jobServiceGrpc.appendTimingMatrix(getpid(), pthread_self(), curContexPtr->timingMatrixRows,
-                                                   curContexPtr->timingMatrixCols,
-                                                   curContexPtr->timingMatrix, //Skip index column
-                                                   curContexPtr->countingVecRows,
-                                                   curContexPtr->countingVec)) {
-                ERR_LOG("Cannot send timing and counting info to server");
-
-
-//        std::string execWorkDir;`
-//        if (!scaler::getPWD(execWorkDir)) {
-//            ERR_LOG("Cannot open PWD");
-//            return;
-//        }
-//
-//        std::stringstream ss;
-//        ss << execWorkDir << "/scaler_time" << getpid() << "_" << pthread_self() << ".bin";
-//
-//        char fileName[255];
-//        DBG_LOGS("Save rawrecord of pid=%d thread %lu", getpid(), pthread_self());
-//        FILE *fp = NULL;
-//        //todo: check open success or not
-//        fp = fopen(ss.str().c_str(), "wb");
-//        if (!fp) {
-//            ERR_LOGS("Fail to create file \"%s\" reason:%s", ss.str().c_str(), strerror(errno));
-//            return;
-//        }
-//        const uint64_t &arrSize = scaler_extFuncCallHookAsm_thiz->allExtSymbol.getSize();
-//        const uint64_t &entrySize = sizeof(scaler::RawRecordEntry);
-//
-//        if (!fwrite(&arrSize, sizeof(uint64_t), 1, fp)) {
-//            fatalErrorS("Fail to write data into file, reason:%s", strerror(errno));
-//        }
-//        if (!fwrite(&entrySize, sizeof(uint64_t), 1, fp)) {
-//            fatalErrorS("Fail to write data into file, reason:%s", strerror(errno));
-//        }
-//        //Write entire array
-//        if (!fwrite(curContext->rawRecord, sizeof(scaler::RawRecordEntry), arrSize, fp)) {
-//            fatalErrorS("Fail to write data into file, reason:%s", strerror(errno));
-//        }
-//        //todo: check close success or not
-//        fclose(fp);
+            int timingMode = scaler_extFuncCallHookAsm_thiz->getTimingMode();
+            if (timingMode == 0) {
+                if (!jobServiceGrpc.appendTimingMatrix(getpid(), pthread_self(),
+                                                       *curContexPtr->timingMatrix, //Skip index column
+                                                       curContexPtr->countingVecRows,
+                                                       curContexPtr->countingVec)) {
+                    ERR_LOG("Cannot send timing and counting info to server");
+                }
+            } else if (isMainThread && (timingMode == 1 || timingMode == 2)) {
+                //Only execute once
+                if (!jobServiceGrpc.appendTimingMatrix(getpid(), pthread_self(),
+                                                       *curContexPtr->timingMatrix, //Skip index column
+                                                       curContexPtr->countingVecRows,
+                                                       curContexPtr->countingVec)) {
+                    ERR_LOG("Cannot send timing and counting info to server");
+                }
             }
+
 
             if (pthread_self() == scaler::Config::mainthreadID) {
                 INFO_LOGS("Check report at http://127.0.0.1:8080/analysis/%ld/execution", scaler::Config::curJobId);
             }
             delete curContext;
             curContext = nullptr;
+        } else {
+            curContexPtr->curThreadNumber -= 1;
         }
     }
 };
@@ -201,13 +201,16 @@ public:
 thread_local DataSaver saverElem;
 
 bool initTLS() {
-    //Dont double initialize
+    bool isMainThread = scaler::Config::mainthreadID == pthread_self(); //Dont double initialize
+
     assert(bypassCHooks == SCALER_TRUE);
     //Initialize saving data structure
     saverElem.initializeMe = 1;
     curContext = new Context(
             scaler_extFuncCallHookAsm_thiz->elfImgInfoMap.getSize(),
             scaler_extFuncCallHookAsm_thiz->hookedExtSymbol.getSize());
+
+
     if (!curContext) {
         fatalError("Failed to allocate memory for Context");
         return false;
@@ -259,6 +262,17 @@ namespace scaler {
             return false;
         }
         scaler_extFuncCallHookAsm_thiz = this;
+
+        auto timingModeConfig = Config::globalConf["hook"]["mode"]["timing"].as<std::string>("null");
+        INFO_LOGS("The profiling mode is %s", timingModeConfig.c_str());
+
+        if (timingModeConfig == "all") {
+            this->timingMode = 0;
+        } else if (timingModeConfig == "avg1") {
+            this->timingMode = 1;
+        } else if (timingModeConfig == "avg2") {
+            this->timingMode = 2;
+        }
 
         //Step1: Locating table in memory
         DBG_LOG("Locating required segments from ELF file");
@@ -715,7 +729,7 @@ namespace scaler {
                      curSymbol.addr);
             return false;
         }
-        DBG_LOGS("curSymbol patched %s lib:%zd", curSymbol.symbolName.c_str(), curSymbol.libraryFileID);
+        DBG_LOGS("curSymbol patched %s lib:%zd", curSymbol.symbolName.c_str(), curSymbol.libraryFileScalerID);
         return true;
     }
 
@@ -867,6 +881,10 @@ namespace scaler {
 
     bool ExtFuncCallHookAsm::active() {
         return installed;
+    }
+
+    int ExtFuncCallHookAsm::getTimingMode() {
+        return timingMode;
     }
 
 //    void ExtFuncCallHookAsm::saveCommonFuncID() {
@@ -1212,7 +1230,8 @@ void *cAfterHookHandlerLinux() {
     //Save this operation
     const long long duration = getunixtimestampms() - preHookTimestamp;
     if (curContextPtr->initialized == SCALER_TRUE) {
-        curContextPtr->timingMatrix[curSymbol.hookedId][curSymbol.libraryFileScalerID] += duration;
+
+        curContextPtr->timingMatrix->get(curSymbol.hookedId, curSymbol.libraryFileScalerID) += duration;
         if (!curContextPtr->extSymbolId.isEmpty()) {
             scaler::ExtFuncCallHookAsm::ExtSymInfo &parentSym = _this->allExtSymbol[curContextPtr->extSymbolId.peek()];
             if (parentSym.libraryFileScalerID == -1) {
@@ -1224,7 +1243,7 @@ void *cAfterHookHandlerLinux() {
                         parentSym.addr);
                 assert(parentSym.libraryFileScalerID != -1);
             }
-            curContextPtr->timingMatrix[parentSym.hookedId][parentSym.libraryFileScalerID] -= duration;
+            curContextPtr->timingMatrix->get(parentSym.hookedId, parentSym.libraryFileScalerID) -= duration;
         }
     }
     bypassCHooks = SCALER_FALSE;
@@ -1275,7 +1294,8 @@ void *dummy_thread_function(void *data) {
         Context *curContextPtr = curContext;
         curContextPtr->isThreadCratedByMyself = true;
     } else {
-
+        Context *curContextPtr = curContext;
+        curContextPtr->curThreadNumber += 1;
         DBG_LOGS("thread %lu is created by myself", pthread_self());
     }
 
@@ -1314,7 +1334,6 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     DBG_LOGS("pthread_create %lu", pthread_self());
 
     if (scaler::ExtFuncCallHookAsm::getInst()->active()) {
-
         // Prepare the inputs for the intermediate (dummy) thread function
         auto args = (struct dummy_thread_function_args *) malloc(sizeof(struct dummy_thread_function_args));
         args->actual_thread_function = start;
