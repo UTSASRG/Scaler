@@ -30,6 +30,7 @@ set(HookSrc
         src/JobServiceGrpc.cpp
         src/ChannelPool.cpp
         src/Config.cpp
+        src/ConfigServiceGrpc.cpp
         ${SCALER_PROTO_SRCS}
         )
 #src/VMEmulator.cpp

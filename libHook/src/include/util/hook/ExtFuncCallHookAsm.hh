@@ -43,11 +43,15 @@ namespace scaler {
         PmParserC_Linux pmParser;
 
         int64_t appStartTimestamp;
+
+        bool active();
+
     protected:
 
         //A parser to /proc/self/maps
         MemoryTool_Linux *memTool;
         static ExtFuncCallHookAsm *instance; //Singleton
+        bool installed=false;
 
         /**
          * Private constructor

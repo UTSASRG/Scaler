@@ -12,15 +12,22 @@ import "analyzerserver/BinaryExecResult.proto";
 // The request message containing the user's name.
 
 message ConfigMsg {
-  JobInfoMsg jobInfo = 1;
-  string jsonConfig=2;
+  int64 jobId = 1;
+  string yamlConfig = 2;
 }
+
+message YAMLConfigRlt{
+  bool success = 1;
+  string errorMsg = 2;
+  string yamlConfig = 3;
+}
+
 
 
 // The greeting service definition.
 service Config {
   //Add elfimage info to current job
-  rpc appendConfigInfo(ConfigMsg) returns(BinaryExecResult){
-  }
+  rpc appendYAMLConfig(ConfigMsg) returns(BinaryExecResult);
 
+  rpc getConfigFromServer(JobInfoMsg) returns(YAMLConfigRlt);
 }

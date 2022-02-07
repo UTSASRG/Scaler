@@ -3,7 +3,6 @@ hook:
   gccpath: "/usr/bin/gcc-9" #The path of the gcc compiler. Recommend version >9
   analyzerserv:
     address: 127.0.0.1:3060 # Address of the analyzer server and port
-    grpcPort: 3060 # Port of the analyzer server grpc api
     insecure: true #[true|false] If false, grpc will transmit with plaintext.
   mode: normal #[norma|counting] Normal or counting only?
   logging:

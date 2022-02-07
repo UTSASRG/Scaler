@@ -8,12 +8,14 @@
 #include <grpcpp/create_channel.h>
 #include <grpc/JobServiceGrpc.h>
 #include <grpc/ChannelPool.h>
+#include <grpc/ConfigServiceGrpc.h>
 
 typedef int (*main_fn_t)(int, char **, char **);
 
 main_fn_t real_main;
 
 std::string execFileName;
+
 
 int doubletake_main(int argc, char **argv, char **envp) {
     INFO_LOGS("libHook Ver %s", CMAKE_SCALERRUN_VERSION);
@@ -46,7 +48,53 @@ int doubletake_main(int argc, char **argv, char **envp) {
         return -1;
     }
 
-    scaler::Config::mainthreadID=pthread_self();
+    scaler::Config::mainthreadID = pthread_self();
+
+    INFO_LOGS("Creating a new job in analyzer server at %s ......", grpcAddr.c_str());
+    scaler::ChannelPool::channel = grpc::CreateChannel(grpcAddr, grpc::InsecureChannelCredentials());
+
+    //Find server address and port from config file
+    scaler::JobServiceGrpc jobService(scaler::ChannelPool::channel);
+    scaler::Config::curJobId = jobService.createJob();
+
+    if (scaler::Config::curJobId == -1) {
+        //todo: Handle offline profiling mode
+        ERR_LOG("Cannot create job. Data will not be sent to analyzer server.");
+    } else {
+        INFO_LOGS("Sending config info to server at: %s",
+                  scaler::Config::globalConf["hook"]["analyzerserv"]["address"].as<std::string>(
+                          "null").c_str());
+
+        scaler::ConfigServiceGrpc configServiceGrpc(scaler::ChannelPool::channel);
+        std::ifstream configFileStream;
+        configFileStream.open(SCALER_HOOK_CONFIG_FILE);
+        std::stringstream configFileContent;
+        configFileContent << configFileStream.rdbuf();
+        if (!configServiceGrpc.appendYamlConfig(scaler::Config::curJobId,configFileContent.str())) {
+            ERR_LOG("Failed to send config file to server.");
+        } else {
+            std::string newYamlCOnfig;
+            INFO_LOGS("Please config scaler at: http://127.0.0.1:8080/run/%ld",scaler::Config::curJobId);
+            if (!configServiceGrpc.getConfigFromServer(scaler::Config::curJobId,newYamlCOnfig)) {
+                fatalError("libScalerHook Aborted");
+            } else {
+                INFO_LOG("Loading new configuration file");
+                try {
+                    INFO_LOGS("%s",newYamlCOnfig.c_str());
+                    scaler::Config::globalConf = YAML::Load(newYamlCOnfig);
+                    DBG_LOGS("%s", scaler::Config::globalConf["hook"]["gccpath"].as<std::string>("null").c_str());
+                } catch (YAML::Exception &e) {
+                    fatalErrorS("Cannot parse newly received file because: %s", e.what());
+                    exit(-1);
+                } catch (std::ios_base::failure &e) {
+                    fatalErrorS("Cannot parse newly received file because: %s", e.what());
+                    exit(-1);
+                }
+            }
+
+        }
+    }
+
 
     //todo: support different running modes
     DBG_LOG("Installing plthook");
@@ -238,18 +286,6 @@ int doubletake_main(int argc, char **argv, char **envp) {
         }
     }, INSTALL_TYPE::ASM);
 
-
-    INFO_LOGS("Creating a new job in analyzer server at %s ......", grpcAddr.c_str());
-    scaler::ChannelPool::channel = grpc::CreateChannel(grpcAddr, grpc::InsecureChannelCredentials());
-
-    //Find server address and port from config file
-    scaler::JobServiceGrpc jobService(scaler::ChannelPool::channel);
-    scaler::Config::curJobId = jobService.createJob();
-
-    if(scaler::Config::curJobId==-1){
-        //todo: Handle offline profiling mode
-        ERR_LOG("Cannot create job. Data will not be sent to analyzer server.");
-    }
 
     // Call the program's main function
     int ret = real_main(argc, argv, envp);

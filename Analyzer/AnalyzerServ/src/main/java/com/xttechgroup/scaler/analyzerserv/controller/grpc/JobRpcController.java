@@ -14,6 +14,7 @@ import org.neo4j.driver.*;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.*;
+import java.util.concurrent.locks.Lock;
 
 @GrpcService
 public class JobRpcController extends JobGrpc.JobImplBase {
@@ -26,12 +27,13 @@ public class JobRpcController extends JobGrpc.JobImplBase {
     @Autowired
     Driver neo4jDriver;
 
+
+
     @Override
     public void createJob(Empty request, StreamObserver<JobInfoMsg> responseObserver) {
-        JobEntity newJob = new JobEntity();
-        newJob = jobRepository.save(newJob);
+        Long jobId = jobRepository.newJob();
         JobInfoMsg reply = JobInfoMsg.newBuilder()
-                .setId(newJob.id)
+                .setId(jobId)
                 .build();
         responseObserver.onNext(reply);
         responseObserver.onCompleted();
@@ -51,12 +53,9 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                 if (jobid == null) {
                     if (value.hasJobId()) {
                         jobid = value.getJobId();
-                        Optional<JobEntity> _curJob = jobRepository.findById(jobid);
-                        if (!_curJob.isPresent()) {
-                            curJob = null;
+                        JobEntity curJob = jobRepository.findById(jobid);
+                        if (curJob == null) {
                             onCompleted();
-                        } else {
-                            curJob = _curJob.get();
                         }
                     } else {
                         onCompleted();

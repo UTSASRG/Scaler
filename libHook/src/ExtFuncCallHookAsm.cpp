@@ -28,7 +28,8 @@
 #include <grpc/JobServiceGrpc.h>
 #include <grpc/ChannelPool.h>
 #include <unistd.h>
-
+#include <grpc/ConfigServiceGrpc.h>
+#include <fstream>
 //#include <addressbook.pb.h>
 //extern "C" {
 //#include "xed/xed-interface.h"
@@ -133,7 +134,10 @@ public:
             if (!jobServiceGrpc.appendElfImgInfo(*scaler_extFuncCallHookAsm_thiz)) {
                 ERR_LOG("Cannot send elf info to server");
             }
+
+
             elfInfoUploaded = true;
+
         }
         pthread_mutex_unlock(&elfInfoUploadLock);
 
@@ -450,6 +454,7 @@ namespace scaler {
             setenv("LD_PRELOAD", ldPreloadVal, true);
         }
 
+        installed = true;
 
         return true;
     }
@@ -517,6 +522,7 @@ namespace scaler {
                 curSymbol.oriPltCode = nullptr;
             }
         }
+        installed = false;
         return true;
     }
 
@@ -859,6 +865,10 @@ namespace scaler {
         return true;
     }
 
+    bool ExtFuncCallHookAsm::active() {
+        return installed;
+    }
+
 //    void ExtFuncCallHookAsm::saveCommonFuncID() {
 //        using Json = nlohmann::json;
 //
@@ -1124,9 +1134,9 @@ static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
     }
 
     /**
-     * No counting, no measuring time
+     * No counting, no measuring time (If scaler is not installed, then tls is not initialized)
      */
-    if (bypassCHooks != SCALER_FALSE) {
+    if (!_this->active() || bypassCHooks != SCALER_FALSE) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
@@ -1281,7 +1291,7 @@ void *dummy_thread_function(void *data) {
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)(void *), void *arg) {
     bypassCHooks = SCALER_TRUE;
     //register uint64_t rbp asm ("rbp");
-    register uint64_t rsp asm ("rsp");
+    //register uint64_t rsp asm ("rsp");
     //void **callerAddr1 = reinterpret_cast<void **>(rbp+8);
     //void *callerAddrPtr = *reinterpret_cast<void **>(rsp + 0x8 + 0x40);
     //uint8_t callOpCode = *reinterpret_cast<uint8_t *>((uint64_t) callerAddrPtr - 0x5);
@@ -1303,14 +1313,19 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     auto threadID = pthread_self();
     DBG_LOGS("pthread_create %lu", pthread_self());
 
-    // Prepare the inputs for the intermediate (dummy) thread function
-    auto args = (struct dummy_thread_function_args *) malloc(sizeof(struct dummy_thread_function_args));
-    args->actual_thread_function = start;
-    args->data = arg;
-    bypassCHooks = SCALER_FALSE;
-    // Call the actual pthread_create
+    if (scaler::ExtFuncCallHookAsm::getInst()->active()) {
 
-    return scaler::pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
+        // Prepare the inputs for the intermediate (dummy) thread function
+        auto args = (struct dummy_thread_function_args *) malloc(sizeof(struct dummy_thread_function_args));
+        args->actual_thread_function = start;
+        args->data = arg;
+        bypassCHooks = SCALER_FALSE;
+        // Call the actual pthread_create
+        return scaler::pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
+    } else {
+        //Asm hook not ready
+        return scaler::pthread_create_orig(thread, attr, start, (void *) arg);
+    }
 }
 
 __pid_t fork(void) {

@@ -33,7 +33,7 @@
 <script>
 // @ is an alias to /src
 // import Welcome from "@/components/Welcome.vue";
-import path from "path";
+//import path from "path";
 
 export default {
   name: "Home",
