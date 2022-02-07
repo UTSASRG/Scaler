@@ -66,7 +66,7 @@ public class ElfInfoRestController {
 
         ArrayList<Long> countingRlt = new ArrayList<>();
         for (Long elfImgId : body.elfImgIds) {
-            countingRlt.add(jobInvokedSymRepo.getELFImgCount(jobid, elfImgId));
+            countingRlt.add(jobInvokedSymRepo.getELFImgCount(jobid, elfImgId, body.visibleProcesses, body.visibleThreads));
         }
         return countingRlt;
     }
@@ -105,7 +105,7 @@ public class ElfInfoRestController {
 
         ArrayList<Long> timingRlt = new ArrayList<>();
         for (Long elfImgId : body.elfImgIds) {
-            timingRlt.add(jobInvokedSymRepo.getELFImgTiming(jobid, elfImgId));
+            timingRlt.add(jobInvokedSymRepo.getELFImgTiming(jobid, elfImgId,body.visibleProcesses,body.visibleThreads));
         }
         return timingRlt;
     }

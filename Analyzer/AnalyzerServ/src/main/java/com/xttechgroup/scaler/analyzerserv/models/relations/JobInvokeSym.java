@@ -7,6 +7,8 @@ import org.springframework.data.neo4j.core.schema.RelationshipProperties;
 import org.springframework.data.neo4j.core.schema.TargetNode;
 
 // CREATE INDEX ON :JobInvokeSym(threadID)
+// CREATE INDEX ON :JobInvokeSym(processId)
+
 @RelationshipProperties
 public class JobInvokeSym {
 
@@ -19,6 +21,9 @@ public class JobInvokeSym {
 
     @Property
     Long threadId;
+
+    @Property
+    Long processId;
 
     @TargetNode
     ELFSymEntity symInfo;

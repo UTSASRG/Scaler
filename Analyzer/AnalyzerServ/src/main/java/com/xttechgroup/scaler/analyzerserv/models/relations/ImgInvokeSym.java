@@ -8,6 +8,7 @@ import org.springframework.data.neo4j.core.schema.RelationshipProperties;
 import org.springframework.data.neo4j.core.schema.TargetNode;
 
 // CREATE INDEX ON :ExtSymInvokeImg(threadID)
+// CREATE INDEX ON :ExtSymInvokeImg(processId)
 
 @RelationshipProperties
 public class ImgInvokeSym {
@@ -20,6 +21,9 @@ public class ImgInvokeSym {
 
     @Property
     Long threadId;
+
+    @Property
+    Long processId;
 
 
     @TargetNode

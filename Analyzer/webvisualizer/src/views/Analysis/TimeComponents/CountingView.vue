@@ -35,8 +35,23 @@
                 multiple
                 chips
                 hint=""
+                @change="updateCountingGraph()"
                 v-model="selectedELFImg"
                 :items="selectedThreads"
+                persistent-hint
+              ></v-select>
+            </v-list-item-content>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-content>
+              <v-select
+                label="Select visible processes"
+                multiple
+                chips
+                hint=""
+                v-model="selectedELFImg"
+                @change="updateCountingGraph()"
+                :items="selectedProcesses"
                 persistent-hint
               ></v-select>
             </v-list-item-content>
@@ -125,6 +140,8 @@ export default {
       countingLabel: _countingLabel,
       countingELfImg: [],
       selectedELFImg: null,
+      selectedThreads: [],
+      selectedProcesses: [],
       updatePieChartFlag: null,
       zoomToRootId: null,
       curRootId: null,
@@ -141,7 +158,11 @@ export default {
           scalerConfig.$ANALYZER_SERVER_URL +
             "/elfInfo/image/counting?jobid=" +
             thiz.jobid,
-          { elfImgIds: selectedIds }
+          {
+            elfImgIds: selectedIds,
+            visibleThreads: thiz.selectedThreads,
+            visibleProcesses: thiz.selectedProcesses,
+          }
         )
         .then(function (responseCountingInfo) {
           thiz.countingData.splice(0);
@@ -189,7 +210,11 @@ export default {
                 "&elfImgId=" +
                 params.data.imgObj.id +
                 "&visibleSymbolLimit=" +
-                thiz.visibleSymbolLimit
+                thiz.visibleSymbolLimit +
+                "&visibleThreads=" +
+                thiz.selectedThreads +
+                "&visibleProcesses=" +
+                thiz.selectedProcesses
             )
             .then(function (responseSymInfo) {
               console.log(responseSymInfo);
@@ -219,6 +244,18 @@ export default {
 
     axios
       .get(
+        scalerConfig.$ANALYZER_SERVER_URL + "/elfInfo/image?jobid=" + thiz.jobid+ "&elfImgValid=true"
+      )
+      .then(function (responseImgInfo) {
+        // console.log(responseImgInfo.data.map((elfImg) => elfImg.id))
+        for (var i = 0; i < responseImgInfo.data.length; ++i) {
+          var curImg = responseImgInfo.data[i];
+          thiz.$set(curImg, "baseName", path.basename(curImg.filePath));
+          thiz.countingELfImg.push(curImg);
+        }
+      });
+    axios
+      .get(
         scalerConfig.$ANALYZER_SERVER_URL +
           "/elfInfo/image?jobid=" +
           thiz.jobid +
@@ -229,8 +266,30 @@ export default {
         for (var i = 0; i < responseImgInfo.data.length; ++i) {
           var curImg = responseImgInfo.data[i];
           thiz.$set(curImg, "baseName", path.basename(curImg.filePath));
-          thiz.countingELfImg.push(curImg);
+          thiz.timingELfImg.push(curImg);
         }
+      });
+
+    axios
+      .get(
+        scalerConfig.$ANALYZER_SERVER_URL +
+          "/profiling/threads?jobid=" +
+          thiz.jobid
+      )
+      .then(function (response) {
+        // console.log(responseImgInfo.data.map((elfImg) => elfImg.id))
+        thiz.selectedThreads = response.data;
+      });
+
+    axios
+      .get(
+        scalerConfig.$ANALYZER_SERVER_URL +
+          "/profiling/processes?jobid=" +
+          thiz.jobid
+      )
+      .then(function (response) {
+        // console.log(responseImgInfo.data.map((elfImg) => elfImg.id))
+        thiz.selectedProcesses = response.data;
       });
   },
 };

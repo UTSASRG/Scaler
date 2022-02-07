@@ -31,10 +31,25 @@
           <v-list-item>
             <v-list-item-content>
               <v-select
+                label="Select visible processes"
+                multiple
+                chips
+                hint=""
+                v-model="selectedELFImg"
+                @change="updateTimingGraph()"
+                :items="selectedProcesses"
+                persistent-hint
+              ></v-select>
+            </v-list-item-content>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-content>
+              <v-select
                 label="Select visible threads"
                 multiple
                 chips
                 hint=""
+                @change="updateTimingGraph()"
                 v-model="selectedELFImg"
                 :items="selectedThreads"
                 persistent-hint
@@ -124,13 +139,16 @@ export default {
       timingData: _timingData,
       timingLabel: _timingLabel,
       timingELfImg: [],
-      threadList:[],
+      threadList: [],
       selectedELFImg: null,
-      selectedThreads:null,
+      selectedThreads: [],
+      selectedProcesses: [],
       updatePieChartFlag: null,
       zoomToRootId: null,
       curRootId: null,
       visibleSymbolLimit: 20,
+      threadIds: [],
+      processIds: [],
     };
   },
   methods: {
@@ -142,7 +160,11 @@ export default {
           scalerConfig.$ANALYZER_SERVER_URL +
             "/elfInfo/image/timing?jobid=" +
             thiz.jobid,
-          { elfImgIds: selectedIds }
+          {
+            elfImgIds: selectedIds,
+            visibleThreads: thiz.selectedThreads,
+            visibleProcesses: thiz.selectedProcesses,
+          }
         )
         .then(function (responseTimingInfo) {
           console.log(responseTimingInfo);
@@ -191,7 +213,11 @@ export default {
                 "&elfImgId=" +
                 params.data.imgObj.id +
                 "&visibleSymbolLimit=" +
-                thiz.visibleSymbolLimit
+                thiz.visibleSymbolLimit +
+                "&visibleThreads=" +
+                thiz.selectedThreads +
+                "&visibleProcesses=" +
+                thiz.selectedProcesses
             )
             .then(function (responseSymInfo) {
               //console.log(responseSymInfo)
@@ -223,9 +249,7 @@ export default {
 
     axios
       .get(
-        scalerConfig.$ANALYZER_SERVER_URL +
-          "/elfInfo/image?jobid=" +
-          thiz.jobid +
+        scalerConfig.$ANALYZER_SERVER_URL + "/elfInfo/image?jobid=" + thiz.jobid+
           "&elfImgValid=true"
       )
       .then(function (responseImgInfo) {
@@ -235,6 +259,28 @@ export default {
           thiz.$set(curImg, "baseName", path.basename(curImg.filePath));
           thiz.timingELfImg.push(curImg);
         }
+      });
+
+    axios
+      .get(
+        scalerConfig.$ANALYZER_SERVER_URL +
+          "/profiling/threads?jobid=" +
+          thiz.jobid
+      )
+      .then(function (response) {
+        // console.log(responseImgInfo.data.map((elfImg) => elfImg.id))
+        thiz.selectedThreads = response.data;
+      });
+
+    axios
+      .get(
+        scalerConfig.$ANALYZER_SERVER_URL +
+          "/profiling/processes?jobid=" +
+          thiz.jobid
+      )
+      .then(function (response) {
+        // console.log(responseImgInfo.data.map((elfImg) => elfImg.id))
+        thiz.selectedProcesses = response.data;
       });
   },
 };
