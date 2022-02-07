@@ -35,9 +35,9 @@
                 multiple
                 chips
                 hint=""
-                v-model="selectedELFImg"
+                v-model="selectedProcesses"
                 @change="updateTimingGraph()"
-                :items="selectedProcesses"
+                :items="processIds"
                 persistent-hint
               ></v-select>
             </v-list-item-content>
@@ -50,8 +50,8 @@
                 chips
                 hint=""
                 @change="updateTimingGraph()"
-                v-model="selectedELFImg"
-                :items="selectedThreads"
+                v-model="selectedThreads"
+                :items="threadIds"
                 persistent-hint
               ></v-select>
             </v-list-item-content>
@@ -269,7 +269,7 @@ export default {
       )
       .then(function (response) {
         // console.log(responseImgInfo.data.map((elfImg) => elfImg.id))
-        thiz.selectedThreads = response.data;
+        thiz.threadIds = response.data;
       });
 
     axios
@@ -280,7 +280,7 @@ export default {
       )
       .then(function (response) {
         // console.log(responseImgInfo.data.map((elfImg) => elfImg.id))
-        thiz.selectedProcesses = response.data;
+        thiz.processIds = response.data;
       });
   },
 };

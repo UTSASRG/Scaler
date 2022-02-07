@@ -113,7 +113,7 @@ target_compile_options(libScalerHook-demoapps-StdPthread PRIVATE ${TEST_FLAGS} -
 
 add_executable(libScalerHook-demoapps-ComplexThreadop src/demoapps/TestComplexThreadOps.cpp)
 target_include_directories(libScalerHook-demoapps-ComplexThreadop PUBLIC libtest/header)
-target_link_libraries(libScalerHook-demoapps-ComplexThreadop libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
+target_link_libraries(libScalerHook-demoapps-ComplexThreadop ScalerHook-HookAuto libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall pthread dl)
 target_compile_options(libScalerHook-demoapps-ComplexThreadop PRIVATE ${TEST_FLAGS} -Werror)
 
 

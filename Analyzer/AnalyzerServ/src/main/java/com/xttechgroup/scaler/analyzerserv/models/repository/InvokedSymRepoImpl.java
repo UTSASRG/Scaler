@@ -17,8 +17,8 @@ public class InvokedSymRepoImpl implements InvokedSymRepo {
     @Override
     public Long getELFImgCount(Long jobid, Long elfImgId, Long[] visibleProcesses, Long[] visibleThreads) {
 
-        String inProcessStr = "AND (r.threadId IN $visibleThreads)\n";
-        String inThreadStr = "AND (r.processId IN $visibleProcesses)\n";
+        String inProcessStr = "AND (r.processId IN $visibleProcesses)\n";
+        String inThreadStr = "AND (r.threadId IN $visibleThreads)\n";
 
         if (visibleProcesses.length == 0) {
             inProcessStr = "";
@@ -34,7 +34,7 @@ public class InvokedSymRepoImpl implements InvokedSymRepo {
                         "MATCH (curJob)-[r:JobInvokeSym]->(curSumbol:ElfSym)<-[:HAS_EXTSYM]-(curElfImg:ElfImg)\n" +
                         "WHERE id(curElfImg)=$elfImgId\n" +
                         inProcessStr + inThreadStr +
-                        "RETURN sum(r.counts)")
+                        "\nRETURN sum(r.counts)")
                 .bind(jobid).to("jobid")
                 .bind(elfImgId).to("elfImgId")
                 .bind(visibleProcesses).to("visibleProcesses")
@@ -46,14 +46,34 @@ public class InvokedSymRepoImpl implements InvokedSymRepo {
 
     @Override
     public Collection<SymCountQueryResult> getELFImgCountSymbols(Long jobid, Long elfImgId, Long threadId, Long skipSymbolNum,
-                                                                 Long visibleSymbolLimit) {
+                                                                 Long visibleSymbolLimit, Long[] visibleThreads, Long[] visibleProcesses) {
+
+        String inProcessStr = "AND (r.processId IN $visibleProcesses)\n";
+        String inThreadStr = "AND (r.threadId IN $visibleThreads)\n";
+
+        if (visibleProcesses.length == 0) {
+            inProcessStr = "";
+        }
+        if (visibleThreads.length == 0) {
+            inThreadStr = "\n";
+        }
+
+
         StringBuilder sb = new StringBuilder();
         sb.append("MATCH (curJob:Job)\n" +
                 "WHERE id(curJob)=$jobid\n" +
                 "MATCH (curJob)-[r:JobInvokeSym]->(curSymbol:ElfSym)<-[:HAS_EXTSYM]-(curElfImg:ElfImg)\n" +
-                "WHERE id(curElfImg)=$elfImgId\n");
+                "WHERE id(curElfImg)=$elfImgId\n"
+                + inProcessStr + inThreadStr);
 
         sb.append("RETURN curSymbol.symbolName,r.counts\n");
+        if(skipSymbolNum!=null){
+            sb.append("SKIP $skipSymbolNum");
+        }
+        if(visibleSymbolLimit!=null){
+            sb.append("LIMIT $visibleSymbolLimit");
+        }
+
 
         return this.neo4jClient
                 .query(sb.toString())
@@ -61,6 +81,8 @@ public class InvokedSymRepoImpl implements InvokedSymRepo {
                 .bind(elfImgId).to("elfImgId")
                 .bind(skipSymbolNum).to("skipSymbolNum")
                 .bind(visibleSymbolLimit).to("visibleSymbolLimit")
+                .bind(visibleProcesses).to("visibleProcesses")
+                .bind(visibleThreads).to("visibleThreads")
                 .fetchAs(SymCountQueryResult.class)
                 .mappedBy((typeSystem, record) -> new SymCountQueryResult(record.get(1).asLong(), record.get(0).asString()))
                 .all();
@@ -70,14 +92,14 @@ public class InvokedSymRepoImpl implements InvokedSymRepo {
     @Override
     public Long getELFImgTiming(Long jobid, Long elfImgId, Long[] visibleProcesses, Long[] visibleThreads) {
 
-        String inProcessStr = "AND (r.threadId IN $visibleThreads)\n";
-        String inThreadStr = "AND (r.processId IN $visibleProcesses)\n";
+        String inProcessStr = "AND (r.processId IN $visibleProcesses)\n";
+        String inThreadStr = "AND (r.threadId IN $visibleThreads)\n";
 
         if (visibleProcesses.length == 0) {
             inProcessStr = "";
         }
         if (visibleThreads.length == 0) {
-            inThreadStr = "";
+            inThreadStr = "\n";
         }
 
         return this.neo4jClient
@@ -98,27 +120,41 @@ public class InvokedSymRepoImpl implements InvokedSymRepo {
 
     @Override
     public Collection<SymTimingQueryResult> getELFImgTimingSymbols(Long jobid, Long elfImgId, Long threadId, Long skipSymbolNum,
-                                                                   Long visibleSymbolLimit) {
+                                                                   Long visibleSymbolLimit, Long[] visibleThreads, Long[] visibleProcesses) {
+        String inProcessStr = "AND (r.processId IN $visibleProcesses)\n";
+        String inThreadStr = "AND (r.threadId IN $visibleThreads)\n";
+
+        if (visibleProcesses.length == 0) {
+            inProcessStr = "";
+        }
+        if (visibleThreads.length == 0) {
+            inThreadStr = "\n";
+        }
+
         StringBuilder sb = new StringBuilder();
         sb.append("MATCH (curJob:Job)\n" +
                 "WHERE id(curJob)=$jobid\n" +
                 "MATCH (curImg)<-[r:ExtSymInvokeImg]-(invokedSym:ElfSym)\n" +
-                "WHERE id(curImg)=$elfImgId\n");
+                "WHERE id(curImg)=$elfImgId\n"
+                + inProcessStr + inThreadStr);
 
         sb.append("RETURN invokedSym.symbolName,r.duration\n");
-
-        if (skipSymbolNum != null) {
-            sb.append("SKIP $skipSymbolNum\n");
+        if(skipSymbolNum!=null){
+            sb.append("SKIP $skipSymbolNum");
         }
-        if (visibleSymbolLimit != null) {
+        if(visibleSymbolLimit!=null){
             sb.append("LIMIT $visibleSymbolLimit\n");
         }
+
+
         return this.neo4jClient
                 .query(sb.toString())
                 .bind(jobid).to("jobid")
                 .bind(elfImgId).to("elfImgId")
                 .bind(skipSymbolNum).to("skipSymbolNum")
                 .bind(visibleSymbolLimit).to("visibleSymbolLimit")
+                .bind(visibleProcesses).to("visibleProcesses")
+                .bind(visibleThreads).to("visibleThreads")
                 .fetchAs(SymTimingQueryResult.class)
                 .mappedBy((typeSystem, record) -> new SymTimingQueryResult(record.get(1).asLong(), record.get(0).asString()))
                 .all();

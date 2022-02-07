@@ -74,6 +74,8 @@ public class ElfInfoRestController {
     @GetMapping("/image/counting/symbols")
     public Collection<SymCountQueryResult> getELFImgCountingSymbols(Long jobid, Long threadId, Long elfImgId,
                                                                     Long visibleSymbolLimit,
+                                                                    Long[] visibleThreads,
+                                                                    Long[] visibleProcesses,
                                                                     HttpServletRequest request,
                                                                     HttpServletResponse response) {
         if (jobid == null || elfImgId == null) {
@@ -81,10 +83,10 @@ public class ElfInfoRestController {
         }
         //Get symbol within limit first
         Collection<SymCountQueryResult> symbolWithinLimit = jobInvokedSymRepo.getELFImgCountSymbols(jobid, elfImgId, threadId,
-                null, visibleSymbolLimit);
+                null, visibleSymbolLimit, visibleThreads, visibleProcesses);
         //Get the counitng sum of the rest of symbol
         Collection<SymCountQueryResult> restSyms = jobInvokedSymRepo.getELFImgCountSymbols(jobid, elfImgId, threadId,
-                visibleSymbolLimit, null);
+                visibleSymbolLimit, null, visibleThreads, visibleProcesses);
         Long restCounts = 0L;
         for (SymCountQueryResult restSym : restSyms) {
             restCounts += restSym.counts;
@@ -105,7 +107,7 @@ public class ElfInfoRestController {
 
         ArrayList<Long> timingRlt = new ArrayList<>();
         for (Long elfImgId : body.elfImgIds) {
-            timingRlt.add(jobInvokedSymRepo.getELFImgTiming(jobid, elfImgId,body.visibleProcesses,body.visibleThreads));
+            timingRlt.add(jobInvokedSymRepo.getELFImgTiming(jobid, elfImgId, body.visibleProcesses, body.visibleThreads));
         }
         return timingRlt;
     }
@@ -113,6 +115,8 @@ public class ElfInfoRestController {
     @GetMapping("/image/timing/symbols")
     public Collection<SymTimingQueryResult> getELFImgTimingSymbols(Long jobid, Long threadId, Long elfImgId,
                                                                    Long visibleSymbolLimit,
+                                                                   Long[] visibleThreads,
+                                                                   Long[] visibleProcesses,
                                                                    HttpServletRequest request,
                                                                    HttpServletResponse response) {
         if (jobid == null || elfImgId == null) {
@@ -120,10 +124,10 @@ public class ElfInfoRestController {
         }
         //Get symbol within limit first
         Collection<SymTimingQueryResult> symbolWithinLimit = jobInvokedSymRepo.getELFImgTimingSymbols(jobid, elfImgId, threadId,
-                null, visibleSymbolLimit);
+                null, visibleSymbolLimit, visibleThreads, visibleProcesses);
         //Get the counitng sum of the rest of symbol
         Collection<SymTimingQueryResult> restSyms = jobInvokedSymRepo.getELFImgTimingSymbols(jobid, elfImgId, threadId,
-                visibleSymbolLimit, null);
+                visibleSymbolLimit, null, visibleThreads, visibleProcesses);
         Long restDurations = 0L;
         for (SymTimingQueryResult restSym : restSyms) {
             restDurations += restSym.durations;

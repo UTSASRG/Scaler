@@ -36,8 +36,8 @@
                 chips
                 hint=""
                 @change="updateCountingGraph()"
-                v-model="selectedELFImg"
-                :items="selectedThreads"
+                v-model="selectedThreads"
+                :items="threadIds"
                 persistent-hint
               ></v-select>
             </v-list-item-content>
@@ -49,9 +49,9 @@
                 multiple
                 chips
                 hint=""
-                v-model="selectedELFImg"
+                v-model="selectedProcesses"
                 @change="updateCountingGraph()"
-                :items="selectedProcesses"
+                :items="processIds"
                 persistent-hint
               ></v-select>
             </v-list-item-content>
@@ -146,6 +146,8 @@ export default {
       zoomToRootId: null,
       curRootId: null,
       visibleSymbolLimit: 20,
+      threadIds: [],
+      processIds: [],
     };
   },
   methods: {
@@ -165,6 +167,7 @@ export default {
           }
         )
         .then(function (responseCountingInfo) {
+          console.log("Counting info", responseCountingInfo);
           thiz.countingData.splice(0);
           thiz.countingLabel.splice(0);
           for (var i = 0; i < thiz.selectedELFImg.length; i += 1) {
@@ -232,6 +235,7 @@ export default {
         //Root node clicked
 
         if (this.curRootId != null) {
+          console.log()
           this.countingData.at(this.curRootId).children.splice(0);
           this.curRootId = null;
         }
@@ -244,7 +248,10 @@ export default {
 
     axios
       .get(
-        scalerConfig.$ANALYZER_SERVER_URL + "/elfInfo/image?jobid=" + thiz.jobid+ "&elfImgValid=true"
+        scalerConfig.$ANALYZER_SERVER_URL +
+          "/elfInfo/image?jobid=" +
+          thiz.jobid +
+          "&elfImgValid=true"
       )
       .then(function (responseImgInfo) {
         // console.log(responseImgInfo.data.map((elfImg) => elfImg.id))
@@ -278,7 +285,7 @@ export default {
       )
       .then(function (response) {
         // console.log(responseImgInfo.data.map((elfImg) => elfImg.id))
-        thiz.selectedThreads = response.data;
+        thiz.threadIds = response.data;
       });
 
     axios
@@ -289,7 +296,7 @@ export default {
       )
       .then(function (response) {
         // console.log(responseImgInfo.data.map((elfImg) => elfImg.id))
-        thiz.selectedProcesses = response.data;
+        thiz.processIds = response.data;
       });
   },
 };
