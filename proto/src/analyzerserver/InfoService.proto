@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package scaler.analyzerserv;
+option java_multiple_files = true;
+option java_package = "com.xttechgroup.scaler.analyzerserv";
+
+import "google/protobuf/empty.proto";
+import "analyzerserver/BinaryExecResult.proto";
+
+// The greeting service definition.
+service Info {
+  // Sends a greeting
+  rpc sayHello (google.protobuf.Empty) returns (HelloMsg) {
+  }
+}
+
+// The request message containing the user's name.
+
+// The response message containing the greetings
+message HelloMsg {
+  string appName = 1;
+  string api = 2;
+  string appVersion = 3;
+  string slogan = 4;
+}

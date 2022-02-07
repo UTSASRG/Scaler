@@ -1,0 +1,24 @@
+app:
+  name: ScalerAnalyzer
+  version: ${project.version}
+
+grpc:
+  server:
+    port: 3060
+
+spring:
+  neo4j:
+    uri: "bolt://127.0.0.1:7687"
+    authentication:
+      username: "neo4j"
+      password: "test"
+
+logging:
+  level:
+    org:
+      neo4j:
+        ogm:
+          drivers:
+            bolt:
+              request:
+                BoltRequest=DEBUG:

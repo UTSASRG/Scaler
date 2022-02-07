@@ -8,8 +8,7 @@ The documentation is pretty lengthy. We only need to understand part of it. To b
 
 All tables in this brochure follows this convention. Pay attention to the byte order and the address direction.
 
-![image-20210520135140254](https://user-images.githubusercontent.com/19838874/148663883-d44d3a91-f259-485e-aa71-b75ebfe64c0d.png)
-
+![image-20210520135140254](https://user-images.githubusercontent.com/19838874/148663812-234208d6-5554-4f7c-a57f-b1e6e449ae71.png)
 
 ### Instruction format
 

@@ -4,3 +4,6 @@
 [submodule "libScalerHook/lib/json"]
 	path = libScalerHook/lib/json
 	url = https://github.com/nlohmann/json.git
+[submodule "Analyzer/ScalerRun/lib/yamlcpp_0_7_0"]
+	path = Analyzer/ScalerRun/lib/yamlcpp_0_7_0
+	url = https://github.com/jbeder/yaml-cpp.git
