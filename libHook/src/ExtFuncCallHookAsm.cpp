@@ -855,7 +855,8 @@ namespace scaler {
                     }
                     curSymbol.pltEntry = curAddr;
                     curSymbol.pltSecEntry = (char *) curELFImgInfo.pltSecStartAddr + (*pltStubId) * 16;
-                    DBG_LOGS("%s pltStub=%d", curSymbol.symbolName.c_str(), *pltStubId);
+                    DBG_LOGS("%s:%s pltStub=%d", curELFImgInfo.filePath.c_str(), curSymbol.symbolName.c_str(),
+                             *pltStubId);
 
                     if (isSymbolAddrResolved(curSymbol)) {
 //                        DBG_LOGS("%s(%zd):%s(%zd) plt=%p *%p=%p resolved=%s", curELFImgInfo.filePath.c_str(), curFileID,
