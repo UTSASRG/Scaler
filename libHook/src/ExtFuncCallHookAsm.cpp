@@ -88,7 +88,7 @@ Context::Context(ssize_t libFileSize, ssize_t hookedSymbolSize) {
         //Execute once a thread is created
         timingMatrix = new scaler::Matrix<int64_t>(hookedSymbolSize, libFileSize);
     } else if (timingMode == 1 || timingMode == 2) {
-        if(isMainThread){
+        if (isMainThread) {
             sharedTimingMatrix = new scaler::MatrixWithLock<int64_t>(hookedSymbolSize, libFileSize);
         }
         //Only execute once
@@ -117,9 +117,7 @@ Context::~Context() {
     if (timingMode == 0) {
         delete timingMatrix;
         timingMatrix = nullptr;
-    }
-
-    else if (isMainThread && (timingMode == 1 || timingMode == 2)) {
+    } else if (isMainThread && (timingMode == 1 || timingMode == 2)) {
         //Only execute once
         delete timingMatrix;
         timingMatrix = nullptr;
@@ -430,9 +428,9 @@ namespace scaler {
                 //Install hook code
                 memcpy(curSymbol.pltSecEntry,
                        pltRedirectorCodeArr.data(), 16);
-                DBG_LOGS("File=%s Symbol=%s(ID:%zd) .plt=%p hooked", curELFImgInfo.filePath.c_str(),
+                DBG_LOGS("File=%s Symbol=%s(ID:%zd) .pltsec=%p hooked", curELFImgInfo.filePath.c_str(),
                          curSymbol.symbolName.c_str(), curSymbol.scalerSymbolId,
-                         curSymbol.pltEntry);
+                         curSymbol.pltSecEntry);
             } else {
                 //No .plt.sec, use .plt
 
@@ -461,13 +459,15 @@ namespace scaler {
         }
 
 
-
+        bypassCHooks = SCALER_TRUE;
         //Allocate tls storage, set hook type to FULL
         if (!initTLS()) {
             ERR_LOG("Failed to initialize TLS");
             //This is the main thread
             curContext->isThreadCratedByMyself = false;
         }
+        bypassCHooks = SCALER_FALSE;
+
         if (ldPreloadVal) {
             setenv("LD_PRELOAD", ldPreloadVal, true);
         }
@@ -855,7 +855,7 @@ namespace scaler {
                     }
                     curSymbol.pltEntry = curAddr;
                     curSymbol.pltSecEntry = (char *) curELFImgInfo.pltSecStartAddr + (*pltStubId) * 16;
-                    //DBG_LOGS("%s pltStub=%d", curELFImgInfo.filePath.c_str(), *pltStubId);
+                    DBG_LOGS("%s pltStub=%d", curSymbol.symbolName.c_str(), *pltStubId);
 
                     if (isSymbolAddrResolved(curSymbol)) {
 //                        DBG_LOGS("%s(%zd):%s(%zd) plt=%p *%p=%p resolved=%s", curELFImgInfo.filePath.c_str(), curFileID,
@@ -1154,19 +1154,19 @@ static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
             retOriFuncAddr = curSymbol.addr;
         }
     }
-
+    //Starting from here, we could call external symbols and it won't cause any problem
+    bypassCHooks = SCALER_TRUE;
     /**
      * No counting, no measuring time (If scaler is not installed, then tls is not initialized)
      */
-    if (!_this->active() || bypassCHooks != SCALER_FALSE) {
+    Context *curContextPtr = curContext; //Reduce thread local access
+    if (!_this->active() || bypassCHooks != SCALER_FALSE || curContextPtr == nullptr) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
         return retOriFuncAddr;
     }
 
-    //Starting from here, we could call external symbols and it won't cause any problem
-    bypassCHooks = SCALER_TRUE;
 
     DBG_LOGS("[Pre Hook] Thread:%lu File(%ld):%s, Func(%ld): %s RetAddr:%p", pthread_self(),
              curSymbol.fileId, _this->pmParser.idFileMap.at(curSymbol.fileId).c_str(),
@@ -1181,7 +1181,6 @@ static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
     * Counting (Bypass afterhook)
     */
     assert(curContext != nullptr);
-    Context *curContextPtr = curContext; //Reduce thread local access
     if (curContextPtr->initialized == SCALER_TRUE) {
         curContextPtr->countingVec[curSymbol.hookedId]++;
     }
@@ -1347,6 +1346,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
         return scaler::pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
     } else {
         //Asm hook not ready
+        bypassCHooks = SCALER_FALSE;
         return scaler::pthread_create_orig(thread, attr, start, (void *) arg);
     }
 }
