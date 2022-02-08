@@ -26,7 +26,7 @@ namespace scaler {
             ERR_LOG("Cannot find elf section in memory");
             return false;
         }
-        startAddr = memTool.searchBinInMemory(pltAddrInFile, sizeof(pltHdr.secHdr.sh_entsize),
+        startAddr = memTool.searchBinInMemory(pltAddrInFile, sizeof(pltHdr.secHdr.sh_entsize)*10,
                                               pmParser.executableSegments, boundStartAddr, boundEndAddr);
         if (!startAddr) {
             ERR_LOGS("Can't find section %s", secName.c_str());
