@@ -120,6 +120,36 @@ public class InvokedSymRepoImpl implements InvokedSymRepo {
                 .first().get();
     }
 
+
+    @Override
+    public Long getELFImgTotalTiming(Long jobid, Long elfImgId, Long[] visibleProcesses, Long[] visibleThreads) {
+
+        String inProcessStr = "AND (r.processId IN $visibleProcesses)\n";
+        String inThreadStr = "AND (r.threadId IN $visibleThreads)\n";
+
+        if (visibleProcesses.length == 0) {
+            inProcessStr = "";
+        }
+        if (visibleThreads.length == 0) {
+            inThreadStr = "\n";
+        }
+
+        return this.neo4jClient
+                .query("MATCH (curJob:Job)-[:HAS_IMG]->(curImg:ElfImg)\n" +
+                        "WHERE id(curJob)=$jobid\n" +
+                        "MATCH (curImg)<-[r:ExtSymInvokeImg]-(invokedSym:ElfSym)\n" +
+                        inProcessStr + inThreadStr +
+                        "return sum(r.duration)")
+                .bind(jobid).to("jobid")
+                .bind(elfImgId).to("elfImgId")
+                .bind(visibleProcesses).to("visibleProcesses")
+                .bind(visibleThreads).to("visibleThreads")
+                .fetchAs(Long.class)
+                .mappedBy((typeSystem, record) -> record.get(0).asLong())
+                .first().get();
+    }
+
+
     @Override
     public Collection<SymTimingQueryResult> getELFImgTimingSymbols(Long jobid, Long elfImgId, Long threadId, Long skipSymbolNum,
                                                                    Long visibleSymbolLimit, Long[] visibleThreads, Long[] visibleProcesses) {

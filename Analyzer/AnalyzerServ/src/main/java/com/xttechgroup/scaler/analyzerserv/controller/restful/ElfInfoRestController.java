@@ -98,7 +98,7 @@ public class ElfInfoRestController {
 
 
     @PostMapping("/image/timing")
-    public List<Long> getELFImgTiming(Long jobid, Long threadId, @RequestBody MultipleElfIds body,
+    public List<Long> getELFImgTiming(Long jobid,@RequestBody MultipleElfIds body,
                                       HttpServletRequest request,
                                       HttpServletResponse response) {
         if (jobid == null || body == null) {
@@ -111,6 +111,7 @@ public class ElfInfoRestController {
         }
         return timingRlt;
     }
+
 
     @GetMapping("/image/timing/symbols")
     public Collection<SymTimingQueryResult> getELFImgTimingSymbols(Long jobid, Long threadId, Long elfImgId,
