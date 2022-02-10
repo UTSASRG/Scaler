@@ -6,6 +6,9 @@
 #include <cassert>
 
 extern "C" {
+void* callMalloc(int i) {
+    return malloc(i);
+}
 
 void funcA() {
     printf("Inside Function A\n");

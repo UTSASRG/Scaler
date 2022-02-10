@@ -138,6 +138,13 @@ target_include_directories(libScalerHook-demoapps-Fork PUBLIC)
 target_link_libraries(libScalerHook-demoapps-Fork ScalerHook-HookAuto libScalerHook-testlib-FuncCall libScalerHook-testlib-CallFuncCall)
 target_compile_options(libScalerHook-demoapps-Fork PRIVATE ${TEST_FLAGS} -Werror)
 
+
+add_executable(libScalerHook-demoapps-SameFuncDiffLib src/demoapps/TestSameFuncDiffLib.cpp)
+target_include_directories(libScalerHook-demoapps-SameFuncDiffLib PUBLIC)
+target_link_libraries(libScalerHook-demoapps-SameFuncDiffLib ScalerHook-HookAuto libScalerHook-testlib-FuncCall)
+target_compile_options(libScalerHook-demoapps-SameFuncDiffLib PRIVATE ${TEST_FLAGS} -Werror)
+
+
 add_executable(libScalerHook-proof-TestTLS src/demoapps/TestTLS.cpp)
 target_include_directories(libScalerHook-proof-TestTLS PUBLIC)
 target_link_libraries(libScalerHook-proof-TestTLS pthread)

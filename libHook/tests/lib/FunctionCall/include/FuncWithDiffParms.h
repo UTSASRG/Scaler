@@ -6,6 +6,7 @@
 
 
 extern "C" {
+void* callMalloc(int i);
 
 void funcA();
 
