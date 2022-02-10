@@ -17,7 +17,16 @@
                 item-text="baseName"
                 :item-value="asdfwef"
                 persistent-hint
-              ></v-select>
+              >
+                <template v-slot:prepend-item>
+                  <v-list-item ripple @mousedown.prevent @click="selectAllELFFiles">
+                    <v-list-item-content>
+                      <v-list-item-title> Select All </v-list-item-title>
+                    </v-list-item-content>
+                  </v-list-item>
+                  <v-divider class="mt-2"></v-divider>
+                </template>
+              </v-select>
             </v-list-item-content>
           </v-list-item>
           <v-list-item>
@@ -177,19 +186,21 @@ export default {
           }
         )
         .then(function (responseTimingInfo) {
-          console.log(responseTimingInfo);
           thiz.timingData.splice(0);
           thiz.timingLabel.splice(0);
-          var totalCycles=0
+          var totalCycles = 0;
           for (let i = 0; i < thiz.selectedELFImg.length; i += 1) {
-            totalCycles+=responseTimingInfo.data[i];
+            totalCycles += responseTimingInfo.data[i];
           }
           for (let i = 0; i < thiz.selectedELFImg.length; i += 1) {
             var curImg = thiz.selectedELFImg[i];
             thiz.timingData.push({
               value: responseTimingInfo.data[i],
               name: curImg.filePath,
-              percentage:(responseTimingInfo.data[i]/totalCycles*100).toFixed(2),
+              percentage: (
+                (responseTimingInfo.data[i] / totalCycles) *
+                100
+              ).toFixed(2),
               imgObj: curImg,
               id: "" + curImg.id,
               children: [],
@@ -216,7 +227,6 @@ export default {
       }
     },
     nodeClick: function (params) {
-      console.log("nodeclick");
       if (params.treePathInfo.length == 2) {
         let thiz = this;
         if (this.timingData.at(params.dataIndex - 1).children.length == 0) {
@@ -235,18 +245,20 @@ export default {
                 thiz.selectedProcesses
             )
             .then(function (responseSymInfo) {
-              var parentSymNode=thiz.timingData.at(params.dataIndex - 1);
+              var parentSymNode = thiz.timingData.at(params.dataIndex - 1);
               for (var i = 0; i < responseSymInfo.data.length; i += 1) {
-                var curSymInfo=responseSymInfo.data[i];
+                var curSymInfo = responseSymInfo.data[i];
                 thiz.timingData.at(params.dataIndex - 1).children.push({
                   value: curSymInfo.durations,
                   name: curSymInfo.symbolName,
-                  percentage: (curSymInfo.durations/parentSymNode.value*100).toFixed(2)
+                  percentage: (
+                    (curSymInfo.durations / parentSymNode.value) *
+                    100
+                  ).toFixed(2),
                 });
               }
               thiz.zoomToRootId = params.data.id;
               thiz.curRootId = params.dataIndex - 1;
-              console.log(thiz.timingData);
             });
         }
       } else if (params.treePathInfo.length == 1) {
@@ -258,6 +270,10 @@ export default {
         }
       }
     },
+    selectAllELFFiles: function (){
+      this.selectedELFImg=this.timingELfImg;
+      this.updateTimingGraph();
+    }
   },
   mounted: function () {
     let thiz = this;
@@ -271,11 +287,9 @@ export default {
           "&elfImgValid=true"
       )
       .then(function (responseImgInfo) {
-        // console.log(responseImgInfo.data.map((elfImg) => elfImg.id))
         for (var i = 0; i < responseImgInfo.data.length; ++i) {
           var curImg = responseImgInfo.data[i];
           thiz.$set(curImg, "baseName", path.basename(curImg.filePath));
-          console.log(i)
           thiz.timingELfImg.push(curImg);
         }
       });
@@ -287,7 +301,6 @@ export default {
           thiz.jobid
       )
       .then(function (response) {
-        // console.log(responseImgInfo.data.map((elfImg) => elfImg.id))
         thiz.threadIds = response.data;
       });
 
@@ -298,7 +311,6 @@ export default {
           thiz.jobid
       )
       .then(function (response) {
-        // console.log(responseImgInfo.data.map((elfImg) => elfImg.id))
         thiz.processIds = response.data;
       });
   },
