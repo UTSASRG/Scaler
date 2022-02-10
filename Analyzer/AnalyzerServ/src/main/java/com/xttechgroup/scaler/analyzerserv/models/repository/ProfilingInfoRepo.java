@@ -12,4 +12,7 @@ public interface ProfilingInfoRepo {
     @Transactional(readOnly = true)
     Collection<Long> getProcessIds(Long jobid);
 
+    @Transactional(readOnly = true)
+    Long getThreadTotalTime(Long jobid, Long[] processId, Long[] threadId);
+
 }

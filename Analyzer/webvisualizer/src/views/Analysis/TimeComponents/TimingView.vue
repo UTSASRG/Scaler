@@ -19,7 +19,11 @@
                 persistent-hint
               >
                 <template v-slot:prepend-item>
-                  <v-list-item ripple @mousedown.prevent @click="selectAllELFFiles">
+                  <v-list-item
+                    ripple
+                    @mousedown.prevent
+                    @click="selectAllELFFiles"
+                  >
                     <v-list-item-content>
                       <v-list-item-title> Select All </v-list-item-title>
                     </v-list-item-content>
@@ -63,6 +67,14 @@
                 :items="threadIds"
                 persistent-hint
               ></v-select>
+            </v-list-item-content>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-content>
+              <v-checkbox
+                v-model="selected"
+                label="Bypass commoan symbols"
+              ></v-checkbox>
             </v-list-item-content>
           </v-list-item>
         </v-list>
@@ -174,17 +186,30 @@ export default {
     updateTimingGraph: function () {
       let thiz = this;
       var selectedIds = this.selectedELFImg.map((x) => x.id);
+
       axios
-        .post(
-          scalerConfig.$ANALYZER_SERVER_URL +
-            "/elfInfo/image/timing?jobid=" +
-            thiz.jobid,
-          {
-            elfImgIds: selectedIds,
-            visibleThreads: thiz.selectedThreads,
-            visibleProcesses: thiz.selectedProcesses,
-          }
-        )
+        .all([
+          axios.post(
+            scalerConfig.$ANALYZER_SERVER_URL +
+              "/elfInfo/image/timing?jobid=" +
+              thiz.jobid,
+            {
+              elfImgIds: selectedIds,
+              visibleThreads: thiz.selectedThreads,
+              visibleProcesses: thiz.selectedProcesses,
+            }
+          ),
+          axios.post(
+            scalerConfig.$ANALYZER_SERVER_URL +
+              "/elfInfo/image/timing?jobid=" +
+              thiz.jobid,
+            {
+              elfImgIds: selectedIds,
+              visibleThreads: thiz.selectedThreads,
+              visibleProcesses: thiz.selectedProcesses,
+            }
+          ),
+        ])
         .then(function (responseTimingInfo) {
           thiz.timingData.splice(0);
           thiz.timingLabel.splice(0);
@@ -270,10 +295,10 @@ export default {
         }
       }
     },
-    selectAllELFFiles: function (){
-      this.selectedELFImg=this.timingELfImg;
+    selectAllELFFiles: function () {
+      this.selectedELFImg = this.timingELfImg;
       this.updateTimingGraph();
-    }
+    },
   },
   mounted: function () {
     let thiz = this;
