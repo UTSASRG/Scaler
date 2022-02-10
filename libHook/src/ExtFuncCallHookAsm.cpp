@@ -59,7 +59,9 @@ public:
     //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
     int64_t *countingVec = nullptr;
     int64_t countingVecRows = -1;
+    int64_t layeredRecordNumber[20];
 
+    int64_t threadCreationTimestamp = 0; //The total execution time of current thread
     bool isThreadCratedByMyself = false;
     short initialized = 0;
 
@@ -82,6 +84,10 @@ scaler::ExtFuncCallHookAsm *scaler_extFuncCallHookAsm_thiz = nullptr;
 
 Context::Context(ssize_t libFileSize, ssize_t hookedSymbolSize) {
     bool isMainThread = scaler::Config::mainthreadID == pthread_self(); //Dont double initialize
+
+//    for (int i = 0; i < 20; ++i) {
+//        layeredRecordNumber[i] = 0;
+//    }
 
     int timingMode = scaler_extFuncCallHookAsm_thiz->getTimingMode();
     if (timingMode == 0) {
@@ -146,6 +152,16 @@ public:
             fatalError("curContext is not initialized, won't save anything");
             return;
         }
+        INFO_LOG("Sending main thread execution time");
+
+        Context *curContexPtr = curContext;
+        if (!curContexPtr->isThreadCratedByMyself) {
+            scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
+            if (!jobServiceGrpc.appendThreadExecTime(getpid(), pthread_self(),
+                                                     getunixtimestampms() - curContexPtr->threadCreationTimestamp)) {
+                ERR_LOG("Cannot send thread total execution time to server");
+            }
+        }
 
         pthread_mutex_lock(&elfInfoUploadLock);
         if (!elfInfoUploaded) {
@@ -153,22 +169,31 @@ public:
             INFO_LOG("Sending symbol info");
             scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
 
-
             if (!jobServiceGrpc.appendElfImgInfo(*scaler_extFuncCallHookAsm_thiz)) {
                 ERR_LOG("Cannot send elf info to server");
             }
 
-
             elfInfoUploaded = true;
-
         }
         pthread_mutex_unlock(&elfInfoUploadLock);
 
-        Context *curContexPtr = curContext;
         if (!curContexPtr->isThreadCratedByMyself) {
+            std::stringstream ss;
+            int64_t curSum = 0;
+//            for (int i = 0; i < 20; ++i) {
+//                if (curContexPtr->layeredRecordNumber[i] == -1)
+//                    break;
+//                curSum += curContexPtr->layeredRecordNumber[i];
+//                ss << curSum << "\t";
+//            }
+//            ERR_LOGS("Total thread record: %s",
+//                     ss.str().c_str());
+
             INFO_LOGS("Sending timing info for thread %lu", pthread_self());
             scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
             bool isMainThread = scaler::Config::mainthreadID == pthread_self(); //Dont double initialize
+
+            jobServiceGrpc.appendThreadExecTime(getpid(), pthread_self(), getunixtimestampms())
 
             int timingMode = scaler_extFuncCallHookAsm_thiz->getTimingMode();
             if (timingMode == 0) {
@@ -473,6 +498,7 @@ namespace scaler {
         }
 
         installed = true;
+        curContext->threadCreationTimestamp = getunixtimestampms();
 
         return true;
     }
@@ -1213,6 +1239,11 @@ void *cAfterHookHandlerLinux() {
     auto &_this = scaler_extFuncCallHookAsm_thiz;
     Context *curContextPtr = curContext;
     assert(curContext != nullptr);
+//    if (curContextPtr->callerAddr.getSize() <= 20) {
+//        curContextPtr->layeredRecordNumber[curContextPtr->callerAddr.getSize() - 1] += 1;
+//    } else {
+//        curContextPtr->layeredRecordNumber[19] += 1;
+//    }
 
     scaler::SymID extSymbolID = curContextPtr->extSymbolId.peekpop();
     //auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID)SymInfo.
@@ -1276,6 +1307,7 @@ struct dummy_thread_function_args {
 // Instrument thread beginning, call the original thread function, instrument thread end
 void *dummy_thread_function(void *data) {
     bypassCHooks = SCALER_TRUE;
+
     /**
      * Perform required actions at beginning of thread
      */
@@ -1298,6 +1330,7 @@ void *dummy_thread_function(void *data) {
         DBG_LOGS("thread %lu is not created by myself", pthread_self());
         Context *curContextPtr = curContext;
         curContextPtr->isThreadCratedByMyself = true;
+        curContextPtr->threadCreationTimestamp = getunixtimestampms();
     } else {
         Context *curContextPtr = curContext;
         curContextPtr->curThreadNumber += 1;

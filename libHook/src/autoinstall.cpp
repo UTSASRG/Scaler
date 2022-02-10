@@ -9,6 +9,7 @@
 #include <grpc/JobServiceGrpc.h>
 #include <grpc/ChannelPool.h>
 #include <grpc/ConfigServiceGrpc.h>
+#include <util/tool/Timer.h>
 
 typedef int (*main_fn_t)(int, char **, char **);
 
@@ -285,7 +286,6 @@ int doubletake_main(int argc, char **argv, char **envp) {
             return true;
         }
     }, INSTALL_TYPE::ASM);
-
 
     // Call the program's main function
     int ret = real_main(argc, argv, envp);

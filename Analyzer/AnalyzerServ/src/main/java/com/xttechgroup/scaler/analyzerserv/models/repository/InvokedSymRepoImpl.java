@@ -122,7 +122,7 @@ public class InvokedSymRepoImpl implements InvokedSymRepo {
 
 
     @Override
-    public Long getELFImgTotalTiming(Long jobid, Long elfImgId, Long[] visibleProcesses, Long[] visibleThreads) {
+    public Long getELFImgTotalTiming(Long jobid, Long[] elfImgIds, Long[] visibleProcesses, Long[] visibleThreads) {
 
         String inProcessStr = "AND (r.processId IN $visibleProcesses)\n";
         String inThreadStr = "AND (r.threadId IN $visibleThreads)\n";
@@ -138,10 +138,11 @@ public class InvokedSymRepoImpl implements InvokedSymRepo {
                 .query("MATCH (curJob:Job)-[:HAS_IMG]->(curImg:ElfImg)\n" +
                         "WHERE id(curJob)=$jobid\n" +
                         "MATCH (curImg)<-[r:ExtSymInvokeImg]-(invokedSym:ElfSym)\n" +
+                        "WHERE id(curImg) IN $elfImgIds\n" +
                         inProcessStr + inThreadStr +
                         "return sum(r.duration)")
                 .bind(jobid).to("jobid")
-                .bind(elfImgId).to("elfImgId")
+                .bind(elfImgIds).to("elfImgIds")
                 .bind(visibleProcesses).to("visibleProcesses")
                 .bind(visibleThreads).to("visibleThreads")
                 .fetchAs(Long.class)
