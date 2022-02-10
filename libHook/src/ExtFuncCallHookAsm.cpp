@@ -1156,7 +1156,7 @@ static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
         }
     }
     //Starting from here, we could call external symbols and it won't cause any problem
-    bypassCHooks = SCALER_TRUE;
+
     /**
      * No counting, no measuring time (If scaler is not installed, then tls is not initialized)
      */
@@ -1168,6 +1168,7 @@ static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
         return retOriFuncAddr;
     }
 
+    bypassCHooks = SCALER_TRUE;
 
     DBG_LOGS("[Pre Hook] Thread:%lu File(%ld):%s, Func(%ld): %s RetAddr:%p", pthread_self(),
              curSymbol.fileId, _this->pmParser.idFileMap.at(curSymbol.fileId).c_str(),
