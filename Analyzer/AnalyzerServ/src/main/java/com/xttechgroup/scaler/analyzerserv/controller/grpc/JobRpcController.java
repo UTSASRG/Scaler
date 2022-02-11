@@ -281,12 +281,12 @@ public class JobRpcController extends JobGrpc.JobImplBase {
                     reply.setErrorMsg("Saving thread execution time failed.");
                     tx.rollback();
                 } else {
-
                     reply.setSuccess(true);
                 }
                 return null;
-
             });
+            responseObserver.onNext(reply.build());
+            responseObserver.onCompleted();
         }
     }
 }

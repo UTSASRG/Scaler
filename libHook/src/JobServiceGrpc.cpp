@@ -164,7 +164,7 @@ bool JobServiceGrpc::appendThreadExecTime(int64_t processId, int64_t threadId, i
 
     const auto &clientWriter = stub_->appendThreadExecTime(&context, threadTotalTimeMsg, &reply);
 
-    return false;
+    return true;
 }
 
 

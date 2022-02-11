@@ -62,7 +62,6 @@ public:
     int64_t layeredRecordNumber[20];
 
     int64_t threadCreationTimestamp = 0; //The total execution time of current thread
-    bool isThreadCratedByMyself = false;
     short initialized = 0;
 
     static scaler::MatrixWithLock<int64_t> *sharedTimingMatrix;
@@ -133,6 +132,7 @@ Context::~Context() {
 
 __thread Context *curContext __attribute((tls_model("initial-exec")));
 
+__thread bool isThreadCratedByMyself __attribute((tls_model("initial-exec"))) = false;
 
 __thread uint8_t bypassCHooks __attribute((tls_model("initial-exec"))) = SCALER_TRUE; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
 
@@ -152,10 +152,10 @@ public:
             fatalError("curContext is not initialized, won't save anything");
             return;
         }
-        INFO_LOG("Sending main thread execution time");
-
         Context *curContexPtr = curContext;
-        if (!curContexPtr->isThreadCratedByMyself) {
+        if (!isThreadCratedByMyself) {
+            INFO_LOG("Sending main thread execution time");
+
             scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
             if (!jobServiceGrpc.appendThreadExecTime(getpid(), pthread_self(),
                                                      getunixtimestampms() - curContexPtr->threadCreationTimestamp)) {
@@ -177,7 +177,7 @@ public:
         }
         pthread_mutex_unlock(&elfInfoUploadLock);
 
-        if (!curContexPtr->isThreadCratedByMyself) {
+        if (!isThreadCratedByMyself) {
             std::stringstream ss;
             int64_t curSum = 0;
 //            for (int i = 0; i < 20; ++i) {
@@ -192,8 +192,6 @@ public:
             INFO_LOGS("Sending timing info for thread %lu", pthread_self());
             scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
             bool isMainThread = scaler::Config::mainthreadID == pthread_self(); //Dont double initialize
-
-            jobServiceGrpc.appendThreadExecTime(getpid(), pthread_self(), getunixtimestampms())
 
             int timingMode = scaler_extFuncCallHookAsm_thiz->getTimingMode();
             if (timingMode == 0) {
@@ -486,10 +484,11 @@ namespace scaler {
 
         bypassCHooks = SCALER_TRUE;
         //Allocate tls storage, set hook type to FULL
+        isThreadCratedByMyself = false;
+
         if (!initTLS()) {
             ERR_LOG("Failed to initialize TLS");
             //This is the main thread
-            curContext->isThreadCratedByMyself = false;
         }
         bypassCHooks = SCALER_FALSE;
 
@@ -1329,10 +1328,11 @@ void *dummy_thread_function(void *data) {
         //This thread is created by the hook itself, we don't save anything
         DBG_LOGS("thread %lu is not created by myself", pthread_self());
         Context *curContextPtr = curContext;
-        curContextPtr->isThreadCratedByMyself = true;
+        isThreadCratedByMyself = true;
         curContextPtr->threadCreationTimestamp = getunixtimestampms();
     } else {
         Context *curContextPtr = curContext;
+        isThreadCratedByMyself = false;
         curContextPtr->curThreadNumber += 1;
         DBG_LOGS("thread %lu is created by myself", pthread_self());
     }
@@ -1382,6 +1382,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     } else {
         //Asm hook not ready
         bypassCHooks = SCALER_FALSE;
+        isThreadCratedByMyself = true;
         return scaler::pthread_create_orig(thread, attr, start, (void *) arg);
     }
 }
