@@ -10,6 +10,7 @@ import java.util.*;
 // CREATE INDEX ON :ElfSym(libFileId)
 // CREATE INDEX ON :ElfSym(hookedId)
 // CREATE INDEX ON :ElfSym(hooked)
+// CREATE INDEX ON :ElfSym(symbolName)
 @Data
 @Node("ElfSym")
 public class ELFSymEntity {

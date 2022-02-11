@@ -54,6 +54,12 @@ message TimingMsg{
   repeated int64 countingVecVal = 8;
 }
 
+message ThreadTotalTimeMsg{
+  int64 jobId = 1; //scaler run id
+  int64 threadId = 2;
+  int64 processId = 3;
+  int64 totalTime =4;
+}
 
 
 
@@ -69,4 +75,7 @@ service Job {
 
   rpc appendTimingMatrix(TimingMsg) returns(BinaryExecResult){
   }
+
+   rpc appendThreadExecTime(ThreadTotalTimeMsg) returns(BinaryExecResult){
+   }
 }

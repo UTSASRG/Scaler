@@ -19,7 +19,11 @@
                 persistent-hint
               >
                 <template v-slot:prepend-item>
-                  <v-list-item ripple @mousedown.prevent @click="selectAllELFFiles">
+                  <v-list-item
+                    ripple
+                    @mousedown.prevent
+                    @click="selectAllELFFiles"
+                  >
                     <v-list-item-content>
                       <v-list-item-title> Select All </v-list-item-title>
                     </v-list-item-content>
@@ -63,6 +67,14 @@
                 :items="threadIds"
                 persistent-hint
               ></v-select>
+            </v-list-item-content>
+          </v-list-item>
+          <v-list-item>
+            <v-list-item-content>
+              <v-checkbox
+                v-model="selected"
+                label="Bypass commoan symbols"
+              ></v-checkbox>
             </v-list-item-content>
           </v-list-item>
         </v-list>
@@ -174,40 +186,108 @@ export default {
     updateTimingGraph: function () {
       let thiz = this;
       var selectedIds = this.selectedELFImg.map((x) => x.id);
+
       axios
-        .post(
-          scalerConfig.$ANALYZER_SERVER_URL +
-            "/elfInfo/image/timing?jobid=" +
-            thiz.jobid,
-          {
-            elfImgIds: selectedIds,
-            visibleThreads: thiz.selectedThreads,
-            visibleProcesses: thiz.selectedProcesses,
-          }
-        )
-        .then(function (responseTimingInfo) {
-          thiz.timingData.splice(0);
-          thiz.timingLabel.splice(0);
-          var totalCycles = 0;
-          for (let i = 0; i < thiz.selectedELFImg.length; i += 1) {
-            totalCycles += responseTimingInfo.data[i];
-          }
-          for (let i = 0; i < thiz.selectedELFImg.length; i += 1) {
-            var curImg = thiz.selectedELFImg[i];
-            thiz.timingData.push({
-              value: responseTimingInfo.data[i],
-              name: curImg.filePath,
-              percentage: (
-                (responseTimingInfo.data[i] / totalCycles) *
-                100
-              ).toFixed(2),
-              imgObj: curImg,
-              id: "" + curImg.id,
-              children: [],
-            });
-            thiz.timingLabel.push(curImg.filePath);
-          }
-        });
+        .all([
+          axios.post(
+            scalerConfig.$ANALYZER_SERVER_URL +
+              "/elfInfo/image/timing?jobid=" +
+              thiz.jobid,
+            {
+              elfImgIds: selectedIds,
+              visibleThreads: thiz.selectedThreads,
+              visibleProcesses: thiz.selectedProcesses,
+            }
+          ),
+          axios.post(
+            scalerConfig.$ANALYZER_SERVER_URL +
+              "/profiling/totalTime?jobid=" +
+              thiz.jobid,
+            {
+              visibleThreads: thiz.selectedThreads,
+              visibleProcesses: thiz.selectedProcesses,
+            }
+          ),
+          axios.get(
+            scalerConfig.$ANALYZER_SERVER_URL +
+              "/profiling/totalTime/library?jobid=" +
+              thiz.jobid
+          ),
+        ])
+        .then(
+          axios.spread((...responses) => {
+            let responseTimingInfo = responses[0];
+            let responseTotalTime = responses[1];
+            let responseLibraryTime = responses[2];
+
+            var totalCycles = responseTotalTime.data;
+            thiz.timingData.splice(0);
+            thiz.timingLabel.splice(0);
+            // var totalCyclesLibrary = 0;
+            // for (let i = 0; i < thiz.selectedELFImg.length; i += 1) {
+            //   totalCyclesLibrary += responseTimingInfo.data[i];
+            // }
+            // console.log(
+            //   "totalCyclesLibrary is",
+            //   totalCyclesLibrary,
+            //   responseTimingInfo.data,
+            //   totalCycles
+            // );
+
+            for (let i = 0; i < thiz.selectedELFImg.length; i += 1) {
+              var curImg = thiz.selectedELFImg[i];
+              thiz.timingData.push({
+                value: responseTimingInfo.data[i],
+                name: curImg.filePath,
+                percentage: (
+                  (responseTimingInfo.data[i] / totalCycles) *
+                  100
+                ).toFixed(2),
+                imgObj: curImg,
+                id: "" + curImg.id,
+                children: [],
+              });
+              thiz.timingLabel.push(curImg.filePath);
+            }
+
+            //todo: not efficient when there are lots of executables
+            //ELFImage with scalerId 0 would always be the
+
+            let mainElfImg = null;
+
+            for (let i = 0; i < thiz.timingELfImg.length; ++i) {
+              if (thiz.timingELfImg[i].scalerId == 0) {
+                mainElfImg = thiz.timingELfImg[i];
+                break;
+              }
+            }
+
+            var selectedIds = this.selectedELFImg.map((x) => x.id);
+            let totalCyclesLibrary=responseLibraryTime.data;
+            if (selectedIds.includes(mainElfImg.id)) {
+              console.log(
+                "Total time is",
+                totalCycles,
+                totalCyclesLibrary,
+                totalCycles - totalCyclesLibrary / totalCycles
+              );
+
+              //Adding main application
+              thiz.timingData.push({
+                value: totalCycles - totalCyclesLibrary,
+                name: mainElfImg.filePath,
+                percentage: (
+                  ((totalCycles - totalCyclesLibrary) / totalCycles) *
+                  100
+                ).toFixed(2),
+                imgObj: mainElfImg,
+                id: "" + mainElfImg.id,
+                children: [],
+              });
+              thiz.timingLabel.push(mainElfImg.filePath);
+            }
+          })
+        );
 
       // Fetching calling info for that specific image
     },
@@ -270,10 +350,10 @@ export default {
         }
       }
     },
-    selectAllELFFiles: function (){
-      this.selectedELFImg=this.timingELfImg;
+    selectAllELFFiles: function () {
+      this.selectedELFImg = this.timingELfImg;
       this.updateTimingGraph();
-    }
+    },
   },
   mounted: function () {
     let thiz = this;

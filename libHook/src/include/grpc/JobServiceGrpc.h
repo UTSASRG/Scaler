@@ -69,6 +69,7 @@ namespace scaler {
             return true;
         }
 
+        bool appendThreadExecTime(int64_t processId, int64_t threadId,int64_t execTime);
 
     private:
         std::unique_ptr<scaler::analyzerserv::Job::Stub> stub_;

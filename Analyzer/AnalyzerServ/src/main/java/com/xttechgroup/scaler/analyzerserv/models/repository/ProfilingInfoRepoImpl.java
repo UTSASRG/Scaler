@@ -34,4 +34,30 @@ public class ProfilingInfoRepoImpl implements ProfilingInfoRepo {
                 .mappedBy((typeSystem, record) -> record.get(0).asLong())
                 .all();
     }
+
+    @Override
+    public Long getThreadTotalTime(Long jobid, Long[] processIds, Long[] threadIds) {
+
+        String inProcessStr = "AND (curThread.processId IN $visibleProcesses)\n";
+        String inThreadStr = "AND (curThread.threadId IN $visibleThreads)\n";
+
+        if (processIds.length == 0) {
+            inProcessStr = "";
+        }
+        if (threadIds.length == 0) {
+            inThreadStr = "\n";
+        }
+
+        return this.neo4jClient
+                .query("MATCH (curJob:Job)-[:HAS_THREAD]->(curThread:Thread)\n" +
+                        "WHERE id(curJob)=$jobid\n" +
+                        inProcessStr + inThreadStr +
+                        "RETURN SUM(curThread.totalTime)")
+                .bind(jobid).to("jobid")
+                .bind(processIds).to("processIds")
+                .bind(threadIds).to("threadIds")
+                .fetchAs(Long.class)
+                .mappedBy((typeSystem, record) -> record.get(0).asLong())
+                .first().get();
+    }
 }

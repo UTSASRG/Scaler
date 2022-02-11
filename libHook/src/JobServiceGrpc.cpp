@@ -12,6 +12,7 @@ using scaler::analyzerserv::JobInfoMsg;
 using scaler::analyzerserv::BinaryExecResult;
 using scaler::analyzerserv::ELFImgInfoMsg;
 using scaler::analyzerserv::ELFSymbolInfoMsg;
+using scaler::analyzerserv::ThreadTotalTimeMsg;
 using scaler::analyzerserv::TimingMsg;
 
 
@@ -147,6 +148,25 @@ bool JobServiceGrpc::appendElfImgInfo(ExtFuncCallHookAsm &asmHook) {
 
     return true;
 }
+
+bool JobServiceGrpc::appendThreadExecTime(int64_t processId, int64_t threadId, int64_t execTime) {
+    BinaryExecResult reply;
+    ELFImgInfoMsg elfInfoParm;
+    // Context for the client. It could be used to convey extra information to
+    // the server and/or tweak certain RPC behaviors.
+    ClientContext context;
+    ThreadTotalTimeMsg threadTotalTimeMsg;
+
+    threadTotalTimeMsg.set_jobid(Config::curJobId);
+    threadTotalTimeMsg.set_processid(processId);
+    threadTotalTimeMsg.set_threadid(threadId);
+    threadTotalTimeMsg.set_totaltime(execTime);
+
+    const auto &clientWriter = stub_->appendThreadExecTime(&context, threadTotalTimeMsg, &reply);
+
+    return true;
+}
+
 
 pthread_mutex_t timingLock = PTHREAD_MUTEX_INITIALIZER;
 

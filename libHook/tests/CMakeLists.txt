@@ -184,7 +184,7 @@ target_compile_options(libScalerHook-parsecapps-dedup PRIVATE ${TEST_FLAGS})
 
 
 add_executable(libScalerHook-parsecapps-blackscholes src/parsecapps/blackscholes/blackscholes-pthread.cpp)
-target_link_libraries(libScalerHook-parsecapps-blackscholes ScalerHook-HookAuto pthread)
+target_link_libraries(libScalerHook-parsecapps-blackscholes pthread)
 target_compile_options(libScalerHook-parsecapps-blackscholes PRIVATE ${TEST_FLAGS} "-DENABLE_THREADS" "-DPARALLEL" "-DNCO=2" "-DN=960")
 
 

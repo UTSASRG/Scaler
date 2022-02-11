@@ -28,7 +28,6 @@ public class JobRpcController extends JobGrpc.JobImplBase {
     Driver neo4jDriver;
 
 
-
     @Override
     public void createJob(Empty request, StreamObserver<JobInfoMsg> responseObserver) {
         Long jobId = jobRepository.newJob();
@@ -251,5 +250,43 @@ public class JobRpcController extends JobGrpc.JobImplBase {
         responseObserver.onNext(reply.build());
         responseObserver.onCompleted();
 
+    }
+
+    @Override
+    public void appendThreadExecTime(ThreadTotalTimeMsg request, StreamObserver<BinaryExecResult> responseObserver) {
+        BinaryExecResult.Builder reply = BinaryExecResult.newBuilder();
+        try (Session session = neo4jDriver.session()) {
+            session.writeTransaction(tx ->
+            {
+                //Then, insert all nodes in one request
+                Map<String, Object> params = new HashMap<>();
+                params.put("jobId", request.getJobId());
+                params.put("threadId", request.getThreadId());
+                params.put("processId", request.getProcessId());
+                params.put("totalTime", request.getTotalTime());
+
+                //Bulk insert elf img
+                String query =
+                        //Expand $jobInvokeSymInfos
+                        "MATCH (curJob:Job)\n" +
+                                "WHERE ID(curJob)=$jobId \n" +
+                                "CREATE (curJob)-[:HAS_THREAD]->(curThread:Thread)\n" +
+                                "SET curThread.totalTime=$totalTime\n" +
+                                "SET curThread.threadId=$threadId\n" +
+                                "SET curThread.processId=$processId\n" +
+                                "RETURN count(curThread)\n";
+                List<Record> result = tx.run(query, params).list();
+                if (result.size() != 1) {
+                    reply.setSuccess(false);
+                    reply.setErrorMsg("Saving thread execution time failed.");
+                    tx.rollback();
+                } else {
+                    reply.setSuccess(true);
+                }
+                return null;
+            });
+            responseObserver.onNext(reply.build());
+            responseObserver.onCompleted();
+        }
     }
 }

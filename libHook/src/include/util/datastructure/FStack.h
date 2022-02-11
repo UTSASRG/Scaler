@@ -30,7 +30,7 @@ namespace scaler {
         }
 
         inline const ssize_t getSize() const {
-            return internalVec.getSize();
+            return stackTopIndex;
         }
 
     protected:

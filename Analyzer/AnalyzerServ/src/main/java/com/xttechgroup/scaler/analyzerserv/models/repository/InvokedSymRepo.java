@@ -21,7 +21,7 @@ public interface InvokedSymRepo {
     public Long getELFImgTiming(Long jobid, Long elfImgId, Long[] visibleProcesses, Long[] visibleThreads);
 
     @Transactional(readOnly = true)
-    public Long getELFImgTotalTiming(Long jobid, Long elfImgId, Long[] visibleProcesses, Long[] visibleThreads);
+    public Long getELFImgTotalTiming(Long jobid, Long[] elfImgIds, Long[] visibleProcesses, Long[] visibleThreads);
 
 
     @Transactional(readOnly = true)
