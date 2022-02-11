@@ -71,17 +71,17 @@ int doubletake_main(int argc, char **argv, char **envp) {
         configFileStream.open(SCALER_HOOK_CONFIG_FILE);
         std::stringstream configFileContent;
         configFileContent << configFileStream.rdbuf();
-        if (!configServiceGrpc.appendYamlConfig(scaler::Config::curJobId,configFileContent.str())) {
+        if (!configServiceGrpc.appendYamlConfig(scaler::Config::curJobId, configFileContent.str())) {
             ERR_LOG("Failed to send config file to server.");
         } else {
             std::string newYamlCOnfig;
-            INFO_LOGS("Please config scaler at: http://127.0.0.1:8080/run/%ld",scaler::Config::curJobId);
-            if (!configServiceGrpc.getConfigFromServer(scaler::Config::curJobId,newYamlCOnfig)) {
+            INFO_LOGS("Please config scaler at: http://127.0.0.1:8080/run/%ld", scaler::Config::curJobId);
+            if (!configServiceGrpc.getConfigFromServer(scaler::Config::curJobId, newYamlCOnfig)) {
                 fatalError("libScalerHook Aborted");
             } else {
                 INFO_LOG("Loading new configuration file");
                 try {
-                    INFO_LOGS("%s",newYamlCOnfig.c_str());
+                    INFO_LOGS("%s", newYamlCOnfig.c_str());
                     scaler::Config::globalConf = YAML::Load(newYamlCOnfig);
                     DBG_LOGS("%s", scaler::Config::globalConf["hook"]["gccpath"].as<std::string>("null").c_str());
                 } catch (YAML::Exception &e) {
@@ -289,6 +289,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
 
     // Call the program's main function
     int ret = real_main(argc, argv, envp);
+    scaler::ExtFuncCallHookAsm::getInst()->updateMainThreadFinishTime(getunixtimestampms());
     DBG_LOG("Uninstalling plthook");
     uninstall(INSTALL_TYPE::ASM);
 

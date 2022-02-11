@@ -48,6 +48,8 @@ namespace scaler {
 
         int getTimingMode();
 
+        void updateMainThreadFinishTime(uint64_t timestamp);
+
     protected:
 
         //A parser to /proc/self/maps

@@ -61,7 +61,9 @@ public:
     int64_t countingVecRows = -1;
     int64_t layeredRecordNumber[20];
 
-    int64_t threadCreationTimestamp = 0; //The total execution time of current thread
+    uint64_t threadCreationTimestamp = 0; //The total execution time of current thread
+    bool threadTerminatedPeacefully = false;
+    uint64_t threadTerminateTimestamp = 0; //The total execution time of current thread
     short initialized = 0;
 
     static scaler::MatrixWithLock<int64_t> *sharedTimingMatrix;
@@ -157,22 +159,25 @@ public:
             INFO_LOG("Sending main thread execution time");
 
             scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
+
+            if (!curContexPtr->threadTerminatedPeacefully) {
+                INFO_LOGS("Thread %lu termination time is incorrect because it is killed", pthread_self());
+                curContexPtr->threadTerminateTimestamp = getunixtimestampms();
+            }
+
             if (!jobServiceGrpc.appendThreadExecTime(getpid(), pthread_self(),
-                                                     getunixtimestampms() - curContexPtr->threadCreationTimestamp)) {
+                                                     curContexPtr->threadTerminateTimestamp - curContexPtr->threadCreationTimestamp)) {
                 ERR_LOG("Cannot send thread total execution time to server");
             }
         }
 
         pthread_mutex_lock(&elfInfoUploadLock);
         if (!elfInfoUploaded) {
-
             INFO_LOG("Sending symbol info");
             scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
-
             if (!jobServiceGrpc.appendElfImgInfo(*scaler_extFuncCallHookAsm_thiz)) {
                 ERR_LOG("Cannot send elf info to server");
             }
-
             elfInfoUploaded = true;
         }
         pthread_mutex_unlock(&elfInfoUploadLock);
@@ -917,6 +922,12 @@ namespace scaler {
         return timingMode;
     }
 
+    void ExtFuncCallHookAsm::updateMainThreadFinishTime(uint64_t timestamp) {
+        curContext->threadTerminatedPeacefully = true;
+        curContext->threadTerminateTimestamp = timestamp;
+        INFO_LOGS("Scaler thinks the app is terminated at %ld",timestamp);
+    }
+
 //    void ExtFuncCallHookAsm::saveCommonFuncID() {
 //        using Json = nlohmann::json;
 //
@@ -1323,11 +1334,11 @@ void *dummy_thread_function(void *data) {
     args = nullptr;
     bypassCHooks = SCALER_FALSE;
 
+    Context *curContextPtr = curContext;
     if (scaler::Config::libHookStartingAddr <= reinterpret_cast<uint64_t>(actualFuncPtr) &&
         reinterpret_cast<uint64_t>(actualFuncPtr) <= scaler::Config::libHookEndingAddr) {
         //This thread is created by the hook itself, we don't save anything
         DBG_LOGS("thread %lu is not created by myself", pthread_self());
-        Context *curContextPtr = curContext;
         isThreadCratedByMyself = true;
         curContextPtr->threadCreationTimestamp = getunixtimestampms();
     } else {
@@ -1341,6 +1352,9 @@ void *dummy_thread_function(void *data) {
     /**
      * Perform required actions after each thread function completes
      */
+    curContextPtr->threadTerminatedPeacefully = true;
+    curContextPtr->threadTerminateTimestamp = getunixtimestampms();
+
     return nullptr;
 }
 
@@ -1378,7 +1392,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
         args->data = arg;
         bypassCHooks = SCALER_FALSE;
         // Call the actual pthread_create
-        return scaler::pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
+        return  scaler::pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
     } else {
         //Asm hook not ready
         bypassCHooks = SCALER_FALSE;

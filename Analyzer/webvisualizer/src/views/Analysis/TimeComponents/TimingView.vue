@@ -72,8 +72,8 @@
           <v-list-item>
             <v-list-item-content>
               <v-checkbox
-                v-model="selected"
-                label="Bypass commoan symbols"
+                v-model="bypassCommonSymbols"
+                label="Bypass common symbols"
               ></v-checkbox>
             </v-list-item-content>
           </v-list-item>
@@ -180,6 +180,9 @@ export default {
       visibleSymbolLimit: 20,
       threadIds: [],
       processIds: [],
+      bypassCommonSymbols: true,
+      bypassCommonSymbolList: ['pthread_join'],
+
     };
   },
   methods: {
@@ -218,6 +221,7 @@ export default {
           axios.spread((...responses) => {
             let responseTimingInfo = responses[0];
             let responseTotalTime = responses[1];
+            console.log('TotalTime ',responseTotalTime.data)
             let responseLibraryTime = responses[2];
 
             var totalCycles = responseTotalTime.data;
@@ -263,7 +267,7 @@ export default {
             }
 
             var selectedIds = this.selectedELFImg.map((x) => x.id);
-            let totalCyclesLibrary=responseLibraryTime.data;
+            let totalCyclesLibrary = responseLibraryTime.data;
             if (selectedIds.includes(mainElfImg.id)) {
               console.log(
                 "Total time is",
@@ -328,6 +332,10 @@ export default {
               var parentSymNode = thiz.timingData.at(params.dataIndex - 1);
               for (var i = 0; i < responseSymInfo.data.length; i += 1) {
                 var curSymInfo = responseSymInfo.data[i];
+                if (thiz.bypassCommonSymbols && thiz.bypassCommonSymbolList.includes(curSymInfo.symbolName)) {
+                  continue;
+                }
+
                 thiz.timingData.at(params.dataIndex - 1).children.push({
                   value: curSymInfo.durations,
                   name: curSymInfo.symbolName,

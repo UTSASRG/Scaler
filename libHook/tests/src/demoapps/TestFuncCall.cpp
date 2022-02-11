@@ -8,9 +8,18 @@
 
 using namespace std;
 
+
+inline int64_t getunixtimestampms() {
+    uint32_t lo, hi;
+    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+    return ((int64_t) hi << 32) | lo;
+}
+
+
 int main() {
+    auto actualStart = getunixtimestampms();
     pthread_t pt1 = pthread_self();
-    assert(pt1!=-1);
+    assert(pt1 != -1);
     printf("pt1=%lu\n", pt1);
     printf("pt1=%lu\n", myGetThreadID());
 
@@ -1047,6 +1056,8 @@ int main() {
     func998();
     func999();*/
 
+    auto actualEnd = getunixtimestampms();
+    printf("%ld-%ld=%ld\n", actualEnd, actualStart, actualEnd - actualStart);
 
     return 0;
 }

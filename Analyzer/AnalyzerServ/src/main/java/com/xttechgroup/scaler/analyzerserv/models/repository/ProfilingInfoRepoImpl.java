@@ -54,8 +54,8 @@ public class ProfilingInfoRepoImpl implements ProfilingInfoRepo {
                         inProcessStr + inThreadStr +
                         "RETURN SUM(curThread.totalTime)")
                 .bind(jobid).to("jobid")
-                .bind(processIds).to("processIds")
-                .bind(threadIds).to("threadIds")
+                .bind(processIds).to("visibleProcesses")
+                .bind(threadIds).to("visibleThreads")
                 .fetchAs(Long.class)
                 .mappedBy((typeSystem, record) -> record.get(0).asLong())
                 .first().get();
