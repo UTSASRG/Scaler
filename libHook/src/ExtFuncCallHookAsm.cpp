@@ -164,9 +164,12 @@ public:
                 INFO_LOGS("Thread %lu termination time is incorrect because it is killed", pthread_self());
                 curContexPtr->threadTerminateTimestamp = getunixtimestampms();
             }
+            INFO_LOGS("%lu is executed for %lu", pthread_self(),
+                      curContexPtr->threadTerminateTimestamp - curContexPtr->threadCreationTimestamp);
 
             if (!jobServiceGrpc.appendThreadExecTime(getpid(), pthread_self(),
-                                                     curContexPtr->threadTerminateTimestamp - curContexPtr->threadCreationTimestamp)) {
+                                                     curContexPtr->threadTerminateTimestamp -
+                                                     curContexPtr->threadCreationTimestamp)) {
                 ERR_LOG("Cannot send thread total execution time to server");
             }
         }
@@ -925,7 +928,7 @@ namespace scaler {
     void ExtFuncCallHookAsm::updateMainThreadFinishTime(uint64_t timestamp) {
         curContext->threadTerminatedPeacefully = true;
         curContext->threadTerminateTimestamp = timestamp;
-        INFO_LOGS("Scaler thinks the app is terminated at %ld",timestamp);
+        INFO_LOGS("Scaler thinks the app is terminated at %ld", timestamp);
     }
 
 //    void ExtFuncCallHookAsm::saveCommonFuncID() {
@@ -1340,7 +1343,6 @@ void *dummy_thread_function(void *data) {
         //This thread is created by the hook itself, we don't save anything
         DBG_LOGS("thread %lu is not created by myself", pthread_self());
         isThreadCratedByMyself = true;
-        curContextPtr->threadCreationTimestamp = getunixtimestampms();
     } else {
         Context *curContextPtr = curContext;
         isThreadCratedByMyself = false;
@@ -1348,6 +1350,7 @@ void *dummy_thread_function(void *data) {
         DBG_LOGS("thread %lu is created by myself", pthread_self());
     }
 
+    curContextPtr->threadCreationTimestamp = getunixtimestampms();
     actualFuncPtr(argData);
     /**
      * Perform required actions after each thread function completes
@@ -1392,7 +1395,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
         args->data = arg;
         bypassCHooks = SCALER_FALSE;
         // Call the actual pthread_create
-        return  scaler::pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
+        return scaler::pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
     } else {
         //Asm hook not ready
         bypassCHooks = SCALER_FALSE;

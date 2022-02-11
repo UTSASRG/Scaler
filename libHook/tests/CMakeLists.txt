@@ -72,7 +72,7 @@ target_link_libraries(libScalerHook-demoapps-Exceptions PUBLIC ScalerHook-HookAu
 target_compile_options(libScalerHook-demoapps-Exceptions PRIVATE ${TEST_FLAGS} -Werror)
 
 add_executable(libScalerHook-demoapps-FuncCall src/demoapps/TestFuncCall.cpp)
-target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC libScalerHook-testlib-FuncCall
+target_link_libraries(libScalerHook-demoapps-FuncCall PUBLIC ScalerHook-HookAuto libScalerHook-testlib-FuncCall
         libScalerHook-testlib-CallFuncCall KuBoPltHook dl)
 target_compile_options(libScalerHook-demoapps-FuncCall PRIVATE ${TEST_FLAGS} -Werror)
 

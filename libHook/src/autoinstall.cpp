@@ -20,6 +20,7 @@ std::string execFileName;
 
 int doubletake_main(int argc, char **argv, char **envp) {
     INFO_LOGS("libHook Ver %s", CMAKE_SCALERRUN_VERSION);
+    INFO_LOGS("Main thread id is%lu", pthread_self());
 
     char *SCALER_HOOK_CONFIG_FILE = getenv("SCALER_HOOK_CONFIG_FILE");
 
