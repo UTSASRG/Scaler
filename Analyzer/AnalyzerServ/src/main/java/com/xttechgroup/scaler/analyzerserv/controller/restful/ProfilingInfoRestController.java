@@ -2,6 +2,7 @@ package com.xttechgroup.scaler.analyzerserv.controller.restful;
 
 
 import com.xttechgroup.scaler.analyzerserv.models.POJO.MultipleElfIds;
+import com.xttechgroup.scaler.analyzerserv.models.repository.InvokedSymRepo;
 import com.xttechgroup.scaler.analyzerserv.models.repository.ProfilingInfoRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +16,8 @@ import java.util.Collection;
 public class ProfilingInfoRestController {
     @Autowired
     ProfilingInfoRepo profilingInfoRepo;
+    @Autowired
+    InvokedSymRepo jobInvokedSymRepo;
 
     @GetMapping("/threads")
     Collection<Long> getThreadIds(Long jobid) {
@@ -31,5 +34,11 @@ public class ProfilingInfoRestController {
                             HttpServletRequest request,
                             HttpServletResponse response) {
         return profilingInfoRepo.getThreadTotalTime(jobid, body.getVisibleProcesses(), body.getVisibleThreads());
+    }
+
+    @GetMapping("/totalTime/library")
+    Long gelibraryTotalTime(Long jobid) {
+        Long[] empty = {};
+        return jobInvokedSymRepo.getELFImgTiming(jobid, null, empty, empty);
     }
 }

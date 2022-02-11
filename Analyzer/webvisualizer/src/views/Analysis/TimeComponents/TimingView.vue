@@ -208,19 +208,31 @@ export default {
               visibleProcesses: thiz.selectedProcesses,
             }
           ),
+          axios.get(
+            scalerConfig.$ANALYZER_SERVER_URL +
+              "/profiling/totalTime/library?jobid=" +
+              thiz.jobid
+          ),
         ])
         .then(
           axios.spread((...responses) => {
             let responseTimingInfo = responses[0];
             let responseTotalTime = responses[1];
+            let responseLibraryTime = responses[2];
+
             var totalCycles = responseTotalTime.data;
             thiz.timingData.splice(0);
             thiz.timingLabel.splice(0);
-            var totalCyclesLibrary = 0;
-            for (let i = 0; i < thiz.selectedELFImg.length; i += 1) {
-              totalCyclesLibrary += responseTimingInfo.data[i];
-            }
-            console.log("totalCyclesLibrary is", totalCyclesLibrary,responseTimingInfo.data,totalCycles);
+            // var totalCyclesLibrary = 0;
+            // for (let i = 0; i < thiz.selectedELFImg.length; i += 1) {
+            //   totalCyclesLibrary += responseTimingInfo.data[i];
+            // }
+            // console.log(
+            //   "totalCyclesLibrary is",
+            //   totalCyclesLibrary,
+            //   responseTimingInfo.data,
+            //   totalCycles
+            // );
 
             for (let i = 0; i < thiz.selectedELFImg.length; i += 1) {
               var curImg = thiz.selectedELFImg[i];
@@ -251,13 +263,13 @@ export default {
             }
 
             var selectedIds = this.selectedELFImg.map((x) => x.id);
-
+            let totalCyclesLibrary=responseLibraryTime.data;
             if (selectedIds.includes(mainElfImg.id)) {
               console.log(
                 "Total time is",
                 totalCycles,
                 totalCyclesLibrary,
-               totalCycles - totalCyclesLibrary / totalCycles
+                totalCycles - totalCyclesLibrary / totalCycles
               );
 
               //Adding main application
