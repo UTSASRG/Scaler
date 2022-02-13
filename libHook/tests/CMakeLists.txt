@@ -39,6 +39,7 @@ add_executable(libScalerHook-unittests
         src/unittests/TestExtFuncCallHook.cpp
         src/unittests/TestFileTool.cpp
         src/unittests/TestMemTool.cpp
+        src/unittests/TestMemoryHeap.cpp
         src/unittests/TestException.cpp
         src/unittests/TestELFParser.cpp
         src/unittests/TestLog.cpp

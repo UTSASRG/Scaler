@@ -31,6 +31,7 @@ set(HookSrc
         src/ChannelPool.cpp
         src/Config.cpp
         src/ConfigServiceGrpc.cpp
+        src/MemoryHeap.cpp
         ${SCALER_PROTO_SRCS}
         )
 #src/VMEmulator.cpp
