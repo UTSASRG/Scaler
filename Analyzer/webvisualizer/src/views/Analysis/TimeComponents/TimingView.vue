@@ -159,7 +159,7 @@ export default {
               data: ["Invocation cycles"],
             },
             label: {
-              show: false,
+              show: true,
             },
             levels: [],
             data: _timingData,
@@ -242,7 +242,7 @@ export default {
               var curImg = thiz.selectedELFImg[i];
               thiz.timingData.push({
                 value: responseTimingInfo.data[i],
-                name: curImg.filePath,
+                name: path.basename(curImg.filePath),
                 percentage: (
                   (responseTimingInfo.data[i] / totalCycles) *
                   100
@@ -279,7 +279,7 @@ export default {
               //Adding main application
               thiz.timingData.push({
                 value: totalCycles - totalCyclesLibrary,
-                name: mainElfImg.filePath,
+                name: path.basename(mainElfImg.filePath),
                 percentage: (
                   ((totalCycles - totalCyclesLibrary) / totalCycles) *
                   100
