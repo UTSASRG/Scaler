@@ -10,12 +10,12 @@ scaler::Serializable::Serializable() {
 scaler::Serializable::~Serializable() {
 }
 
-bool scaler::Serializable::load(FILE *fp) {
+bool scaler::Serializable::load() {
     fatalError("Deserialization is not implemented in the base class, use the subsequent one");
     return false;
 }
 
-bool scaler::Serializable::save(FILE *fp) {
+bool scaler::Serializable::save() {
     fatalError("Serialization is not implemented in the base class, use the subsequent one");
     return false;
 }

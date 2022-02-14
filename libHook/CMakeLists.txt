@@ -24,14 +24,14 @@ set(HookSrc
         src/install.cpp
         src/Timer.cpp
         src/Serilizable.cpp
-        src/InvocationTree.cpp
+        src/InvocationTreeV1.cpp
+        src/InvocationTreeV2.cpp
         src/StringTool.cpp
         src/InfoServiceGrpc.cpp
         src/JobServiceGrpc.cpp
         src/ChannelPool.cpp
         src/Config.cpp
         src/ConfigServiceGrpc.cpp
-        src/MemoryHeap.cpp
         ${SCALER_PROTO_SRCS}
         )
 #src/VMEmulator.cpp

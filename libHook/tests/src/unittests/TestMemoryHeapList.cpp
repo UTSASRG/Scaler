@@ -2,14 +2,14 @@
 
 #include <gtest/gtest.h>
 #include <util/tool/Logging.h>
-#include <util/datastructure/MemoryHeap.h>
+#include <util/datastructure/MemoryHeapList.h>
 
 using namespace scaler;
 
 
 template<typename T>
 void testInsertion() {
-    auto *memHeap = new MemoryHeap<T>(1);
+    auto *memHeap = new MemoryHeapList<T>(1);
 
     EXPECT_EQ(memHeap->chunkHead->nextChunk, nullptr);
     EXPECT_EQ(memHeap->chunkHead->managedSlots, 0);
@@ -45,7 +45,8 @@ struct LargeStruct {
     int64_t a2;
     int64_t a3;
 };
-TEST(Memoryheap, insert) {
+
+TEST(MemoryheapList, insert) {
     testInsertion<char>();
     testInsertion<LargeStruct>();
 }

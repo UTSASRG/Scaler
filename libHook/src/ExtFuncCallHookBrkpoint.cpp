@@ -17,7 +17,7 @@
 #include <sys/user.h>
 #include <wait.h>
 #include <util/tool/Timer.h>
-#include <type/InvocationTree.h>
+#include <type/InvocationTreeV1.h>
 #include <util/tool/PthreadParmExtractor.h>
 #include <semaphore.h>
 #include <util/tool/SemaphoreParmExtractor.h>

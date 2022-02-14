@@ -177,7 +177,7 @@ namespace scaler {
             //Relative
             return curBaseAddr;
         } else {
-            ERR_LOGS("Not found, id1=%zu, id2=%zu, curFileID=%zu\n", idWithBaseAddr, idWithoutBaseAddr, curFileiD);
+            ERR_LOGS("Not found, id1=%zu, id2=%zu, curFileID=%hd\n", idWithBaseAddr, idWithoutBaseAddr, curFileiD);
             return nullptr;
         }
     }

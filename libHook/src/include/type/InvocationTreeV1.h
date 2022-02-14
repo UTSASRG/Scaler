@@ -12,6 +12,27 @@ namespace scaler {
 
     class SerializableMixIn : public Serializable {
     public:
+
+        bool load() override;
+
+        bool save() override;
+
+    };
+
+
+    class InvocationTreeNodeV1 : public SerializableMixIn {
+    protected:
+        FileID realFileID = -1;
+        int64_t funcAddr = -1;
+        FuncID extFuncID;
+        int64_t startTimestamp = -1;
+        int64_t endTimeStamp = -1;
+        int64_t childrenSize = 0;
+
+        InvocationTreeNodeV1 *parent = nullptr;
+        InvocationTreeNodeV1 *firstChild = nullptr;
+        InvocationTreeNodeV1 *nextSibling = nullptr;
+
         enum Type {
             UNSPECIFIED = -1,
             NORMAL_FUNC = 1,
@@ -19,35 +40,12 @@ namespace scaler {
             SEMAPHORE_FUNC = 3
         };
         int8_t type = -1;
-        int64_t firstChildIndex = Type::UNSPECIFIED;
-
-
-        bool load(FILE *fp) override;
-
-        bool save(FILE *fp) override;
-
-    };
-
-
-    class InvocationTreeNode : public SerializableMixIn {
-    protected:
-        int64_t realFileID = -1;
-        int64_t funcAddr = -1;
-        int64_t extFuncID;
-        int64_t startTimestamp = -1;
-        int64_t endTimeStamp = -1;
-        int64_t childrenSize = 0;
-
-        InvocationTreeNode *parent = nullptr;
-        InvocationTreeNode *firstChild = nullptr;
-        InvocationTreeNode *nextSibling = nullptr;
-
     public:
-        InvocationTreeNode();
+        InvocationTreeNodeV1();
 
-        InvocationTreeNode(InvocationTreeNode &) = delete;
+        InvocationTreeNodeV1(InvocationTreeNodeV1 &) = delete;
 
-        InvocationTreeNode(InvocationTreeNode &&) = delete;
+        InvocationTreeNodeV1(InvocationTreeNodeV1 &&) = delete;
 
         inline bool isEmpty() {
             assert(realFileID == -1 && funcAddr == -1 || realFileID != -1 && funcAddr != -1);
@@ -95,7 +93,7 @@ namespace scaler {
         }
 
         inline void setExtFuncID(FuncID extFuncID) {
-            this->extFuncID = reinterpret_cast<int64_t>(extFuncID);
+            this->extFuncID = reinterpret_cast<FuncID>(extFuncID);
         }
 
         inline int64_t getExtFuncID() {
@@ -103,73 +101,74 @@ namespace scaler {
         }
 
 
-        inline InvocationTreeNode *getParent() {
+        inline InvocationTreeNodeV1 *getParent() {
             return parent;
         }
 
-        inline InvocationTreeNode *getFirstChild() {
+        inline InvocationTreeNodeV1 *getFirstChild() {
             return firstChild;
         }
 
-        inline InvocationTreeNode *getNextSibling() {
+        inline InvocationTreeNodeV1 *getNextSibling() {
             return nextSibling;
         }
 
-        bool load(FILE *fp) override;
+        bool load() override;
 
-        bool save(FILE *fp) override;
+        bool save() override;
 
-        InvocationTreeNode *addChild(InvocationTreeNode *childNode, ssize_t posi = -2);
+        InvocationTreeNodeV1 *addChild(InvocationTreeNodeV1 *childNode, ssize_t posi = -2);
 
         //void rmChild(size_t posi);
 
+        int64_t firstChildIndex = Type::UNSPECIFIED;
     };
 
-    class PthreadInvocationTreeNode : public InvocationTreeNode {
+    class PthreadInvocationTreeNodeV1 : public InvocationTreeNodeV1 {
     public:
-        PthreadInvocationTreeNode();
+        PthreadInvocationTreeNodeV1();
 
         int64_t extraField1;
         int64_t extraField2;
 
-        bool load(FILE *fp) override;
+        bool load() override;
 
-        bool save(FILE *fp) override;
+        bool save() override;
 
     };
 
-    class SemaphoreInvocationTreeNode : public InvocationTreeNode {
+    class SemaphoreInvocationTreeNodeV1 : public InvocationTreeNodeV1 {
     public:
-        SemaphoreInvocationTreeNode();
+        SemaphoreInvocationTreeNodeV1();
 
         int64_t extraField1;
 
-        bool load(FILE *fp) override;
+        bool load() override;
 
-        bool save(FILE *fp) override;
+        bool save() override;
     };
 
-    class SerilizableInvocationTree : Serializable {
+    class SerilizableInvocationTreeV1 : Serializable {
     public:
 
-        InvocationTreeNode treeRoot;
+        InvocationTreeNodeV1 treeRoot;
         scaler::ExtFuncCallHook *libPltHook;
 
-        SerilizableInvocationTree();
+        SerilizableInvocationTreeV1();
 
-        explicit SerilizableInvocationTree(std::string fileName);
+        explicit SerilizableInvocationTreeV1(std::string fileName);
 
-        bool load(FILE *fp) override;
+        bool load() override;
 
-        bool save(FILE *fp) override;
+        bool save() override;
 
-        ~SerilizableInvocationTree() override;
+        ~SerilizableInvocationTreeV1() override;
 
         inline pthread_t getTid() {
             return tid;
         }
 
-        std::vector<InvocationTreeNode *> serializeRootNode();
+        std::vector<InvocationTreeNodeV1 *> serializeRootNode();
 
     protected:
         pthread_t tid = 0;
