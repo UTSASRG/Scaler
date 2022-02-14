@@ -9,7 +9,7 @@ namespace scaler {
     template<class OBJTYPE>
     class MemoryHeapArray {
     public:
-        MemoryHeapArray(const ssize_t &initialSize = 4096) : internalArrSize(internalArrSize) {
+        MemoryHeapArray(const ssize_t &initialSize = 4096) : internalArrSize(initialSize) {
             internalArr = (OBJTYPE *) mmap(NULL, initialSize * sizeof(OBJTYPE), PROT_READ | PROT_WRITE,
                                            MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
@@ -29,6 +29,7 @@ namespace scaler {
             }
             OBJTYPE *resultArr = internalArr + size;
             size += arraySize;
+            memset(resultArr, 0, size);
             return resultArr;
         }
 

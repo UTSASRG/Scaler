@@ -49,6 +49,8 @@ int doubletake_main(int argc, char **argv, char **envp) {
         fatalError("grpc secure mode currently not implemented, please temporarily set grps.insecure to true");
         return -1;
     }
+    //Load this config into memory to reduce overhead
+    scaler::Config::maximumHierachy = scaler::Config::globalConf["hook"]["maxHierachyDepth"].as<short>();
 
     scaler::Config::mainthreadID = pthread_self();
 

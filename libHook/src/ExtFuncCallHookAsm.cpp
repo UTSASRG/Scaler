@@ -43,7 +43,6 @@
 //#define PREHOOK_ONLY
 #define ENABLE_SAVE
 
-
 class Context {
 public:
     //todo: Initialize using maximum stack size
@@ -51,19 +50,19 @@ public:
     //Variables used to determine whether it's called by hook handler or not
     scaler::FStack<void *, 8192> callerAddr;
     scaler::FStack<long long, 8192> timeStamp;
-    char initializeMe = 0;
-
     //Records which function calls which function for how long, the index is scalerid (Only contains hooked function)
     //todo: Replace timingMatrix to a class
     int64_t curThreadNumber = 1; //The default one is main thread
 
     //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
     bool isThreadCratedByMyself = false;
-    uint64_t threadCreationTimestamp = 0; //The total execution time of current thread
     bool threadTerminatedPeacefully = false;
-    uint64_t threadTerminateTimestamp = 0; //The total execution time of current thread
     short initialized = 0;
 
+    scaler::InvocationTreeV2 *rootNode = nullptr;
+    scaler::InvocationTreeV2 *curNode = nullptr;
+    short curNodeLevel = 0; //Which level is curNode. This number is used to help afterhook to move curNode to the correct level and record. This is necessary since we don't know symbol address in prehook.
+    scaler::MemoryHeapArray<scaler::InvocationTreeV2> memArrayHeap;
 
     Context(ssize_t libFileSize, ssize_t hookedSymbolSize);
 
@@ -81,8 +80,16 @@ const uint8_t SCALER_FALSE = 167;
 
 scaler::ExtFuncCallHookAsm *scaler_extFuncCallHookAsm_thiz = nullptr;
 
-Context::Context(ssize_t libFileSize, ssize_t hookedSymbolSize) {
-    bool isMainThread = scaler::Config::mainthreadID == pthread_self(); //Dont double initialize
+Context::Context(ssize_t libFileSize, ssize_t hookedSymbolSize) : memArrayHeap(8192) {
+    //bool isMainThread = scaler::Config::mainthreadID == pthread_self(); //Dont double initialize
+
+    //Initialize root node
+    rootNode = memArrayHeap.allocArr(1);
+    //Initialize root node child size. id=0 is always the main application
+    rootNode->childrenSize = scaler_extFuncCallHookAsm_thiz->elfImgInfoMap[0].hookedSymbolSize;
+    //Initialize children
+    rootNode->children = memArrayHeap.allocArr(rootNode->childrenSize);
+    rootNode->scalerId = -1; //Indiacate root node
 
     initialized = SCALER_TRUE;
 }
@@ -248,6 +255,7 @@ namespace scaler {
 
             if (curElfImgInfo.elfImgValid) {
                 curElfImgInfo.scalerId = numOfHookedELFImg++;
+                curElfImgInfo.symbolIndexInHookedExtSymbol = hookedExtSymbol.getSize();
                 //loop through external symbols, let user decide which symbol to hook through callback function
                 for (SymID scalerSymbolId:curElfImgInfo.scalerIdMap) {
                     auto &curSymbol = allExtSymbol[scalerSymbolId];
@@ -263,7 +271,7 @@ namespace scaler {
                         DBG_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd, %s, %zd",
                                  curElfImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.scalerSymbolId,
                                  curSymbol.symbolName.c_str(), curSymbol.symIdInFile);
-
+                        ++curElfImgInfo.hookedSymbolSize;
                         //todo: adjust for all symbols in advance, rather than do them individually
                         //Adjust permiss for this current got entry
                         if (!memTool->adjustMemPerm(curSymbol.gotEntry, curSymbol.gotEntry + 1,
@@ -418,14 +426,11 @@ namespace scaler {
         }
 
         installed = true;
-        curContext->threadCreationTimestamp = getunixtimestampms();
+        //curContext->threadCreationTimestamp = getunixtimestampms();
 
         return true;
     }
 
-    //thread_local SerilizableInvocationTree invocationTree;
-    __thread InvocationTreeV2 *rootNode __attribute((tls_model("initial-exec"))) = nullptr;
-    __thread InvocationTreeV2 *curNode __attribute((tls_model("initial-exec"))) = nullptr;
 
     ExtFuncCallHookAsm::ExtFuncCallHookAsm() : ExtFuncCallHook(pmParser,
                                                                *MemoryTool_Linux::getInst()) {
@@ -841,7 +846,7 @@ namespace scaler {
 
     void ExtFuncCallHookAsm::updateMainThreadFinishTime(uint64_t timestamp) {
         curContext->threadTerminatedPeacefully = true;
-        curContext->threadTerminateTimestamp = timestamp;
+        //curContext->threadTerminateTimestamp = timestamp;
         INFO_LOGS("Scaler thinks the app is terminated at %ld", timestamp);
     }
 
@@ -1097,21 +1102,29 @@ static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
     scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = _this->allExtSymbol[extSymbolId];
     void *retOriFuncAddr = curSymbol.addr;
 
+
     if (curSymbol.addr == nullptr) {
         //Unresolved
-        if (!_this->isSymbolAddrResolved(curSymbol)) {
-            //Use ld to resolve
-            retOriFuncAddr = curSymbol.pseudoPltEntry;
-        } else {
-            //Already resolved, but address not updated
-            curSymbol.addr = *curSymbol.gotEntry;
-            retOriFuncAddr = curSymbol.addr;
-        }
+        //Use ld to resolve
+        curSymbol.addr =dlsym(RTLD_NEXT, curSymbol.symbolName.c_str());
+        retOriFuncAddr = curSymbol.addr;
+        *curSymbol.gotEntry=curSymbol.addr;
+        //INFO_LOG("Here");
+
+//        if (!_this->isSymbolAddrResolved(curSymbol)) {
+//            //Use ld to resolve
+//            retOriFuncAddr = curSymbol.pseudoPltEntry;
+//        } else {
+//            //Already resolved, but address not updated
+//            curSymbol.addr = *curSymbol.gotEntry;
+//            retOriFuncAddr = curSymbol.addr;
+//        }
     }
     //Starting from here, we could call external symbols and it won't cause any problem
 
     /**
      * No counting, no measuring time (If scaler is not installed, then tls is not initialized)
+     * This may happen for external funciton call before the initTLS in dummy thread function
      */
     Context *curContextPtr = curContext; //Reduce thread local access
     if (!_this->active() || bypassCHooks != SCALER_FALSE || curContextPtr == nullptr) {
@@ -1132,21 +1145,22 @@ static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
     return retOriFuncAddr;
 #endif
 
-    /**
-    * Counting (Bypass afterhook)
-    */
+
     assert(curContext != nullptr);
-    if (curContextPtr->initialized == SCALER_TRUE) {
-        //curContextPtr->countingVec[curSymbol.hookedId]++;
+    if (curContextPtr->callerAddr.getSize() >= scaler::Config::maximumHierachy) {
+        //If exceeding the depth limit, there is no need to go further into after hook
+
+        //Skip afterhook (For debugging purpose)
+        asm volatile ("movq $1234, %%rdi"
+        : /* No outputs. */
+        :/* No inputs. */
+        :"rdi");
+        bypassCHooks = SCALER_FALSE;
+        return retOriFuncAddr;
     }
-    //Skip afterhook
-//    asm volatile ("movq $1234, %%rdi" : /* No outputs. */
-//    :/* No inputs. */:"rdi");
-//    bypassCHooks = SCALER_TRUE;
-//    return retOriFuncAddr;
 
     /**
-    * Record time (Need afterhook)
+    * Setup environment for afterhook
     */
     curContextPtr->timeStamp.push(getunixtimestampms());
     //Push callerAddr into stack
@@ -1184,6 +1198,9 @@ void *cAfterHookHandlerLinux() {
         curSymbol.libraryFileScalerID = _this->pmParser.findExecNameByAddr(curSymbol.addr);
         assert(curSymbol.libraryFileScalerID != -1);
     }
+
+    //Move
+
 
     //Save this operation
     const long long duration = getunixtimestampms() - preHookTimestamp;
@@ -1244,13 +1261,13 @@ void *dummy_thread_function(void *data) {
         DBG_LOGS("thread %lu is created by myself", pthread_self());
     }
 
-    curContextPtr->threadCreationTimestamp = getunixtimestampms();
+    //curContextPtr->threadCreationTimestamp = getunixtimestampms();
     actualFuncPtr(argData);
     /**
      * Perform required actions after each thread function completes
      */
     curContextPtr->threadTerminatedPeacefully = true;
-    curContextPtr->threadTerminateTimestamp = getunixtimestampms();
+    //curContextPtr->threadTerminateTimestamp = getunixtimestampms();
 
     return nullptr;
 }
