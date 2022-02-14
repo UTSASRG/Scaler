@@ -11,28 +11,22 @@
 #include <exceptions/ErrCode.h>
 #include <util/hook/hook.hh>
 #include <util/tool/StringTool.h>
+#include <set>
 
 
 #define PROCMAPS_LINE_MAX_LENGTH  (PATH_MAX + 100)
 namespace scaler {
 
     PmParser_Linux::PmParser_Linux(int pid) : procID(pid) {
-        if(!parsePMMap()){
+        if (!parsePMMap()) {
             fatalError("Cannot parse mp. Check format?")
         }
         //todo: Parse used dll
-        //parseDLPhdr();
     }
 
     bool PmParser_Linux::parsePMMap() {
-        fileIDMap.clear();
-        fileBaseAddrMap.clear();
-        startAddrFileMap.clear();
-        idFileMap.clear();
-        linkedFileID.clear();
         executableSegments.clear();
         readableSegments.clear();
-
 
         std::ifstream file;
         if (!openPMMap(file)) {
@@ -78,11 +72,22 @@ namespace scaler {
         }
         file.close();
 
+#ifndef NODEBUG
+        void *curAddr = nullptr;
+        for (auto &i : pmEntryVector) {
+            if (i.addrStart < curAddr) {
+                fatalError("/proc/{pid}/maps address is assumed to be always increasing.")
+                exit(-1);
+            }
+            curAddr = i.addrStart;
+        }
+
         //Sort sortedSegments by starting address
-        std::sort(sortedSegments.begin(), sortedSegments.end(),
-                  [](const std::pair<FileID, PMEntry_Linux> &lhs, const std::pair<FileID, PMEntry_Linux> &rhs) {
-                      return (ElfW(Addr)) lhs.second.addrStart < (ElfW(Addr)) rhs.second.addrStart;
-                  });
+//        std::sort(pmEntryVector.begin(), pmEntryVector.end(),
+//                  [](const PMEntry_Linux &lhs, const PMEntry_Linux &rhs) {
+//                      return (ElfW(Addr)) lhs.addrStart < (ElfW(Addr)) rhs.addrStart;
+//                  });
+#endif
         return true;
     }
 
@@ -120,49 +125,54 @@ namespace scaler {
             std::cout << ifs.rdbuf() << std::endl;
     }
 
-    int PmParser_Linux::findExecNameByAddr(void *addr) {
+    ssize_t PmParser_Linux::findExecNameByAddr(void *addr) {
         //Since sortedSegments are sorted by starting address and all address range are not overlapping.
         //We could use binary search to lookup addr in this array.
 
-        //Binary search segAddrFileMap
-        long lo = 0, hi = sortedSegments.size(), md;
-        //[lo,hi) to prevent underflow
-        while (lo < hi - 1) {
+        //Binary search impl segAddrFileMap
+        ssize_t lo = 0;
+        ssize_t hi = pmEntryVector.size();
+        ssize_t md;
+        bool found = false;
+        while (lo != hi) {
             md = (lo + hi) / 2;
-
-            if (sortedSegments[md].second.addrStart > addr) {
+            if (pmEntryVector[md].addrStart < addr) {
+                //printf("hi(%d) = md(%d) - 1=(%d)\n", hi, md, md - 1);
+                lo = md + 1;
+            } else if (pmEntryVector[md].addrStart > addr) {
+                //printf("lo(%d) = md(%d) + 1=(%d)\n", lo, md, md + 1);
                 hi = md;
             } else {
+                //printf("lo = md =%d\n", md);
                 lo = md;
+                found = true;
+                break;
             }
-
+        }
+        if (!found && lo == 0) {
+            lo = -1;
         }
 
-        if (sortedSegments[lo].second.addrStart <= addr && addr <= sortedSegments[lo].second.addrEnd) {
-            return startAddrFileMap.at((uint8_t *) sortedSegments[lo].second.addrStart);
-        } else {
-            return 0;
+        if (lo == -1) {
+            fatalErrorS(
+                    "Cannot find addr %p in pmMap. The address is lower than the lowest address if /proc/{pid}/maps.",
+                    addr);
+            exit(-1);
+        } else if (lo == pmEntryVector.size()) {
+            //Check if it's end address is covered in the last entry
+            if (addr > pmEntryVector[pmEntryVector.size() - 1].addrEnd) {
+                fatalErrorS(
+                        "Cannot find addr %p in pmMap. The address is higher than the highest address if /proc/{pid}/maps.",
+                        addr);
+                exit(-1);
+            }
+            //Address is within range
+            lo = pmEntryVector.size() - 1;
         }
+
+        return lo;
     }
 
-    int dlCallback(struct dl_phdr_info *info, size_t size, void *data) {
-        //todo: file not found error
-        PmParser_Linux *_this = static_cast<PmParser_Linux *>(data);
-
-        if (_this->fileIDMap.count(std::string(info->dlpi_name)) != 0) {
-            FileID curFileId = _this->fileIDMap.at(std::string(info->dlpi_name));
-            _this->linkedFileID.emplace_back(curFileId);
-        } else {
-            ERR_LOGS("%s not found in /self/proc/maps", info->dlpi_name);
-            return 0;
-        }
-        //todo: double check ld manual return value.
-        return 1;
-    }
-
-    void PmParser_Linux::parseDLPhdr() {
-        dl_iterate_phdr(dlCallback, this);
-    }
 
     uint8_t *PmParser_Linux::autoAddBaseAddr(uint8_t *curBaseAddr, FileID curFileiD, ElfW(Addr) targetAddr) {
         ssize_t idWithBaseAddr = findExecNameByAddr(curBaseAddr + targetAddr);
@@ -271,100 +281,12 @@ namespace scaler {
         return true;
     }
 
-    bool PmParser_Linux::parsePermStr(PMEntry_Linux &curEntry, const std::string &permStr) {
+    bool PmParser_Linux::parsePermStr(PMEntry_Linux &curEntry, ssize_t curEntryIndex, const std::string &permStr) {
         curEntry.isR = (permStr[0] == 'r');
         curEntry.isW = (permStr[1] == 'w');
         curEntry.isE = (permStr[2] == 'x');
         curEntry.isP = (permStr[3] == 'p');
-
-        //Create such index for faster lookup
-        if (curEntry.isE)
-            executableSegments.emplace_back(curEntry);
-        else if (curEntry.isR)
-            readableSegments.emplace_back(curEntry);
         return true;
-    }
-
-
-    bool PmParser_Linux::indexFile(PMEntry_Linux &curEntry) {
-        if (fileIDMap.count(curEntry.pathName) == 0) {
-            //Only add if it is a new file. New File, add it to fileId idFile map. Fill it's starting address as base address
-            idFileMap.emplace_back(curEntry.pathName);
-
-            fileBaseAddrMap.emplace_back(std::make_pair<uint8_t *, uint8_t *>((uint8_t *) curEntry.addrStart, nullptr));
-
-            fileIDMap[curEntry.pathName] = idFileMap.size() - 1;
-
-        } else {
-            FileID fileID = fileIDMap.at(curEntry.pathName);
-            //Assume address is incremental
-            fileBaseAddrMap[fileID].second = (uint8_t *) (curEntry.addrEnd);
-        }
-
-        //Map pathname to PmEntry for easier lookup
-        procMap[curEntry.pathName].emplace_back(curEntry);
-        startAddrFileMap[(uint8_t *) curEntry.addrStart] = fileIDMap[curEntry.pathName];
-        sortedSegments.emplace_back(std::make_pair(fileIDMap.at(curEntry.pathName), curEntry));
-        return true;
-    }
-
-    bool PmParser_Linux::addrInApplication(void *addr) {
-        auto &appPmEmtry = sortedSegments[0].second;
-        return ((appPmEmtry.addrStart <= addr) && (addr <= appPmEmtry.addrEnd));
-    }
-
-
-    PmParserC_Linux::PmParserC_Linux(int procID) : PmParser_Linux(procID) {
-        //Now parsing is complete by super clalss. We need to convert the datastructure to C-compatible local variable.
-        fillCDataStructure();
-    }
-
-
-    int PmParserC_Linux::findExecNameByAddr(void *addr) {
-        //Since sortedSegments are sorted by starting address and all address range are not overlapping.
-        //We could use binary search to lookup addr in this array.
-
-        //Binary search segAddrFileMap
-        long lo = 0, hi = sortedSegSizeC, md;
-        //[lo,hi) to prevent underflow
-        while (lo < hi - 1) {
-            md = (lo + hi) / 2;
-            if (sortedStartAddrC[md] > addr) {
-                hi = md;
-            } else {
-                lo = md;
-            }
-        }
-
-        if (sortedStartAddrC[lo] <= addr && addr <= sortedEndAddrC[lo]) {
-            return sortedSegIDC[lo];
-        } else {
-            return -1;
-        }
-    }
-
-
-    PmParserC_Linux::~PmParserC_Linux() {
-        delete[] sortedStartAddrC;
-        delete[] sortedEndAddrC;
-        delete[] sortedSegIDC;
-    }
-
-    void PmParserC_Linux::fillCDataStructure() {
-
-        //Now sortedSegments is built. We'll copy it's content to
-        sortedSegSizeC = sortedSegments.size();
-        sortedStartAddrC = new void *[sortedSegSizeC];
-        sortedEndAddrC = new void *[sortedSegSizeC];
-        sortedSegIDC = new int[sortedSegSizeC];
-
-        //Copy contents
-        for (int i = 0; i < sortedSegSizeC; ++i) {
-            sortedStartAddrC[i] = sortedSegments[i].second.addrStart;
-            sortedEndAddrC[i] = sortedSegments[i].second.addrEnd;
-            sortedSegIDC[i] = fileIDMap.at(sortedSegments[i].second.pathName);
-        }
-
     }
 
 }

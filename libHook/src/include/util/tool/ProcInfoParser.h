@@ -38,6 +38,7 @@ implied warranty.
 #include <link.h>
 #include <elf.h>
 #include <util/hook/hook.hh>
+#include <set>
 
 namespace scaler {
 
@@ -59,9 +60,7 @@ namespace scaler {
         long long offset;            // offset
         std::string dev;        // device major:minor
         long long inode;              // inode of the file that backs the area
-
         std::string pathName;   //Path name to that executable
-        FileID fileId;          //Id of pathname in PmParser_Linux structure
 
         /**
          * Print PMEntry just like /proc/{pid}/map
@@ -79,10 +78,10 @@ namespace scaler {
             ss << (dt.isE ? 'x' : '-');
             ss << (dt.isP ? 'p' : '-');
 
-            ElfW(Addr) addrStart = reinterpret_cast<ElfW(Addr)>(dt.addrStart);
-            ElfW(Addr) addrEnd = reinterpret_cast<ElfW(Addr)>(dt.addrEnd);
+            ElfW(Addr) _addrStart = reinterpret_cast<ElfW(Addr)>(dt.addrStart);
+            ElfW(Addr) _addrEnd = reinterpret_cast<ElfW(Addr)>(dt.addrEnd);
 
-            os << std::noshowbase << std::hex << addrStart << "-" << addrEnd << " " << ss.str() << " ";
+            os << std::noshowbase << std::hex << _addrStart << "-" << _addrEnd << " " << ss.str() << " ";
             os << std::setfill('0') << std::setw(8);
             os << dt.offset << " ";
             os << dt.dev << " ";
@@ -95,6 +94,13 @@ namespace scaler {
 
     };
 
+    /**
+     * Group entry by its executable
+     */
+    class ExecEntryGroup {
+        ssize_t pmEntryStartIndex;
+        ssize_t pmEntryEndIndex;
+    };
 
     /**
      * This class was a helper tool to parse /proc/self/maps
@@ -102,14 +108,6 @@ namespace scaler {
      */
     class PmParser_Linux : public Object {
     public:
-
-
-        //Map executable name with it's PMEntry
-        std::map<std::string, std::vector<PMEntry_Linux>> procMap;
-        // This array should be sorted by starting address for fast lookup (binary search in findExecNameByAddr)
-        std::vector<std::pair<FileID, PMEntry_Linux>> sortedSegments;
-
-
         //This will be current executable name
         std::string curExecAbsolutePath;
         //Only path
@@ -117,25 +115,7 @@ namespace scaler {
         //Only file name
         std::string curExecFileName;
 
-
-        // The id of a.so : fileIDMap[full path for a.so]
-        std::map<std::string, FileID> fileIDMap;
-
-        //The base address of an executable
-        std::vector<std::pair<uint8_t *, uint8_t *>> fileBaseAddrMap;
-
-        std::map<uint8_t *, FileID> startAddrFileMap;
-
-        // Map id to file name
-        std::vector<std::string> idFileMap;
-
-        std::vector<FileID> linkedFileID;
-
-        //For .plt, .plt.sec, we only need to search in segments with executable permission
-        std::vector<PMEntry_Linux> executableSegments;
-        //For _DYNAMIC, we only need to search in segments with readable but not executable permission
-        std::vector<PMEntry_Linux> readableSegments;
-
+        std::vector<PMEntry_Linux> pmEntryVector;
 
         PmParser_Linux(int procID = -1);
 
@@ -160,7 +140,7 @@ namespace scaler {
          * Return addr is located in which file
          * @param fileId in fileIDMap
          */
-        virtual int findExecNameByAddr(void *addr);
+        virtual ssize_t findExecNameByAddr(void *addr);
 
         ~PmParser_Linux() override;
 
@@ -170,14 +150,11 @@ namespace scaler {
          */
         virtual bool parsePMMap();
 
-        bool addrInApplication(void *addr);
-
     protected:
         //Process ID
         int procID;
 
         //The filestream for process file
-
 
         /**
          * Open /proc/{pid}/maps
@@ -188,56 +165,7 @@ namespace scaler {
 
         virtual bool parseOffsetStr(PMEntry_Linux &curEntry, const std::string &offsetStr);
 
-        virtual bool parsePermStr(PMEntry_Linux &curEntry, const std::string &permStr);
-
-        virtual bool indexFile(PMEntry_Linux &curEntry);
-
-
-
-
-        //todo: Build a library dependency graph
-
-        /**
-         * /proc/{pid}/maps only tells the actual loading address and permission of a segment.
-         * However, relocation table entries are relative to a base address
-         * To get the real address we have to parse it seperately.
-         */
-        virtual void parseDLPhdr();
-
-        friend int dlCallback(struct dl_phdr_info *info, size_t size, void *data);
-
-    };
-
-
-    class PmParserC_Linux : public PmParser_Linux {
-    public:
-
-        PmParserC_Linux(int procID = -1);
-
-        ~PmParserC_Linux();
-
-        int findExecNameByAddr(void *addr) override;
-
-    protected:
-
-        //C datastructure for PmParser_Linux::sortedSegments
-        //Developers should fill these variable after sortedSegments is built
-        size_t sortedSegSizeC = 0;
-        void **sortedStartAddrC = nullptr;
-        void **sortedEndAddrC = nullptr;
-        int *sortedSegIDC = nullptr;
-
-
-        /**
-         * Although STL data structures are easy to use.
-         * We can't use them inside certain part of the hook handler (before function ID is resolved).
-         * That's why we need to transfer existing datastructures to C array.
-         * In this way we could keep elegant code and still make it work.
-         *
-         * This function is called at the end of parsing stage. It's main function is to convert STL datastructure to
-         * C compatible structure.
-        */
-        void fillCDataStructure();
+        virtual bool parsePermStr(PMEntry_Linux &curEntry, ssize_t curEntryIndex, const std::string &permStr);
 
 
     };
