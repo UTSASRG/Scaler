@@ -7,11 +7,15 @@
 
 namespace scaler {
     template<class OBJTYPE>
+    class MemoryHeapElem;
+
+    template<class OBJTYPE>
     class MemoryHeapArray {
     public:
         MemoryHeapArray(const ssize_t &initialSize = 4096) : internalArrSize(initialSize) {
             internalArr = (OBJTYPE *) mmap(NULL, initialSize * sizeof(OBJTYPE), PROT_READ | PROT_WRITE,
                                            MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            memset(internalArr, 0, initialSize * sizeof(OBJTYPE));
 
         }
 
@@ -21,16 +25,24 @@ namespace scaler {
         /**
          * Must allocate continous memory. The memory not freeed until the whole heap is deconstructed
          */
-        virtual OBJTYPE *allocArr(ssize_t arraySize) {
+        virtual MemoryHeapElem<OBJTYPE> allocArr(ssize_t arraySize) {
             ssize_t newSize = size + arraySize;
             if (newSize > internalArrSize) {
                 ssize_t doubleArrSize = internalArrSize * 2;
                 expand(newSize > doubleArrSize ? newSize : doubleArrSize);
             }
-            OBJTYPE *resultArr = internalArr + size;
+            auto tmpSize = size;
             size += arraySize;
-            memset(resultArr, 0, size);
-            return resultArr;
+            return MemoryHeapElem<OBJTYPE>(*this, tmpSize);
+        }
+
+        inline OBJTYPE &operator[](int index) const {
+            assert(0 <= index && index < internalArrSize);
+            return internalArr[index];
+        }
+
+        inline MemoryHeapElem<OBJTYPE> getPtr(ssize_t index) {
+            return MemoryHeapElem<OBJTYPE>(*this, index);
         }
 
 
@@ -49,6 +61,7 @@ namespace scaler {
                                                        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
             memcpy(newInternalArr, oldInternalArr, internalArrSize * sizeof(OBJTYPE));
+            //memset(newInternalArr + internalArrSize, 0, (newSize - internalArrSize) * sizeof(OBJTYPE));
 
             munmap(internalArr, internalArrSize * sizeof(OBJTYPE));
 
@@ -58,6 +71,32 @@ namespace scaler {
             INFO_LOG("Memory heap array expanded.");
         }
     };
+
+    template<class OBJTYPE>
+    class MemoryHeapElem {
+    public:
+        MemoryHeapElem(MemoryHeapArray<OBJTYPE> &memoryHeapArray, ssize_t &index) : memoryHeapArray(&memoryHeapArray),
+                                                                                    index(index) {
+
+        }
+
+        inline OBJTYPE &operator*() {
+            return memoryHeapArray->operator[](index);
+        }
+        inline OBJTYPE* operator->() {
+            return &memoryHeapArray->operator[](index);
+        }
+
+        inline ssize_t getIndex() {
+            return index;
+        }
+
+
+    protected:
+        MemoryHeapArray<OBJTYPE> *memoryHeapArray;
+        ssize_t index;
+    };
+
 }
 
 #endif
