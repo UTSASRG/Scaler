@@ -82,8 +82,8 @@
       <v-col lg="5">
         <v-chart
           class="chart"
-          ref="timingChart"
-          :option="sunburstOption"
+          ref="applicationView"
+          :option="applicationViewOption"
           @click="nodeClick"
           @finished="renderFinished"
         />
@@ -134,10 +134,16 @@ export default {
   },
   props: ["jobid"],
   data() {
-    let _timingData = [];
-    let _timingLabel = [];
+    let _applicationViewData = [];
+    let _applicationViewLabel = [];
+    let _libraryViewData = [];
+    let _libraryViewLabel = [];
     return {
-      sunburstOption: {
+      timingViewOption: {
+        title: {
+          text: "Application View",
+          show: false,
+        },
         tooltip: {
           show: true,
           formatter: function (params) {
@@ -162,13 +168,49 @@ export default {
               show: true,
             },
             levels: [],
-            data: _timingData,
-            categories: _timingLabel,
+            data: _applicationViewData,
+            categories: _applicationViewLabel,
           },
         ],
       },
-      timingData: _timingData,
-      timingLabel: _timingLabel,
+      applicationViewOption: {
+        title: {
+          text: "Library View",
+          show: false,
+        },
+        tooltip: {
+          show: true,
+          formatter: function (params) {
+            let res = "";
+            res += "Name : " + params.data.name + "</br>";
+            res += "Cycles : " + params.data.value + "</br>";
+            res += "Percent : " + params.data.percentage + "%</br>";
+
+            return res;
+          },
+        },
+
+        series: [
+          {
+            radius: ["15%", "80%"],
+            type: "sunburst",
+            sort: undefined,
+            legend: {
+              data: ["Invocation cycles"],
+            },
+            label: {
+              show: true,
+            },
+            levels: [],
+            data: _applicationViewData,
+            categories: _applicationViewLabel,
+          },
+        ],
+      },
+      applicationViewData: _applicationViewData,
+      applicationViewLabel: _applicationViewLabel,
+      libraryViewData:_libraryViewData,
+      libraryViewLabel:_libraryViewLabel,
       timingELfImg: [],
       threadList: [],
       selectedELFImg: null,
@@ -181,8 +223,7 @@ export default {
       threadIds: [],
       processIds: [],
       bypassCommonSymbols: true,
-      bypassCommonSymbolList: ['pthread_join'],
-
+      bypassCommonSymbolList: ["pthread_join"],
     };
   },
   methods: {
@@ -221,12 +262,12 @@ export default {
           axios.spread((...responses) => {
             let responseTimingInfo = responses[0];
             let responseTotalTime = responses[1];
-            console.log('TotalTime ',responseTotalTime.data)
+            console.log("TotalTime ", responseTotalTime.data);
             let responseLibraryTime = responses[2];
 
             var totalCycles = responseTotalTime.data;
-            thiz.timingData.splice(0);
-            thiz.timingLabel.splice(0);
+            thiz.applicationViewData.splice(0);
+            thiz.applicationViewLabel.splice(0);
             // var totalCyclesLibrary = 0;
             // for (let i = 0; i < thiz.selectedELFImg.length; i += 1) {
             //   totalCyclesLibrary += responseTimingInfo.data[i];
@@ -240,7 +281,7 @@ export default {
 
             for (let i = 0; i < thiz.selectedELFImg.length; i += 1) {
               var curImg = thiz.selectedELFImg[i];
-              thiz.timingData.push({
+              thiz.applicationViewData.push({
                 value: responseTimingInfo.data[i],
                 name: path.basename(curImg.filePath),
                 percentage: (
@@ -251,7 +292,7 @@ export default {
                 id: "" + curImg.id,
                 children: [],
               });
-              thiz.timingLabel.push(curImg.filePath);
+              thiz.applicationViewLabel.push(curImg.filePath);
             }
 
             //todo: not efficient when there are lots of executables
@@ -277,7 +318,7 @@ export default {
               );
 
               //Adding main application
-              thiz.timingData.push({
+              thiz.applicationViewData.push({
                 value: totalCycles - totalCyclesLibrary,
                 name: path.basename(mainElfImg.filePath),
                 percentage: (
@@ -288,7 +329,13 @@ export default {
                 id: "" + mainElfImg.id,
                 children: [],
               });
-              thiz.timingLabel.push(mainElfImg.filePath);
+              thiz.applicationViewLabel.push(mainElfImg.filePath);
+            }
+
+            if (thiz.applicationViewData.length > 0) {
+              thiz.timingViewOption.title.show = true;
+            } else {
+              thiz.timingViewOption.title.show = false;
             }
           })
         );
@@ -302,9 +349,9 @@ export default {
       if (this.zoomToRootId != null) {
         let _curRootID = this.zoomToRootId;
         this.zoomToRootId = null;
-        let timingChart = this.$refs.timingChart;
+        let applicationView = this.$refs.applicationView;
 
-        timingChart.dispatchAction({
+        applicationView.dispatchAction({
           type: "sunburstRootToNode",
           targetNode: "" + _curRootID,
         });
@@ -313,7 +360,7 @@ export default {
     nodeClick: function (params) {
       if (params.treePathInfo.length == 2) {
         let thiz = this;
-        if (this.timingData.at(params.dataIndex - 1).children.length == 0) {
+        if (this.applicationViewData.at(params.dataIndex - 1).children.length == 0) {
           axios
             .get(
               scalerConfig.$ANALYZER_SERVER_URL +
@@ -329,14 +376,17 @@ export default {
                 thiz.selectedProcesses
             )
             .then(function (responseSymInfo) {
-              var parentSymNode = thiz.timingData.at(params.dataIndex - 1);
+              var parentSymNode = thiz.applicationViewData.at(params.dataIndex - 1);
               for (var i = 0; i < responseSymInfo.data.length; i += 1) {
                 var curSymInfo = responseSymInfo.data[i];
-                if (thiz.bypassCommonSymbols && thiz.bypassCommonSymbolList.includes(curSymInfo.symbolName)) {
+                if (
+                  thiz.bypassCommonSymbols &&
+                  thiz.bypassCommonSymbolList.includes(curSymInfo.symbolName)
+                ) {
                   continue;
                 }
 
-                thiz.timingData.at(params.dataIndex - 1).children.push({
+                thiz.applicationViewData.at(params.dataIndex - 1).children.push({
                   value: curSymInfo.durations,
                   name: curSymInfo.symbolName,
                   percentage: (
@@ -353,7 +403,7 @@ export default {
         //Root node clicked
 
         if (this.curRootId != null) {
-          this.timingData.at(this.curRootId).children.splice(0);
+          this.applicationViewData.at(this.curRootId).children.splice(0);
           this.curRootId = null;
         }
       }
