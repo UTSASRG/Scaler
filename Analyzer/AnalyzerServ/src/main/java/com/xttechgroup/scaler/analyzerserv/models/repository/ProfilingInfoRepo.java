@@ -4,7 +4,6 @@ import com.xttechgroup.scaler.analyzerserv.models.POJO.LibraryViewQueryResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
-import java.util.List;
 
 public interface ProfilingInfoRepo {
 
@@ -18,5 +17,6 @@ public interface ProfilingInfoRepo {
     Long getThreadTotalTime(Long jobid, Long[] processId, Long[] threadId);
 
     @Transactional(readOnly = true)
-    Collection<LibraryViewQueryResult> getLibraryCall(Long jobid, Long elfImgId);
+    Collection<LibraryViewQueryResult> getLibraryCenteredData(Long jobid, Long elfImgId, Long[] processIds, Long[] threadIds);
+
 }

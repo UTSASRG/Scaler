@@ -5,10 +5,10 @@ import lombok.Data;
 @Data
 public class LibraryViewQueryResult {
     String elfImgName;
-    Long elfImgPercentage;
+    Long cycles;
 
     public LibraryViewQueryResult(String elfImgName, Long cycles) {
         this.elfImgName = elfImgName;
-        this.elfImgPercentage = cycles;
+        this.cycles = cycles;
     }
 }

@@ -1,7 +1,9 @@
 package com.xttechgroup.scaler.analyzerserv.controller.restful;
 
 
+import com.xttechgroup.scaler.analyzerserv.models.POJO.LibraryViewQueryResult;
 import com.xttechgroup.scaler.analyzerserv.models.POJO.MultipleElfIds;
+import com.xttechgroup.scaler.analyzerserv.models.POJO.VisibilityInfo;
 import com.xttechgroup.scaler.analyzerserv.models.repository.InvokedSymRepo;
 import com.xttechgroup.scaler.analyzerserv.models.repository.ProfilingInfoRepo;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,5 +42,13 @@ public class ProfilingInfoRestController {
     Long gelibraryTotalTime(Long jobid) {
         Long[] empty = {};
         return jobInvokedSymRepo.getELFImgTiming(jobid, null, empty, empty);
+    }
+
+    @PostMapping("/individualTime/library")
+    Collection<LibraryViewQueryResult> gelibraryTotalTime(Long jobid, Long elfImgId, @RequestBody VisibilityInfo body,
+                                                          HttpServletRequest request,
+                                                          HttpServletResponse response) {
+
+        return profilingInfoRepo.getLibraryCenteredData(jobid, elfImgId, body.visibleProcesses, body.visibleThreads);
     }
 }

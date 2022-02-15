@@ -6,7 +6,6 @@ import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
-import java.util.List;
 
 @Component
 public class ProfilingInfoRepoImpl implements ProfilingInfoRepo {
@@ -64,17 +63,30 @@ public class ProfilingInfoRepoImpl implements ProfilingInfoRepo {
     }
 
     @Override
-    public Collection<LibraryViewQueryResult> getLibraryCall(Long jobid, Long elfImgId) {
+    public Collection<LibraryViewQueryResult> getLibraryCenteredData(Long jobid, Long elfImgId, Long[] processIds, Long[] threadIds) {
+        String inProcessStr = "AND (r.processId IN $visibleProcesses)\n";
+        String inThreadStr = "AND (r.threadId IN $visibleThreads)\n";
+
+        if (processIds.length == 0) {
+            inProcessStr = "";
+        }
+        if (threadIds.length == 0) {
+            inThreadStr = "\n";
+        }
         return this.neo4jClient
                 .query("MATCH (curJob:Job)-[:HAS_IMG]->(curImg:ElfImg)\n" +
                         "WHERE id(curJob)=$jobid AND id(curImg)=$elfImgId\n" +
                         "MATCH (curImg)<-[r:ExtSymInvokeImg]-(invokedSym:ElfSym)\n" +
+                        "WHERE true\n" +
+                        inProcessStr + inThreadStr +
                         "MATCH (invokedSym)<-[:HAS_EXTSYM]-(calleeImg:ElfImg)\n" +
                         "RETURN calleeImg.filePath,SUM(r.duration)")
                 .bind(jobid).to("jobid")
                 .bind(elfImgId).to("elfImgId")
+                .bind(processIds).to("visibleProcesses")
+                .bind(threadIds).to("visibleThreads")
                 .fetchAs(LibraryViewQueryResult.class)
-                .mappedBy((typeSystem, record) -> new LibraryViewQueryResult(record.get(0).asString(),record.get(1).asLong()))
+                .mappedBy((typeSystem, record) -> new LibraryViewQueryResult(record.get(0).asString(), record.get(1).asLong()))
                 .all();
     }
 }

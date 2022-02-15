@@ -87,6 +87,7 @@
           @click="nodeClick"
           @finished="renderFinished"
         />
+        <v-chart class="chart" ref="libraryView" :option="libraryViewOption" />
       </v-col>
     </v-row>
     <v-spacer></v-spacer>
@@ -139,7 +140,7 @@ export default {
     let _libraryViewData = [];
     let _libraryViewLabel = [];
     return {
-      timingViewOption: {
+      applicationViewOption: {
         title: {
           text: "Application View",
           show: false,
@@ -173,7 +174,7 @@ export default {
           },
         ],
       },
-      applicationViewOption: {
+      libraryViewOption: {
         title: {
           text: "Library View",
           show: false,
@@ -202,15 +203,15 @@ export default {
               show: true,
             },
             levels: [],
-            data: _applicationViewData,
-            categories: _applicationViewLabel,
+            data: _libraryViewData,
+            categories: _libraryViewLabel,
           },
         ],
       },
       applicationViewData: _applicationViewData,
       applicationViewLabel: _applicationViewLabel,
-      libraryViewData:_libraryViewData,
-      libraryViewLabel:_libraryViewLabel,
+      libraryViewData: _libraryViewData,
+      libraryViewLabel: _libraryViewLabel,
       timingELfImg: [],
       threadList: [],
       selectedELFImg: null,
@@ -310,13 +311,6 @@ export default {
             var selectedIds = this.selectedELFImg.map((x) => x.id);
             let totalCyclesLibrary = responseLibraryTime.data;
             if (selectedIds.includes(mainElfImg.id)) {
-              console.log(
-                "Total time is",
-                totalCycles,
-                totalCyclesLibrary,
-                totalCycles - totalCyclesLibrary / totalCycles
-              );
-
               //Adding main application
               thiz.applicationViewData.push({
                 value: totalCycles - totalCyclesLibrary,
@@ -333,10 +327,15 @@ export default {
             }
 
             if (thiz.applicationViewData.length > 0) {
-              thiz.timingViewOption.title.show = true;
+              thiz.applicationViewOption.title.show = true;
             } else {
-              thiz.timingViewOption.title.show = false;
+              thiz.applicationViewOption.title.show = false;
             }
+
+            console.log(
+              "Total time is",
+              thiz.applicationViewData
+            );
           })
         );
 
@@ -359,8 +358,17 @@ export default {
     },
     nodeClick: function (params) {
       if (params.treePathInfo.length == 2) {
+        //First layer node licked
         let thiz = this;
-        if (this.applicationViewData.at(params.dataIndex - 1).children.length == 0) {
+        //Display detailed symbol sinfo
+        if (
+          this.applicationViewData.at(params.dataIndex - 1).children.length == 0
+        ) {
+          thiz.applicationViewOption.title.text =
+            path.basename(params.data.imgObj.filePath) + " called";
+          thiz.libraryViewOption.title.show = true;
+          thiz.libraryViewOption.title.text =
+            path.basename(params.data.imgObj.filePath) + " is called by";
           axios
             .get(
               scalerConfig.$ANALYZER_SERVER_URL +
@@ -376,7 +384,9 @@ export default {
                 thiz.selectedProcesses
             )
             .then(function (responseSymInfo) {
-              var parentSymNode = thiz.applicationViewData.at(params.dataIndex - 1);
+              var parentSymNode = thiz.applicationViewData.at(
+                params.dataIndex - 1
+              );
               for (var i = 0; i < responseSymInfo.data.length; i += 1) {
                 var curSymInfo = responseSymInfo.data[i];
                 if (
@@ -386,21 +396,63 @@ export default {
                   continue;
                 }
 
-                thiz.applicationViewData.at(params.dataIndex - 1).children.push({
-                  value: curSymInfo.durations,
-                  name: curSymInfo.symbolName,
-                  percentage: (
-                    (curSymInfo.durations / parentSymNode.value) *
-                    100
-                  ).toFixed(2),
-                });
+                thiz.applicationViewData
+                  .at(params.dataIndex - 1)
+                  .children.push({
+                    value: curSymInfo.durations,
+                    name: curSymInfo.symbolName,
+                    percentage: (
+                      (curSymInfo.durations / parentSymNode.value) *
+                      100
+                    ).toFixed(2),
+                  });
               }
               thiz.zoomToRootId = params.data.id;
               thiz.curRootId = params.dataIndex - 1;
             });
         }
+        //Display library view
+
+        axios
+          .post(
+            scalerConfig.$ANALYZER_SERVER_URL +
+              "/profiling/individualTime/library?jobid=" +
+              thiz.jobid +
+              "&elfImgId=" +
+              params.data.imgObj.id +
+              "&visibleThreads=" +
+              thiz.selectedThreads +
+              "&visibleProcesses=" +
+              thiz.selectedProcesses,
+            {
+              visibleThreads: thiz.selectedThreads,
+              visibleProcesses: thiz.selectedProcesses,
+            }
+          )
+          .then(function (responseSymInfo) {
+            thiz.libraryViewData.splice(0);
+            let libExecTime = 0;
+            for (let i = 0; i < responseSymInfo.data.length; i += 1) {
+              let curLib = responseSymInfo.data[i];
+              libExecTime += curLib.cycles;
+            }
+
+            for (let i = 0; i < responseSymInfo.data.length; i += 1) {
+              let curLib = responseSymInfo.data[i];
+              thiz.libraryViewData.push({
+                value: curLib.cycles,
+                name: path.basename(curLib.elfImgName),
+                percentage: ((curLib.cycles / libExecTime) * 100).toFixed(2),
+                children: [],
+              });
+              thiz.applicationViewLabel.push(curLib.elfImgName);
+            }
+          });
       } else if (params.treePathInfo.length == 1) {
         //Root node clicked
+        this.libraryViewData.splice(0);
+        this.applicationViewOption.title.text = "Time by components";
+        this.libraryViewOption.title.show = false;
 
         if (this.curRootId != null) {
           this.applicationViewData.at(this.curRootId).children.splice(0);
