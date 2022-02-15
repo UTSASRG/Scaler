@@ -1,10 +1,12 @@
 package com.xttechgroup.scaler.analyzerserv.models.repository;
 
+import com.xttechgroup.scaler.analyzerserv.models.POJO.LibraryViewQueryResult;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Component;
 
 import java.util.Collection;
+import java.util.List;
 
 @Component
 public class ProfilingInfoRepoImpl implements ProfilingInfoRepo {
@@ -59,5 +61,20 @@ public class ProfilingInfoRepoImpl implements ProfilingInfoRepo {
                 .fetchAs(Long.class)
                 .mappedBy((typeSystem, record) -> record.get(0).asLong())
                 .first().get();
+    }
+
+    @Override
+    public Collection<LibraryViewQueryResult> getLibraryCall(Long jobid, Long elfImgId) {
+        return this.neo4jClient
+                .query("MATCH (curJob:Job)-[:HAS_IMG]->(curImg:ElfImg)\n" +
+                        "WHERE id(curJob)=$jobid AND id(curImg)=$elfImgId\n" +
+                        "MATCH (curImg)<-[r:ExtSymInvokeImg]-(invokedSym:ElfSym)\n" +
+                        "MATCH (invokedSym)<-[:HAS_EXTSYM]-(calleeImg:ElfImg)\n" +
+                        "RETURN calleeImg.filePath,SUM(r.duration)")
+                .bind(jobid).to("jobid")
+                .bind(elfImgId).to("elfImgId")
+                .fetchAs(LibraryViewQueryResult.class)
+                .mappedBy((typeSystem, record) -> new LibraryViewQueryResult(record.get(0).asString(),record.get(1).asLong()))
+                .all();
     }
 }

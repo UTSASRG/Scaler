@@ -36,6 +36,6 @@ public interface ELFImgRepo extends Neo4jRepository<ElfImgEntity, Long> {
             "MATCH (curSym)<-[:HAS_EXTSYM]-(curImg:ElfImg)\n" +
             "WHERE id(curImg)=elfImgId\n" +
             "RETURN curSym")
-    List<Long> getELFImgInvokedSymNum(Long jobid, List<Long> elfImgIds);
+    List<Long> getELFImgInvokedSym(Long jobid, Long elfImgIds);
 }
 
