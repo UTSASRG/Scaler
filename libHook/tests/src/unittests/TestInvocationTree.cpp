@@ -1,39 +1,39 @@
 #include <iostream>
 
 #include <gtest/gtest.h>
-#include <type/InvocationTree.h>
+#include <type/InvocationTreeV1.h>
 #include <thread>
 
 TEST(INVOCATION_TREE, general) {
-    scaler::SerilizableInvocationTree serializableTree;
-    scaler::InvocationTreeNode *newNode11 = &serializableTree.treeRoot;
+    scaler::SerilizableInvocationTreeV1 serializableTree;
+    scaler::InvocationTreeNodeV1 *newNode11 = &serializableTree.treeRoot;
     newNode11->setRealFileID(11);
 
-    scaler::InvocationTreeNode *newNode23 = new scaler::InvocationTreeNode();
+    scaler::InvocationTreeNodeV1 *newNode23 = new scaler::InvocationTreeNodeV1();
     newNode23->setRealFileID(23);
     newNode11->addChild(newNode23);
 
-    scaler::InvocationTreeNode *newNode22 = new scaler::InvocationTreeNode();
+    scaler::InvocationTreeNodeV1 *newNode22 = new scaler::InvocationTreeNodeV1();
     newNode22->setRealFileID(22);
     newNode11->addChild(newNode22);
 
-    scaler::InvocationTreeNode *newNode21 = new scaler::InvocationTreeNode();
+    scaler::InvocationTreeNodeV1 *newNode21 = new scaler::InvocationTreeNodeV1();
     newNode21->setRealFileID(21);
     newNode11->addChild(newNode21);
 
-    scaler::InvocationTreeNode *newNode34 = new scaler::InvocationTreeNode();
+    scaler::InvocationTreeNodeV1 *newNode34 = new scaler::InvocationTreeNodeV1();
     newNode34->setRealFileID(34);
     newNode23->addChild(newNode34);
 
-    scaler::InvocationTreeNode *newNode33 = new scaler::InvocationTreeNode();
+    scaler::InvocationTreeNodeV1 *newNode33 = new scaler::InvocationTreeNodeV1();
     newNode33->setRealFileID(33);
     newNode23->addChild(newNode33);
 
-    scaler::InvocationTreeNode *newNode32 = new scaler::InvocationTreeNode();
+    scaler::InvocationTreeNodeV1 *newNode32 = new scaler::InvocationTreeNodeV1();
     newNode32->setRealFileID(32);
     newNode21->addChild(newNode32);
 
-    scaler::InvocationTreeNode *newNode31 = new scaler::InvocationTreeNode();
+    scaler::InvocationTreeNodeV1 *newNode31 = new scaler::InvocationTreeNodeV1();
     newNode31->setRealFileID(31);
     newNode21->addChild(newNode31);
 

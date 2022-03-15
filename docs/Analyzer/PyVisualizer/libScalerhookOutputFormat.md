@@ -42,12 +42,12 @@ SerializableMixIn::Type
 | Name                               | Size              | Comments                                                     |
 | ---------------------------------- | ----------------- | ------------------------------------------------------------ |
 | SerializableMixIn::type            | 1 byte (int8_t)   | Use this to determine how many types are there.              |
-| InvocationTreeNode::realFileID     | 8 bytes (int64_t) | This realfFileID of the executable that current symbol is implemented. Use this realFileID to index symbol.json to get executable name. For **root node**, this value is **0**, which means it's the application itself. |
-| InvocationTreeNode::funcAddr       | 8 bytes (int64_t) | Use realfFileID and this funcAddr to index symbol.json to get symbol name. For **root node**, this value is **-1** (Meaning the application itself.) |
-| InvocationTreeNode::startTimestamp | 8 bytes (int64_t) | Unix timestamp time in microseconds $1$ second=$10^6$ micro seconds. |
-| InvocationTreeNode::endTimeStamp   | 8 bytes (int64_t) | Unix timestamp time in microseconds $1$ second=$10^6$ micro seconds |
+| InvocationTreeNodeV1::realFileID     | 8 bytes (int64_t) | This realfFileID of the executable that current symbol is implemented. Use this realFileID to index symbol.json to get executable name. For **root node**, this value is **0**, which means it's the application itself. |
+| InvocationTreeNodeV1::funcAddr       | 8 bytes (int64_t) | Use realfFileID and this funcAddr to index symbol.json to get symbol name. For **root node**, this value is **-1** (Meaning the application itself.) |
+| InvocationTreeNodeV1::startTimestamp | 8 bytes (int64_t) | Unix timestamp time in microseconds $1$ second=$10^6$ micro seconds. |
+| InvocationTreeNodeV1::endTimeStamp   | 8 bytes (int64_t) | Unix timestamp time in microseconds $1$ second=$10^6$ micro seconds |
 | SerializableMixIn::firstChildIndex | 8 bytes (int64_t) | The index for array item (Rather than index in bytes).<br />Should be used for error check. |
-| InvocationTreeNode::childrenSize   | 8 bytes (int64_t) | How many children a node ahs                                 |
+| InvocationTreeNodeV1::childrenSize   | 8 bytes (int64_t) | How many children a node ahs                                 |
 
 ### PTHREAD_FUNC
 

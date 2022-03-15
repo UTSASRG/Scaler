@@ -3,7 +3,7 @@ project(Hook VERSION 0.1.4)
 # Set global (Relative this folder until reset) compiler options
 
 
-set(SCALER_HOOK_COMPILATION_FLAGS "-O3" "-g" "-Werror")
+set(SCALER_HOOK_COMPILATION_FLAGS "-O0" "-g" "-Werror")
 # https://json.nlohmann.me/integration/cmake/
 set(JSON_BuildTests OFF CACHE INTERNAL "")
 add_subdirectory(lib/json)
@@ -24,7 +24,8 @@ set(HookSrc
         src/install.cpp
         src/Timer.cpp
         src/Serilizable.cpp
-        src/InvocationTree.cpp
+        src/InvocationTreeV1.cpp
+        src/InvocationTreeV2.cpp
         src/StringTool.cpp
         src/InfoServiceGrpc.cpp
         src/JobServiceGrpc.cpp

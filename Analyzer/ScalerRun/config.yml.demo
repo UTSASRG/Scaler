@@ -1,6 +1,7 @@
 hook:
     scalerhome: "/media/umass/datasystem/steven/Scaler/cmake-build-release/libHook" #The absolute path of libHookAuto.so exists
     gccpath: "/usr/bin/gcc-9" #The path of the gcc compiler. Recommend version >9
+    maxHierachyDepth: 4
     analyzerserv:
         address: 127.0.0.1:3060 # Address of the analyzer server and port
         insecure: true #[true|false] If false, grpc will transmit with plaintext.

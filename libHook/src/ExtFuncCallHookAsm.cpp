@@ -22,7 +22,6 @@
 #include <util/tool/StringTool.h>
 #include <nlohmann/json.hpp>
 #include <util/datastructure/FStack.h>
-#include <type/InvocationTree.h>
 #include <grpcpp/grpcpp.h>
 #include <util/config/Config.h>
 #include <grpc/JobServiceGrpc.h>
@@ -32,6 +31,9 @@
 #include <fstream>
 #include <util/datastructure/Matrix.h>
 #include <util/datastructure/MatrixWithLock.h>
+#include <util/datastructure/MemoryHeapArray.h>
+#include <type/InvocationTreeV2.h>
+
 //#include <addressbook.pb.h>
 //extern "C" {
 //#include "xed/xed-interface.h"
@@ -41,7 +43,6 @@
 //#define PREHOOK_ONLY
 #define ENABLE_SAVE
 
-
 class Context {
 public:
     //todo: Initialize using maximum stack size
@@ -49,27 +50,25 @@ public:
     //Variables used to determine whether it's called by hook handler or not
     scaler::FStack<void *, 8192> callerAddr;
     scaler::FStack<long long, 8192> timeStamp;
-    char initializeMe = 0;
-
     //Records which function calls which function for how long, the index is scalerid (Only contains hooked function)
     //todo: Replace timingMatrix to a class
-    scaler::Matrix<int64_t> *timingMatrix = nullptr;
     int64_t curThreadNumber = 1; //The default one is main thread
 
     //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
-    int64_t *countingVec = nullptr;
-    int64_t countingVecRows = -1;
-    int64_t layeredRecordNumber[20];
-
-    uint64_t threadCreationTimestamp = 0; //The total execution time of current thread
+    bool isThreadCratedByMyself = false;
     bool threadTerminatedPeacefully = false;
-    uint64_t threadTerminateTimestamp = 0; //The total execution time of current thread
     short initialized = 0;
 
-    static scaler::MatrixWithLock<int64_t> *sharedTimingMatrix;
-
+    scaler::InvocationTreeV2 *rootNode = nullptr;
+    scaler::InvocationTreeV2 *curNode = nullptr;
+    short curNodeLevel = 0; //Which level is curNode. This number is used to help afterhook to move curNode to the correct level and record. This is necessary since we don't know symbol address in prehook.
+    scaler::MemoryHeapArray<scaler::InvocationTreeV2> memArrayHeap;
 
     Context(ssize_t libFileSize, ssize_t hookedSymbolSize);
+
+    void clearTimingMatrix() {
+
+    }
 
     ~Context();
 };
@@ -79,56 +78,24 @@ public:
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
 
-scaler::MatrixWithLock<int64_t> *Context::sharedTimingMatrix = nullptr;
-
 scaler::ExtFuncCallHookAsm *scaler_extFuncCallHookAsm_thiz = nullptr;
 
-Context::Context(ssize_t libFileSize, ssize_t hookedSymbolSize) {
-    bool isMainThread = scaler::Config::mainthreadID == pthread_self(); //Dont double initialize
+Context::Context(ssize_t libFileSize, ssize_t hookedSymbolSize) : memArrayHeap(8192) {
+    //bool isMainThread = scaler::Config::mainthreadID == pthread_self(); //Dont double initialize
 
-//    for (int i = 0; i < 20; ++i) {
-//        layeredRecordNumber[i] = 0;
-//    }
+    //Initialize root node
+    rootNode = memArrayHeap.allocArr(1);
+    //Initialize root node child size. id=0 is always the main application
+    rootNode->childrenSize = scaler_extFuncCallHookAsm_thiz->elfImgInfoMap[0].hookedSymbolSize;
+    //Initialize children
+    rootNode->children = memArrayHeap.allocArr(rootNode->childrenSize);
+    rootNode->scalerId = -1; //Indiacate root node
 
-    int timingMode = scaler_extFuncCallHookAsm_thiz->getTimingMode();
-    if (timingMode == 0) {
-        //Execute once a thread is created
-        timingMatrix = new scaler::Matrix<int64_t>(hookedSymbolSize, libFileSize);
-    } else if (timingMode == 1 || timingMode == 2) {
-        if (isMainThread) {
-            sharedTimingMatrix = new scaler::MatrixWithLock<int64_t>(hookedSymbolSize, libFileSize);
-        }
-        //Only execute once
-        timingMatrix = sharedTimingMatrix;
-    }
-
-    countingVecRows = hookedSymbolSize;
-    countingVec = static_cast<int64_t *>(malloc(countingVecRows * sizeof(int64_t)));
-    if (!countingVec) {
-        fatalError("Failed to allocate memory for countingMatrix");
-        exit(-1);
-    }
-
-    memset(countingVec, 0, countingVecRows * sizeof(int64_t));
     initialized = SCALER_TRUE;
 }
 
 Context::~Context() {
 
-    free(countingVec);
-    countingVec = nullptr;
-
-    bool isMainThread = scaler::Config::mainthreadID == pthread_self(); //Dont double initialize
-
-    int timingMode = scaler_extFuncCallHookAsm_thiz->getTimingMode();
-    if (timingMode == 0) {
-        delete timingMatrix;
-        timingMatrix = nullptr;
-    } else if (isMainThread && (timingMode == 1 || timingMode == 2)) {
-        //Only execute once
-        delete timingMatrix;
-        timingMatrix = nullptr;
-    }
 }
 
 
@@ -154,25 +121,6 @@ public:
             fatalError("curContext is not initialized, won't save anything");
             return;
         }
-        Context *curContexPtr = curContext;
-        if (!isThreadCratedByMyself) {
-            INFO_LOG("Sending main thread execution time");
-
-            scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
-
-            if (!curContexPtr->threadTerminatedPeacefully) {
-                INFO_LOGS("Thread %lu termination time is incorrect because it is killed", pthread_self());
-                curContexPtr->threadTerminateTimestamp = getunixtimestampms();
-            }
-            INFO_LOGS("%lu is executed for %lu", pthread_self(),
-                      curContexPtr->threadTerminateTimestamp - curContexPtr->threadCreationTimestamp);
-
-            if (!jobServiceGrpc.appendThreadExecTime(getpid(), pthread_self(),
-                                                     curContexPtr->threadTerminateTimestamp -
-                                                     curContexPtr->threadCreationTimestamp)) {
-                ERR_LOG("Cannot send thread total execution time to server");
-            }
-        }
 
         pthread_mutex_lock(&elfInfoUploadLock);
         if (!elfInfoUploaded) {
@@ -185,39 +133,11 @@ public:
         }
         pthread_mutex_unlock(&elfInfoUploadLock);
 
-        if (!isThreadCratedByMyself) {
-            std::stringstream ss;
-            int64_t curSum = 0;
-//            for (int i = 0; i < 20; ++i) {
-//                if (curContexPtr->layeredRecordNumber[i] == -1)
-//                    break;
-//                curSum += curContexPtr->layeredRecordNumber[i];
-//                ss << curSum << "\t";
-//            }
-//            ERR_LOGS("Total thread record: %s",
-//                     ss.str().c_str());
-
+        Context *curContexPtr = curContext;
+        if (!curContexPtr->isThreadCratedByMyself) {
             INFO_LOGS("Sending timing info for thread %lu", pthread_self());
             scaler::JobServiceGrpc jobServiceGrpc(scaler::ChannelPool::channel);
             bool isMainThread = scaler::Config::mainthreadID == pthread_self(); //Dont double initialize
-
-            int timingMode = scaler_extFuncCallHookAsm_thiz->getTimingMode();
-            if (timingMode == 0) {
-                if (!jobServiceGrpc.appendTimingMatrix(getpid(), pthread_self(),
-                                                       *curContexPtr->timingMatrix, //Skip index column
-                                                       curContexPtr->countingVecRows,
-                                                       curContexPtr->countingVec)) {
-                    ERR_LOG("Cannot send timing and counting info to server");
-                }
-            } else if (isMainThread && (timingMode == 1 || timingMode == 2)) {
-                //Only execute once
-                if (!jobServiceGrpc.appendTimingMatrix(getpid(), pthread_self(),
-                                                       *curContexPtr->timingMatrix, //Skip index column
-                                                       curContexPtr->countingVecRows,
-                                                       curContexPtr->countingVec)) {
-                    ERR_LOG("Cannot send timing and counting info to server");
-                }
-            }
 
 
             if (pthread_self() == scaler::Config::mainthreadID) {
@@ -335,6 +255,7 @@ namespace scaler {
 
             if (curElfImgInfo.elfImgValid) {
                 curElfImgInfo.scalerId = numOfHookedELFImg++;
+                curElfImgInfo.symbolIndexInHookedExtSymbol = hookedExtSymbol.getSize();
                 //loop through external symbols, let user decide which symbol to hook through callback function
                 for (SymID scalerSymbolId:curElfImgInfo.scalerIdMap) {
                     auto &curSymbol = allExtSymbol[scalerSymbolId];
@@ -350,7 +271,7 @@ namespace scaler {
                         DBG_LOGS("Added to curELFImgInfo.hookedExtSymbol fileName=%s fileid=%zd symId=%zd, %s, %zd",
                                  curElfImgInfo.filePath.c_str(), curSymbol.fileId, curSymbol.scalerSymbolId,
                                  curSymbol.symbolName.c_str(), curSymbol.symIdInFile);
-
+                        ++curElfImgInfo.hookedSymbolSize;
                         //todo: adjust for all symbols in advance, rather than do them individually
                         //Adjust permiss for this current got entry
                         if (!memTool->adjustMemPerm(curSymbol.gotEntry, curSymbol.gotEntry + 1,
@@ -505,13 +426,11 @@ namespace scaler {
         }
 
         installed = true;
-        curContext->threadCreationTimestamp = getunixtimestampms();
+        //curContext->threadCreationTimestamp = getunixtimestampms();
 
         return true;
     }
 
-    //thread_local SerilizableInvocationTree invocationTree;
-    //thread_local InvocationTreeNode *curNode = &invocationTree.treeRoot;
 
     ExtFuncCallHookAsm::ExtFuncCallHookAsm() : ExtFuncCallHook(pmParser,
                                                                *MemoryTool_Linux::getInst()) {
@@ -686,7 +605,7 @@ namespace scaler {
             fprintf(fp, "//%s\n", curSymbol.symbolName.c_str());
 #endif
             //todo: In GCC < 8, naked function wasn't supported!!
-            fprintf(fp, "void  __attribute__((naked)) __%zu(){\n", curSymbol.scalerSymbolId);
+            fprintf(fp, "void  __attribute__((naked)) __%hd(){\n", curSymbol.scalerSymbolId);
             fprintf(fp, "__asm__ __volatile__ (\n");
 
             //Store rsp into r11. We'll later use this value to recover rsp to the correct location
@@ -697,7 +616,7 @@ namespace scaler {
 
             //Now, everything happens after the redzone
             //Store functionID into stack
-            fprintf(fp, "\"pushq  $%lu\\n\\t\"\n", curSymbol.scalerSymbolId);//funcID
+            fprintf(fp, "\"pushq  $%hd\\n\\t\"\n", curSymbol.scalerSymbolId);//funcID
             //Store the original stack location into stack
             fprintf(fp, "\"pushq  %%r11\\n\\t\"\n");
 
@@ -808,10 +727,10 @@ namespace scaler {
             fprintf(fp, "//%s\n", curSymbol.symbolName.c_str());
 #endif
 
-            fprintf(fp, "void  __attribute__((naked)) __%zu(){\n", curSymbol.scalerSymbolId);
+            fprintf(fp, "void  __attribute__((naked)) __%hd(){\n", curSymbol.scalerSymbolId);
             fprintf(fp, "__asm__ __volatile__ (\n");
 
-            fprintf(fp, "\"pushq $%zd\\n\\t\"\n", curSymbol.symIdInFile);
+            fprintf(fp, "\"pushq $%hd\\n\\t\"\n", curSymbol.symIdInFile);
             fprintf(fp, "\"movq  $%p,%%r11\\n\\t\"\n", curELFImgInfo.pltStartAddr);
             fprintf(fp, "\"jmpq *%%r11\\n\\t\"\n");
 
@@ -927,7 +846,7 @@ namespace scaler {
 
     void ExtFuncCallHookAsm::updateMainThreadFinishTime(uint64_t timestamp) {
         curContext->threadTerminatedPeacefully = true;
-        curContext->threadTerminateTimestamp = timestamp;
+        //curContext->threadTerminateTimestamp = timestamp;
         INFO_LOGS("Scaler thinks the app is terminated at %ld", timestamp);
     }
 
@@ -1183,21 +1102,29 @@ static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
     scaler::ExtFuncCallHookAsm::ExtSymInfo &curSymbol = _this->allExtSymbol[extSymbolId];
     void *retOriFuncAddr = curSymbol.addr;
 
+
     if (curSymbol.addr == nullptr) {
         //Unresolved
-        if (!_this->isSymbolAddrResolved(curSymbol)) {
-            //Use ld to resolve
-            retOriFuncAddr = curSymbol.pseudoPltEntry;
-        } else {
-            //Already resolved, but address not updated
-            curSymbol.addr = *curSymbol.gotEntry;
-            retOriFuncAddr = curSymbol.addr;
-        }
+        //Use ld to resolve
+        curSymbol.addr =dlsym(RTLD_NEXT, curSymbol.symbolName.c_str());
+        retOriFuncAddr = curSymbol.addr;
+        *curSymbol.gotEntry=curSymbol.addr;
+        //INFO_LOG("Here");
+
+//        if (!_this->isSymbolAddrResolved(curSymbol)) {
+//            //Use ld to resolve
+//            retOriFuncAddr = curSymbol.pseudoPltEntry;
+//        } else {
+//            //Already resolved, but address not updated
+//            curSymbol.addr = *curSymbol.gotEntry;
+//            retOriFuncAddr = curSymbol.addr;
+//        }
     }
     //Starting from here, we could call external symbols and it won't cause any problem
 
     /**
      * No counting, no measuring time (If scaler is not installed, then tls is not initialized)
+     * This may happen for external funciton call before the initTLS in dummy thread function
      */
     Context *curContextPtr = curContext; //Reduce thread local access
     if (!_this->active() || bypassCHooks != SCALER_FALSE || curContextPtr == nullptr) {
@@ -1218,21 +1145,22 @@ static void *cPreHookHandlerLinux(scaler::SymID extSymbolId, void *callerAddr) {
     return retOriFuncAddr;
 #endif
 
-    /**
-    * Counting (Bypass afterhook)
-    */
+
     assert(curContext != nullptr);
-    if (curContextPtr->initialized == SCALER_TRUE) {
-        curContextPtr->countingVec[curSymbol.hookedId]++;
+    if (curContextPtr->callerAddr.getSize() >= scaler::Config::maximumHierachy) {
+        //If exceeding the depth limit, there is no need to go further into after hook
+
+        //Skip afterhook (For debugging purpose)
+        asm volatile ("movq $1234, %%rdi"
+        : /* No outputs. */
+        :/* No inputs. */
+        :"rdi");
+        bypassCHooks = SCALER_FALSE;
+        return retOriFuncAddr;
     }
-    //Skip afterhook
-//    asm volatile ("movq $1234, %%rdi" : /* No outputs. */
-//    :/* No inputs. */:"rdi");
-//    bypassCHooks = SCALER_TRUE;
-//    return retOriFuncAddr;
 
     /**
-    * Record time (Need afterhook)
+    * Setup environment for afterhook
     */
     curContextPtr->timeStamp.push(getunixtimestampms());
     //Push callerAddr into stack
@@ -1252,11 +1180,6 @@ void *cAfterHookHandlerLinux() {
     auto &_this = scaler_extFuncCallHookAsm_thiz;
     Context *curContextPtr = curContext;
     assert(curContext != nullptr);
-//    if (curContextPtr->callerAddr.getSize() <= 20) {
-//        curContextPtr->layeredRecordNumber[curContextPtr->callerAddr.getSize() - 1] += 1;
-//    } else {
-//        curContextPtr->layeredRecordNumber[19] += 1;
-//    }
 
     scaler::SymID extSymbolID = curContextPtr->extSymbolId.peekpop();
     //auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID)SymInfo.
@@ -1276,24 +1199,13 @@ void *cAfterHookHandlerLinux() {
         assert(curSymbol.libraryFileScalerID != -1);
     }
 
+    //Move
+
+
     //Save this operation
     const long long duration = getunixtimestampms() - preHookTimestamp;
     if (curContextPtr->initialized == SCALER_TRUE) {
-
-        curContextPtr->timingMatrix->get(curSymbol.hookedId, curSymbol.libraryFileScalerID) += duration;
-        if (!curContextPtr->extSymbolId.isEmpty()) {
-            scaler::ExtFuncCallHookAsm::ExtSymInfo &parentSym = _this->allExtSymbol[curContextPtr->extSymbolId.peek()];
-            if (parentSym.libraryFileScalerID == -1) {
-                parentSym.addr = *parentSym.gotEntry;
-                assert(_this->isSymbolAddrResolved(parentSym));
-                assert(parentSym.addr != nullptr);
-                //Resolve address
-                parentSym.libraryFileScalerID = _this->pmParser.findExecNameByAddr(
-                        parentSym.addr);
-                assert(parentSym.libraryFileScalerID != -1);
-            }
-            curContextPtr->timingMatrix->get(parentSym.hookedId, parentSym.libraryFileScalerID) -= duration;
-        }
+        //Timing here
     }
     bypassCHooks = SCALER_FALSE;
     return callerAddr;
@@ -1344,19 +1256,18 @@ void *dummy_thread_function(void *data) {
         DBG_LOGS("thread %lu is not created by myself", pthread_self());
         isThreadCratedByMyself = true;
     } else {
-        Context *curContextPtr = curContext;
         isThreadCratedByMyself = false;
         curContextPtr->curThreadNumber += 1;
         DBG_LOGS("thread %lu is created by myself", pthread_self());
     }
 
-    curContextPtr->threadCreationTimestamp = getunixtimestampms();
+    //curContextPtr->threadCreationTimestamp = getunixtimestampms();
     actualFuncPtr(argData);
     /**
      * Perform required actions after each thread function completes
      */
     curContextPtr->threadTerminatedPeacefully = true;
-    curContextPtr->threadTerminateTimestamp = getunixtimestampms();
+    //curContextPtr->threadTerminateTimestamp = getunixtimestampms();
 
     return nullptr;
 }

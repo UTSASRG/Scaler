@@ -12,6 +12,7 @@ namespace scaler {
         static pthread_t mainthreadID;
         static uint64_t libHookStartingAddr;
         static uint64_t libHookEndingAddr;
+        static short maximumHierachy;
     };
 }
 

@@ -7,9 +7,9 @@
 
 namespace scaler {
 
-    typedef ssize_t FileID;
-    typedef ssize_t SymID;
-    typedef ssize_t FuncID;
+    typedef short FileID;
+    typedef short SymID;
+    typedef short FuncID;
 
 
     class Hook : Object {

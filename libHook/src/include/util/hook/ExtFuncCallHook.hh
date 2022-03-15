@@ -150,6 +150,10 @@ namespace scaler {
 
             SemaphoreFuncId semaphoreExtSymbolId;
 
+            //The first index of hooked symbol inside hookedExtSymbol;
+            ssize_t symbolIndexInHookedExtSymbol;
+            //The number of hooked symbol in this elf image;
+            ssize_t hookedSymbolSize;
 
             ELFImgInfo();
 
