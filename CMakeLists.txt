@@ -8,7 +8,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_subdirectory(proto)
 
 # Adding scalerhook to this project
-add_subdirectory(libHook)
+# add_subdirectory(libHook)
+
+add_subdirectory(libHook-c)
+
 
 # Adding scalerhook to this project
 add_subdirectory(Analyzer)
