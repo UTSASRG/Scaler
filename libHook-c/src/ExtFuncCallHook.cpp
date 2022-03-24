@@ -14,6 +14,7 @@
 #include <type/ELFImgInfo.h>
 #include <util/hook/HookHandlers.h>
 #include <type/ELFSecInfo.h>
+#include <util/hook/HookContext.h>
 
 namespace scaler {
 
@@ -44,24 +45,35 @@ namespace scaler {
 
                 //Find the entry size of plt and got
                 ELFSecInfo pltInfo;
+                ELFSecInfo pltSecInfo;
                 ELFSecInfo gotInfo;
+                Elf64_Shdr dynStrHdr;
+                if (!elfParser.getSecHeader(SHT_STRTAB, ".dynstr", dynStrHdr)) {
+                    ERR_LOG("Cannot read .dynstr header");
+                    return false;
+                }
+
 
                 //todo: We assume plt and got entry size is the same.
-                if (!parseSecInfos(elfParser, pltInfo, gotInfo, prevFileBaseAddr)) {
+                if (!parseSecInfos(elfParser, pltInfo, pltSecInfo, gotInfo, prevFileBaseAddr)) {
                     fatalError("Failed to parse plt related sections.");
                     exit(-1);
                 }
+                ELFImgInfo *curElfImgInfo = elfImgInfoMap.pushBack();
+                curElfImgInfo->pltStartAddr = pltInfo.startAddr;
+                curElfImgInfo->pltSecStartAddr = pltSecInfo.startAddr;
+                curElfImgInfo->gotStartAddr = gotInfo.startAddr;
 
+                if (!elfParser.readSecContent(dynStrHdr, (void *&) curElfImgInfo->dynStrPtr, 0)) {
+                    ERR_LOG("Cannot read .dynsym hook failed. It is required to search symbol in the memory");
+                    return false;
+                }
                 //Install hook on this file
                 if (!installHook(curFileName, elfParser, prevFileId, prevFileBaseAddr, pltInfo, gotInfo)) {
                     fatalErrorS("installation for file %s failed.", curFileName.c_str());
                     exit(-1);
                 }
-
                 prevFileBaseAddr = pmParser.pmEntryArray[i].addrStart;
-                ELFImgInfo *curElfImgInfo = elfImgInfoMap.pushBack();
-                curElfImgInfo->pltStartAddr = pltInfo.startAddr;
-                curElfImgInfo->gotStartAddr = gotInfo.startAddr;
             }
 
             //Move on to the next entry
@@ -169,12 +181,18 @@ namespace scaler {
     bool ExtFuncCallHook::installHook(std::string &fullPath, ELFParser &parser, ssize_t fileId,
                                       uint8_t *baseAddr, ELFSecInfo &pltSec, ELFSecInfo &gotSec) {
 
+        ELFImgInfo &curImgInfo = elfImgInfoMap[fileId];
+        curImgInfo.firstSymIndex = allExtSymbol.getSize();
+
+
         adjustMemPerm(gotSec.startAddr, gotSec.startAddr + gotSec.size, PROT_READ | PROT_WRITE);
         printf("%s\n", fullPath.c_str());
         //makeGOTWritable(gotSec, true);
 
+        assert(pltSec.size / pltSec.entrySize == parser.relaEntrySize + 1);
         for (ssize_t i = 0; i < parser.relaEntrySize; ++i) {
             const char *funcName = parser.getExtSymbolName(i);
+            ExtSymInfo *newSym = allExtSymbol.pushBack();
             if (!shouldHookThisSymbol(funcName)) {
                 continue;
             }
@@ -182,6 +200,19 @@ namespace scaler {
             uint8_t *curGotDest = *gotAddr;
             bool addressResolved = (curGotDest - pltSec.startAddr) > pltSec.size;
             printf("%s %p %p %s\n", funcName, gotAddr, *gotAddr, addressResolved ? "Resolved" : "Unresolved");
+
+
+            newSym->fileId = fileId;
+            newSym->symIdInFile = i;
+            newSym->strTableOffset = parser.getExtSymbolStrOffset(i);
+            newSym->hookedId = hookedExtSymSize++;
+
+            if (addressResolved) {
+                newSym->resolvedAddr = *gotAddr;
+            } else {
+                newSym->resolvedAddr = nullptr;
+            }
+
 
             //GOT replacement
             switch (fileId) {
@@ -221,17 +252,22 @@ namespace scaler {
 
 
         }
+
+
+        bypassCHooks = SCALER_TRUE;
+        //Allocate tls storage, set hook type to FULL
+
+        if (!initTLS()) {
+            ERR_LOG("Failed to initialize TLS");
+            //This is the main thread
+        }
+        bypassCHooks = SCALER_FALSE;
         return true;
     }
 
 
     bool ExtFuncCallHook::shouldHookThisSymbol(const char *funcName) {
         ssize_t funcNameLen = strlen(funcName);
-
-        if (funcNameLen == 5 && strncmp(funcName, "funcA", 5) == 0) {
-            return true;
-        }
-        return false;
 
         if (funcNameLen == 3) {
             if (strncmp(funcName, "oom", 3) == 0) {
@@ -259,6 +295,12 @@ namespace scaler {
             } else if (strncmp(funcName, "_Exit", 5) == 0) {
                 return false;
             } else if (strncmp(funcName, "verrx", 5) == 0) {
+                return false;
+            } else if (strncmp(funcName, "dlsym", 5) == 0) {
+                return false;
+            }
+        } else if (funcNameLen == 6) {
+            if (strncmp(funcName, "calloc", 6) == 0) {
                 return false;
             }
         } else if (funcNameLen == 7) {
@@ -456,28 +498,45 @@ namespace scaler {
     }
 
 
-    bool ExtFuncCallHook::parseSecInfos(ELFParser &elfParser, ELFSecInfo &pltSecInfo, ELFSecInfo &gotSecInfo,
+    bool ExtFuncCallHook::parseSecInfos(ELFParser &elfParser, ELFSecInfo &pltInfo, ELFSecInfo &pltSecInfo,
+                                        ELFSecInfo &gotInfo,
                                         uint8_t *baseAddr) {
-        Elf64_Shdr pltSecHdr;
-        if (!elfParser.getSecHeader(SHT_PROGBITS, ".plt", pltSecHdr)) {
+        Elf64_Shdr pltHdr;
+        if (!elfParser.getSecHeader(SHT_PROGBITS, ".plt", pltHdr)) {
             ERR_LOG("Cannot read .plt header");
             return false;
         }
-        pltSecInfo.size = pltSecHdr.sh_size;
-        pltSecInfo.entrySize = pltSecHdr.sh_entsize;
+        pltInfo.size = pltHdr.sh_size;
+        pltInfo.entrySize = pltHdr.sh_entsize;
 
-        Elf64_Shdr gotSecHdr;
-        if (!elfParser.getSecHeader(SHT_PROGBITS, ".got", gotSecHdr)) {
+        Elf64_Shdr pltSecHdr;
+        pltSecInfo.entrySize = 0;
+        if (elfParser.getSecHeader(SHT_PROGBITS, ".plt.sec", pltSecHdr)) {
+            pltSecInfo.size = pltSecHdr.sh_size;
+            pltSecInfo.entrySize = pltSecHdr.sh_entsize;
+        }
+
+
+        Elf64_Shdr gotHdr;
+        if (!elfParser.getSecHeader(SHT_PROGBITS, ".got", gotHdr)) {
             ERR_LOG("Cannot read .got header");
             return false;
         }
-        gotSecInfo.size = gotSecHdr.sh_size;
-        gotSecInfo.entrySize = gotSecHdr.sh_entsize;
+        gotInfo.size = gotHdr.sh_size;
+        gotInfo.entrySize = gotHdr.sh_entsize;
 
 
-        pltSecInfo.startAddr = static_cast<uint8_t *>(elfParser.parseSecLoc(pltSecHdr, baseAddr));
-        gotSecInfo.startAddr = static_cast<uint8_t *>(elfParser.parseSecLoc(gotSecHdr, baseAddr));
-        return pltSecInfo.startAddr != nullptr && gotSecInfo.startAddr != nullptr;
+        pltInfo.startAddr = static_cast<uint8_t *>(elfParser.parseSecLoc(pltHdr, baseAddr));
+        gotInfo.startAddr = static_cast<uint8_t *>(elfParser.parseSecLoc(gotHdr, baseAddr));
+
+        if (pltSecInfo.entrySize > 0) {
+            //Have .plt.sec table
+            pltSecInfo.startAddr = static_cast<uint8_t *>(elfParser.parseSecLoc(pltSecHdr, baseAddr));
+        } else {
+            pltSecInfo.startAddr = nullptr;
+        }
+
+        return pltInfo.startAddr != nullptr && gotInfo.startAddr != nullptr;
     }
 
 

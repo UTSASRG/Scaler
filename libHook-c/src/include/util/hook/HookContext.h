@@ -32,5 +32,14 @@ public:
 
     ~HookContext();
 };
+
+const uint8_t SCALER_TRUE = 145;
+const uint8_t SCALER_FALSE = 167;
+
+extern __thread HookContext *curContext;
+
+extern __thread uint8_t bypassCHooks; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
+
+bool initTLS();
 }
 #endif

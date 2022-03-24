@@ -80,6 +80,13 @@ namespace scaler {
                 pmEntryArray.popBack();
                 continue;
             }
+
+            //todo: debug
+            if (strncmp(fileName.c_str(), "ScalerHook-demoapps-FuncCall",fileName.size())!=0) {
+                //DBG_LOGS("Scaler library skip");
+                pmEntryArray.popBack();
+                continue;
+            }
             //Parse permission
             if (permStr[0] == 'r') {
                 newEntry->setR();

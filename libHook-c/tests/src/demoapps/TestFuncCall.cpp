@@ -19,6 +19,7 @@ inline int64_t getunixtimestampms() {
 
 int main() {
     scaler::ExtFuncCallHook::getInst()->install();
+    printf("Calling funcA\n");
 
     auto actualStart = getunixtimestampms();
     pthread_t pt1 = pthread_self();

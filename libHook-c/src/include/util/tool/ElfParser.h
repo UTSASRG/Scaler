@@ -31,6 +31,9 @@ namespace scaler {
 
         const char *getExtSymbolName(ssize_t &relaSymId);
 
+        ssize_t getExtSymbolStrOffset(ssize_t &relaSymId);
+
+
         Elf64_Addr getRelaOffset(const ssize_t &relaSymId) const;
 
         ELFParser(ELFParser &) = delete;
@@ -59,6 +62,7 @@ namespace scaler {
         Elf64_Ehdr elfHdr;
 
         bool readSecContent(Elf64_Shdr &urSecHdr, void *&rltAddr, const ssize_t &oriSecSize);
+        bool readSecContentWoMemReuse(Elf64_Shdr &curSecHdr, void *&rltAddr, const ssize_t &oriSecSize);
 
         void *parseSecLoc(Elf64_Shdr &curHeader, uint8_t *baseAddr);
 

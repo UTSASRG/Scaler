@@ -40,6 +40,8 @@ namespace scaler {
 
         Array<ELFImgInfo> elfImgInfoMap;//Mapping fileID to ELFImgInfo
         Array<ExtSymInfo> allExtSymbol;//All external symbols in ELF image
+        Array<ssize_t> pltRelaIndexMap;//All external symbols in ELF image
+        ssize_t hookedExtSymSize = 0;
 
         /**
          * Private constructor
@@ -65,8 +67,9 @@ namespace scaler {
         inline bool shouldHookThisSymbol(const char *funcName);
 
 
-        inline bool parseSecInfos(ELFParser &elfParser, ELFSecInfo &pltSecInfo, ELFSecInfo &gotSecInfo,
-                                  uint8_t *baseAddr);
+        inline bool
+        parseSecInfos(ELFParser &elfParser, ELFSecInfo &pltInfo, ELFSecInfo &pltSecInfo, ELFSecInfo &gotInfo,
+                      uint8_t *baseAddr);
 
         bool
         installHook(std::string &fullPath, ELFParser &parser, ssize_t fileId, uint8_t *baseAddr, ELFSecInfo &pltSec,

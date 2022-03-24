@@ -17,7 +17,7 @@ add_library(Testlib-FuncCall SHARED lib/FunctionCall/FuncWithDiffParms.cpp
         lib/FunctionCall/TenThousandFunc.cpp)
 target_include_directories(Testlib-FuncCall PUBLIC lib/FunctionCall/include)
 target_compile_options(Testlib-FuncCall PRIVATE ${TEST_FLAGS} -Werror)
-target_link_options(Testlib-FuncCall PUBLIC "-znow")
+target_link_options(Testlib-FuncCall PUBLIC "-zlazy")
 ## A library that calls Testlib-FuncCall
 
 add_library(Testlib-CallFuncCall SHARED lib/CallFunctionCall/CallFunctionCall.cpp)

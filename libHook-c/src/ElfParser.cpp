@@ -145,7 +145,9 @@ namespace scaler {
         //Do not re-allocate memory if the current memory region is larger
 
         if (curSecHdr.sh_size > oriSecSize) {
-            free(rltAddr);
+            if (rltAddr) {
+                free(rltAddr);
+            }
             rltAddr = malloc(curSecHdr.sh_size);
             if (!rltAddr) {
                 fatalError("Cannot allocate memory for section header");
@@ -164,6 +166,23 @@ namespace scaler {
 
     }
 
+    bool ELFParser::readSecContentWoMemReuse(Elf64_Shdr &curSecHdr, void *&rltAddr,
+                                             const ssize_t &oriSecSize) {
+
+        if (fseek(file, curSecHdr.sh_offset, SEEK_SET) != 0) {
+            ERR_LOGS("Failed to fseek because: %s", strerror(errno));
+            return false;
+        }
+
+
+        if (!fread(rltAddr, curSecHdr.sh_size, 1, file)) {
+            ERR_LOGS("Failed to read section header because: %s", strerror(errno));
+            return false;
+        }
+
+        return true;
+
+    }
 
     bool ELFParser::locateRequiredSecInMemory(const int secType, const std::string &secName, void *memStartAddr,
                                               ssize_t memCount, ssize_t keywordSize, void *&result) {
@@ -192,6 +211,7 @@ namespace scaler {
     const char *ELFParser::getExtSymbolName(ssize_t &relaSymId) {
         ssize_t relIdx = ELF64_R_SYM(relaSection[relaSymId].r_info);
         ssize_t strIdx = dynSymTbl[relIdx].st_name;
+        //DBG_LOGS("%s:%zd", dynStrTbl + strIdx,strIdx);
         return dynStrTbl + strIdx;
     }
 
@@ -280,6 +300,12 @@ namespace scaler {
 //        free(pltFromFile);
 #endif
         return rlt;
+    }
+
+    ssize_t ELFParser::getExtSymbolStrOffset(ssize_t &relaSymId) {
+        ssize_t relIdx = ELF64_R_SYM(relaSection[relaSymId].r_info);
+        ssize_t strIdx = dynSymTbl[relIdx].st_name;
+        return strIdx;
     }
 
 

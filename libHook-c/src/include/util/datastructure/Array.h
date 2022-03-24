@@ -58,8 +58,8 @@ namespace scaler {
         }
 
         virtual inline T &operator[](const ssize_t &index) {
-            assert(0 <= index && index < size);
-            assert(internalArr != nullptr);
+            //assert(0 <= index && index < size);
+            //assert(internalArr != nullptr);
             return internalArr[index];
         }
 
