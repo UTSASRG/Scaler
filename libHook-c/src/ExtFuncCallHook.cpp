@@ -12,21 +12,21 @@
 #include <util/tool/MemoryTool.h>
 #include <util/tool/Math.h>
 #include <type/ELFImgInfo.h>
+#include <util/hook/HookHandlers.h>
+#include <type/ELFSecInfo.h>
 
 namespace scaler {
 
     bool ExtFuncCallHook::install() {
         //Parse filenames
         pmParser.parsePMMap();
-        pmParser.printPM();
         ELFParser elfParser;
 
         //Push a guard entry in this case we don't need to specifically handle the last element
         pmParser.pmEntryArray.pushBack()->fileId = -1;
 
         ssize_t prevFileId = -1;
-        void *pltAddr = nullptr;
-        void *pltSecAddr = nullptr;
+        uint8_t *prevFileBaseAddr = pmParser.pmEntryArray[0].addrStart;
         std::string curFileName;
 
         for (int i = 0; i < pmParser.pmEntryArray.getSize(); ++i) {
@@ -39,18 +39,29 @@ namespace scaler {
             PMEntry &curPmEntry = pmParser.pmEntryArray[i];
 
             if (prevFileId != -1 && prevFileId != curPmEntry.fileId) {
-                //We are parsing a new file, check if previous file has all entries parsed. If so, install that entry,
-                if (!pltAddr && !pltSecAddr) {
-                    //PLT and PLT.SEC both not found, this file is invalid to hook
-                    ERR_LOGS("Both .plt and .plt.sec are not found in %s",
-                             pmParser.fileNameArr[prevFileId].c_str());
+                //A new file discovered
+                DBG_LOGS("%s", curFileName.c_str());
+
+                //Find the entry size of plt and got
+                ELFSecInfo pltInfo;
+                ELFSecInfo gotInfo;
+
+                //todo: We assume plt and got entry size is the same.
+                if (!parseSecInfos(elfParser, pltInfo, gotInfo, prevFileBaseAddr)) {
+                    fatalError("Failed to parse plt related sections.");
+                    exit(-1);
                 }
-                //Save the found plt address
-                elfImgInfoMap.pushBack(ELFImgInfo(pltAddr, pltSecAddr));
+
                 //Install hook on this file
-                installHook(curFileName.c_str(), elfParser, prevFileId);
-                pltAddr = nullptr;
-                pltSecAddr = nullptr;
+                if (!installHook(curFileName, elfParser, prevFileId, prevFileBaseAddr, pltInfo, gotInfo)) {
+                    fatalErrorS("installation for file %s failed.", curFileName.c_str());
+                    exit(-1);
+                }
+
+                prevFileBaseAddr = pmParser.pmEntryArray[i].addrStart;
+                ELFImgInfo *curElfImgInfo = elfImgInfoMap.pushBack();
+                curElfImgInfo->pltStartAddr = pltInfo.startAddr;
+                curElfImgInfo->gotStartAddr = gotInfo.startAddr;
             }
 
             //Move on to the next entry
@@ -63,16 +74,9 @@ namespace scaler {
                     exit(-1);
                 }
             } else {
-                //This is the dummy entry, break
+                //This is the guard entry, break
                 break;
             }
-
-            if (pltAddr && pltSecAddr) {
-                continue; //We already coolect enough info about this elf file, skip to another file
-            } else {
-                parsePltAddrInMem(elfParser, curPmEntry, pltAddr, pltSecAddr);
-            }
-
         }
         //Remove guard
         pmParser.pmEntryArray.popBack();
@@ -140,109 +144,79 @@ namespace scaler {
     }
 
 
-    bool ExtFuncCallHook::fillDestAddr2PltRedirectorCode(void *funcAddr, std::vector<uint8_t> &retPltRedirCode) {
-        //The following "magical" numbers are actually two instructions
-        //"movq  $0xFFFFFFFF,%r11\n\t"   73, 187, 0, 0, 0, 0, 0, 0, 0, 0,
-        //"callq *%r11\n\t" 65, 255, 211
-        //"jmpq *%r11\n\t" 65, 255, 227 //Jump to dynamic symbol
-
-        //After calling r15. The address of next instruction will be on stack. The hander will pop this address and
-        //Calculating function ID by comparing it with the starting address of .plt/.plt.sec address
-
-        retPltRedirCode = {73, 187, 0, 0, 0, 0, 0, 0, 0, 0, 65, 255, 227, 144, 144, 144};
-
-        //funcAddr cannot be placed into one byte. We need to convert funcAddr to binary code and put corresponding bytes
-        //to the correct position (It's machine specific.)
-
-        //Build several bytes
-        const uint64_t h1 = 0b00000000000000000000000011111111;
-        const uint64_t h2 = h1 << 8;
-        const uint64_t h3 = h1 << 16;
-        const uint64_t h4 = h1 << 24;
-        const uint64_t h5 = h1 << 32;
-        const uint64_t h6 = h1 << 40;
-        const uint64_t h7 = h1 << 48;
-        const uint64_t h8 = h1 << 56;
-
-        auto _funcAddr = (ElfW(Addr)) funcAddr;
-
-        //Put funcAddr to corresponding position
-        retPltRedirCode[2] = _funcAddr & h1;
-        retPltRedirCode[3] = (_funcAddr & h2) >> 8;
-        retPltRedirCode[4] = (_funcAddr & h3) >> 16;
-        retPltRedirCode[5] = (_funcAddr & h4) >> 24;
-        retPltRedirCode[6] = (_funcAddr & h5) >> 32;
-        retPltRedirCode[7] = (_funcAddr & h6) >> 40;
-        retPltRedirCode[8] = (_funcAddr & h7) >> 48;
-        retPltRedirCode[9] = (_funcAddr & h8) >> 56;
-
-        return true;
-    }
-
-
     ExtFuncCallHook::~ExtFuncCallHook() {
         //todo: release oriPltCode oriPltSecCode
         uninstall();
     }
-
-    bool ExtFuncCallHook::locateRequiredSecAndSeg() {
-        //locatePltAddr();
-
-        return true;
-        /**
-            * We need to know the starting and ending address of sections in other parts of the hook library.
-            * Currently we devised three potential ways to do so:
-            *
-            * 1.Direct Address Calculation
-            * We may calculate its address directly. We could find corresponding sections in ELF file by reading section
-            * headers. There's an offset field indicating the location of that section in elf file. Program header table
-            * describes which part of the ELF file should be loaded into which virtual address. By comparing file offset
-            * in section header and file offset in program header. We could know the loading order of sections and which
-            * segment a section will be loaded into. By reading /proc/{pid}/maps, we could know the actual loading address
-            * of a segment. Thne we use the section order in a segment, section size, segment loading address to calculate
-            * the actual address.
-            *
-            * However, the memory size of a section is not exactly the same as its size in elf file (I have proof).
-            * Plus, if PIE is enabled, segments may be loaded randomly into memory. Making its loading address harder
-            * to find in /proc/{pid}/maps. These factors make it evem more complicated to implement. Even if we implement this,
-            * the code would be too machine-dependent
-            *
-            * https://uaf.io/exploitation/misc/2016/04/02/Finding-Functions.html
-            *
-            * 2.Relying on linker script
-            * It turns out we could modify linker script to ask linker to mark the starting/ending address of sections.
-            * And those marks will be assessable external variables in C/C++ code.
-            *
-            * This works, but has several drawbacks. First, we can't easily get such variables in other linked executables,
-            * making it hard to implement a multi-library plt hook. Second, we need to modify linker script, which will make
-            * our program linker-dependent.
-            *
-            * 3.Search memory.
-            * First, we could read elf file to get the binary code for sections. Then, we simply search the memory byte by byte
-            * to to find the starting address of such memory.
-            *
-            * This is implemented in this funciton. It's a more general way to handle this. Plus, it's also fast enough
-            * based on the fact that the table we care usually located in the front of a segment.
-            */
-    }
-
 
     ExtFuncCallHook::ExtFuncCallHook(PmParser &parser) : pmParser(parser),
                                                          elfImgInfoMap() {
 
     }
 
-
     ExtFuncCallHook::ExtFuncCallHook() {
 
     }
 
-    bool
-    ExtFuncCallHook::installHook(std::string &dirName, std::string &fileName, ELFParser &parser, ssize_t prevFileId) {
+    bool ExtFuncCallHook::makeGOTWritable(ELFSecInfo &gotSec, bool writable) {
+        if (writable) {
+            return adjustMemPerm(gotSec.startAddr, gotSec.startAddr + gotSec.size, PROT_READ | PROT_WRITE);
+        } else {
+            return adjustMemPerm(gotSec.startAddr, gotSec.startAddr + gotSec.size, PROT_READ);
+        }
+    }
+
+    bool ExtFuncCallHook::installHook(std::string &fullPath, ELFParser &parser, ssize_t fileId,
+                                      uint8_t *baseAddr, ELFSecInfo &pltSec, ELFSecInfo &gotSec) {
+
+        adjustMemPerm(gotSec.startAddr, gotSec.startAddr + gotSec.size, PROT_READ | PROT_WRITE);
+        printf("%s\n", fullPath.c_str());
+        //makeGOTWritable(gotSec, true);
+
         for (ssize_t i = 0; i < parser.relaEntrySize; ++i) {
             const char *funcName = parser.getExtSymbolName(i);
             if (!shouldHookThisSymbol(funcName)) {
-                return false;
+                continue;
+            }
+            uint8_t **gotAddr = reinterpret_cast<uint8_t **>(parser.getRelaOffset(i) + baseAddr);
+            uint8_t *curGotDest = *gotAddr;
+            bool addressResolved = (curGotDest - pltSec.startAddr) > pltSec.size;
+            printf("%s %p %p %s\n", funcName, gotAddr, *gotAddr, addressResolved ? "Resolved" : "Unresolved");
+
+            //GOT replacement
+            switch (fileId) {
+                case 0:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper0);
+                    break;
+                case 1:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper1);
+                    break;
+                case 2:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper2);
+                    break;
+                case 3:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper3);
+                    break;
+                case 4:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper4);
+                    break;
+                case 5:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper5);
+                    break;
+                case 6:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper6);
+                    break;
+                case 7:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper7);
+                    break;
+                case 8:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper8);
+                    break;
+                case 9:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper9);
+                    break;
+                default:
+                fatalErrorS("File id %zd >10. Please increase redzone jumper size", fileId);
             }
 
 
@@ -250,31 +224,15 @@ namespace scaler {
         return true;
     }
 
-    void
-    ExtFuncCallHook::parsePltAddrInMem(ELFParser &elfParser, PMEntry &curPmEntry, void *&pltAddr, void *&pltSecAddr) {
-        if (curPmEntry.isE()) {
-            //Both .plt and .plt.sec resides in executable segment
-            ssize_t curPmLength = curPmEntry.addrEnd - curPmEntry.addrStart;
-            if (!pltAddr) {
-                //Search for .plt.sec
-                if (!elfParser.locateRequiredSecInMemory(SHT_PROGBITS, ".got.plt", curPmEntry.addrStart,
-                                                         curPmEntry.addrEnd - curPmEntry.addrStart, 16 * 2,
-                                                         pltAddr)) {
-                }
-            }
-
-            if (!pltSecAddr) {
-                //Search for .plt.sec
-                if (!elfParser.locateRequiredSecInMemory(SHT_PROGBITS, ".plt.sec", curPmEntry.addrStart,
-                                                         curPmEntry.addrEnd - curPmEntry.addrStart, 16 * 2,
-                                                         pltSecAddr)) {
-                }
-            }
-        }
-    }
 
     bool ExtFuncCallHook::shouldHookThisSymbol(const char *funcName) {
         ssize_t funcNameLen = strlen(funcName);
+
+        if (funcNameLen == 5 && strncmp(funcName, "funcA", 5) == 0) {
+            return true;
+        }
+        return false;
+
         if (funcNameLen == 3) {
             if (strncmp(funcName, "oom", 3) == 0) {
                 return false;
@@ -495,6 +453,31 @@ namespace scaler {
             }
         }
         return true;
+    }
+
+
+    bool ExtFuncCallHook::parseSecInfos(ELFParser &elfParser, ELFSecInfo &pltSecInfo, ELFSecInfo &gotSecInfo,
+                                        uint8_t *baseAddr) {
+        Elf64_Shdr pltSecHdr;
+        if (!elfParser.getSecHeader(SHT_PROGBITS, ".plt", pltSecHdr)) {
+            ERR_LOG("Cannot read .plt header");
+            return false;
+        }
+        pltSecInfo.size = pltSecHdr.sh_size;
+        pltSecInfo.entrySize = pltSecHdr.sh_entsize;
+
+        Elf64_Shdr gotSecHdr;
+        if (!elfParser.getSecHeader(SHT_PROGBITS, ".got", gotSecHdr)) {
+            ERR_LOG("Cannot read .got header");
+            return false;
+        }
+        gotSecInfo.size = gotSecHdr.sh_size;
+        gotSecInfo.entrySize = gotSecHdr.sh_entsize;
+
+
+        pltSecInfo.startAddr = static_cast<uint8_t *>(elfParser.parseSecLoc(pltSecHdr, baseAddr));
+        gotSecInfo.startAddr = static_cast<uint8_t *>(elfParser.parseSecLoc(gotSecHdr, baseAddr));
+        return pltSecInfo.startAddr != nullptr && gotSecInfo.startAddr != nullptr;
     }
 
 

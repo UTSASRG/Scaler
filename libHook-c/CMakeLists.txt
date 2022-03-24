@@ -23,10 +23,8 @@ set(HookSrc
         src/HookHandlers.cpp
         src/systemProxy.cpp
         src/pthreadProxy.cpp
-        src/libcProxy.cpp
         src/ExtSymInfo.cpp
         src/ELFImgInfo.cpp
-        src/assemblyTemplate.cpp
         ${SCALER_PROTO_SRCS}
         )
 #src/VMEmulator.cpp
@@ -49,7 +47,7 @@ target_compile_definitions(ScalerHook-HookManualAsm-C PRIVATE CMAKE_SCALERRUN_VE
 
 
 #ScalerHook with auto installation enabled. Scaler hook will run automatically before main.
-add_library(ScalerHook-HookAutoAsm-C SHARED src/libcProxy.cpp ${HookSrc})# ${PROTO_SRCS} ${GRPC_SRCS})
+add_library(ScalerHook-HookAutoAsm-C SHARED  src/libcProxy.cpp  src/libcProxy.cpp ${HookSrc})# ${PROTO_SRCS} ${GRPC_SRCS})
 target_include_directories(ScalerHook-HookAutoAsm-C PUBLIC src/include lib/inireader ${SCLAER_GRPC_INCLUDE})# ${PROTO_SRC_DIR})
 target_link_libraries(ScalerHook-HookAutoAsm-C PUBLIC pthread dl protobuf::libprotobuf gRPC::grpc++)
 target_link_options(ScalerHook-HookAutoAsm-C PRIVATE -static-libgcc -static-libstdc++) #Todo; Statically link libc is not advised. Change to re-compile in o

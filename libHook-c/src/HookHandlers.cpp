@@ -60,7 +60,7 @@
  *
  * oldrsp-0        caller(return) address
  */
-void __attribute__((naked))  asmHookHandler() {
+void __attribute__((naked)) asmHookHandler() {
     //todo: Calculate values based on rsp rathe than saving them to registers
     __asm__ __volatile__ (
 
@@ -81,11 +81,11 @@ void __attribute__((naked))  asmHookHandler() {
     //todo: inefficient assembly code
     //R11 is the only register we can use. Store stack address in it. (%r11)==callerAddr. Later we'll pass this value
     //as a parameter to prehook
-    "movq %rsp,%r11\n\t"
-
     /**
     * Save environment
     */
+    "movq 128(%rsp),%r11\n\t"
+
     "pushq %rax\n\t" //8
     "pushq %rcx\n\t" //8
     "pushq %rdx\n\t" //8
@@ -108,19 +108,16 @@ void __attribute__((naked))  asmHookHandler() {
     /**
      * Getting PLT entry address and caller address from stack
      */
-    "movq (%r11),%rsi\n\t" //R11 stores callerAddr
-    "addq $8,%r11\n\t"
-    "movq (%r11),%rdi\n\t" //R11 stores funcID
-
     //"movq %rsp,%rcx\n\t"
     //"addq $150,%rcx\n\t" //todo: value wrong
     //FileID fileId (rdi), FuncID funcId (rsi), void *callerAddr (rdx), void* oriRspLoc (rcx)
+    "movq %r11,%rdi\n\t"
+    "movq %r12,%rsi\n\t"
 
     /**
      * Pre-Hook
      */
     //tips: Use http://www.sunshine2k.de/coding/javascript/onlineelfviewer/onlineelfviewer.html to find the external function name
-
     //todo: This is error on the server
     "call  preHookHandler\n\t"
     //Save return value to R11. This is the address of real function parsed by handler.
@@ -203,7 +200,11 @@ void __attribute__((naked))  asmHookHandler() {
 
 }
 
-void *preHookHandler(scaler::SymID extSymbolId, void *callerAddr) {
+void *preHookHandler(uint64_t nextCallAddr, uint64_t fileId) {
+    int32_t *callOperator = (int32_t *) (nextCallAddr - 4);
+    uint8_t *pltEntryAddr = reinterpret_cast<uint8_t *>(nextCallAddr + *callOperator);
+    printf("%p", pltEntryAddr);
+
 
 //    //todo: The following two values are highly dependent on assembly code
 //    //Calculate fileID
@@ -320,4 +321,33 @@ void *afterHookHandler() {
 //    return callerAddr;
     return nullptr;
 }
+
+#define redzoneJumperDef(N) \
+void __attribute__((used, naked)) redzoneJumper##N() {\
+    __asm__ __volatile__ ( \
+    "subq $128,%rsp\n\t" \
+    "movq $"#N",%r12\n\t" \
+    "jmp asmHookHandler\n\t" \
+    ); \
+}
+
+redzoneJumperDef(0)
+
+redzoneJumperDef(1)
+
+redzoneJumperDef(2)
+
+redzoneJumperDef(3)
+
+redzoneJumperDef(4)
+
+redzoneJumperDef(5)
+
+redzoneJumperDef(6)
+
+redzoneJumperDef(7)
+
+redzoneJumperDef(8)
+
+redzoneJumperDef(9)
 

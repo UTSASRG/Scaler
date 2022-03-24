@@ -134,12 +134,8 @@ namespace scaler {
             free((void *) dynStrTbl);
     }
 
-    bool ELFParser::readSecContent(const int secType, const std::string &secName, Elf64_Shdr &curSecHdr, void *&rltAddr,
+    bool ELFParser::readSecContent(Elf64_Shdr &curSecHdr, void *&rltAddr,
                                    const ssize_t &oriSecSize) {
-        if (!getSecHeader(secType, secName, curSecHdr)) {
-            ERR_LOG("Cannot find .dynsym section header");
-            return false;
-        }
 
         if (fseek(file, curSecHdr.sh_offset, SEEK_SET) != 0) {
             ERR_LOGS("Failed to fseek because: %s", strerror(errno));
@@ -152,7 +148,7 @@ namespace scaler {
             free(rltAddr);
             rltAddr = malloc(curSecHdr.sh_size);
             if (!rltAddr) {
-                fatalErrorS("Cannot allocate memory for %s", secName.c_str());
+                fatalError("Cannot allocate memory for section header");
             }
         } else {
             //Use the old memory section
@@ -199,9 +195,15 @@ namespace scaler {
         return dynStrTbl + strIdx;
     }
 
+
     inline bool ELFParser::readDynStrTable() {
         Elf64_Shdr curHeader;
-        if (!readSecContent(SHT_STRTAB, ".dynstr", curHeader, (void *&) dynStrTbl, dynStrTblSize)) {
+        if (!getSecHeader(SHT_STRTAB, ".dynstr", curHeader)) {
+            ERR_LOG("Cannot read .dynstr header");
+            return false;
+        }
+
+        if (!readSecContent(curHeader, (void *&) dynStrTbl, dynStrTblSize)) {
             ERR_LOG("Cannot read .dynstr");
             return false;
         }
@@ -211,7 +213,12 @@ namespace scaler {
 
     bool ELFParser::readDynSymTable() {
         Elf64_Shdr curHeader;
-        if (!readSecContent(SHT_DYNSYM, ".dynsym", curHeader, (void *&) dynSymTbl,
+        if (!getSecHeader(SHT_DYNSYM, ".dynsym", curHeader)) {
+            ERR_LOG("Cannot read .dynstr header");
+            return false;
+        }
+
+        if (!readSecContent(curHeader, (void *&) dynSymTbl,
                             dynSymTblSize * sizeof(Elf64_Sym))) {
             ERR_LOG("Cannot read .dynsym");
             return false;
@@ -224,7 +231,12 @@ namespace scaler {
 
     inline bool ELFParser::readRelaEntries() {
         Elf64_Shdr curHeader;
-        if (!readSecContent(SHT_RELA, ".rela.plt", curHeader, (void *&) relaSection, relaEntrySize)) {
+        if (!getSecHeader(SHT_RELA, ".rela.plt", curHeader)) {
+            ERR_LOG("Cannot read .rela.plt header");
+            return false;
+        }
+
+        if (!readSecContent(curHeader, (void *&) relaSection, relaEntrySize)) {
             ERR_LOG("Cannot read .rela.plt");
             return false;
         }
@@ -243,6 +255,31 @@ namespace scaler {
             }
         }
         return false;
+    }
+
+    Elf64_Addr ELFParser::getRelaOffset(const ssize_t &relaSymId) const {
+        return relaSection[relaSymId].r_offset;
+    }
+
+    void *ELFParser::parseSecLoc(Elf64_Shdr &curHeader, uint8_t *baseAddr) {
+
+        void *rlt = baseAddr + curHeader.sh_addr;
+
+#ifndef NDEBUG
+//        //Compare bit by bit between rlt and content read from file.
+//
+//        uint8_t *pltFromFile = nullptr;
+//        if (!readSecContent(curHeader,
+//                            reinterpret_cast<void *&>(pltFromFile), 0)) {
+//            fatalError("Cannot parse .plt from elf file");
+//        }
+//
+//        for (int i = 0; i < min<Elf64_Xword>(16 * 4, curHeader.sh_size); ++i) {
+//            assert(pltFromFile[i] == *((uint8_t *) rlt + i));
+//        }
+//        free(pltFromFile);
+#endif
+        return rlt;
     }
 
 

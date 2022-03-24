@@ -18,20 +18,6 @@ namespace scaler {
     class ELFParser : Object {
     public:
 
-        class SecInfo {
-        public:
-            typedef ssize_t SecID;
-            SecID secId;
-            ElfW(Shdr) secHdr;
-        };
-
-        class SegInfo {
-        public:
-            typedef ssize_t SegID;
-            SegID segId;
-            ElfW(Phdr) progHdr;
-        };
-
         //The path for current ELF file
 
         explicit ELFParser();
@@ -45,10 +31,13 @@ namespace scaler {
 
         const char *getExtSymbolName(ssize_t &relaSymId);
 
+        Elf64_Addr getRelaOffset(const ssize_t &relaSymId) const;
+
         ELFParser(ELFParser &) = delete;
 
 
         ~ELFParser() override;
+
 
         Elf64_Shdr *secHdr = nullptr;
         ssize_t secHdrSize = 0;
@@ -68,6 +57,11 @@ namespace scaler {
         ssize_t dynStrTblSize = 0;
 
         Elf64_Ehdr elfHdr;
+
+        bool readSecContent(Elf64_Shdr &urSecHdr, void *&rltAddr, const ssize_t &oriSecSize);
+
+        void *parseSecLoc(Elf64_Shdr &curHeader, uint8_t *baseAddr);
+
     protected:
         FILE *file = nullptr;
 
@@ -77,14 +71,13 @@ namespace scaler {
 
         bool readSecStrTable();
 
-        bool readSecContent(const int secType, const std::string &secName, Elf64_Shdr &curSecHdr, void *&rltAddr,
-                            const ssize_t &oriSecSize);
-
         bool readRelaEntries();
 
         inline bool readDynStrTable();
 
         inline bool readDynSymTable();
+
+
     };
 
 }

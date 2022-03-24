@@ -22,7 +22,7 @@ namespace scaler {
     public:
 
         //todo: Check initialized
-        explicit Array(const ssize_t &initialSize = 0) : internalArrSize(initialSize), size(0) {
+        explicit Array(const ssize_t &initialSize = 1) : internalArrSize(initialSize), size(0) {
             if (initialSize > 0) {
                 internalArr = (T *) mmap(NULL, internalArrSize * sizeof(T), PROT_READ | PROT_WRITE,
                                          MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
