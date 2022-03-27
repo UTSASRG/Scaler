@@ -100,10 +100,10 @@ namespace scaler {
                 continue;
             }
 
-//            if(strncmp(fileName.c_str(),"libstdc++.so.6.0.28",fileName.size())==0){
-//                pmEntryArray.popBack();
-//                continue;
-//            }
+            if(strncmp(fileName.c_str(),"libstdc++.so.6.0.28",fileName.size())==0){
+                pmEntryArray.popBack();
+                continue;
+            }
 
             //Parse permission
             if (permStr[0] == 'r') {
