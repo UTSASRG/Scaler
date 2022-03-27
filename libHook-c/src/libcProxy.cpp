@@ -16,7 +16,8 @@ int doubletake_main(int argc, char **argv, char **envp) {
     INFO_LOGS("libHook-c Ver %s", CMAKE_SCALERRUN_VERSION);
     INFO_LOGS("Main thread id is%lu", pthread_self());
     scaler::ExtFuncCallHook::getInst()->install();
-    return 0;
+    int ret = real_main(argc, argv, envp);
+    return ret;
 }
 
 

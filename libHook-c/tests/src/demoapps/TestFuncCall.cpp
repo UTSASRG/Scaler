@@ -16,18 +16,55 @@ inline int64_t getunixtimestampms() {
     return ((int64_t) hi << 32) | lo;
 }
 
+struct A123 {
+    A123(int &&n) { std::cout << "rvalue overload, n=" << n << "\n"; }
+
+    A123(int &n) { std::cout << "lvalue overload, n=" << n << "\n"; }
+};
+
+class B123 {
+public:
+    template<class T1, class T2, class T3>
+    B123(T1 &&t1, T2 &&t2, T3 &&t3) :
+            a1_{std::forward<T1>(t1)},
+            a2_{std::forward<T2>(t2)},
+            a3_{std::forward<T3>(t3)} {
+    }
+
+private:
+    A123 a1_, a2_, a3_;
+};
+
+template<class T, class U>
+std::unique_ptr<T> make_unique1(U &&u) {
+    return std::unique_ptr<T>(new T(std::forward<U>(u)));
+}
+
+template<class T, class... U>
+std::unique_ptr<T> make_unique2(U &&... u) {
+    return std::unique_ptr<T>(new T(std::forward<U>(u)...));
+}
+
+void forwardTest() {
+//    auto p1 = make_unique1<A123>(2); // rvalue
+//    int i = 1;
+//    auto p2 = make_unique1<A123>(i); // lvalue
+//
+//    std::cout << "B\n";
+    auto t = make_unique2<B123>(2, 0, 3);
+}
 
 int main() {
     scaler::ExtFuncCallHook::getInst()->install();
     printf("Calling funcA\n");
-
+//
 //    auto actualStart = getunixtimestampms();
 //    pthread_t pt1 = pthread_self();
 //    assert(pt1 != -1);
 //    printf("pt1=%lu\n", pt1);
 //    printf("pt1=%lu\n", myGetThreadID());
-//
-    printf("Calling funcA\n");
+////
+//    printf("Calling funcA\n");
 //    funcA();
 //    funcA();
 //
@@ -52,18 +89,18 @@ int main() {
 //    printf("a[]={1,2,3,4,5} starts at %p\n", a);
 //
 //    printf("My id is: %lu\n", pthread_self());
-
-    //int rlt=system("ls -al");
+////
+//    int rlt = system("ls -al");
 //    prctl(PR_SET_DUMPABLE, 1);
-
+////
 //    while (1) {
 //        std::this_thread::sleep_for(std::chrono::seconds(1));
 //    }
-
+//
     /*func1();
     func2();
     func3();
-    func4();
+//    func4();
     func5();
     func6();
     func7();
@@ -1063,5 +1100,6 @@ int main() {
 //    auto actualEnd = getunixtimestampms();
 //    printf("%ld-%ld=%ld\n", actualEnd, actualStart, actualEnd - actualStart);
 
+    forwardTest();
     return 0;
 }

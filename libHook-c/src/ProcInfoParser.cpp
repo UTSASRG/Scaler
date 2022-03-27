@@ -49,7 +49,7 @@ namespace scaler {
         while (fgets(procMapLine, sizeof(procMapLine), procFile)) {
 #ifndef NDEBUG
             //Make sure the buffer is enough
-            size_t len = strnlen(procMapLine,sizeof(procMapLine));
+            size_t len = strnlen(procMapLine, sizeof(procMapLine));
             if (len != 0 && procMapLine[len - 1] != '\n') {
                 fatalErrorS("Line in /proc/{pid}/map exceeded buffer size %lu. Please adjust procMapLine size",
                             sizeof(procMapLine));
@@ -65,11 +65,11 @@ namespace scaler {
             std::string fileName;
             extractFileName(pathName, dirName, fileName);
 
+            //todo: debug
 //            if(strncmp(fileName.c_str(),"ScalerHook-demoapps-FuncCall",fileName.size())!=0){
 //                pmEntryArray.popBack();
 //                continue;
 //            }
-
 
             //Check scanf succeeded or not
             if (scanfReadNum == 3) {
@@ -88,19 +88,19 @@ namespace scaler {
                 continue;
             }
 
-            //todo: debug
+
             if (strStartsWith(fileName, "libScalerHook")) {
                 //DBG_LOGS("Scaler library skip");
                 pmEntryArray.popBack();
                 continue;
             }
 
-            if(strncmp(fileName.c_str(),"ld-2.31.so",fileName.size())==0){
+            if (strStartsWith(fileName, "libstdc++")) {
                 pmEntryArray.popBack();
                 continue;
             }
 
-            if(strncmp(fileName.c_str(),"libstdc++.so.6.0.28",fileName.size())==0){
+            if (strStartsWith(fileName, "libc-")) {
                 pmEntryArray.popBack();
                 continue;
             }
@@ -132,7 +132,7 @@ namespace scaler {
                 //DBG_LOGS("%s\n", pathName);
 #ifndef NDEBUG
                 //Check fileId overflow
-                if(fileId>SHRT_MAX){
+                if (fileId > SHRT_MAX) {
                     fatalError("File id is larger than short maximum.")
                     exit(-1);
                 }

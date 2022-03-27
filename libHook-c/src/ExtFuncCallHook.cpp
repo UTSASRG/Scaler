@@ -19,6 +19,7 @@
 namespace scaler {
 
     bool ExtFuncCallHook::install() {
+//        return true;
         //Parse filenames
         pmParser.parsePMMap();
         ELFParser elfParser;
@@ -321,9 +322,7 @@ namespace scaler {
                 return false;
             }
         } else if (funcNameLen == 6) {
-            if (strncmp(funcName, "calloc", 6) == 0) {
-                return false;
-            } else if (strncmp(funcName, "_ZdlPv", 6) == 0) {
+            if (strncmp(funcName, "_ZdlPv", 6) == 0) {
                 return false;
             }
         } else if (funcNameLen == 7) {

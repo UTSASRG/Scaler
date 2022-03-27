@@ -87,8 +87,6 @@ void __attribute__((naked)) asmHookHandler() {
     /**
     * Save environment
     */
-    "movq 128(%rsp),%r11\n\t"
-
     "pushq %rax\n\t" //8
     "pushq %rcx\n\t" //8
     "pushq %rdx\n\t" //8
@@ -108,19 +106,14 @@ void __attribute__((naked)) asmHookHandler() {
     //        PUSHZMM(6) //16
     //        PUSHZMM(7) //16
 
-    //Alignment
-    "subq $8,%rsp\n\t" //8
-
-
-
     /**
      * Getting PLT entry address and caller address from stack
      */
     //"movq %rsp,%rcx\n\t"
     //"addq $150,%rcx\n\t" //todo: value wrong
     //FileID fileId (rdi), FuncID funcId (rsi), void *callerAddr (rdx), void* oriRspLoc (rcx)
-    "movq %r11,%rdi\n\t"
-    "movq %r12,%rsi\n\t"
+    "movq 200(%rsp),%rdi\n\t"
+    "movq 64(%rsp),%rsi\n\t"
 
     /**
      * Pre-Hook
@@ -128,10 +121,6 @@ void __attribute__((naked)) asmHookHandler() {
     //tips: Use http://www.sunshine2k.de/coding/javascript/onlineelfviewer/onlineelfviewer.html to find the external function name
     //todo: This is error on the server
     "call  preHookHandler\n\t"
-
-    //Cancel allignment
-    "addq $8,%rsp\n\t" //8
-
 
 
     //Save return value to R11. This is the address of real function parsed by handler.
@@ -145,7 +134,7 @@ void __attribute__((naked)) asmHookHandler() {
     "RET_PREHOOK_ONLY:\n\t"
     ASM_RESTORE_ENV_PREHOOK
     //Restore rsp to original value (Uncomment the following to only enable prehook)
-    "addq $128,%rsp\n\t"
+    "addq $136,%rsp\n\t"
     "jmpq *%r11\n\t"
 
     //=======================================> if rdi!=$1234
@@ -154,8 +143,7 @@ void __attribute__((naked)) asmHookHandler() {
      */
     "RET_FULL:\n\t"
     ASM_RESTORE_ENV_PREHOOK
-    "addq $128,%rsp\n\t"
-    "addq $8,%rsp\n\t" //Override caller address
+    "addq $144,%rsp\n\t"
     "callq *%r11\n\t"
 
     /**
@@ -208,7 +196,7 @@ void __attribute__((naked)) asmHookHandler() {
 
 
     //Recotre return address to the stack todo: Necessary?
-    "movq %r11,-8(%rsp)\n\t"
+    //"movq %r11,-8(%rsp)\n\t"
 
 
     //"CLD\n\t"
@@ -252,7 +240,7 @@ void *preHookHandler(uint64_t nextCallAddr, uint64_t fileId) {
     HookContext *curContextPtr = curContext; //Reduce thread local access
 
 
-    if (true || curContextPtr == nullptr) {
+    if (curContextPtr == nullptr) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
@@ -398,7 +386,7 @@ void *afterHookHandler() {
 void __attribute__((used, naked)) redzoneJumper##N() {\
     __asm__ __volatile__ ( \
     "subq $128,%rsp\n\t" \
-    "movq $"#N",%r12\n\t" \
+    "pushq $"#N"\n\t" \
     "jmp asmHookHandler\n\t" \
     ); \
 }
