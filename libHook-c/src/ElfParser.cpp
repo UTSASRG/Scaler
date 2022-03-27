@@ -208,12 +208,15 @@ namespace scaler {
 
     }
 
-    const char *ELFParser::getExtSymbolName(ssize_t &relaSymId) {
+    void ELFParser::getExtSymbolInfo(ssize_t &relaSymId, const char *&funcName, Elf64_Word &bind, Elf64_Word &type) {
         ssize_t relIdx = ELF64_R_SYM(relaSection[relaSymId].r_info);
         ssize_t strIdx = dynSymTbl[relIdx].st_name;
         //DBG_LOGS("%s:%zd", dynStrTbl + strIdx,strIdx);
-        return dynStrTbl + strIdx;
+        funcName = dynStrTbl + strIdx;
+        bind = ELF64_ST_BIND(dynSymTbl[relIdx].st_info);
+        type = ELF64_ST_TYPE(dynSymTbl[relIdx].st_info);
     }
+
 
 
     inline bool ELFParser::readDynStrTable() {

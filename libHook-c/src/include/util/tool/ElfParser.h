@@ -29,7 +29,7 @@ namespace scaler {
 
         bool getSecHeader(const int secType, const std::string &secName, Elf64_Shdr &section);
 
-        const char *getExtSymbolName(ssize_t &relaSymId);
+        void getExtSymbolInfo(ssize_t &relaSymId,const char *& funcName,Elf64_Word & bind, Elf64_Word& type);
 
         ssize_t getExtSymbolStrOffset(ssize_t &relaSymId);
 
@@ -62,9 +62,12 @@ namespace scaler {
         Elf64_Ehdr elfHdr;
 
         bool readSecContent(Elf64_Shdr &urSecHdr, void *&rltAddr, const ssize_t &oriSecSize);
+
         bool readSecContentWoMemReuse(Elf64_Shdr &curSecHdr, void *&rltAddr, const ssize_t &oriSecSize);
 
         void *parseSecLoc(Elf64_Shdr &curHeader, uint8_t *baseAddr);
+
+
 
     protected:
         FILE *file = nullptr;

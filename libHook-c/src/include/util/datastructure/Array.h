@@ -9,6 +9,7 @@
 #include <util/datastructure/ForwardIterator.h>
 #include <sys/mman.h>
 #include <exceptions/ScalerException.h>
+#include <util/tool/Math.h>
 
 namespace scaler {
 
@@ -58,8 +59,8 @@ namespace scaler {
         }
 
         virtual inline T &operator[](const ssize_t &index) {
-            //assert(0 <= index && index < size);
-            //assert(internalArr != nullptr);
+            assert(0 <= index && index < size);
+            assert(internalArr != nullptr);
             return internalArr[index];
         }
 
@@ -72,10 +73,20 @@ namespace scaler {
         virtual T *insertAt(ssize_t index) {
             assert(0 <= index && index <= size);
             if (size == internalArrSize)
-                expand();
+                expand(size + 1);
             memmove(internalArr + index + 1, internalArr + index, size - index);
             size += 1;
             return internalArr + index;
+        }
+
+        /**
+         * Allocate a bunch of memory.
+         */
+        virtual bool allocate(ssize_t amount) {
+            if (size + amount >= internalArrSize)
+                expand(size + amount);
+            size += amount;
+            return true;
         }
 
         virtual inline T *pushBack() {
@@ -85,6 +96,8 @@ namespace scaler {
         virtual inline void popBack() {
             size -= 1;
         }
+
+
 
         virtual inline ssize_t getSize() {
             return size;
@@ -117,15 +130,18 @@ namespace scaler {
         ssize_t size = 0;
         T *internalArr = nullptr;
 
-        virtual void expand() {
+        virtual void expand(ssize_t minimumSize) {
             T *oldInternalArr = internalArr;
-            internalArr = (T *) mmap(NULL, internalArrSize * 2 * sizeof(T), PROT_READ | PROT_WRITE,
+
+            ssize_t newSize = max<ssize_t>(minimumSize, internalArrSize * 2);
+
+            internalArr = (T *) mmap(NULL, newSize * sizeof(T), PROT_READ | PROT_WRITE,
                                      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-            memset(internalArr, 0, internalArrSize * 2 * sizeof(T));
+            memset(internalArr, 0, newSize * sizeof(T));
 
             memcpy(internalArr, oldInternalArr, internalArrSize * sizeof(T));
             munmap(oldInternalArr, internalArrSize * sizeof(T));
-            internalArrSize *= 2;
+            internalArrSize = newSize;
         }
     };
 

@@ -64,7 +64,7 @@ namespace scaler {
 
 
     protected:
-        inline bool shouldHookThisSymbol(const char *funcName);
+        inline bool shouldHookThisSymbol(const char *funcName, Elf64_Word &bind, Elf64_Word &type);
 
 
         inline bool
@@ -76,6 +76,8 @@ namespace scaler {
                     ELFSecInfo &gotSec);
 
         bool makeGOTWritable(ELFSecInfo &gotSec, bool writable);
+
+        uint32_t parsePltStubId(uint8_t *dest);
     };
 
 }

@@ -145,7 +145,7 @@ void __attribute__((naked)) asmHookHandler() {
     "RET_PREHOOK_ONLY:\n\t"
     ASM_RESTORE_ENV_PREHOOK
     //Restore rsp to original value (Uncomment the following to only enable prehook)
-    "addq $136,%rsp\n\t"
+    "addq $128,%rsp\n\t"
     "jmpq *%r11\n\t"
 
     //=======================================> if rdi!=$1234
@@ -219,13 +219,14 @@ void __attribute__((naked)) asmHookHandler() {
 }
 
 
+//Return magic number definition:
+// 1234: address resolved, pre-hook only (Fastest)
+// else pre+afterhook. Check hook installation in afterhook
 void *preHookHandler(uint64_t nextCallAddr, uint64_t fileId) {
     int32_t *callOperator = (int32_t *) (nextCallAddr - 4);
     uint8_t *pltEntryAddr = reinterpret_cast<uint8_t *>(nextCallAddr + *callOperator);
 
-
     scaler::ExtFuncCallHook *_this = scaler::ExtFuncCallHook::instance;
-
 
     scaler::ELFImgInfo &curElfImgInfo = _this->elfImgInfoMap[fileId];
 
@@ -238,51 +239,61 @@ void *preHookHandler(uint64_t nextCallAddr, uint64_t fileId) {
         //Relative to pltsec
         pltEntryIndex = (pltEntryAddr - curElfImgInfo.pltStartAddr) / 16;
     }
-    scaler::ExtSymInfo &curElfSymInfo = _this->allExtSymbol[curElfImgInfo.firstSymIndex + pltEntryIndex];
+    scaler::SymID symbolId = curElfImgInfo.firstSymIndex + pltEntryIndex;
+    scaler::ExtSymInfo &curElfSymInfo = _this->allExtSymbol[symbolId];
 
-
-    if (curElfSymInfo.resolvedAddr == nullptr) {
-        //Not resolved
-        curElfSymInfo.resolvedAddr = static_cast<uint8_t *>(dlsym(RTLD_NEXT,
-                                                                  curElfImgInfo.dynStrPtr +
-                                                                  curElfSymInfo.strTableOffset));
-    }
 
     //Starting from here, we could call external symbols and it won't cause any problem
 
     /**
      * No counting, no measuring time (If scaler is not installed, then tls is not initialized)
-     * This may happen for external funciton call before the initTLS in dummy thread function
+     * This may happen for external function call before the initTLS in dummy thread function
      */
     HookContext *curContextPtr = curContext; //Reduce thread local access
-    if (bypassCHooks != SCALER_FALSE || curContextPtr == nullptr) {
+
+
+    if (true || curContextPtr == nullptr) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
-        return curElfSymInfo.resolvedAddr;
+        return curElfSymInfo.resolvedAddr != nullptr ? curElfSymInfo.resolvedAddr : curElfSymInfo.pltLdAddr;
     }
-    DBG_LOGS("%s prehook", curElfImgInfo.dynStrPtr +
-                           curElfSymInfo.strTableOffset);
+
+    if (bypassCHooks != SCALER_FALSE) {
+        if (curElfSymInfo.resolvedAddr) {
+            //Skip afterhook
+            asm volatile ("movq $1234, %%rdi" : /* No outputs. */
+            :/* No inputs. */:"rdi");
+            return curElfSymInfo.resolvedAddr;
+        } else {
+            curContextPtr->callerAddr.push((void *) nextCallAddr);
+            curContextPtr->fileId.push(fileId);
+            curContextPtr->symId.push(symbolId);
+            return curElfSymInfo.pltLdAddr;
+        }
+    }
 
     bypassCHooks = SCALER_TRUE;
+
+    DBG_LOGS("FileId=%lu, pltId=%zd prehook", fileId, pltEntryIndex);
 
 //    DBG_LOGS("[Pre Hook] Thread:%lu File(%ld):%s, Func(%ld): %s RetAddr:%p", pthread_self(),
 //             curSymbol.fileId, _this->pmParser.idFileMap.at(curSymbol.fileId).c_str(),
 //             extSymbolId, curSymbol.symbolName.c_str(), retOriFuncAddr);
 
 
-    assert(curContext != nullptr);
-    if (curContextPtr->callerAddr.getSize() >= 2) {
-        //If exceeding the depth limit, there is no need to go further into after hook
-
-        //Skip afterhook (For debugging purpose)
-        asm volatile ("movq $1234, %%rdi"
-        : /* No outputs. */
-        :/* No inputs. */
-        :"rdi");
-        bypassCHooks = SCALER_FALSE;
-        return curElfSymInfo.resolvedAddr;
-    }
+    assert(curContextPtr != nullptr);
+//    if (curContextPtr->callerAddr.getSize() >= 2) {
+//        //If exceeding the depth limit, there is no need to go further into after hook
+//
+//        //Skip afterhook (For debugging purpose)
+//        asm volatile ("movq $1234, %%rdi"
+//        : /* No outputs. */
+//        :/* No inputs. */
+//        :"rdi");
+//        bypassCHooks = SCALER_FALSE;
+//        return curElfSymInfo.resolvedAddr;
+//    }
 
     /**
     * Setup environment for afterhook
@@ -290,12 +301,15 @@ void *preHookHandler(uint64_t nextCallAddr, uint64_t fileId) {
 //    curContextPtr->timeStamp.push(getunixtimestampms());
     //Push callerAddr into stack
     curContextPtr->callerAddr.push((void *) nextCallAddr);
+    curContextPtr->fileId.push(fileId);
+    curContextPtr->symId.push(symbolId);
     //Push calling info to afterhook
     //todo: rename this to caller function
-//    curContextPtr->extSymbolId.push(extSymbolId);
+    //curContextPtr->extSymbolId.push(extSymbolId);
 
     bypassCHooks = SCALER_FALSE;
-    return curElfSymInfo.resolvedAddr;
+    //printf("%p\n", curElfSymInfo.resolvedAddr);
+    return curElfSymInfo.resolvedAddr ? curElfSymInfo.resolvedAddr : curElfSymInfo.pltLdAddr;
 }
 
 void *afterHookHandler() {
@@ -304,9 +318,55 @@ void *afterHookHandler() {
     HookContext *curContextPtr = curContext;
     assert(curContext != nullptr);
 
-//    scaler::SymID extSymbolID = curContextPtr->extSymbolId.peekpop();
-//    //auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID)SymInfo.
+
+    scaler::SymID symbolId = curContextPtr->symId.peekpop();
+    scaler::FileID fileId = curContextPtr->fileId.peekpop();
     void *callerAddr = curContextPtr->callerAddr.peekpop();
+    scaler::ExtSymInfo &curElfSymInfo = _this->allExtSymbol[symbolId];
+
+    if (curElfSymInfo.resolvedAddr == nullptr) {
+        //Re-install hook
+        curElfSymInfo.resolvedAddr = *curElfSymInfo.gotEntryAddr;
+        switch (fileId) {
+            case 0:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper0);
+                break;
+            case 1:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper1);
+                break;
+            case 2:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper2);
+                break;
+            case 3:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper3);
+                break;
+            case 4:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper4);
+                break;
+            case 5:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper5);
+                break;
+            case 6:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper6);
+                break;
+            case 7:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper7);
+                break;
+            case 8:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper8);
+                break;
+            case 9:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper9);
+                break;
+            default:
+            fatalError("Impossible case");
+        }
+    }
+
+
+//auto &funcName = curELFImgInfo.idFuncMap.at(extSymbolID)SymInfo.
+
+
 //    const long long &preHookTimestamp = curContextPtr->timeStamp.peekpop();
 ////    DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) End: %llu",
 ////             pthread_self(), extSymbolID, getunixtimestampms() - preHookTimestamp);

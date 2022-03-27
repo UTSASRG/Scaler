@@ -19,7 +19,6 @@ HookContext::~HookContext() {
 }
 
 bool initTLS() {
-    assert(bypassCHooks == SCALER_TRUE);
     //Initialize saving data structure
     curContext = new HookContext(
             scaler::ExtFuncCallHook::instance->elfImgInfoMap.getSize(),
@@ -33,13 +32,12 @@ bool initTLS() {
 
     //RuntimeInfo newInfo;
 
-    bypassCHooks = SCALER_FALSE;
     return true;
 }
 
 __thread HookContext *curContext __attribute((tls_model("initial-exec")));
 
-__thread uint8_t bypassCHooks __attribute((tls_model("initial-exec"))) = SCALER_TRUE; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
+__thread uint8_t bypassCHooks __attribute((tls_model("initial-exec"))) = SCALER_FALSE; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
 
 
 }

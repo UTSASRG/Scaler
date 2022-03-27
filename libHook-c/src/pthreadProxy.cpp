@@ -23,8 +23,6 @@ struct dummy_thread_function_args {
 // Entering this function means the thread has been successfully created
 // Instrument thread beginning, call the original thread function, instrument thread end
 void *dummy_thread_function(void *data) {
-    bypassCHooks = SCALER_TRUE;
-
     /**
      * Perform required actions at beginning of thread
      */
@@ -39,7 +37,6 @@ void *dummy_thread_function(void *data) {
     auto actualFuncPtr = args->actual_thread_function;
     free(args);
     args = nullptr;
-    bypassCHooks = SCALER_FALSE;
 
     HookContext *curContextPtr = curContext;
 
@@ -56,7 +53,6 @@ void *dummy_thread_function(void *data) {
 
 // Main Pthread wrapper functions.
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)(void *), void *arg) {
-    bypassCHooks = SCALER_TRUE;
     //register uint64_t rbp asm ("rbp");
     //register uint64_t rsp asm ("rsp");
     //void **callerAddr1 = reinterpret_cast<void **>(rbp+8);
@@ -83,7 +79,6 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     auto args = (struct dummy_thread_function_args *) malloc(sizeof(struct dummy_thread_function_args));
     args->actual_thread_function = start;
     args->data = arg;
-    bypassCHooks = SCALER_FALSE;
     // Call the actual pthread_create
     return pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
 }

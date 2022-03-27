@@ -64,6 +64,13 @@ namespace scaler {
             std::string dirName;
             std::string fileName;
             extractFileName(pathName, dirName, fileName);
+
+//            if(strncmp(fileName.c_str(),"ScalerHook-demoapps-FuncCall",fileName.size())!=0){
+//                pmEntryArray.popBack();
+//                continue;
+//            }
+
+
             //Check scanf succeeded or not
             if (scanfReadNum == 3) {
                 //DBG_LOGS("No file name, ignore line: %s", procMapLine);
@@ -82,11 +89,22 @@ namespace scaler {
             }
 
             //todo: debug
-            if (strncmp(fileName.c_str(), "ScalerHook-demoapps-FuncCall",fileName.size())!=0) {
+            if (strStartsWith(fileName, "libScalerHook")) {
                 //DBG_LOGS("Scaler library skip");
                 pmEntryArray.popBack();
                 continue;
             }
+
+            if(strncmp(fileName.c_str(),"ld-2.31.so",fileName.size())==0){
+                pmEntryArray.popBack();
+                continue;
+            }
+
+//            if(strncmp(fileName.c_str(),"libstdc++.so.6.0.28",fileName.size())==0){
+//                pmEntryArray.popBack();
+//                continue;
+//            }
+
             //Parse permission
             if (permStr[0] == 'r') {
                 newEntry->setR();
@@ -218,7 +236,7 @@ namespace scaler {
             //Relative
             return curBaseAddr;
         } else {
-            ERR_LOGS("Not found, id1=%zu, id2=%zu, curFileID=%hd\n", idWithBaseAddr, idWithoutBaseAddr, curFileiD);
+            ERR_LOGS("Not found, id1=%zu, id2=%zu, curFileID=%zd\n", idWithBaseAddr, idWithoutBaseAddr, curFileiD);
             return nullptr;
         }
     }

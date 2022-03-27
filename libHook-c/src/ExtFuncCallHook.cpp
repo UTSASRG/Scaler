@@ -41,18 +41,12 @@ namespace scaler {
 
             if (prevFileId != -1 && prevFileId != curPmEntry.fileId) {
                 //A new file discovered
-                DBG_LOGS("%s", curFileName.c_str());
+                DBG_LOGS("%zd:%s", elfImgInfoMap.getSize(), curFileName.c_str());
 
                 //Find the entry size of plt and got
                 ELFSecInfo pltInfo;
                 ELFSecInfo pltSecInfo;
                 ELFSecInfo gotInfo;
-                Elf64_Shdr dynStrHdr;
-                if (!elfParser.getSecHeader(SHT_STRTAB, ".dynstr", dynStrHdr)) {
-                    ERR_LOG("Cannot read .dynstr header");
-                    return false;
-                }
-
 
                 //todo: We assume plt and got entry size is the same.
                 if (!parseSecInfos(elfParser, pltInfo, pltSecInfo, gotInfo, prevFileBaseAddr)) {
@@ -64,10 +58,6 @@ namespace scaler {
                 curElfImgInfo->pltSecStartAddr = pltSecInfo.startAddr;
                 curElfImgInfo->gotStartAddr = gotInfo.startAddr;
 
-                if (!elfParser.readSecContent(dynStrHdr, (void *&) curElfImgInfo->dynStrPtr, 0)) {
-                    ERR_LOG("Cannot read .dynsym hook failed. It is required to search symbol in the memory");
-                    return false;
-                }
                 //Install hook on this file
                 if (!installHook(curFileName, elfParser, prevFileId, prevFileBaseAddr, pltInfo, gotInfo)) {
                     fatalErrorS("installation for file %s failed.", curFileName.c_str());
@@ -92,6 +82,14 @@ namespace scaler {
         }
         //Remove guard
         pmParser.pmEntryArray.popBack();
+
+        if (!initTLS()) {
+            ERR_LOG("Failed to initialize TLS");
+            //This is the main thread
+        }
+
+        DBG_LOG("Finished installation");
+
         return true;
     }
 
@@ -183,34 +181,55 @@ namespace scaler {
 
         ELFImgInfo &curImgInfo = elfImgInfoMap[fileId];
         curImgInfo.firstSymIndex = allExtSymbol.getSize();
-
+        //Allocate space for all rela entries in this file
+        allExtSymbol.allocate(parser.relaEntrySize);
+//        for (ssize_t i = 0; i < parser.relaEntrySize; ++i) {
+//            allExtSymbol.pushBack();
+//        }
 
         adjustMemPerm(gotSec.startAddr, gotSec.startAddr + gotSec.size, PROT_READ | PROT_WRITE);
-        printf("%s\n", fullPath.c_str());
+        //printf("%s\n", fullPath.c_str());
         //makeGOTWritable(gotSec, true);
 
         assert(pltSec.size / pltSec.entrySize == parser.relaEntrySize + 1);
         for (ssize_t i = 0; i < parser.relaEntrySize; ++i) {
-            const char *funcName = parser.getExtSymbolName(i);
-            ExtSymInfo *newSym = allExtSymbol.pushBack();
-            if (!shouldHookThisSymbol(funcName)) {
+            const char *funcName;
+            Elf64_Word type;
+            Elf64_Word bind;
+            parser.getExtSymbolInfo(i, funcName, bind, type);
+            if (!shouldHookThisSymbol(funcName, bind, type)) {
                 continue;
             }
+            //Get function id from plt entry
+
             uint8_t **gotAddr = reinterpret_cast<uint8_t **>(parser.getRelaOffset(i) + baseAddr);
             uint8_t *curGotDest = *gotAddr;
+
+            uint32_t pltStubId = parsePltStubId(
+                    curImgInfo.pltStartAddr + pltSec.entrySize * (i + 1)); //Note that the first entry is not valid
+
+            ExtSymInfo &newSym = allExtSymbol[curImgInfo.firstSymIndex + pltStubId];
+
+
             bool addressResolved = (curGotDest - pltSec.startAddr) > pltSec.size;
-            printf("%s %p %p %s\n", funcName, gotAddr, *gotAddr, addressResolved ? "Resolved" : "Unresolved");
 
 
-            newSym->fileId = fileId;
-            newSym->symIdInFile = i;
-            newSym->strTableOffset = parser.getExtSymbolStrOffset(i);
-            newSym->hookedId = hookedExtSymSize++;
+            newSym.fileId = fileId;
+            newSym.symIdInFile = i;
+            newSym.hookedId = hookedExtSymSize++;
+
+            DBG_LOGS("funcName:%s gotAddr:%p *gotAddr:%p addressResolved:%s fileId:%zd symIdInFile:%zd hookedId:%zd",
+                     funcName, gotAddr, *gotAddr, addressResolved ? "Resolved" : "Unresolved", fileId,
+                     newSym.symIdInFile, newSym.hookedId);
 
             if (addressResolved) {
-                newSym->resolvedAddr = *gotAddr;
+                newSym.resolvedAddr = *gotAddr;
+                newSym.pltLdAddr = *gotAddr;
+                newSym.gotEntryAddr = gotAddr;
             } else {
-                newSym->resolvedAddr = nullptr;
+                newSym.resolvedAddr = nullptr;
+                newSym.pltLdAddr = *gotAddr;
+                newSym.gotEntryAddr = gotAddr;
             }
 
 
@@ -253,21 +272,23 @@ namespace scaler {
 
         }
 
-
-        bypassCHooks = SCALER_TRUE;
         //Allocate tls storage, set hook type to FULL
 
-        if (!initTLS()) {
-            ERR_LOG("Failed to initialize TLS");
-            //This is the main thread
-        }
-        bypassCHooks = SCALER_FALSE;
+
         return true;
     }
 
 
-    bool ExtFuncCallHook::shouldHookThisSymbol(const char *funcName) {
+    bool ExtFuncCallHook::shouldHookThisSymbol(const char *funcName, Elf64_Word &bind, Elf64_Word &type) {
+        if (bind != STB_GLOBAL || type != STT_FUNC) {
+            return false;
+        }
+
         ssize_t funcNameLen = strlen(funcName);
+        if (funcNameLen == 0) {
+            return false;
+//            fatalError("Function has no name?!");
+        }
 
         if (funcNameLen == 3) {
             if (strncmp(funcName, "oom", 3) == 0) {
@@ -301,6 +322,8 @@ namespace scaler {
             }
         } else if (funcNameLen == 6) {
             if (strncmp(funcName, "calloc", 6) == 0) {
+                return false;
+            } else if (strncmp(funcName, "_ZdlPv", 6) == 0) {
                 return false;
             }
         } else if (funcNameLen == 7) {
@@ -539,7 +562,20 @@ namespace scaler {
         return pltInfo.startAddr != nullptr && gotInfo.startAddr != nullptr;
     }
 
+    uint32_t ExtFuncCallHook::parsePltStubId(uint8_t *dest) {
+        int pushOffset = -1;
+        if (*dest == 0xFF) {
+            pushOffset = 7;
+        } else if (*dest == 0xF3) {
+            pushOffset = 5;
+        } else {
+            fatalError("Plt entry format illegal. Cannot find instruction \"push id\"");
+        }
 
+        //Debug tips: Add breakpoint after this statement, and *pltStubId should be 0 at first, 2 at second .etc
+        uint32_t *pltStubId = reinterpret_cast<uint32_t *>(dest + pushOffset);
+        return *pltStubId;
+    }
 }
 
 #endif
