@@ -120,7 +120,7 @@ void __attribute__((naked)) asmHookHandler() {
      */
     //tips: Use http://www.sunshine2k.de/coding/javascript/onlineelfviewer/onlineelfviewer.html to find the external function name
     //todo: This is error on the server
-    "call  preHookHandler\n\t"
+    "call  preHookHandler@plt\n\t"
 
 
     //Save return value to R11. This is the address of real function parsed by handler.
@@ -164,7 +164,7 @@ void __attribute__((naked)) asmHookHandler() {
      * Call After Hook
      */
     //todo: This line has compilation error on the server
-    "call afterHookHandler\n\t"
+    "call afterHookHandler@plt\n\t"
     //Save return value to R11. R11 now has the address of caller.
     "movq %rax,%r11\n\t"
 
@@ -225,7 +225,7 @@ void *preHookHandler(uint64_t nextCallAddr, uint64_t fileId) {
         pltEntryIndex = (pltEntryAddr - curElfImgInfo.pltSecStartAddr) / 16;
     } else {
         //Relative to pltsec
-        pltEntryIndex = (pltEntryAddr - curElfImgInfo.pltStartAddr) / 16;
+        pltEntryIndex = ((pltEntryAddr - curElfImgInfo.pltStartAddr) / 16)-1;
     }
     scaler::SymID symbolId = curElfImgInfo.firstSymIndex + pltEntryIndex;
     scaler::ExtSymInfo &curElfSymInfo = _this->allExtSymbol[symbolId];
