@@ -71,6 +71,8 @@ namespace scaler {
 //                continue;
 //            }
 
+
+
             //Check scanf succeeded or not
             if (scanfReadNum == 3) {
                 //DBG_LOGS("No file name, ignore line: %s", procMapLine);
@@ -101,6 +103,11 @@ namespace scaler {
             }
 
             if (strStartsWith(fileName, "libc-")) {
+                pmEntryArray.popBack();
+                continue;
+            }
+
+            if (strStartsWith(fileName, "libpthread-")) {
                 pmEntryArray.popBack();
                 continue;
             }

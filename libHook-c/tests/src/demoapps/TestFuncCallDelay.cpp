@@ -37,6 +37,14 @@ void *testThread2(void *data) {
 }
 
 int main() {
+    pthread_mutex_lock(&count_mutex);
+//        printf("thread2 executing\n");
+    callSleepDelay(100);
+    pthread_mutex_unlock(&count_mutex);
+    pthread_yield();
+
+
+    return 0;
 
     pthread_t thread1, thread2;
     int iret1, iret2;
