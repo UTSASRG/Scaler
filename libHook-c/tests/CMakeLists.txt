@@ -189,6 +189,20 @@ target_link_libraries(ScalerHook-parsecapps-blackscholes pthread)
 target_compile_options(ScalerHook-parsecapps-blackscholes PRIVATE ${TEST_FLAGS} "-DENABLE_THREADS" "-DPARALLEL" "-DNCO=2" "-DN=960")
 
 
+add_executable(ScalerHook-parsecapps-swaptions
+        src/parsecapps/swaptions/CumNormalInv.cpp
+        src/parsecapps/swaptions/HJM.cpp
+        src/parsecapps/swaptions/HJM_Securities.cpp
+        src/parsecapps/swaptions/HJM_SimPath_Forward_Blocking.cpp
+        src/parsecapps/swaptions/HJM_Swaption_Blocking.cpp
+        src/parsecapps/swaptions/MaxFunction.cpp
+        src/parsecapps/swaptions/nr_routines.cpp
+        src/parsecapps/swaptions/RanUnif.cpp)
+target_link_libraries(ScalerHook-parsecapps-swaptions pthread )
+target_compile_options(ScalerHook-parsecapps-swaptions PRIVATE ${TEST_FLAGS} "-DENABLE_THREADS" "-fstrict-aliasing" "-fkeep-inline-functions")
+target_include_directories(ScalerHook-parsecapps-swaptions PRIVATE src/parsecapps/swaptions/include)
+target_compile_definitions(ScalerHook-parsecapps-swaptions PRIVATE ENABLE_THREADS)
+
 find_package(BZip2 REQUIRED)
 add_executable(ScalerHook-parsecapps-pbzip2
         src/parsecapps/pbzip2/BZ2StreamScanner.cpp

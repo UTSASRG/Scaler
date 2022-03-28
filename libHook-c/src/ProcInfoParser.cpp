@@ -112,6 +112,11 @@ namespace scaler {
                 continue;
             }
 
+            if (strStartsWith(fileName, "libm-")) {
+                pmEntryArray.popBack();
+                continue;
+            }
+
             //Parse permission
             if (permStr[0] == 'r') {
                 newEntry->setR();
@@ -153,7 +158,7 @@ namespace scaler {
         fclose(procFile);
         fclose(execNameFile);
 
-#ifndef NODEBUG
+#ifndef NDEBUG
         void *curAddr = nullptr;
         for (int i = 0; i < pmEntryArray.getSize(); ++i) {
             if (pmEntryArray[i].addrStart < curAddr) {

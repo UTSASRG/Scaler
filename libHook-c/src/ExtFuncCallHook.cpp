@@ -15,6 +15,7 @@
 #include <util/hook/HookHandlers.h>
 #include <type/ELFSecInfo.h>
 #include <util/hook/HookContext.h>
+#include <util/tool/StringTool.h>
 
 namespace scaler {
 
@@ -266,8 +267,38 @@ namespace scaler {
                 case 9:
                     *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper9);
                     break;
+                case 10:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper10);
+                    break;
+                case 11:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper11);
+                    break;
+                case 12:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper12);
+                    break;
+                case 13:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper13);
+                    break;
+                case 14:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper14);
+                    break;
+                case 15:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper15);
+                    break;
+                case 16:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper16);
+                    break;
+                case 17:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper17);
+                    break;
+                case 18:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper18);
+                    break;
+                case 19:
+                    *gotAddr = reinterpret_cast<uint8_t *>(redzoneJumper19);
+                    break;
                 default:
-                fatalErrorS("File id %zd >10. Please increase redzone jumper size", fileId);
+                fatalErrorS("File id %zd >20. Please increase redzone jumper size", fileId);
             }
 
 
@@ -289,6 +320,10 @@ namespace scaler {
         if (funcNameLen == 0) {
             return false;
 //            fatalError("Function has no name?!");
+        }
+
+        if (scaler::strStartsWith(funcName, "__")) {
+            return false;
         }
 
         if (funcNameLen == 3) {

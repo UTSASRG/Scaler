@@ -23,16 +23,27 @@ __attribute__((used)) void asmHookHandler();
 
 #define redzoneJumperDecl(N) void __attribute__((used, naked)) redzoneJumper##N();
 
-redzoneJumperDecl(0) ;
-redzoneJumperDecl(1) ;
-redzoneJumperDecl(2) ;
-redzoneJumperDecl(3) ;
-redzoneJumperDecl(4) ;
-redzoneJumperDecl(5) ;
-redzoneJumperDecl(6) ;
-redzoneJumperDecl(7) ;
-redzoneJumperDecl(8) ;
-redzoneJumperDecl(9) ;
+redzoneJumperDecl(0);
+redzoneJumperDecl(1);
+redzoneJumperDecl(2);
+redzoneJumperDecl(3);
+redzoneJumperDecl(4);
+redzoneJumperDecl(5);
+redzoneJumperDecl(6);
+redzoneJumperDecl(7);
+redzoneJumperDecl(8);
+redzoneJumperDecl(9);
+redzoneJumperDecl(10);
+redzoneJumperDecl(11);
+redzoneJumperDecl(12);
+redzoneJumperDecl(13);
+redzoneJumperDecl(14);
+redzoneJumperDecl(15);
+redzoneJumperDecl(16);
+redzoneJumperDecl(17);
+redzoneJumperDecl(18);
+redzoneJumperDecl(19);
+
 
 }
 #endif

@@ -216,7 +216,7 @@ void *preHookHandler(uint64_t nextCallAddr, uint64_t fileId) {
 
     scaler::ExtFuncCallHook *_this = scaler::ExtFuncCallHook::instance;
 
-    scaler::ELFImgInfo &curElfImgInfo = _this->elfImgInfoMap[fileId];
+    scaler::ELFImgInfo &curElfImgInfo = _this->elfImgInfoMap.get(fileId);
 
     ssize_t pltEntryIndex;
 
@@ -225,10 +225,10 @@ void *preHookHandler(uint64_t nextCallAddr, uint64_t fileId) {
         pltEntryIndex = (pltEntryAddr - curElfImgInfo.pltSecStartAddr) / 16;
     } else {
         //Relative to pltsec
-        pltEntryIndex = ((pltEntryAddr - curElfImgInfo.pltStartAddr) / 16)-1;
+        pltEntryIndex = ((pltEntryAddr - curElfImgInfo.pltStartAddr) / 16) - 1;
     }
     scaler::SymID symbolId = curElfImgInfo.firstSymIndex + pltEntryIndex;
-    scaler::ExtSymInfo &curElfSymInfo = _this->allExtSymbol[symbolId];
+    scaler::ExtSymInfo &curElfSymInfo = _this->allExtSymbol.get(symbolId);
 
 
     //Starting from here, we could call external symbols and it won't cause any problem
@@ -237,10 +237,9 @@ void *preHookHandler(uint64_t nextCallAddr, uint64_t fileId) {
      * No counting, no measuring time (If scaler is not installed, then tls is not initialized)
      * This may happen for external function call before the initTLS in dummy thread function
      */
-    HookContext *curContextPtr = curContext; //Reduce thread local access
 
 
-    if (curContextPtr == nullptr) {
+    if (curContext == NULL) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
@@ -254,23 +253,23 @@ void *preHookHandler(uint64_t nextCallAddr, uint64_t fileId) {
             :/* No inputs. */:"rdi");
             return curElfSymInfo.resolvedAddr;
         } else {
-            curContextPtr->callerAddr.push((void *) nextCallAddr);
-            curContextPtr->fileId.push(fileId);
-            curContextPtr->symId.push(symbolId);
+            curContext->callerAddr.push((void *) nextCallAddr);
+            curContext->fileId.push(fileId);
+            curContext->symId.push(symbolId);
             return curElfSymInfo.pltLdAddr;
         }
     }
 
     bypassCHooks = SCALER_TRUE;
 
-    DBG_LOGS("FileId=%lu, pltId=%zd prehook", fileId, pltEntryIndex);
+    //DBG_LOGS("FileId=%lu, pltId=%zd prehook", fileId, pltEntryIndex);
 
 //    DBG_LOGS("[Pre Hook] Thread:%lu File(%ld):%s, Func(%ld): %s RetAddr:%p", pthread_self(),
 //             curSymbol.fileId, _this->pmParser.idFileMap.at(curSymbol.fileId).c_str(),
 //             extSymbolId, curSymbol.symbolName.c_str(), retOriFuncAddr);
 
 
-    assert(curContextPtr != nullptr);
+    assert(curContext != nullptr);
 //    if (curContextPtr->callerAddr.getSize() >= 2) {
 //        //If exceeding the depth limit, there is no need to go further into after hook
 //
@@ -288,9 +287,9 @@ void *preHookHandler(uint64_t nextCallAddr, uint64_t fileId) {
     */
 //    curContextPtr->timeStamp.push(getunixtimestampms());
     //Push callerAddr into stack
-    curContextPtr->callerAddr.push((void *) nextCallAddr);
-    curContextPtr->fileId.push(fileId);
-    curContextPtr->symId.push(symbolId);
+    curContext->callerAddr.push((void *) nextCallAddr);
+    curContext->fileId.push(fileId);
+    curContext->symId.push(symbolId);
     //Push calling info to afterhook
     //todo: rename this to caller function
     //curContextPtr->extSymbolId.push(extSymbolId);
@@ -346,8 +345,37 @@ void *afterHookHandler() {
             case 9:
                 *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper9);
                 break;
-            default:
-            fatalError("Impossible case");
+            case 10:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper10);
+                break;
+            case 11:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper11);
+                break;
+            case 12:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper12);
+                break;
+            case 13:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper13);
+                break;
+            case 14:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper14);
+                break;
+            case 15:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper15);
+                break;
+            case 16:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper16);
+                break;
+            case 17:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper17);
+                break;
+            case 18:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper18);
+                break;
+            case 19:
+                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper19);
+                break;
+            default:fatalError("Impossible case");
         }
     }
 
@@ -411,3 +439,22 @@ redzoneJumperDef(8)
 
 redzoneJumperDef(9)
 
+redzoneJumperDef(10)
+
+redzoneJumperDef(11)
+
+redzoneJumperDef(12)
+
+redzoneJumperDef(13)
+
+redzoneJumperDef(14)
+
+redzoneJumperDef(15)
+
+redzoneJumperDef(16)
+
+redzoneJumperDef(17)
+
+redzoneJumperDef(18)
+
+redzoneJumperDef(19)

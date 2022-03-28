@@ -58,7 +58,13 @@ namespace scaler {
             return size == 0;
         }
 
-        virtual inline T &operator[](const ssize_t &index) {
+        inline T &operator[](const ssize_t &index) {
+            assert(0 <= index && index < size);
+            assert(internalArr != nullptr);
+            return internalArr[index];
+        }
+
+        inline T &get(const ssize_t &index) {
             assert(0 <= index && index < size);
             assert(internalArr != nullptr);
             return internalArr[index];
@@ -96,7 +102,6 @@ namespace scaler {
         virtual inline void popBack() {
             size -= 1;
         }
-
 
 
         virtual inline ssize_t getSize() {
