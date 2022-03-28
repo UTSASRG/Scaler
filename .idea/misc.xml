@@ -5,6 +5,10 @@
     <sourceRoots>
       <file path="$PROJECT_DIR$/Analyzer/PerfDataImporter/src" />
     </sourceRoots>
+    <excludeRoots>
+      <file path="$PROJECT_DIR$/Analyzer" />
+      <file path="$PROJECT_DIR$/libHook" />
+    </excludeRoots>
   </component>
   <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.9 (venv)" project-jdk-type="Python SDK" />
 </project>

@@ -1,0 +1,489 @@
+time ./aget-pthread -f -n 8 http://gnu.mirrors.hoobly.com/gnu/gcc/gcc-3.3.tar.gz 
+<LOG> Attempting to read log file aget-gcc-3.3.tar.gz.log for resuming download job...
+<LOG> Couldn't find log file for this download, starting a clean job...
+<LOG> Head-Request Connection established
+<LOG> Downloading /gnu/gcc/gcc-3.3.tar.gz (31046469 bytes) from site gnu.mirrors.hoobly.com(66.160.172.98:80). Number of Threads: 8
+total clength 31046469
+part 0 nthreads 8 ret 0
+part 1 nthreads 8 ret 3880808
+part 1 nthreads 8 ret 3880808
+part 2 nthreads 8 ret 7761616
+part 2 nthreads 8 ret 7761616
+part 3 nthreads 8 ret 11642424
+part 3 nthreads 8 ret 11642424
+part 4 nthreads 8 ret 15523232
+part 4 nthreads 8 ret 15523232
+part 5 nthreads 8 ret 19404040
+part 5 nthreads 8 ret 19404040
+part 6 nthreads 8 ret 23284848
+part 6 nthreads 8 ret 23284848
+part 7 nthreads 8 ret 27165656
+part 7 nthreads 8 ret 27165656
+part 8 nthreads 8 ret 31046464
+HHHHHHHHHHHHHHHHHHHHHHHH 4433: ater recv, dr 1448. foffset 3880808
+HHHHHHHHHHHHHHHHHHHHHHHH 4433: ater recv, dr 1448. foffset 31046469
+HHHHHHHHHHHHHHHHHHHHHHHH 4433: ater recv, dr 1448. foffset 7761616
+HHHHHHHHHHHHHHHHHHHHHHHH 4433: ater recv, dr 1448. foffset 15523232
+HHHHHHHHHHHHHHHHHHHHHHHH 4433: ater recv, dr 1448. foffset 11642424
+HHHHHHHHHHHHHHHHHHHHHHHH 4433: ater recv, dr 1448. foffset 19404040
+HHHHHHHHHHHHHHHHHHHHHHHH 4433: ater recv, dr 1448. foffset 27165656
+HHHHHHHHHHHHHHHHHHHHHHHH 4433: ater recv, dr 1448. foffset 23284848
+..                                                 [4% completed]
+.....                                              [9% completed]
+.......                                            [14% completed]
+..........                                         [19% completed]
+............                                       [24% completed]
+...............                                    [29% completed]
+.................                                  [34% completed]
+....................                               [39% completed]
+......................                             [44% completed]
+.........................                          [49% completed]
+...........................                        [54% completed]
+..............................                     [59% completed]
+................................                   [64% completed]
+...................................                [69% completed]
+.....................................              [74% completed]
+........................................           [79% completed]
+..........................................         [84% completed]
+.............................................      [89% completed]
+...............................................    [94% completed]
+<THREAD #140737339279104> completed, leaving thread...
+<THREAD #140737318299392> completed, leaving thread...
+<THREAD #140737054230272> completed, leaving thread...
+<THREAD #140737328789248> completed, leaving thread...
+.................................................. [99% completed]
+<THREAD #140737075209984> completed, leaving thread...
+<THREAD #140737307809536> completed, leaving thread...
+<THREAD #140737064720128> completed, leaving thread...
+.................................................. [100% completed]
+<THREAD #140737085699840> completed, leaving thread...
+<LOG> Download completed, job completed in 4 seconds. (7579 Kb/sec)
+<LOG> Shutting down...
+0.04user 0.26system 0:04.68elapsed 6%CPU (0avgtext+0avgdata 14800maxresident)k
+0inputs+60640outputs (0major+469minor)pagefaults 0swaps
+time ./aget-pthread -f -n 8 http://gnu.mirrors.hoobly.com/gnu/gcc/gcc-3.3.tar.gz 
+<LOG> Attempting to read log file aget-gcc-3.3.tar.gz.log for resuming download job...
+<LOG> Couldn't find log file for this download, starting a clean job...
+<LOG> Head-Request Connection established
+<LOG> Downloading /gnu/gcc/gcc-3.3.tar.gz (31046469 bytes) from site gnu.mirrors.hoobly.com(66.160.172.98:80). Number of Threads: 8
+total clength 31046469
+part 0 nthreads 8 ret 0
+part 1 nthreads 8 ret 3880808
+part 1 nthreads 8 ret 3880808
+part 2 nthreads 8 ret 7761616
+part 2 nthreads 8 ret 7761616
+part 3 nthreads 8 ret 11642424
+part 3 nthreads 8 ret 11642424
+part 4 nthreads 8 ret 15523232
+part 4 nthreads 8 ret 15523232
+part 5 nthreads 8 ret 19404040
+part 5 nthreads 8 ret 19404040
+part 6 nthreads 8 ret 23284848
+part 6 nthreads 8 ret 23284848
+part 7 nthreads 8 ret 27165656
+part 7 nthreads 8 ret 27165656
+part 8 nthreads 8 ret 31046464
+HHHHHHHHHHHHHHHHHHHHHHHH 5700: ater recv, dr 1448. foffset 3880808
+HHHHHHHHHHHHHHHHHHHHHHHH 5700: ater recv, dr 1448. foffset 7761616
+HHHHHHHHHHHHHHHHHHHHHHHH 5700: ater recv, dr 1448. foffset 19404040
+HHHHHHHHHHHHHHHHHHHHHHHH 5700: ater recv, dr 1448. foffset 31046469
+HHHHHHHHHHHHHHHHHHHHHHHH 5700: ater recv, dr 2896. foffset 27165656
+HHHHHHHHHHHHHHHHHHHHHHHH 5700: ater recv, dr 1448. foffset 23284848
+HHHHHHHHHHHHHHHHHHHHHHHH 5700: ater recv, dr 1448. foffset 11642424
+HHHHHHHHHHHHHHHHHHHHHHHH 5700: ater recv, dr 1448. foffset 15523232
+..                                                 [4% completed]
+.....                                              [9% completed]
+.......                                            [14% completed]
+..........                                         [19% completed]
+............                                       [24% completed]
+...............                                    [29% completed]
+.................                                  [34% completed]
+....................                               [39% completed]
+......................                             [44% completed]
+.........................                          [49% completed]
+...........................                        [54% completed]
+..............................                     [59% completed]
+................................                   [64% completed]
+...................................                [69% completed]
+.....................................              [74% completed]
+........................................           [79% completed]
+..........................................         [84% completed]
+.............................................      [89% completed]
+...............................................    [94% completed]
+<THREAD #140737188448000> completed, leaving thread...
+<THREAD #140737328789248> completed, leaving thread...
+<THREAD #140737209427712> completed, leaving thread...
+<THREAD #140737307809536> completed, leaving thread...
+<THREAD #140737219917568> completed, leaving thread...
+<THREAD #140737198937856> completed, leaving thread...
+<THREAD #140737339279104> completed, leaving thread...
+.................................................. [99% completed]
+.................................................. [100% completed]
+<THREAD #140737318299392> completed, leaving thread...
+<LOG> Download completed, job completed in 4 seconds. (7579 Kb/sec)
+<LOG> Shutting down...
+0.03user 0.26system 0:04.54elapsed 6%CPU (0avgtext+0avgdata 14800maxresident)k
+0inputs+60648outputs (0major+469minor)pagefaults 0swaps
+time ./aget-pthread -f -n 8 http://gnu.mirrors.hoobly.com/gnu/gcc/gcc-3.3.tar.gz 
+<LOG> Attempting to read log file aget-gcc-3.3.tar.gz.log for resuming download job...
+<LOG> Couldn't find log file for this download, starting a clean job...
+<LOG> Head-Request Connection established
+<LOG> Downloading /gnu/gcc/gcc-3.3.tar.gz (31046469 bytes) from site gnu.mirrors.hoobly.com(66.160.172.98:80). Number of Threads: 8
+total clength 31046469
+part 0 nthreads 8 ret 0
+part 1 nthreads 8 ret 3880808
+part 1 nthreads 8 ret 3880808
+part 2 nthreads 8 ret 7761616
+part 2 nthreads 8 ret 7761616
+part 3 nthreads 8 ret 11642424
+part 3 nthreads 8 ret 11642424
+part 4 nthreads 8 ret 15523232
+part 4 nthreads 8 ret 15523232
+part 5 nthreads 8 ret 19404040
+part 5 nthreads 8 ret 19404040
+part 6 nthreads 8 ret 23284848
+part 6 nthreads 8 ret 23284848
+part 7 nthreads 8 ret 27165656
+part 7 nthreads 8 ret 27165656
+part 8 nthreads 8 ret 31046464
+HHHHHHHHHHHHHHHHHHHHHHHH 8967: ater recv, dr 1448. foffset 15523232
+HHHHHHHHHHHHHHHHHHHHHHHH 8967: ater recv, dr 1448. foffset 19404040
+HHHHHHHHHHHHHHHHHHHHHHHH 8967: ater recv, dr 1448. foffset 23284848
+HHHHHHHHHHHHHHHHHHHHHHHH 8967: ater recv, dr 1448. foffset 27165656
+HHHHHHHHHHHHHHHHHHHHHHHH 8967: ater recv, dr 1448. foffset 3880808
+HHHHHHHHHHHHHHHHHHHHHHHH 8967: ater recv, dr 1448. foffset 7761616
+HHHHHHHHHHHHHHHHHHHHHHHH 8967: ater recv, dr 1448. foffset 11642424
+HHHHHHHHHHHHHHHHHHHHHHHH 8967: ater recv, dr 1448. foffset 31046469
+..                                                 [4% completed]
+.....                                              [9% completed]
+.......                                            [14% completed]
+..........                                         [19% completed]
+............                                       [24% completed]
+...............                                    [29% completed]
+.................                                  [34% completed]
+....................                               [39% completed]
+......................                             [44% completed]
+.........................                          [49% completed]
+...........................                        [54% completed]
+..............................                     [59% completed]
+................................                   [64% completed]
+...................................                [69% completed]
+.....................................              [74% completed]
+........................................           [79% completed]
+..........................................         [84% completed]
+.............................................      [89% completed]
+<THREAD #140737307809536> completed, leaving thread...
+<THREAD #140737339279104> completed, leaving thread...
+...............................................    [94% completed]
+<THREAD #140737075209984> completed, leaving thread...
+<THREAD #140737318299392> completed, leaving thread...
+<THREAD #140737085699840> completed, leaving thread...
+<THREAD #140737064720128> completed, leaving thread...
+<THREAD #140737328789248> completed, leaving thread...
+.................................................. [99% completed]
+.................................................. [100% completed]
+<THREAD #140737054230272> completed, leaving thread...
+<LOG> Download completed, job completed in 11 seconds. (2756 Kb/sec)
+<LOG> Shutting down...
+0.03user 0.27system 0:10.89elapsed 2%CPU (0avgtext+0avgdata 14800maxresident)k
+0inputs+60648outputs (0major+469minor)pagefaults 0swaps
+time ./aget-defaults -f -n 8 http://gnu.mirrors.hoobly.com/gnu/gcc/gcc-3.3.tar.gz
+XHEAP:_start 0x40000000 end is 0x240000000
+Initially, startaddr 0x605000 endaddr 0x606000
+<LOG> Attempting to read log file aget-gcc-3.3.tar.gz.log for resuming download job...
+<LOG> Couldn't find log file for this download, starting a clean job...
+<LOG> Head-Request Connection established
+<LOG> Downloading /gnu/gcc/gcc-3.3.tar.gz (31046469 bytes) from site gnu.mirrors.hoobly.com(66.160.172.98:80). Number of Threads: 8
+total clength 31046469
+part 0 nthreads 8 ret 0
+part 1 nthreads 8 ret 3880808
+part 1 nthreads 8 ret 3880808
+part 2 nthreads 8 ret 7761616
+part 2 nthreads 8 ret 7761616
+part 3 nthreads 8 ret 11642424
+part 3 nthreads 8 ret 11642424
+part 4 nthreads 8 ret 15523232
+part 4 nthreads 8 ret 15523232
+part 5 nthreads 8 ret 19404040
+part 5 nthreads 8 ret 19404040
+part 6 nthreads 8 ret 23284848
+part 6 nthreads 8 ret 23284848
+part 7 nthreads 8 ret 27165656
+part 7 nthreads 8 ret 27165656
+part 8 nthreads 8 ret 31046464
+HHHHHHHHHHHHHHHHHHHHHHHH 16126: ater recv, dr 1448. foffset 15523232
+HHHHHHHHHHHHHHHHHHHHHHHH 16126: ater recv, dr 1448. foffset 23284848
+HHHHHHHHHHHHHHHHHHHHHHHH 16126: ater recv, dr 1448. foffset 7761616
+HHHHHHHHHHHHHHHHHHHHHHHH 16126: ater recv, dr 1448. foffset 19404040
+HHHHHHHHHHHHHHHHHHHHHHHH 16126: ater recv, dr 1448. foffset 11642424
+HHHHHHHHHHHHHHHHHHHHHHHH 16126: ater recv, dr 1448. foffset 31046469
+HHHHHHHHHHHHHHHHHHHHHHHH 16126: ater recv, dr 1448. foffset 3880808
+HHHHHHHHHHHHHHHHHHHHHHHH 16126: ater recv, dr 1448. foffset 27165656
+..                                                 [4% completed]
+..                                                 [4% completed]
+.....                                              [9% completed]
+.......                                            [14% completed]
+..........                                         [19% completed]
+............                                       [24% completed]
+...............                                    [29% completed]
+.................                                  [34% completed]
+....................                               [39% completed]
+......................                             [44% completed]
+.........................                          [49% completed]
+...........................                        [54% completed]
+..............................                     [59% completed]
+................................                   [64% completed]
+...................................                [69% completed]
+.....................................              [74% completed]
+........................................           [79% completed]
+..........................................         [84% completed]
+<THREAD #140737295046400> completed, leaving thread...
+.............................................      [89% completed]
+<THREAD #140737274066688> completed, leaving thread...
+...............................................    [94% completed]
+<THREAD #140737326515968> completed, leaving thread...
+<THREAD #140737284556544> completed, leaving thread...
+<THREAD #140737305536256> completed, leaving thread...
+<THREAD #140737263576832> completed, leaving thread...
+<THREAD #140737337005824> completed, leaving thread...
+.................................................. [99% completed]
+.................................................. [100% completed]
+<THREAD #140737316026112> completed, leaving thread...
+<LOG> Download completed, job completed in 8 seconds. (3789 Kb/sec)
+<LOG> Shutting down...
+reporting start 0x605000 end 0x606000 cacheWrites 0x200000000000 cacheTrackings 0x200080000000
+reportGlobalObjects now. globalstart 605000 globalend 606000
+reporting start 0x40000000 end 0x40909000 cacheWrites 0x200000000000 cacheTrackings 0x200080000000
+0.02user 0.65system 0:09.09elapsed 7%CPU (0avgtext+0avgdata 77168maxresident)k
+32552inputs+60648outputs (6major+799minor)pagefaults 0swaps
+time ./aget-defaults -f -n 8 http://gnu.mirrors.hoobly.com/gnu/gcc/gcc-3.3.tar.gz
+XHEAP:_start 0x40000000 end is 0x240000000
+Initially, startaddr 0x605000 endaddr 0x606000
+<LOG> Attempting to read log file aget-gcc-3.3.tar.gz.log for resuming download job...
+<LOG> Couldn't find log file for this download, starting a clean job...
+<LOG> Head-Request Connection established
+<LOG> Downloading /gnu/gcc/gcc-3.3.tar.gz (31046469 bytes) from site gnu.mirrors.hoobly.com(66.160.172.98:80). Number of Threads: 8
+total clength 31046469
+part 0 nthreads 8 ret 0
+part 1 nthreads 8 ret 3880808
+part 1 nthreads 8 ret 3880808
+part 2 nthreads 8 ret 7761616
+part 2 nthreads 8 ret 7761616
+part 3 nthreads 8 ret 11642424
+part 3 nthreads 8 ret 11642424
+part 4 nthreads 8 ret 15523232
+part 4 nthreads 8 ret 15523232
+part 5 nthreads 8 ret 19404040
+part 5 nthreads 8 ret 19404040
+part 6 nthreads 8 ret 23284848
+part 6 nthreads 8 ret 23284848
+part 7 nthreads 8 ret 27165656
+part 7 nthreads 8 ret 27165656
+part 8 nthreads 8 ret 31046464
+HHHHHHHHHHHHHHHHHHHHHHHH 18838: ater recv, dr 1448. foffset 3880808
+HHHHHHHHHHHHHHHHHHHHHHHH 18838: ater recv, dr 1448. foffset 7761616
+HHHHHHHHHHHHHHHHHHHHHHHH 18838: ater recv, dr 1448. foffset 31046469
+HHHHHHHHHHHHHHHHHHHHHHHH 18838: ater recv, dr 1448. foffset 15523232
+HHHHHHHHHHHHHHHHHHHHHHHH 18838: ater recv, dr 1448. foffset 23284848
+HHHHHHHHHHHHHHHHHHHHHHHH 18838: ater recv, dr 1448. foffset 19404040
+HHHHHHHHHHHHHHHHHHHHHHHH 18838: ater recv, dr 1448. foffset 27165656
+HHHHHHHHHHHHHHHHHHHHHHHH 18838: ater recv, dr 1448. foffset 11642424
+..                                                 [4% completed]
+.....                                              [9% completed]
+.......                                            [14% completed]
+..........                                         [19% completed]
+............                                       [24% completed]
+...............                                    [29% completed]
+.................                                  [34% completed]
+....................                               [39% completed]
+......................                             [44% completed]
+.........................                          [49% completed]
+...........................                        [54% completed]
+..............................                     [59% completed]
+................................                   [64% completed]
+...................................                [69% completed]
+<THREAD #140737326515968> completed, leaving thread...
+.....................................              [74% completed]
+<THREAD #140737337005824> completed, leaving thread...
+........................................           [79% completed]
+..........................................         [84% completed]
+<THREAD #140737263576832> completed, leaving thread...
+.............................................      [89% completed]
+<THREAD #140737316026112> completed, leaving thread...
+...............................................    [94% completed]
+<THREAD #140737305536256> completed, leaving thread...
+<THREAD #140737284556544> completed, leaving thread...
+<THREAD #140737295046400> completed, leaving thread...
+.................................................. [99% completed]
+.................................................. [100% completed]
+<THREAD #140737274066688> completed, leaving thread...
+<LOG> Download completed, job completed in 8 seconds. (3789 Kb/sec)
+<LOG> Shutting down...
+reporting start 0x605000 end 0x606000 cacheWrites 0x200000000000 cacheTrackings 0x200080000000
+reportGlobalObjects now. globalstart 605000 globalend 606000
+cache 98657: cacheWrites is 10000 invalidations 105 at 0x100000100038
+	CacheStart 0x605840 Accesses 545a (at 0x100000100038) Writes 3a98 invalidations 261 THREAD 0
+FALSE SHARING GLOBAL VARIABLE: start 0x605868 end 0x60586c (with size 4). Accesses 545a invalidations 105 writes 3a98. 
+	Global object: name "bwritten", start 605868, size 4
+
+	Address 0x605868 (line 98657): reads 5000 writes 5000 by mulitple thread
+
+
+cache 98657: cacheWrites is 10000 invalidations 105 at 0x100000100038
+	CacheStart 0x605840 Accesses 545a (at 0x100000100038) Writes 3a98 invalidations 261 THREAD 0
+FALSE SHARING GLOBAL VARIABLE: start 0x605840 end 0x605848 (with size 8). Accesses 545a invalidations 105 writes 3a98. 
+	Global object: name "optarg@@GLIBC_2.2.5", start 605840, size 8
+
+
+
+cache 98657: cacheWrites is 10000 invalidations 105 at 0x100000100038
+	CacheStart 0x605840 Accesses 545a (at 0x100000100038) Writes 3a98 invalidations 261 THREAD 0
+FALSE SHARING GLOBAL VARIABLE: start 0x605870 end 0x605898 (with size 28). Accesses 545a invalidations 105 writes 3a98. 
+	Global object: name "bwritten_mutex", start 605870, size 40
+
+
+
+cache 98657: cacheWrites is 10000 invalidations 105 at 0x100000100038
+	CacheStart 0x605840 Accesses 545a (at 0x100000100038) Writes 3a98 invalidations 261 THREAD 0
+FALSE SHARING GLOBAL VARIABLE: start 0x605848 end 0x605850 (with size 8). Accesses 545a invalidations 105 writes 3a98. 
+	Global object: name "stderr@@GLIBC_2.2.5", start 605848, size 8
+
+
+
+cache 98657: cacheWrites is 10000 invalidations 105 at 0x100000100038
+	CacheStart 0x605840 Accesses 545a (at 0x100000100038) Writes 3a98 invalidations 261 THREAD 0
+FALSE SHARING GLOBAL VARIABLE: start 0x605850 end 0x605858 (with size 8). Accesses 545a invalidations 105 writes 3a98. 
+	Global object: name "stdout@@GLIBC_2.2.5", start 605850, size 8
+
+
+
+reporting start 0x40000000 end 0x40909000 cacheWrites 0x200000000000 cacheTrackings 0x200080000000
+0.04user 0.29system 0:08.09elapsed 4%CPU (0avgtext+0avgdata 93424maxresident)k
+0inputs+60648outputs (0major+806minor)pagefaults 0swaps
+time ./aget-pthread -f -n 8 http://gnu.mirrors.hoobly.com/gnu/gcc/gcc-3.3.tar.gz 
+<LOG> Attempting to read log file aget-gcc-3.3.tar.gz.log for resuming download job...
+<LOG> Couldn't find log file for this download, starting a clean job...
+<LOG> Head-Request Connection established
+<LOG> Downloading /gnu/gcc/gcc-3.3.tar.gz (31046469 bytes) from site gnu.mirrors.hoobly.com(66.160.172.98:80). Number of Threads: 8
+total clength 31046469
+part 0 nthreads 8 ret 0
+part 1 nthreads 8 ret 3880808
+part 1 nthreads 8 ret 3880808
+part 2 nthreads 8 ret 7761616
+part 2 nthreads 8 ret 7761616
+part 3 nthreads 8 ret 11642424
+part 3 nthreads 8 ret 11642424
+part 4 nthreads 8 ret 15523232
+part 4 nthreads 8 ret 15523232
+part 5 nthreads 8 ret 19404040
+part 5 nthreads 8 ret 19404040
+part 6 nthreads 8 ret 23284848
+part 6 nthreads 8 ret 23284848
+part 7 nthreads 8 ret 27165656
+part 7 nthreads 8 ret 27165656
+part 8 nthreads 8 ret 31046464
+HHHHHHHHHHHHHHHHHHHHHHHH 32725: ater recv, dr 1448. foffset 11642424
+HHHHHHHHHHHHHHHHHHHHHHHH 32725: ater recv, dr 1448. foffset 3880808
+HHHHHHHHHHHHHHHHHHHHHHHH 32725: ater recv, dr 1448. foffset 31046469
+HHHHHHHHHHHHHHHHHHHHHHHH 32725: ater recv, dr 2896. foffset 19404040
+HHHHHHHHHHHHHHHHHHHHHHHH 32725: ater recv, dr 1448. foffset 15523232
+HHHHHHHHHHHHHHHHHHHHHHHH 32725: ater recv, dr 1448. foffset 23284848
+HHHHHHHHHHHHHHHHHHHHHHHH 32725: ater recv, dr 4344. foffset 7761616
+HHHHHHHHHHHHHHHHHHHHHHHH 32725: ater recv, dr 1448. foffset 27165656
+..                                                 [4% completed]
+.....                                              [9% completed]
+.......                                            [14% completed]
+..........                                         [19% completed]
+............                                       [24% completed]
+...............                                    [29% completed]
+.................                                  [34% completed]
+....................                               [39% completed]
+......................                             [44% completed]
+.........................                          [49% completed]
+...........................                        [54% completed]
+..............................                     [59% completed]
+................................                   [64% completed]
+...................................                [69% completed]
+.....................................              [74% completed]
+<THREAD #140737085699840> completed, leaving thread...
+........................................           [79% completed]
+..........................................         [84% completed]
+.............................................      [89% completed]
+<THREAD #140737054230272> completed, leaving thread...
+...............................................    [94% completed]
+<THREAD #140737064720128> completed, leaving thread...
+.................................................. [99% completed]
+<THREAD #140737075209984> completed, leaving thread...
+<THREAD #140737339279104> completed, leaving thread...
+<THREAD #140737328789248> completed, leaving thread...
+<THREAD #140737318299392> completed, leaving thread...
+.................................................. [100% completed]
+<THREAD #140737307809536> completed, leaving thread...
+<LOG> Download completed, job completed in 8 seconds. (3789 Kb/sec)
+<LOG> Shutting down...
+0.01user 0.56system 0:08.48elapsed 6%CPU (0avgtext+0avgdata 14816maxresident)k
+31400inputs+60648outputs (1major+470minor)pagefaults 0swaps
+time ./aget-pthread -f -n 8 http://gnu.mirrors.hoobly.com/gnu/gcc/gcc-3.3.tar.gz 
+<LOG> Attempting to read log file aget-gcc-3.3.tar.gz.log for resuming download job...
+<LOG> Couldn't find log file for this download, starting a clean job...
+<LOG> Head-Request Connection established
+<LOG> Downloading /gnu/gcc/gcc-3.3.tar.gz (31046469 bytes) from site gnu.mirrors.hoobly.com(66.160.172.98:80). Number of Threads: 8
+total clength 31046469
+part 0 nthreads 8 ret 0
+part 1 nthreads 8 ret 3880808
+part 1 nthreads 8 ret 3880808
+part 2 nthreads 8 ret 7761616
+part 2 nthreads 8 ret 7761616
+part 3 nthreads 8 ret 11642424
+part 3 nthreads 8 ret 11642424
+part 4 nthreads 8 ret 15523232
+part 4 nthreads 8 ret 15523232
+part 5 nthreads 8 ret 19404040
+part 5 nthreads 8 ret 19404040
+part 6 nthreads 8 ret 23284848
+part 6 nthreads 8 ret 23284848
+part 7 nthreads 8 ret 27165656
+part 7 nthreads 8 ret 27165656
+part 8 nthreads 8 ret 31046464
+HHHHHHHHHHHHHHHHHHHHHHHH 510: ater recv, dr 1448. foffset 3880808
+HHHHHHHHHHHHHHHHHHHHHHHH 510: ater recv, dr 1448. foffset 7761616
+HHHHHHHHHHHHHHHHHHHHHHHH 510: ater recv, dr 1448. foffset 31046469
+HHHHHHHHHHHHHHHHHHHHHHHH 510: ater recv, dr 1448. foffset 27165656
+HHHHHHHHHHHHHHHHHHHHHHHH 510: ater recv, dr 1448. foffset 11642424
+HHHHHHHHHHHHHHHHHHHHHHHH 510: ater recv, dr 1448. foffset 15523232
+HHHHHHHHHHHHHHHHHHHHHHHH 510: ater recv, dr 1448. foffset 19404040
+HHHHHHHHHHHHHHHHHHHHHHHH 510: ater recv, dr 1448. foffset 23284848
+..                                                 [4% completed]
+.....                                              [9% completed]
+.......                                            [14% completed]
+..........                                         [19% completed]
+............                                       [24% completed]
+...............                                    [29% completed]
+.................                                  [34% completed]
+....................                               [39% completed]
+......................                             [44% completed]
+.........................                          [49% completed]
+...........................                        [54% completed]
+..............................                     [59% completed]
+................................                   [64% completed]
+...................................                [69% completed]
+.....................................              [74% completed]
+........................................           [79% completed]
+..........................................         [84% completed]
+.............................................      [89% completed]
+<THREAD #140737318299392> completed, leaving thread...
+...............................................    [94% completed]
+<THREAD #140737054230272> completed, leaving thread...
+<THREAD #140737339279104> completed, leaving thread...
+<THREAD #140737064720128> completed, leaving thread...
+.................................................. [99% completed]
+.................................................. [99% completed]
+<THREAD #140737085699840> completed, leaving thread...
+<THREAD #140737075209984> completed, leaving thread...
+<THREAD #140737328789248> completed, leaving thread...
+.................................................. [100% completed]
+<THREAD #140737307809536> completed, leaving thread...
+<LOG> Download completed, job completed in 5 seconds. (6063 Kb/sec)
+<LOG> Shutting down...
+0.02user 0.26system 0:05.30elapsed 5%CPU (0avgtext+0avgdata 14816maxresident)k
+0inputs+60648outputs (0major+471minor)pagefaults 0swaps
