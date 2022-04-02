@@ -80,7 +80,9 @@ namespace scaler {
             assert(0 <= index && index <= size);
             if (size == internalArrSize)
                 expand(size + 1);
-            memmove(internalArr + index + 1, internalArr + index, size - index);
+            if (index < size) {
+                memmove(internalArr + index + 1, internalArr + index, size - index);
+            }
             size += 1;
             return internalArr + index;
         }

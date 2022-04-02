@@ -53,10 +53,11 @@ void forwardTest() {
 //    std::cout << "B\n";
     auto t = make_unique2<B123>(2, 0, 3);
 }
-
+void *asmSize = (void *) forwardTest;
 int main() {
-    scaler::ExtFuncCallHook::getInst()->install();
     printf("Calling funcA\n");
+
+    scaler::ExtFuncCallHook::getInst()->install();
 //
 //    auto actualStart = getunixtimestampms();
 //    pthread_t pt1 = pthread_self();
@@ -65,7 +66,7 @@ int main() {
 //    printf("pt1=%lu\n", myGetThreadID());
 ////
 //    printf("Calling funcA\n");
-//    funcA();
+    funcA();
 //    funcA();
 //
 //    printf("Calling funcB\n");

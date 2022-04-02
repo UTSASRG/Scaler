@@ -14,6 +14,7 @@
 #include <type/ExtSymInfo.h>
 #include <type/ELFImgInfo.h>
 #include <type/ELFSecInfo.h>
+#include <util/tool/AddrFileIdMapping.h>
 
 namespace scaler {
 
@@ -72,12 +73,15 @@ namespace scaler {
                       uint8_t *baseAddr);
 
         bool
-        installHook(std::string &fullPath, ELFParser &parser, ssize_t fileId, uint8_t *baseAddr, ELFSecInfo &pltSec,
+        installHook(ELFParser &parser, ssize_t fileId, uint8_t *baseAddr, ELFSecInfo &pltSec,
                     ELFSecInfo &gotSec);
 
         bool makeGOTWritable(ELFSecInfo &gotSec, bool writable);
 
+
         uint32_t parsePltStubId(uint8_t *dest);
+
+        bool fillAddr2pltEntry(uint8_t *funcAddr, uint8_t *retPltEntryCode);
     };
 
 }

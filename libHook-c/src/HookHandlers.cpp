@@ -87,14 +87,15 @@ void __attribute__((naked)) asmHookHandler() {
     /**
     * Save environment
     */
-    "pushq %rax\n\t" //8
-    "pushq %rcx\n\t" //8
-    "pushq %rdx\n\t" //8
-    "pushq %rsi\n\t" //8
-    "pushq %rdi\n\t" //8
-    "pushq %r8\n\t" //8
-    "pushq %r9\n\t" //8
-    "pushq %r10\n\t" //8
+    "subq $0x80,%rsp\n\t"
+    "movq %rax,(%rsp)\n\t" //8 bytes
+    "movq %rcx,0x10(%rsp)\n\t" //8
+    "movq %rdx,0x20(%rsp)\n\t" //8
+    "movq %rsi,0x30(%rsp)\n\t" //8
+    "movq %rdi,0x40(%rsp)\n\t" //8
+    "movq %r8,0x50(%rsp)\n\t" //8
+    "movq %r9,0x60(%rsp)\n\t" //8
+    "movq %r10,0x70(%rsp)\n\t" //8
 
     //rsp%10h=0
     //        PUSHZMM(0) //16
@@ -109,18 +110,15 @@ void __attribute__((naked)) asmHookHandler() {
     /**
      * Getting PLT entry address and caller address from stack
      */
-    //"movq %rsp,%rcx\n\t"
-    //"addq $150,%rcx\n\t" //todo: value wrong
-    //FileID fileId (rdi), FuncID funcId (rsi), void *callerAddr (rdx), void* oriRspLoc (rcx)
-    "movq 200(%rsp),%rdi\n\t"
-    "movq 64(%rsp),%rsi\n\t"
+    "movq 0x88(%rsp),%rdi\n\t"
+    "movq 0x80(%rsp),%rsi\n\t"
 
     /**
      * Pre-Hook
      */
     //tips: Use http://www.sunshine2k.de/coding/javascript/onlineelfviewer/onlineelfviewer.html to find the external function name
     //todo: This is error on the server
-    "call  preHookHandler@plt\n\t"
+    "call preHookHandler@plt\n\t"
 
 
     //Save return value to R11. This is the address of real function parsed by handler.
@@ -315,67 +313,68 @@ void *afterHookHandler() {
         //Re-install hook
         curElfSymInfo.resolvedAddr = *curElfSymInfo.gotEntryAddr;
         switch (fileId) {
-            case 0:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper0);
-                break;
-            case 1:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper1);
-                break;
-            case 2:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper2);
-                break;
-            case 3:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper3);
-                break;
-            case 4:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper4);
-                break;
-            case 5:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper5);
-                break;
-            case 6:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper6);
-                break;
-            case 7:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper7);
-                break;
-            case 8:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper8);
-                break;
-            case 9:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper9);
-                break;
-            case 10:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper10);
-                break;
-            case 11:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper11);
-                break;
-            case 12:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper12);
-                break;
-            case 13:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper13);
-                break;
-            case 14:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper14);
-                break;
-            case 15:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper15);
-                break;
-            case 16:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper16);
-                break;
-            case 17:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper17);
-                break;
-            case 18:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper18);
-                break;
-            case 19:
-                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper19);
-                break;
-            default:fatalError("Impossible case");
+//            case 0:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper0);
+//                break;
+//            case 1:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper1);
+//                break;
+//            case 2:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper2);
+//                break;
+//            case 3:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper3);
+//                break;
+//            case 4:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper4);
+//                break;
+//            case 5:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper5);
+//                break;
+//            case 6:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper6);
+//                break;
+//            case 7:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper7);
+//                break;
+//            case 8:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper8);
+//                break;
+//            case 9:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper9);
+//                break;
+//            case 10:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper10);
+//                break;
+//            case 11:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper11);
+//                break;
+//            case 12:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper12);
+//                break;
+//            case 13:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper13);
+//                break;
+//            case 14:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper14);
+//                break;
+//            case 15:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper15);
+//                break;
+//            case 16:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper16);
+//                break;
+//            case 17:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper17);
+//                break;
+//            case 18:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper18);
+//                break;
+//            case 19:
+//                *curElfSymInfo.gotEntryAddr = reinterpret_cast<uint8_t *>(redzoneJumper19);
+//                break;
+            default:
+            fatalError("Impossible case");
         }
     }
 
@@ -410,51 +409,20 @@ void *afterHookHandler() {
     return callerAddr;
 }
 
-#define redzoneJumperDef(N) \
-void __attribute__((used, naked)) redzoneJumper##N() {\
-    __asm__ __volatile__ ( \
-    "subq $128,%rsp\n\t" \
-    "pushq $"#N"\n\t" \
-    "jmp asmHookHandler\n\t" \
-    ); \
+void __attribute__((used, naked, noinline)) callLd() {
+    __asm__ __volatile__ (
+    "pushq $0\n\t"
+    "movq $0xFFFFFFFFFFFFFFFF,%r11\n\t"
+    "jmpq *%r11\n\t"
+    );
 }
 
-redzoneJumperDef(0)
+void __attribute__((used, naked, noinline)) myPltEntry() {
+    __asm__ __volatile__ (
+    "movq $0x1122334455667788,%r11\n\t"
+    "callq *%r11\n\t"
+    );
+}
 
-redzoneJumperDef(1)
 
-redzoneJumperDef(2)
 
-redzoneJumperDef(3)
-
-redzoneJumperDef(4)
-
-redzoneJumperDef(5)
-
-redzoneJumperDef(6)
-
-redzoneJumperDef(7)
-
-redzoneJumperDef(8)
-
-redzoneJumperDef(9)
-
-redzoneJumperDef(10)
-
-redzoneJumperDef(11)
-
-redzoneJumperDef(12)
-
-redzoneJumperDef(13)
-
-redzoneJumperDef(14)
-
-redzoneJumperDef(15)
-
-redzoneJumperDef(16)
-
-redzoneJumperDef(17)
-
-redzoneJumperDef(18)
-
-redzoneJumperDef(19)
