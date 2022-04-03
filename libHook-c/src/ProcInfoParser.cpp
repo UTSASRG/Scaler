@@ -38,7 +38,6 @@ namespace scaler {
 
         std::string addr1, addr2, perm, offset;
 
-
         char procMapLine[512];
         char prevPathname[PATH_MAX];
         ssize_t prevPathNameLen = -1;
@@ -73,6 +72,7 @@ namespace scaler {
 
 
 
+
             //Check scanf succeeded or not
             if (scanfReadNum == 3) {
                 //DBG_LOGS("No file name, ignore line: %s", procMapLine);
@@ -84,14 +84,14 @@ namespace scaler {
                 continue;
             } else if (scanfReadNum != 4) {
                 fatalErrorS("Parsing line %s failed, if this line looks normal check limits?", procMapLine);
-            } else if (strStartsWith(fileName, "libScalerHook")) {
+            }
+
+            if (strStartsWith(fileName, "libScalerHook")) {
                 //DBG_LOGS("Scaler library skip");
                 pmEntryArray.popBack();
                 continue;
             }
-
-
-            if (strStartsWith(fileName, "libScalerHook")) {
+            if (strStartsWith(fileName, "ld-")) {
                 //DBG_LOGS("Scaler library skip");
                 pmEntryArray.popBack();
                 continue;

@@ -22,7 +22,7 @@ namespace scaler {
 
 
     bool ExtFuncCallHook::install() {
-//        return true;
+
         //Parse filenames
         pmParser.parsePMMap();
         //Get pltBaseAddr
@@ -130,8 +130,17 @@ namespace scaler {
         ELFImgInfo &curImgInfo = elfImgInfoMap[fileId];
         curImgInfo.firstSymIndex = allExtSymbol.getSize();
         //Allocate space for all rela entries in this file
+        DBG_LOGS("First sym index=%ld", curImgInfo.firstSymIndex);
 
         adjustMemPerm(pltSection.startAddr, pltSection.startAddr + pltSection.size, PROT_READ | PROT_WRITE | PROT_EXEC);
+
+        if (pltSecureSection.startAddr) {
+            DBG_LOGS("Adjusting mem permission from:%p to:%p", pltSecureSection.startAddr,
+                     pltSecureSection.startAddr + pltSecureSection.size);
+            adjustMemPerm(pltSecureSection.startAddr, pltSecureSection.startAddr + pltSecureSection.size,
+                          PROT_READ | PROT_WRITE | PROT_EXEC);
+        }
+
 
         assert(pltSection.size / pltSection.entrySize == parser.relaEntrySize + 1);
         for (ssize_t i = 0; i < parser.relaEntrySize; ++i) {
@@ -160,7 +169,7 @@ namespace scaler {
             ExtSymInfo *newSym = allExtSymbol.pushBack();
 
 
-            newSym->addrResolved = (curGotDest - pltSection.startAddr) > pltSection.size;
+            newSym->addrResolved = abs(curGotDest - pltSection.startAddr) > pltSection.size;
             newSym->fileId = fileId;
             newSym->symIdInFile = i;
             newSym->gotEntryAddr = gotAddr;
@@ -168,9 +177,12 @@ namespace scaler {
             newSym->pltSecEntryAddr = pltSecEntry;
             newSym->pltStubId = pltStubId;
 
-            DBG_LOGS("funcName:%s gotAddr:%p *gotAddr:%p addressResolved:%s fileId:%zd symIdInFile:%zd",
-                     funcName, gotAddr, *gotAddr, newSym->addrResolved ? "Resolved" : "Unresolved", fileId,
-                     newSym->symIdInFile);
+            int a = allExtSymbol.getSize();
+            DBG_LOGS(
+                    "id:%ld funcName:%s gotAddr:%p *gotAddr:%p addressResolved:%s fileId:%zd symIdInFile:%zd pltEntryAddr:%p pltSecEntryAddr:%p",
+                    allExtSymbol.getSize() - 1, funcName, gotAddr, *gotAddr,
+                    newSym->addrResolved ? "Resolved" : "Unresolved", fileId,
+                    newSym->symIdInFile, newSym->pltEntryAddr, newSym->pltSecEntryAddr);
         }
 
         return true;
@@ -179,12 +191,6 @@ namespace scaler {
 
     bool ExtFuncCallHook::shouldHookThisSymbol(const char *funcName, Elf64_Word &bind, Elf64_Word &type) {
         if (bind != STB_GLOBAL || type != STT_FUNC) {
-            return false;
-        }
-
-        if (strncmp(funcName, "funcA", 5) == 0) {
-            return true;
-        } else {
             return false;
         }
 
@@ -540,7 +546,6 @@ namespace scaler {
 
             if (prevFileId != -1 && prevFileId != curPmEntry.fileId) {
                 //A new file discovered
-                DBG_LOGS("%zd:%s %p", prevFileId, pmParser.fileNameArr[prevFileId].c_str(), prevFileBaseAddr);
 
                 //Find the entry size of plt and got
                 ELFSecInfo pltInfo;
@@ -556,6 +561,9 @@ namespace scaler {
                 curElfImgInfo->pltStartAddr = pltInfo.startAddr;
                 curElfImgInfo->pltSecStartAddr = pltSecInfo.startAddr;
                 curElfImgInfo->gotStartAddr = gotInfo.startAddr;
+
+                DBG_LOGS("%zd:%s %p pltSecStartAddr=%p", prevFileId, pmParser.fileNameArr[prevFileId].c_str(),
+                         prevFileBaseAddr, pltSecInfo.startAddr);
 
                 //Install hook on this file
                 if (!parseSymbolInfo(elfParser, prevFileId, prevFileBaseAddr, pltInfo, pltSecInfo, gotInfo)) {
@@ -595,7 +603,7 @@ namespace scaler {
                                                 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
 
         /**
-         * Prepare ldcaller
+         * Prepare callIdSaver
          */
         adjustMemPerm(callIdSavers, callIdSavers + allExtSymbol.getSize() * sizeof(idSaverBin),
                       PROT_READ | PROT_WRITE | PROT_EXEC);
@@ -621,7 +629,7 @@ namespace scaler {
         //Fill address and ids in callIdSaver
         for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
             ELFImgInfo &curImgInfo = elfImgInfoMap[allExtSymbol[curSymId].fileId];
-            if (!fillAddrAndSymId2IdSaver((uint8_t *) curImgInfo.pltStartAddr, curSymId,
+            if (!fillAddrAndSymId2IdSaver((uint8_t *) curImgInfo.pltStartAddr, allExtSymbol[curSymId].pltStubId,
                                           curLdCaller)) {
                 fatalError("fillAddrAndSymId2IdSaver failed, this should not happen");
             }
@@ -632,10 +640,6 @@ namespace scaler {
         /**
          * replace plt entry or replace .plt (Or directly replace .plt.sec)
          */
-        //Change permission to executable
-        adjustMemPerm(callIdSavers, callIdSavers + allExtSymbol.getSize() * sizeof(idSaverBin),
-                      PROT_READ | PROT_WRITE | PROT_EXEC);
-
         curCallIdSaver = callIdSavers;
         for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
             ExtSymInfo &curSym = allExtSymbol[curSymId];

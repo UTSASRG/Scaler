@@ -45,13 +45,14 @@ namespace scaler {
         ssize_t pageSize = sysconf(_SC_PAGESIZE);
         //Get Page Bound
         void *startPtrBound = GET_PAGE_BOUND(startPtr, pageSize);
-        void *endPtrBound = GET_PAGE_BOUND(endPtr, pageSize);
+        void *endPtrBound = endPtr;
         if (startPtrBound == endPtrBound)
             endPtrBound = (uint8_t *) startPtrBound + pageSize;
 
         //todo:(uint8_t *) endPtrBound - (uint8_t  *) startPtrBound,
         ssize_t memoryLength =
                 (ceil(((uint8_t *) endPtrBound - (uint8_t *) startPtrBound) / (double) pageSize)) * pageSize;
+        //DBG_LOGS("Real addr from:%p to:%p", startPtrBound, endPtrBound);
         if (mprotect(startPtrBound, memoryLength, prem) != 0) {
             ERR_LOGS("Could not change the process memory permission at %p-%p because: %s", startPtrBound, endPtrBound,
                      strerror(errno));

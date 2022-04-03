@@ -19,11 +19,12 @@ HookContext::~HookContext() {
 }
 
 bool initTLS() {
+    short i = 1;
     //Initialize saving data structure
     curContext = new HookContext(
             scaler::ExtFuncCallHook::instance->elfImgInfoMap.getSize(),
             scaler::ExtFuncCallHook::instance->hookedExtSymSize);
-
+    i += curContext->initialized;
 
     if (!curContext) {
         fatalError("Failed to allocate memory for Context");
