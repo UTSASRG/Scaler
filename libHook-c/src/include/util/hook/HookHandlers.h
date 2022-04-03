@@ -25,6 +25,10 @@ __attribute__((used)) void *afterHookHandler();
 
 void __attribute__((used, naked, noinline)) myPltEntry();
 
+void __attribute__((used, naked, noinline)) callIdSaver();
+
+void __attribute__((used, naked, noinline)) callLd();
+
 static uint64_t pltEntryAddr = reinterpret_cast<uint64_t>(&myPltEntry);
 }
 #endif

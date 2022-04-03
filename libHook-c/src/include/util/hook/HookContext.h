@@ -11,7 +11,6 @@ class HookContext {
 public:
     //todo: Initialize using maximum stack size
     scaler::FStack<scaler::SymID, 8192> symId;
-    scaler::FStack<scaler::FileID, 8192> fileId;
 
     //Variables used to determine whether it's called by hook handler or not
     scaler::FStack<void *, 8192> callerAddr;

@@ -97,26 +97,6 @@ namespace scaler {
                 continue;
             }
 
-            if (strStartsWith(fileName, "libstdc++")) {
-                pmEntryArray.popBack();
-                continue;
-            }
-
-            if (strStartsWith(fileName, "libc-")) {
-                pmEntryArray.popBack();
-                continue;
-            }
-
-            if (strStartsWith(fileName, "libpthread-")) {
-                pmEntryArray.popBack();
-                continue;
-            }
-
-            if (strStartsWith(fileName, "libm-")) {
-                pmEntryArray.popBack();
-                continue;
-            }
-
             //Parse permission
             if (permStr[0] == 'r') {
                 newEntry->setR();
@@ -231,7 +211,7 @@ namespace scaler {
             lo = pmEntryArray.getSize() - 1;
         }
 
-        return lo;
+        return pmEntryArray[lo].fileId;
     }
 
 

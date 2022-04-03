@@ -27,83 +27,9 @@ namespace scaler {
         pmParser.parsePMMap();
         //Get pltBaseAddr
 
-        Array<PltRange> pltRangeArr(pmParser.pmEntryArray.getSize());
+        parseRequiredInfo();
 
-        ELFParser elfParser;
-
-        //Push a guard entry in this case we don't need to specifically handle the last element
-        pmParser.pmEntryArray.pushBack()->fileId = -1;
-
-        ssize_t prevFileId = -1;
-        uint8_t *prevFileBaseAddr = pmParser.pmEntryArray[0].addrStart;
-        std::string curFileName;
-
-        for (int i = 0; i < pmParser.pmEntryArray.getSize(); ++i) {
-            PMEntry &curPmEntry = pmParser.pmEntryArray[i];
-            //DBG_LOGS("%hd", curPmEntry.fileId);
-        }
-
-        //Get segment info from /proc/self/maps
-        for (int i = 0; i < pmParser.pmEntryArray.getSize(); ++i) {
-            PMEntry &curPmEntry = pmParser.pmEntryArray[i];
-
-            if (prevFileId != -1 && prevFileId != curPmEntry.fileId) {
-                //A new file discovered
-                DBG_LOGS("%zd:%s", elfImgInfoMap.getSize(), curFileName.c_str());
-
-                //Find the entry size of plt and got
-                ELFSecInfo pltInfo;
-                ELFSecInfo pltSecInfo;
-                ELFSecInfo gotInfo;
-
-                //todo: We assume plt and got entry size is the same.
-                if (!parseSecInfos(elfParser, pltInfo, pltSecInfo, gotInfo, prevFileBaseAddr)) {
-                    fatalError("Failed to parse plt related sections.");
-                    exit(-1);
-                }
-                ELFImgInfo *curElfImgInfo = elfImgInfoMap.pushBack();
-                curElfImgInfo->pltStartAddr = pltInfo.startAddr;
-                curElfImgInfo->pltSecStartAddr = pltSecInfo.startAddr;
-                curElfImgInfo->gotStartAddr = gotInfo.startAddr;
-
-                PltRange *pltRange = pltRangeArr.pushBack();
-                if (pltSecInfo.startAddr == nullptr) {
-                    pltRange->addrStart = reinterpret_cast<uint64_t>(pltInfo.startAddr);
-                    pltRange->addrEnd = reinterpret_cast<uint64_t>(pltInfo.startAddr + pltInfo.size);
-                } else {
-                    pltRange->addrStart = (uint64_t) min<uint8_t *>(pltInfo.startAddr, pltSecInfo.startAddr);
-                    pltRange->addrEnd = (uint64_t) max<uint8_t *>(pltInfo.startAddr + pltInfo.size,
-                                                                  pltSecInfo.startAddr + pltSecInfo.size);
-                }
-
-
-//                //Install hook on this file
-//                if (!installHook(elfParser, prevFileId, prevFileBaseAddr, pltInfo, gotInfo)) {
-//                    fatalErrorS("installation for file %s failed.", curFileName.c_str());
-//                    exit(-1);
-//                }
-                prevFileBaseAddr = pmParser.pmEntryArray[i].addrStart;
-            }
-
-            //Move on to the next entry
-            if (curPmEntry.fileId != -1) {
-                prevFileId = curPmEntry.fileId;
-
-                curFileName = pmParser.fileNameArr[curPmEntry.fileId];
-                if (!elfParser.parse(curFileName.c_str())) {
-                    fatalErrorS("Failed to parse elf file: %s", curFileName.c_str());
-                    exit(-1);
-                }
-            } else {
-                //This is the guard entry, break
-                break;
-            }
-        }
-        //Remove guard
-        pmParser.pmEntryArray.popBack();
-
-        calcBestBucketSize(pltRangeArr, bucketSize, reinterpret_cast<uint64_t &>(hookBaseAddr));
-
+        replacePltEntry();
 
         if (!initTLS()) {
             ERR_LOG("Failed to initialize TLS");
@@ -198,21 +124,16 @@ namespace scaler {
         }
     }
 
-    bool ExtFuncCallHook::installHook(ELFParser &parser, ssize_t fileId,
-                                      uint8_t *baseAddr, ELFSecInfo &pltSec, ELFSecInfo &gotSec) {
+    bool ExtFuncCallHook::parseSymbolInfo(ELFParser &parser, ssize_t fileId, uint8_t *baseAddr, ELFSecInfo &pltSection,
+                                          ELFSecInfo &pltSecureSection, ELFSecInfo &gotSec) {
 
         ELFImgInfo &curImgInfo = elfImgInfoMap[fileId];
         curImgInfo.firstSymIndex = allExtSymbol.getSize();
         //Allocate space for all rela entries in this file
-        allExtSymbol.allocate(parser.relaEntrySize);
-        //for (ssize_t i = 0; i < parser.relaEntrySize; ++i) {
-        //  allExtSymbol.pushBack();
-        //}
 
-        adjustMemPerm(pltSec.startAddr, pltSec.startAddr + pltSec.size, PROT_READ | PROT_WRITE | PROT_EXEC);
+        adjustMemPerm(pltSection.startAddr, pltSection.startAddr + pltSection.size, PROT_READ | PROT_WRITE | PROT_EXEC);
 
-
-        assert(pltSec.size / pltSec.entrySize == parser.relaEntrySize + 1);
+        assert(pltSection.size / pltSection.entrySize == parser.relaEntrySize + 1);
         for (ssize_t i = 0; i < parser.relaEntrySize; ++i) {
             const char *funcName;
             Elf64_Word type;
@@ -225,103 +146,32 @@ namespace scaler {
 
             uint8_t **gotAddr = reinterpret_cast<uint8_t **>(parser.getRelaOffset(i) + baseAddr);
             uint8_t *curGotDest = *gotAddr;
-            uint8_t *pltEntry = curImgInfo.pltStartAddr + pltSec.entrySize * (i + 1);
+            uint8_t *pltSecEntry = nullptr;
+
+            if (curImgInfo.pltSecStartAddr) {
+                pltSecEntry = curImgInfo.pltSecStartAddr + pltSecureSection.entrySize * i;
+            }
+            uint8_t *pltEntry = curImgInfo.pltStartAddr + pltSection.entrySize * (i + 1);
+
 
             uint32_t pltStubId = parsePltStubId(pltEntry); //Note that the first entry is not valid
-            ExtSymInfo &newSym = allExtSymbol[curImgInfo.firstSymIndex + pltStubId];
+
+            //Make sure space is enough, if space is enough, array won't allocate
+            ExtSymInfo *newSym = allExtSymbol.pushBack();
 
 
-            bool addressResolved = (curGotDest - pltSec.startAddr) > pltSec.size;
+            newSym->addrResolved = (curGotDest - pltSection.startAddr) > pltSection.size;
+            newSym->fileId = fileId;
+            newSym->symIdInFile = i;
+            newSym->gotEntryAddr = gotAddr;
+            newSym->pltEntryAddr = pltEntry;
+            newSym->pltSecEntryAddr = pltSecEntry;
+            newSym->pltStubId = pltStubId;
 
-
-            newSym.fileId = fileId;
-            newSym.symIdInFile = i;
-            newSym.hookedId = hookedExtSymSize++;
-
-            DBG_LOGS("funcName:%s gotAddr:%p *gotAddr:%p addressResolved:%s fileId:%zd symIdInFile:%zd hookedId:%zd",
-                     funcName, gotAddr, *gotAddr, addressResolved ? "Resolved" : "Unresolved", fileId,
-                     newSym.symIdInFile, newSym.hookedId);
-
-            if (addressResolved) {
-                newSym.resolvedAddr = *gotAddr;
-                newSym.pltLdAddr = *gotAddr;
-                newSym.gotEntryAddr = gotAddr;
-            } else {
-                newSym.resolvedAddr = nullptr;
-                newSym.pltLdAddr = *gotAddr;
-                newSym.gotEntryAddr = gotAddr;
-            }
-
-            //install plt
-
-            int instrLengh = 0;
-//            uint8_t *pltEntryStartAddr = (uint8_t *) myPltEntry;
-//            if (*pltEntryStartAddr == 0xFF) {
-//                //Has endbr
-//                instrLengh = 7;
-//            } else if (*pltEntryStartAddr == 0xF3) {
-//                instrLengh = 5;
-//            } else {
-//                fatalError("Unrecognized instruction inside myPltEntry. Use disassembler to check.");
-//            }
+            DBG_LOGS("funcName:%s gotAddr:%p *gotAddr:%p addressResolved:%s fileId:%zd symIdInFile:%zd",
+                     funcName, gotAddr, *gotAddr, newSym->addrResolved ? "Resolved" : "Unresolved", fileId,
+                     newSym->symIdInFile);
         }
-
-        //Replace plt entry
-        for (ssize_t i = 0; i < parser.relaEntrySize; ++i) {
-            const char *funcName;
-            Elf64_Word type;
-            Elf64_Word bind;
-            parser.getExtSymbolInfo(i, funcName, bind, type);
-            if (!shouldHookThisSymbol(funcName, bind, type)) {
-                continue;
-            }
-            //Get function id from plt entry
-
-            uint8_t **gotAddr = reinterpret_cast<uint8_t **>(parser.getRelaOffset(i) + baseAddr);
-            uint8_t *curGotDest = *gotAddr;
-            uint8_t *pltEntry = curImgInfo.pltStartAddr + pltSec.entrySize * (i + 1);
-
-            uint32_t pltStubId = parsePltStubId(pltEntry); //Note that the first entry is not valid
-            ExtSymInfo &newSym = allExtSymbol[curImgInfo.firstSymIndex + pltStubId];
-
-
-            bool addressResolved = (curGotDest - pltSec.startAddr) > pltSec.size;
-
-
-            newSym.fileId = fileId;
-            newSym.symIdInFile = i;
-            newSym.hookedId = hookedExtSymSize++;
-
-            DBG_LOGS("funcName:%s gotAddr:%p *gotAddr:%p addressResolved:%s fileId:%zd symIdInFile:%zd hookedId:%zd",
-                     funcName, gotAddr, *gotAddr, addressResolved ? "Resolved" : "Unresolved", fileId,
-                     newSym.symIdInFile, newSym.hookedId);
-
-            if (addressResolved) {
-                newSym.resolvedAddr = *gotAddr;
-                newSym.pltLdAddr = *gotAddr;
-                newSym.gotEntryAddr = gotAddr;
-            } else {
-                newSym.resolvedAddr = nullptr;
-                newSym.pltLdAddr = *gotAddr;
-                newSym.gotEntryAddr = gotAddr;
-            }
-
-            fillAddr2pltEntry(reinterpret_cast<uint8_t *>(asmHookHandler), pltEntry);
-
-
-//            int instrLengh = 0;
-//            uint8_t *pltEntryStartAddr = (uint8_t *) myPltEntry;
-//            if (*pltEntryStartAddr == 0xFF) {
-//                //Has endbr
-//                instrLengh = 7;
-//            } else if (*pltEntryStartAddr == 0xF3) {
-//                instrLengh = 5;
-//            } else {
-//                fatalError("Unrecognized instruction inside myPltEntry. Use disassembler to check.");
-//            }
-        }
-        //Allocate tls storage, set hook type to FULL
-
 
         return true;
     }
@@ -618,7 +468,19 @@ namespace scaler {
         return pltInfo.startAddr != nullptr && gotInfo.startAddr != nullptr;
     }
 
-    uint8_t pltEntryBin[] = {0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41, 0xff, 0xD3};
+    //16bytes aligned. 0x90 are for alignment purpose
+    uint8_t pltEntryBin[] = {0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                             0x00, 0x00, 0x41, 0xff, 0xE3, 0x90, 0x90, 0x90};
+    //32bytes aligned. 0x90 are for alignment purpose
+    uint8_t idSaverBin[] = {0x68, 0x00, 0x00, 0x00, 0x00, 0x49, 0xBB, 0x00,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41,
+                            0xFF, 0xE3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+                            0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
+
+    uint8_t pltJumperBin[] = {0x68, 0x00, 0x00, 0x00, 0x00, 0x49, 0xBB, 0x00,
+                              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41,
+                              0xFF, 0xE3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
+                              0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
 
     uint32_t ExtFuncCallHook::parsePltStubId(uint8_t *dest) {
         int pushOffset = -1;
@@ -635,14 +497,168 @@ namespace scaler {
         return *pltStubId;
     }
 
-    bool ExtFuncCallHook::fillAddr2pltEntry(uint8_t *funcAddr, uint8_t *retPltEntryCode) {
+    bool ExtFuncCallHook::fillAddr2pltEntry(uint8_t *funcAddr, uint8_t *retPltEntry) {
         //Copy code
-        memcpy(retPltEntryCode, pltEntryBin, sizeof(pltEntryBin));
+        memcpy(retPltEntry, pltEntryBin, sizeof(pltEntryBin));
         //Copy address
         assert(sizeof(uint8_t **) == 8);
-        memcpy(retPltEntryCode + 2, &funcAddr, sizeof(uint8_t **));
+        memcpy(retPltEntry + 2, &funcAddr, sizeof(uint8_t **));
         return true;
     }
+
+    bool ExtFuncCallHook::fillAddrAndSymId2IdSaver(uint8_t *prehookAddr, uint32_t funcId, uint8_t *idSaverEntry) {
+
+        //Copy code
+        memcpy(idSaverEntry, idSaverBin, sizeof(idSaverBin));
+        //Copy funcId
+        assert(sizeof(funcId) == 4);
+        memcpy(idSaverEntry + 1, &funcId, sizeof(funcId));
+        //Copy instructionId
+        assert(sizeof(uint8_t **) == 8);
+        memcpy(idSaverEntry + 7, &prehookAddr, sizeof(uint8_t **));
+        return true;
+    }
+
+    void ExtFuncCallHook::parseRequiredInfo() {
+        ELFParser elfParser;
+
+        //Push a guard entry in this case we don't need to specifically handle the last element
+        pmParser.pmEntryArray.pushBack()->fileId = -1;
+
+        ssize_t prevFileId = -1;
+        uint8_t *prevFileBaseAddr = pmParser.pmEntryArray[0].addrStart;
+        std::string curFileName;
+
+        for (int i = 0; i < pmParser.pmEntryArray.getSize(); ++i) {
+            PMEntry &curPmEntry = pmParser.pmEntryArray[i];
+            //DBG_LOGS("%hd", curPmEntry.fileId);
+        }
+
+        //Get segment info from /proc/self/maps
+        for (int i = 0; i < pmParser.pmEntryArray.getSize(); ++i) {
+            PMEntry &curPmEntry = pmParser.pmEntryArray[i];
+
+            if (prevFileId != -1 && prevFileId != curPmEntry.fileId) {
+                //A new file discovered
+                DBG_LOGS("%zd:%s %p", prevFileId, pmParser.fileNameArr[prevFileId].c_str(), prevFileBaseAddr);
+
+                //Find the entry size of plt and got
+                ELFSecInfo pltInfo;
+                ELFSecInfo pltSecInfo;
+                ELFSecInfo gotInfo;
+
+                //todo: We assume plt and got entry size is the same.
+                if (!parseSecInfos(elfParser, pltInfo, pltSecInfo, gotInfo, prevFileBaseAddr)) {
+                    fatalError("Failed to parse plt related sections.");
+                    exit(-1);
+                }
+                ELFImgInfo *curElfImgInfo = elfImgInfoMap.pushBack();
+                curElfImgInfo->pltStartAddr = pltInfo.startAddr;
+                curElfImgInfo->pltSecStartAddr = pltSecInfo.startAddr;
+                curElfImgInfo->gotStartAddr = gotInfo.startAddr;
+
+                //Install hook on this file
+                if (!parseSymbolInfo(elfParser, prevFileId, prevFileBaseAddr, pltInfo, pltSecInfo, gotInfo)) {
+                    fatalErrorS("installation for file %s failed.", curFileName.c_str());
+                    exit(-1);
+                }
+                prevFileBaseAddr = curPmEntry.addrStart;
+            }
+
+            //Move on to the next entry
+            if (curPmEntry.fileId != -1) {
+                prevFileId = curPmEntry.fileId;
+
+                curFileName = pmParser.fileNameArr[curPmEntry.fileId];
+                if (!elfParser.parse(curFileName.c_str())) {
+                    fatalErrorS("Failed to parse elf file: %s", curFileName.c_str());
+                    exit(-1);
+                }
+            } else {
+                //This is the guard entry, break
+                break;
+            }
+        }
+        //Remove guard
+        pmParser.pmEntryArray.popBack();
+    }
+
+    bool ExtFuncCallHook::replacePltEntry() {
+        //Allocate callIdSaver
+        //todo: memory leak
+        callIdSavers = static_cast<uint8_t *>(mmap(NULL, allExtSymbol.getSize() * sizeof(idSaverBin),
+                                                   PROT_READ | PROT_WRITE,
+                                                   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
+        //Allocate ldCaller (ldCaller has the smae structure as idSaver)
+        ldCallers = static_cast<uint8_t *>(mmap(NULL, allExtSymbol.getSize() * sizeof(idSaverBin),
+                                                PROT_READ | PROT_WRITE,
+                                                MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
+
+        /**
+         * Prepare ldcaller
+         */
+        adjustMemPerm(callIdSavers, callIdSavers + allExtSymbol.getSize() * sizeof(idSaverBin),
+                      PROT_READ | PROT_WRITE | PROT_EXEC);
+        uint8_t *curCallIdSaver = callIdSavers;
+        //Fill address and ids in callIdSaver
+        for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
+
+            if (!fillAddrAndSymId2IdSaver((uint8_t *) &asmHookHandler, curSymId,
+                                          curCallIdSaver)) {
+                fatalError("fillAddrAndSymId2IdSaver failed, this should not happen");
+            }
+            curCallIdSaver += sizeof(idSaverBin);
+        }
+
+
+        /**
+         * Prepare ldcaller
+         */
+        adjustMemPerm(ldCallers, ldCallers + allExtSymbol.getSize() * sizeof(idSaverBin),
+                      PROT_READ | PROT_WRITE | PROT_EXEC);
+
+        uint8_t *curLdCaller = ldCallers;
+        //Fill address and ids in callIdSaver
+        for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
+            ELFImgInfo &curImgInfo = elfImgInfoMap[allExtSymbol[curSymId].fileId];
+            if (!fillAddrAndSymId2IdSaver((uint8_t *) curImgInfo.pltStartAddr, curSymId,
+                                          curLdCaller)) {
+                fatalError("fillAddrAndSymId2IdSaver failed, this should not happen");
+            }
+            curLdCaller += sizeof(idSaverBin);
+        }
+
+
+        /**
+         * replace plt entry or replace .plt (Or directly replace .plt.sec)
+         */
+        //Change permission to executable
+        adjustMemPerm(callIdSavers, callIdSavers + allExtSymbol.getSize() * sizeof(idSaverBin),
+                      PROT_READ | PROT_WRITE | PROT_EXEC);
+
+        curCallIdSaver = callIdSavers;
+        for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
+            ExtSymInfo &curSym = allExtSymbol[curSymId];
+            if (curSym.pltSecEntryAddr) {
+                //Replace .plt.sec
+                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltSecEntryAddr)) {
+                    fatalError("pltSecAddr installation failed, this should not happen");
+                }
+            } else {
+                //Replace .plt
+                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltEntryAddr)) {
+                    fatalError("pltEntry installation failed, this should not happen");
+                }
+            }
+
+            curCallIdSaver += sizeof(idSaverBin);
+
+        }
+
+        return true;
+    }
+
+
 }
 
 #endif

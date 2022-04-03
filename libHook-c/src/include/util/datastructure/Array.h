@@ -88,7 +88,8 @@ namespace scaler {
         }
 
         /**
-         * Allocate a bunch of memory.
+         * Allocate a bunch of memory. If the memory is already available, only expand size.
+         * This can be used to guarantee enough memory
          */
         virtual bool allocate(ssize_t amount) {
             if (size + amount >= internalArrSize)

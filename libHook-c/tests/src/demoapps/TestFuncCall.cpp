@@ -53,7 +53,9 @@ void forwardTest() {
 //    std::cout << "B\n";
     auto t = make_unique2<B123>(2, 0, 3);
 }
+
 void *asmSize = (void *) forwardTest;
+
 int main() {
     printf("Calling funcA\n");
 
@@ -67,7 +69,11 @@ int main() {
 ////
 //    printf("Calling funcA\n");
     funcA();
-//    funcA();
+    funcA();
+    funcA();
+
+    callFuncA();
+
 //
 //    printf("Calling funcB\n");
 //    funcB(1);
