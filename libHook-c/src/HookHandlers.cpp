@@ -229,8 +229,11 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
      * No counting, no measuring time (If scaler is not installed, then tls is not initialized)
      * This may happen for external function call before the initTLS in dummy thread function
      */
+    HookContext *curContextPtr = curContext;
 
-    if (curContext == NULL) {
+    if (bypassCHooks == SCALER_TRUE || curContextPtr == NULL ||
+        ((uint64_t) curContextPtr->callerAddr.peek() == nextCallAddr) ||
+        curContext == NULL) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
@@ -239,13 +242,10 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
 
     bypassCHooks = SCALER_TRUE;
 
-
     //DBG_LOGS("FileId=%lu, pltId=%zd prehook", fileId, pltEntryIndex);
 
-//    DBG_LOGS("[Pre Hook] Thread:%lu File(%ld):%s, Func(%ld): %s RetAddr:%p", pthread_self(),
-//             curSymbol.fileId, _this->pmParser.idFileMap.at(curSymbol.fileId).c_str(),
-//             extSymbolId, curSymbol.symbolName.c_str(), retOriFuncAddr);
-
+    DBG_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu", pthread_self(),
+             curElfSymInfo.fileId, symId, (void *) nextCallAddr, getunixtimestampms());
 
     assert(curContext != nullptr);
 //    if (curContextPtr->callerAddr.getSize() >= 2) {
@@ -263,17 +263,11 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
     /**
     * Setup environment for afterhook
     */
-//    curContextPtr->timeStamp.push(getunixtimestampms());
-    //Push callerAddr into stack
-    curContext->callerAddr.push((void *) nextCallAddr);
-//    curContext->fileId.push(fileId);
-    curContext->symId.push(0);
-    //Push calling info to afterhook
-    //todo: rename this to caller function
-    //curContextPtr->extSymbolId.push(extSymbolId);
+    curContextPtr->timeStamp.push(getunixtimestampms());
+    curContextPtr->callerAddr.push((void *) nextCallAddr);
+    curContextPtr->symId.push(symId);
 
     bypassCHooks = SCALER_FALSE;
-    //printf("%p\n", curElfSymInfo.resolvedAddr);
     return retOriFuncAddr;
 }
 
@@ -289,18 +283,19 @@ void *afterHookHandler() {
     scaler::ExtSymInfo &curElfSymInfo = _this->allExtSymbol[symbolId];
 
 
-
-//    const long long &preHookTimestamp = curContextPtr->timeStamp.peekpop();
-////    DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) End: %llu",
-////             pthread_self(), extSymbolID, getunixtimestampms() - preHookTimestamp);
-//
-//    //Resolve library id
     if (!curElfSymInfo.addrResolved) {
         curElfSymInfo.addrResolved = true;
         //Resolve address
         curElfSymInfo.libFileId = _this->pmParser.findExecNameByAddr(*curElfSymInfo.gotEntryAddr);
         assert(curElfSymInfo.libFileId != -1);
     }
+
+//    const long long &preHookTimestamp = curContextPtr->timeStamp.peekpop();
+    DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu",
+             pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms());
+//
+//    //Resolve library id
+
 //
 //    //Move
 //

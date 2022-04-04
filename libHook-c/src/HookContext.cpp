@@ -11,6 +11,8 @@ HookContext::HookContext(ssize_t libFileSize, ssize_t hookedSymbolSize) : memArr
 //    rootNode->children = memArrayHeap.allocArr(rootNode->childrenSize);
 //    rootNode->scalerId = -1; //Indiacate root node
 
+
+
     initialized = SCALER_TRUE;
 }
 
@@ -20,10 +22,15 @@ HookContext::~HookContext() {
 
 bool initTLS() {
     short i = 1;
+    //Put a dummy variable to avoid null checking
     //Initialize saving data structure
     curContext = new HookContext(
             scaler::ExtFuncCallHook::instance->elfImgInfoMap.getSize(),
             scaler::ExtFuncCallHook::instance->hookedExtSymSize);
+    curContext->callerAddr.push((void *) 0x0);
+    curContext->timeStamp.push(0);
+    curContext->symId.push(0);
+
     i += curContext->initialized;
 
     if (!curContext) {

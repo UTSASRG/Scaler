@@ -130,13 +130,13 @@ namespace scaler {
         ELFImgInfo &curImgInfo = elfImgInfoMap[fileId];
         curImgInfo.firstSymIndex = allExtSymbol.getSize();
         //Allocate space for all rela entries in this file
-        DBG_LOGS("First sym index=%ld", curImgInfo.firstSymIndex);
+        //DBG_LOGS("First sym index=%ld", curImgInfo.firstSymIndex);
 
         adjustMemPerm(pltSection.startAddr, pltSection.startAddr + pltSection.size, PROT_READ | PROT_WRITE | PROT_EXEC);
 
         if (pltSecureSection.startAddr) {
-            DBG_LOGS("Adjusting mem permission from:%p to:%p", pltSecureSection.startAddr,
-                     pltSecureSection.startAddr + pltSecureSection.size);
+//            DBG_LOGS("Adjusting mem permission from:%p to:%p", pltSecureSection.startAddr,
+//                     pltSecureSection.startAddr + pltSecureSection.size);
             adjustMemPerm(pltSecureSection.startAddr, pltSecureSection.startAddr + pltSecureSection.size,
                           PROT_READ | PROT_WRITE | PROT_EXEC);
         }
@@ -177,7 +177,6 @@ namespace scaler {
             newSym->pltSecEntryAddr = pltSecEntry;
             newSym->pltStubId = pltStubId;
 
-            int a = allExtSymbol.getSize();
             DBG_LOGS(
                     "id:%ld funcName:%s gotAddr:%p *gotAddr:%p addressResolved:%s fileId:%zd symIdInFile:%zd pltEntryAddr:%p pltSecEntryAddr:%p",
                     allExtSymbol.getSize() - 1, funcName, gotAddr, *gotAddr,

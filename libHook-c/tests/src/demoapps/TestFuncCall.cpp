@@ -56,58 +56,94 @@ void forwardTest() {
 
 void *asmSize = (void *) forwardTest;
 
+class ClassA {
+public:
+    void *a = nullptr;
+
+    ClassA() {
+        a = malloc(1);
+    }
+
+    ~ClassA() {
+        free(a);
+        a = nullptr;
+    }
+};
+
+class ClassB {
+public:
+    int *b = nullptr;
+
+    ClassB() {
+        b = new int[1];
+    }
+
+    ~ClassB() {
+        delete[] b;
+    }
+};
+
 int main() {
     printf("Calling funcA\n");
 
     scaler::ExtFuncCallHook::getInst()->install();
+
+    auto actualStart = getunixtimestampms();
+    pthread_t pt1 = pthread_self();
+    assert(pt1 != -1);
+    printf("pt1=%lu\n", pt1);
+    printf("pt1=%lu\n", myGetThreadID());
 //
-//    auto actualStart = getunixtimestampms();
-//    pthread_t pt1 = pthread_self();
-//    assert(pt1 != -1);
-//    printf("pt1=%lu\n", pt1);
-//    printf("pt1=%lu\n", myGetThreadID());
-////
-//    printf("Calling funcA\n");
+    printf("Calling funcA\n");
     funcA();
     funcA();
     funcA();
 
     callFuncA();
 
+
+    printf("Calling funcB\n");
+    funcB(1);
+
+    printf("Calling funcC\n");
+    funcC(1, 2);
+
+    printf("Calling funcD\n");
+    funcD(1, 2, 3);
+
+    printf("Calling funcE\n");
+    funcE(1, 2, 3);
+
+    printf("Calling callFuncA\n");
+    callFuncA();
+
+    printf("Calling callFunc1000\n");
+    callFunc1000();
+    int a[] = {1, 2, 3, 4, 5};
+    printf("a[]={1,2,3,4,5} starts at %p\n", a);
+
+    printf("My id is: %lu\n", pthread_self());
 //
-//    printf("Calling funcB\n");
-//    funcB(1);
+    int rlt = system("ls -al");
+    prctl(PR_SET_DUMPABLE, 1);
+    {
+        ClassA a;
+    }
+    {
+        ClassB b;
+    }
+
+
+
 //
-//    printf("Calling funcC\n");
-//    funcC(1, 2);
-//
-//    printf("Calling funcD\n");
-//    funcD(1, 2, 3);
-//
-//    printf("Calling funcE\n");
-//    funcE(1, 2, 3);
-//
-//    printf("Calling callFuncA\n");
-//    callFuncA();
-//
-//    printf("Calling callFunc1000\n");
-//    callFunc1000();
-//    int a[] = {1, 2, 3, 4, 5};
-//    printf("a[]={1,2,3,4,5} starts at %p\n", a);
-//
-//    printf("My id is: %lu\n", pthread_self());
-////
-//    int rlt = system("ls -al");
-//    prctl(PR_SET_DUMPABLE, 1);
-////
 //    while (1) {
 //        std::this_thread::sleep_for(std::chrono::seconds(1));
 //    }
-//
+
     /*func1();
     func2();
     func3();
-//    func4();
+    func4();
     func5();
     func6();
     func7();
