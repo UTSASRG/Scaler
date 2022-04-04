@@ -231,7 +231,7 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
      */
     HookContext *curContextPtr = curContext;
 
-    if (bypassCHooks == SCALER_TRUE || curContextPtr == NULL ||
+    if (bypassCHooks == SCALER_TRUE || curContextPtr == NULL || curContextPtr->callerAddr.getSize() >= MAX_CALL_DEPTH ||
         ((uint64_t) curContextPtr->callerAddr.peek() == nextCallAddr) ||
         curContext == NULL) {
         //Skip afterhook

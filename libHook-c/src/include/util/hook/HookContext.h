@@ -7,14 +7,18 @@
 #include "ExtFuncCallHook.h"
 
 extern "C" {
+
+
+#define MAX_CALL_DEPTH 11 //10+1 because of dummy variable
+
 class HookContext {
 public:
     //todo: Initialize using maximum stack size
-    scaler::FStack<scaler::SymID, 8192> symId;
+    scaler::FStack<scaler::SymID, MAX_CALL_DEPTH> symId;
 
     //Variables used to determine whether it's called by hook handler or not
-    scaler::FStack<void *, 8192> callerAddr;
-    scaler::FStack<long long, 8192> timeStamp;
+    scaler::FStack<void *, MAX_CALL_DEPTH> callerAddr;
+    scaler::FStack<long long, MAX_CALL_DEPTH> timeStamp;
     //Records which function calls which function for how long, the index is scalerid (Only contains hooked function)
     //todo: Replace timingMatrix to a class
     int64_t curThreadNumber = 1; //The default one is main thread
