@@ -205,9 +205,10 @@ namespace scaler {
             lo = pmEntryArray.getSize() - 1;
         }
 
-        //Check if it's end address is indeed in this entry. If not, it is because the caller is not in procinfomapper (Maybe skipped, in this case return -2)
+        //Check if it's end address is indeed in this entry. If not, it is because the caller is not in procinfomapper
+        // (Maybe skipped, in this case return an id that is larger than the largest function addr)
         if (addr > pmEntryArray[lo].addrEnd) {
-            return -2;
+            return fileNameArr.size();
         }
 
         return pmEntryArray[lo].fileId;
