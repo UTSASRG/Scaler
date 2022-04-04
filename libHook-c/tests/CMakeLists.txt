@@ -185,7 +185,7 @@ target_compile_options(ScalerHook-parsecapps-dedup PRIVATE ${TEST_FLAGS})
 
 
 add_executable(ScalerHook-parsecapps-blackscholes src/parsecapps/blackscholes/blackscholes-pthread.cpp)
-target_link_libraries(ScalerHook-parsecapps-blackscholes pthread)
+target_link_libraries(ScalerHook-parsecapps-blackscholes pthread ScalerHook-HookAutoAsm-C)
 target_compile_options(ScalerHook-parsecapps-blackscholes PRIVATE ${TEST_FLAGS} "-DENABLE_THREADS" "-DPARALLEL" "-DNCO=2" "-DN=960")
 
 
@@ -198,7 +198,7 @@ add_executable(ScalerHook-parsecapps-swaptions
         src/parsecapps/swaptions/MaxFunction.cpp
         src/parsecapps/swaptions/nr_routines.cpp
         src/parsecapps/swaptions/RanUnif.cpp)
-target_link_libraries(ScalerHook-parsecapps-swaptions pthread )
+target_link_libraries(ScalerHook-parsecapps-swaptions pthread  ScalerHook-HookAutoAsm-C)
 target_compile_options(ScalerHook-parsecapps-swaptions PRIVATE ${TEST_FLAGS} "-DENABLE_THREADS" "-fstrict-aliasing" "-fkeep-inline-functions")
 target_include_directories(ScalerHook-parsecapps-swaptions PRIVATE src/parsecapps/swaptions/include)
 target_compile_definitions(ScalerHook-parsecapps-swaptions PRIVATE ENABLE_THREADS)

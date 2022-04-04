@@ -290,7 +290,7 @@ void *afterHookHandler() {
         assert(curElfSymInfo.libFileId != -1);
     }
 
-//    const long long &preHookTimestamp = curContextPtr->timeStamp.peekpop();
+    const long long &preHookTimestamp = curContextPtr->timeStamp.peekpop();
     DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu",
              pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms());
 //

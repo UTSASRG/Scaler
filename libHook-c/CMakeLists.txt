@@ -1,4 +1,4 @@
-project(Hook VERSION 0.1.4)
+project(Hook VERSION 0.1.7)
 
 # Set global (Relative this folder until reset) compiler options
 
