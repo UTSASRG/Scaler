@@ -1,4 +1,4 @@
-project(Hook VERSION 0.1.4)
+project(Hook VERSION 0.1.7)
 
 # Set global (Relative this folder until reset) compiler options
 
@@ -20,11 +20,12 @@ set(HookSrc
         src/InvocationTree.cpp
         src/StringTool.cpp
         src/HookContext.cpp
-        src/HookHandlers.cpp
         src/systemProxy.cpp
         src/pthreadProxy.cpp
         src/ExtSymInfo.cpp
         src/ELFImgInfo.cpp
+        src/HookHandlers.cpp
+        src/AddrFileIdMapping.cpp
         )
 #src/VMEmulator.cpp
 

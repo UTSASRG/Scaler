@@ -38,7 +38,6 @@ namespace scaler {
 
         std::string addr1, addr2, perm, offset;
 
-
         char procMapLine[512];
         char prevPathname[PATH_MAX];
         ssize_t prevPathNameLen = -1;
@@ -73,6 +72,7 @@ namespace scaler {
 
 
 
+
             //Check scanf succeeded or not
             if (scanfReadNum == 3) {
                 //DBG_LOGS("No file name, ignore line: %s", procMapLine);
@@ -84,35 +84,15 @@ namespace scaler {
                 continue;
             } else if (scanfReadNum != 4) {
                 fatalErrorS("Parsing line %s failed, if this line looks normal check limits?", procMapLine);
-            } else if (strStartsWith(fileName, "libScalerHook")) {
-                //DBG_LOGS("Scaler library skip");
-                pmEntryArray.popBack();
-                continue;
             }
-
 
             if (strStartsWith(fileName, "libScalerHook")) {
                 //DBG_LOGS("Scaler library skip");
                 pmEntryArray.popBack();
                 continue;
             }
-
-            if (strStartsWith(fileName, "libstdc++")) {
-                pmEntryArray.popBack();
-                continue;
-            }
-
-            if (strStartsWith(fileName, "libc-")) {
-                pmEntryArray.popBack();
-                continue;
-            }
-
-            if (strStartsWith(fileName, "libpthread-")) {
-                pmEntryArray.popBack();
-                continue;
-            }
-
-            if (strStartsWith(fileName, "libm-")) {
+            if (strStartsWith(fileName, "ld-")) {
+                //DBG_LOGS("Scaler library skip");
                 pmEntryArray.popBack();
                 continue;
             }
@@ -212,6 +192,7 @@ namespace scaler {
             lo = -1;
         }
 
+
         //It is possible that the address falls within the range of last entry. We need to check this scenario
 
         if (lo == -1) {
@@ -220,18 +201,17 @@ namespace scaler {
                     addr);
             exit(-1);
         } else if (lo == pmEntryArray.getSize()) {
-            //Check if it's end address is covered in the last entry
-            if (addr > pmEntryArray[pmEntryArray.getSize() - 1].addrEnd) {
-                fatalErrorS(
-                        "Cannot find addr %p in pmMap. The address is higher than the highest address if /proc/{pid}/maps.",
-                        addr);
-                exit(-1);
-            }
             //Address is within range
             lo = pmEntryArray.getSize() - 1;
         }
 
-        return lo;
+        //Check if it's end address is indeed in this entry. If not, it is because the caller is not in procinfomapper
+        // (Maybe skipped, in this case return an id that is larger than the largest function addr)
+        if (addr > pmEntryArray[lo].addrEnd) {
+            return fileNameArr.size();
+        }
+
+        return pmEntryArray[lo].fileId;
     }
 
 

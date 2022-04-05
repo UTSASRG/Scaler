@@ -99,7 +99,7 @@ namespace scaler {
         ssize_t pmEntryEndIndex;
     };
 
-    typedef void (*FileNameCallBack)(const char *pathName, const ssize_t length,const ssize_t fileId);
+    typedef void (*FileNameCallBack)(const char *pathName, const ssize_t length, const ssize_t fileId);
 
     /**
      * This class was a helper tool to parse /proc/self/maps

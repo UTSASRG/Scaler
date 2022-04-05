@@ -14,6 +14,7 @@
 #include <type/ExtSymInfo.h>
 #include <type/ELFImgInfo.h>
 #include <type/ELFSecInfo.h>
+#include <util/tool/AddrFileIdMapping.h>
 
 namespace scaler {
 
@@ -42,6 +43,8 @@ namespace scaler {
         Array<ExtSymInfo> allExtSymbol;//All external symbols in ELF image
         Array<ssize_t> pltRelaIndexMap;//All external symbols in ELF image
         ssize_t hookedExtSymSize = 0;
+        uint8_t *callIdSavers = nullptr;
+        uint8_t *ldCallers = nullptr;
 
         /**
          * Private constructor
@@ -72,12 +75,26 @@ namespace scaler {
                       uint8_t *baseAddr);
 
         bool
-        installHook(std::string &fullPath, ELFParser &parser, ssize_t fileId, uint8_t *baseAddr, ELFSecInfo &pltSec,
-                    ELFSecInfo &gotSec);
+        parseSymbolInfo(ELFParser &parser, ssize_t fileId, uint8_t *baseAddr, ELFSecInfo &pltSection,
+                        ELFSecInfo &pltSecureSection,
+                        ELFSecInfo &gotSec);
 
         bool makeGOTWritable(ELFSecInfo &gotSec, bool writable);
 
+
         uint32_t parsePltStubId(uint8_t *dest);
+
+        bool fillAddr2pltEntry(uint8_t *funcAddr, uint8_t *retPltEntry);
+
+        bool fillAddrAndSymId2IdSaver(uint8_t *prehookAddr, uint32_t funcId, uint8_t *idSaverEntry);
+
+        void parseRequiredInfo();
+
+        /**
+         * Actual entry
+         * @return
+         */
+        bool replacePltEntry();
     };
 
 }

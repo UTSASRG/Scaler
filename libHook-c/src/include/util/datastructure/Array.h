@@ -80,13 +80,16 @@ namespace scaler {
             assert(0 <= index && index <= size);
             if (size == internalArrSize)
                 expand(size + 1);
-            memmove(internalArr + index + 1, internalArr + index, size - index);
+            if (index < size) {
+                memmove(internalArr + index + 1, internalArr + index, size - index);
+            }
             size += 1;
             return internalArr + index;
         }
 
         /**
-         * Allocate a bunch of memory.
+         * Allocate a bunch of memory. If the memory is already available, only expand size.
+         * This can be used to guarantee enough memory
          */
         virtual bool allocate(ssize_t amount) {
             if (size + amount >= internalArrSize)
