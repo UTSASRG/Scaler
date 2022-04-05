@@ -85,7 +85,7 @@ public:
 
 int main() {
     scaler::ExtFuncCallHook::getInst()->install();
-
+    funcA();
     callFuncA();
     return 0;
     printf("Calling funcA\n");

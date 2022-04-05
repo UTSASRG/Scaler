@@ -93,8 +93,7 @@ namespace scaler {
     ExtFuncCallHook *ExtFuncCallHook::getInst() {
         if (!instance) {
             instance = new ExtFuncCallHook();
-            if (!instance) {
-                fatalError("Cannot allocate memory for ExtFuncCallHookAsm");
+            if (!instance) { fatalError("Cannot allocate memory for ExtFuncCallHookAsm");
                 return nullptr;
             }
         }
@@ -126,6 +125,9 @@ namespace scaler {
 
     bool ExtFuncCallHook::parseSymbolInfo(ELFParser &parser, ssize_t fileId, uint8_t *baseAddr, ELFSecInfo &pltSection,
                                           ELFSecInfo &pltSecureSection, ELFSecInfo &gotSec) {
+
+        //assert(sizeof(ExtSymInfo) % 32 == 0); //Force memory allignment
+        //INFO_LOGS("sizeof(ExtSymInfo)=%d", a);
 
         ELFImgInfo &curImgInfo = elfImgInfoMap[fileId];
         curImgInfo.firstSymIndex = allExtSymbol.getSize();
@@ -199,9 +201,15 @@ namespace scaler {
 //            fatalError("Function has no name?!");
         }
 
-        if (scaler::strStartsWith(funcName, "__")) {
-            return false;
-        }
+//        if (strncmp(funcName, "funcA", funcNameLen) == 0) {
+//            return true;
+//        } else {
+//            return false;
+//        }
+
+//        if (scaler::strStartsWith(funcName, "__")) {
+//            return false;
+//        }
 
         if (funcNameLen == 3) {
             if (strncmp(funcName, "oom", 3) == 0) {
@@ -493,8 +501,7 @@ namespace scaler {
             pushOffset = 7;
         } else if (*dest == 0xF3) {
             pushOffset = 5;
-        } else {
-            fatalError("Plt entry format illegal. Cannot find instruction \"push id\"");
+        } else { fatalError("Plt entry format illegal. Cannot find instruction \"push id\"");
         }
 
         //Debug tips: Add breakpoint after this statement, and *pltStubId should be 0 at first, 2 at second .etc
@@ -552,8 +559,8 @@ namespace scaler {
                 ELFSecInfo gotInfo;
 
                 //todo: We assume plt and got entry size is the same.
-                if (!parseSecInfos(elfParser, pltInfo, pltSecInfo, gotInfo, prevFileBaseAddr)) {
-                    fatalError("Failed to parse plt related sections.");
+                if (!parseSecInfos(elfParser, pltInfo, pltSecInfo, gotInfo, prevFileBaseAddr)) { fatalError(
+                            "Failed to parse plt related sections.");
                     exit(-1);
                 }
                 ELFImgInfo *curElfImgInfo = elfImgInfoMap.pushBack();
@@ -565,8 +572,8 @@ namespace scaler {
                          prevFileBaseAddr, pltSecInfo.startAddr);
 
                 //Install hook on this file
-                if (!parseSymbolInfo(elfParser, prevFileId, prevFileBaseAddr, pltInfo, pltSecInfo, gotInfo)) {
-                    fatalErrorS("installation for file %s failed.", curFileName.c_str());
+                if (!parseSymbolInfo(elfParser, prevFileId, prevFileBaseAddr, pltInfo, pltSecInfo,
+                                     gotInfo)) { fatalErrorS("installation for file %s failed.", curFileName.c_str());
                     exit(-1);
                 }
                 prevFileBaseAddr = curPmEntry.addrStart;
@@ -577,8 +584,8 @@ namespace scaler {
                 prevFileId = curPmEntry.fileId;
 
                 curFileName = pmParser.fileNameArr[curPmEntry.fileId];
-                if (!elfParser.parse(curFileName.c_str())) {
-                    fatalErrorS("Failed to parse elf file: %s", curFileName.c_str());
+                if (!elfParser.parse(curFileName.c_str())) { fatalErrorS("Failed to parse elf file: %s",
+                                                                         curFileName.c_str());
                     exit(-1);
                 }
             } else {
@@ -611,8 +618,8 @@ namespace scaler {
         for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
 
             if (!fillAddrAndSymId2IdSaver((uint8_t *) &asmHookHandler, curSymId,
-                                          curCallIdSaver)) {
-                fatalError("fillAddrAndSymId2IdSaver failed, this should not happen");
+                                          curCallIdSaver)) { fatalError(
+                        "fillAddrAndSymId2IdSaver failed, this should not happen");
             }
             curCallIdSaver += sizeof(idSaverBin);
         }
@@ -629,8 +636,8 @@ namespace scaler {
         for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
             ELFImgInfo &curImgInfo = elfImgInfoMap[allExtSymbol[curSymId].fileId];
             if (!fillAddrAndSymId2IdSaver((uint8_t *) curImgInfo.pltStartAddr, allExtSymbol[curSymId].pltStubId,
-                                          curLdCaller)) {
-                fatalError("fillAddrAndSymId2IdSaver failed, this should not happen");
+                                          curLdCaller)) { fatalError(
+                        "fillAddrAndSymId2IdSaver failed, this should not happen");
             }
             curLdCaller += sizeof(idSaverBin);
         }
@@ -644,13 +651,13 @@ namespace scaler {
             ExtSymInfo &curSym = allExtSymbol[curSymId];
             if (curSym.pltSecEntryAddr) {
                 //Replace .plt.sec
-                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltSecEntryAddr)) {
-                    fatalError("pltSecAddr installation failed, this should not happen");
+                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltSecEntryAddr)) { fatalError(
+                            "pltSecAddr installation failed, this should not happen");
                 }
             } else {
                 //Replace .plt
-                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltEntryAddr)) {
-                    fatalError("pltEntry installation failed, this should not happen");
+                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltEntryAddr)) { fatalError(
+                            "pltEntry installation failed, this should not happen");
                 }
             }
 

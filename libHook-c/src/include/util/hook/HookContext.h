@@ -9,16 +9,19 @@
 extern "C" {
 
 
-#define MAX_CALL_DEPTH 11 //10+1 because of dummy variable
+#define MAX_CALL_DEPTH 2 //N+1 because of dummy variable
 
 class HookContext {
 public:
     //todo: Initialize using maximum stack size
-    scaler::FStack<scaler::SymID, MAX_CALL_DEPTH> symId;
 
     //Variables used to determine whether it's called by hook handler or not
-    scaler::FStack<void *, MAX_CALL_DEPTH> callerAddr;
-    scaler::FStack<long long, MAX_CALL_DEPTH> timeStamp;
+    uint64_t callerAddr[MAX_CALL_DEPTH+1];
+    long long timeStamp[MAX_CALL_DEPTH+1];
+    scaler::SymID symId[MAX_CALL_DEPTH+1];
+    ssize_t indexPosi;
+
+    scaler::Array<uint64_t> timingArr;
     //Records which function calls which function for how long, the index is scalerid (Only contains hooked function)
     //todo: Replace timingMatrix to a class
     int64_t curThreadNumber = 1; //The default one is main thread

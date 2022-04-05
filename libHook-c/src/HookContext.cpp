@@ -1,7 +1,7 @@
 #include <util/hook/HookContext.h>
 
 extern "C" {
-HookContext::HookContext(ssize_t libFileSize, ssize_t hookedSymbolSize) : memArrayHeap(1) {
+HookContext::HookContext(ssize_t libFileSize, ssize_t hookedSymbolSize) : memArrayHeap(1), timingArr(hookedSymbolSize) {
 
 //    //Initialize root node
 //    rootNode = memArrayHeap.allocArr(1);
@@ -10,9 +10,7 @@ HookContext::HookContext(ssize_t libFileSize, ssize_t hookedSymbolSize) : memArr
 //    //Initialize children
 //    rootNode->children = memArrayHeap.allocArr(rootNode->childrenSize);
 //    rootNode->scalerId = -1; //Indiacate root node
-
-
-
+    timingArr.allocate(hookedSymbolSize);
     initialized = SCALER_TRUE;
 }
 
@@ -26,15 +24,11 @@ bool initTLS() {
     //Initialize saving data structure
     curContext = new HookContext(
             scaler::ExtFuncCallHook::instance->elfImgInfoMap.getSize(),
-            scaler::ExtFuncCallHook::instance->hookedExtSymSize);
-    curContext->callerAddr.push((void *) 0x0);
-    curContext->timeStamp.push(0);
-    curContext->symId.push(0);
+            scaler::ExtFuncCallHook::instance->allExtSymbol.getSize() + 1);
 
     i += curContext->initialized;
 
-    if (!curContext) {
-        fatalError("Failed to allocate memory for Context");
+    if (!curContext) { fatalError("Failed to allocate memory for Context");
         return false;
     }
 

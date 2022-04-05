@@ -2,7 +2,7 @@ project(Hook VERSION 0.1.7)
 
 # Set global (Relative this folder until reset) compiler options
 
-set(SCALER_HOOK_COMPILATION_FLAGS "-O0" "-g" "-Werror")
+set(SCALER_HOOK_COMPILATION_FLAGS "-O3" "-g" "-Werror")
 # https://json.nlohmann.me/integration/cmake/
 
 
@@ -52,7 +52,7 @@ target_include_directories(ScalerHook-HookAutoAsm-C PUBLIC src/include lib/inire
 target_link_libraries(ScalerHook-HookAutoAsm-C PUBLIC pthread dl)
 target_link_options(ScalerHook-HookAutoAsm-C PRIVATE -static-libgcc -static-libstdc++) #Todo; Statically link libc is not advised. Change to re-compile in o
 target_compile_options(ScalerHook-HookAutoAsm-C PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
-target_compile_definitions(ScalerHook-HookAutoAsm-C PRIVATE XED_ENCODER CMAKE_SCALERRUN_VERSION="${PROJECT_VERSION}") #NDEBUG
+target_compile_definitions(ScalerHook-HookAutoAsm-C PUBLIC CMAKE_SCALERRUN_VERSION="${PROJECT_VERSION}" NDEBUG) #NDEBUG
 
 #protobufferStatic
 

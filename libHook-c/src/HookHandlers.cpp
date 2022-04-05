@@ -13,6 +13,9 @@
 "vmovdqu64  (%rsp),%zmm"#ArgumentName"\n\t"\
 "addq $64,%rsp\n\t"
 
+#define likely(x) __builtin_expect(!!(x), 1) //x很可能为真
+#define unlikely(x) __builtin_expect(!!(x), 0) //x很可能为假
+
 /**
 * Restore Registers
 */
@@ -28,22 +31,22 @@
 
 #define ASM_SAVE_ENV_PREHOOK \
     "movq %rax,(%rsp)\n\t" \
-    "movq %rcx,0x8(%rsp)\n\t" \
-    "movq %rdx,0x10(%rsp)\n\t" \
-    "movq %rsi,0x18(%rsp)\n\t" \
-    "movq %rdi,0x20(%rsp)\n\t" \
-    "movq %r8,0x28(%rsp)\n\t" \
-    "movq %r9,0x30(%rsp)\n\t" \
-    "movq %r10,0x38(%rsp)\n\t"
+    "movq %rcx,0x10(%rsp)\n\t" \
+    "movq %rdx,0x20(%rsp)\n\t" \
+    "movq %rsi,0x30(%rsp)\n\t" \
+    "movq %rdi,0x40(%rsp)\n\t" \
+    "movq %r8,0x50(%rsp)\n\t" \
+    "movq %r9,0x60(%rsp)\n\t" \
+    "movq %r10,0x70(%rsp)\n\t"
 
 #define ASM_RESTORE_ENV_PREHOOK \
-    "movq 0x38(%rsp),%r10\n\t"\
-    "movq 0x30(%rsp),%r9\n\t"\
-    "movq 0x28(%rsp),%r8\n\t"\
-    "movq 0x20(%rsp),%rdi\n\t"\
-    "movq 0x18(%rsp),%rsi\n\t"\
-    "movq 0x10(%rsp),%rdx\n\t"\
-    "movq 0x8(%rsp),%rcx\n\t"\
+    "movq 0x70(%rsp),%r10\n\t"\
+    "movq 0x60(%rsp),%r9\n\t"\
+    "movq 0x50(%rsp),%r8\n\t"\
+    "movq 0x40(%rsp),%rdi\n\t"\
+    "movq 0x30(%rsp),%rsi\n\t"\
+    "movq 0x20(%rsp),%rdx\n\t"\
+    "movq 0x10(%rsp),%rcx\n\t"\
     "movq (%rsp),%rax\n\t"
 
 
@@ -98,7 +101,7 @@ void __attribute__((naked)) asmHookHandler() {
     /**
     * Save environment
     */
-    "subq $0x40,%rsp\n\t"
+    "subq $0x80,%rsp\n\t"
     ASM_SAVE_ENV_PREHOOK
 
     //rsp%10h=0
@@ -114,8 +117,8 @@ void __attribute__((naked)) asmHookHandler() {
     /**
      * Getting PLT entry address and caller address from stack
      */
-    "movq 0x48(%rsp),%rdi\n\t" //First parameter, return addr
-    "movq 0x40(%rsp),%rsi\n\t" //Second parameter, symbolId (Pushed to stack by idsaver)
+    "movq 0x88(%rsp),%rdi\n\t" //First parameter, return addr
+    "movq 0x80(%rsp),%rsi\n\t" //Second parameter, symbolId (Pushed to stack by idsaver)
 
     /**
      * Pre-Hook
@@ -136,7 +139,7 @@ void __attribute__((naked)) asmHookHandler() {
     "RET_PREHOOK_ONLY:\n\t"
     ASM_RESTORE_ENV_PREHOOK
     //Restore rsp to original value (Uncomment the following to only enable prehook)
-    "addq $0x48,%rsp\n\t"
+    "addq $0x88,%rsp\n\t"
     "jmpq *%r11\n\t"
 
     //=======================================> if rdi!=$1234
@@ -145,7 +148,7 @@ void __attribute__((naked)) asmHookHandler() {
      */
     "RET_FULL:\n\t"
     ASM_RESTORE_ENV_PREHOOK
-    "addq $0x50,%rsp\n\t"
+    "addq $0x90,%rsp\n\t"
     "callq *%r11\n\t"
 
     /**
@@ -215,11 +218,11 @@ void __attribute__((naked)) asmHookHandler() {
 __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId) {
 
     scaler::ExtFuncCallHook *_this = scaler::ExtFuncCallHook::instance;
-    scaler::ExtSymInfo &curElfSymInfo = _this->allExtSymbol.get(symId);
+    scaler::ExtSymInfo &curElfSymInfo = _this->allExtSymbol.internalArr[symId];
     void *retOriFuncAddr = nullptr;
-    scaler::ELFImgInfo &curImgInfo = _this->elfImgInfoMap[curElfSymInfo.fileId];
+    scaler::ELFImgInfo &curImgInfo = _this->elfImgInfoMap.internalArr[curElfSymInfo.fileId];
 
-    if (!curElfSymInfo.addrResolved) {
+    if (unlikely(!curElfSymInfo.addrResolved)) {
         retOriFuncAddr = _this->ldCallers + symId * 32;
     } else {
         retOriFuncAddr = *curElfSymInfo.gotEntryAddr;
@@ -231,9 +234,14 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
      */
     HookContext *curContextPtr = curContext;
 
-    if (bypassCHooks == SCALER_TRUE || curContextPtr == NULL || curContextPtr->callerAddr.getSize() >= MAX_CALL_DEPTH ||
-        ((uint64_t) curContextPtr->callerAddr.peek() == nextCallAddr) ||
-        curContext == NULL) {
+    if (unlikely(curContextPtr == NULL)) {
+        //Skip afterhook
+        asm volatile ("movq $1234, %%rdi" : /* No outputs. */
+        :/* No inputs. */:"rdi");
+        return retOriFuncAddr;
+    } else if (bypassCHooks == SCALER_TRUE || curContextPtr->indexPosi >= MAX_CALL_DEPTH ||
+               ((uint64_t) curContextPtr->callerAddr[curContextPtr->indexPosi] == nextCallAddr) ||
+               curContext == NULL) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
@@ -246,26 +254,15 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
 
     DBG_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu", pthread_self(),
              curElfSymInfo.fileId, symId, (void *) nextCallAddr, getunixtimestampms());
-
-    assert(curContext != nullptr);
-//    if (curContextPtr->callerAddr.getSize() >= 2) {
-//        //If exceeding the depth limit, there is no need to go further into after hook
-//
-//        //Skip afterhook (For debugging purpose)
-//        asm volatile ("movq $1234, %%rdi"
-//        : /* No outputs. */
-//        :/* No inputs. */
-//        :"rdi");
-//        bypassCHooks = SCALER_FALSE;
-//        return curElfSymInfo.resolvedAddr;
-//    }
+    //assert(curContext != nullptr);
 
     /**
     * Setup environment for afterhook
     */
-    curContextPtr->timeStamp.push(getunixtimestampms());
-    curContextPtr->callerAddr.push((void *) nextCallAddr);
-    curContextPtr->symId.push(symId);
+    curContextPtr->timeStamp[curContextPtr->indexPosi] = getunixtimestampms();
+    curContextPtr->symId[curContextPtr->indexPosi] = symId;
+    curContextPtr->callerAddr[curContextPtr->indexPosi] = nextCallAddr;
+    ++curContextPtr->indexPosi;
 
     bypassCHooks = SCALER_FALSE;
     return retOriFuncAddr;
@@ -275,22 +272,22 @@ void *afterHookHandler() {
     bypassCHooks = SCALER_TRUE;
     scaler::ExtFuncCallHook *_this = scaler::ExtFuncCallHook::instance;
     HookContext *curContextPtr = curContext;
-    assert(curContext != nullptr);
+    //assert(curContext != nullptr);
+    --curContextPtr->indexPosi;
+    scaler::SymID symbolId = curContextPtr->symId[curContextPtr->indexPosi];
+    void *callerAddr = (void *) curContextPtr->callerAddr[curContextPtr->indexPosi];
+    const long long &preHookTimestamp = curContextPtr->timeStamp[curContextPtr->indexPosi];
+
+    scaler::ExtSymInfo &curElfSymInfo = _this->allExtSymbol.internalArr[symbolId];
 
 
-    scaler::SymID symbolId = curContextPtr->symId.peekpop();
-    void *callerAddr = curContextPtr->callerAddr.peekpop();
-    scaler::ExtSymInfo &curElfSymInfo = _this->allExtSymbol[symbolId];
-
-
-    if (!curElfSymInfo.addrResolved) {
+    if (unlikely(!curElfSymInfo.addrResolved)) {
         curElfSymInfo.addrResolved = true;
         //Resolve address
         curElfSymInfo.libFileId = _this->pmParser.findExecNameByAddr(*curElfSymInfo.gotEntryAddr);
-        assert(curElfSymInfo.libFileId != -1);
+        //assert(curElfSymInfo.libFileId != -1);
     }
 
-    const long long &preHookTimestamp = curContextPtr->timeStamp.peekpop();
     DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu",
              pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms());
 //

@@ -133,10 +133,11 @@ namespace scaler {
             return true;
         }
 
+        T *internalArr = nullptr;
+
     protected:
         ssize_t internalArrSize = 0;
         ssize_t size = 0;
-        T *internalArr = nullptr;
 
         virtual void expand(ssize_t minimumSize) {
             T *oldInternalArr = internalArr;
