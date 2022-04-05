@@ -199,9 +199,7 @@ namespace scaler {
 //            fatalError("Function has no name?!");
         }
 
-        if (scaler::strStartsWith(funcName, "__")) {
-            return false;
-        }
+
 
         if (funcNameLen == 3) {
             if (strncmp(funcName, "oom", 3) == 0) {
