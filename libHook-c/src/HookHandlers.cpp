@@ -30,24 +30,24 @@
 //    POPZMM(0)
 
 #define ASM_SAVE_ENV_PREHOOK \
-    "movq %rax,(%rsp)\n\t" \
-    "movq %rcx,0x10(%rsp)\n\t" \
-    "movq %rdx,0x20(%rsp)\n\t" \
-    "movq %rsi,0x30(%rsp)\n\t" \
-    "movq %rdi,0x40(%rsp)\n\t" \
-    "movq %r8,0x50(%rsp)\n\t" \
-    "movq %r9,0x60(%rsp)\n\t" \
-    "movq %r10,0x70(%rsp)\n\t"
+    "movq %rax,0x08(%rsp)\n\t" \
+    "movq %rcx,0x18(%rsp)\n\t" \
+    "movq %rdx,0x28(%rsp)\n\t" \
+    "movq %rsi,0x38(%rsp)\n\t" \
+    "movq %rdi,0x48(%rsp)\n\t" \
+    "movq %r8,0x58(%rsp)\n\t" \
+    "movq %r9,0x68(%rsp)\n\t" \
+    "movq %r10,0x78(%rsp)\n\t"
 
 #define ASM_RESTORE_ENV_PREHOOK \
-    "movq 0x70(%rsp),%r10\n\t"\
-    "movq 0x60(%rsp),%r9\n\t"\
-    "movq 0x50(%rsp),%r8\n\t"\
-    "movq 0x40(%rsp),%rdi\n\t"\
-    "movq 0x30(%rsp),%rsi\n\t"\
-    "movq 0x20(%rsp),%rdx\n\t"\
-    "movq 0x10(%rsp),%rcx\n\t"\
-    "movq (%rsp),%rax\n\t"
+    "movq 0x78(%rsp),%r10\n\t"\
+    "movq 0x68(%rsp),%r9\n\t"\
+    "movq 0x58(%rsp),%r8\n\t"\
+    "movq 0x48(%rsp),%rdi\n\t"\
+    "movq 0x38(%rsp),%rsi\n\t"\
+    "movq 0x28(%rsp),%rdx\n\t"\
+    "movq 0x18(%rsp),%rcx\n\t"\
+    "movq 0x08(%rsp),%rax\n\t"
 
 
 /**
@@ -101,7 +101,6 @@ void __attribute__((naked)) asmHookHandler() {
     /**
     * Save environment
     */
-    "subq $0x80,%rsp\n\t"
     ASM_SAVE_ENV_PREHOOK
 
     //rsp%10h=0
@@ -117,8 +116,8 @@ void __attribute__((naked)) asmHookHandler() {
     /**
      * Getting PLT entry address and caller address from stack
      */
-    "movq 0x88(%rsp),%rdi\n\t" //First parameter, return addr
-    "movq 0x80(%rsp),%rsi\n\t" //Second parameter, symbolId (Pushed to stack by idsaver)
+    "movq (%rsp),%rsi\n\t" //First parameter, return addr
+    "movq 0x118(%rsp),%rdi\n\t" //Second parameter, symbolId (Pushed to stack by idsaver)
 
     /**
      * Pre-Hook
@@ -139,7 +138,7 @@ void __attribute__((naked)) asmHookHandler() {
     "RET_PREHOOK_ONLY:\n\t"
     ASM_RESTORE_ENV_PREHOOK
     //Restore rsp to original value (Uncomment the following to only enable prehook)
-    "addq $0x88,%rsp\n\t"
+    "addq $0x118,%rsp\n\t"
     "jmpq *%r11\n\t"
 
     //=======================================> if rdi!=$1234
@@ -148,7 +147,7 @@ void __attribute__((naked)) asmHookHandler() {
      */
     "RET_FULL:\n\t"
     ASM_RESTORE_ENV_PREHOOK
-    "addq $0x90,%rsp\n\t"
+    "addq $0x120,%rsp\n\t"
     "callq *%r11\n\t"
 
     /**
@@ -216,7 +215,7 @@ void __attribute__((naked)) asmHookHandler() {
 // 1234: address resolved, pre-hook only (Fastest)
 // else pre+afterhook. Check hook installation in afterhook
 __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId) {
-
+    //Assumes _this->allExtSymbol won't change
     scaler::ExtFuncCallHook *_this = scaler::ExtFuncCallHook::instance;
     scaler::ExtSymInfo &curElfSymInfo = _this->allExtSymbol.internalArr[symId];
     void *retOriFuncAddr = nullptr;
@@ -259,10 +258,10 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
     /**
     * Setup environment for afterhook
     */
+    ++curContextPtr->indexPosi;
     curContextPtr->timeStamp[curContextPtr->indexPosi] = getunixtimestampms();
     curContextPtr->symId[curContextPtr->indexPosi] = symId;
     curContextPtr->callerAddr[curContextPtr->indexPosi] = nextCallAddr;
-    ++curContextPtr->indexPosi;
 
     bypassCHooks = SCALER_FALSE;
     return retOriFuncAddr;
@@ -272,11 +271,14 @@ void *afterHookHandler() {
     bypassCHooks = SCALER_TRUE;
     scaler::ExtFuncCallHook *_this = scaler::ExtFuncCallHook::instance;
     HookContext *curContextPtr = curContext;
-    //assert(curContext != nullptr);
-    --curContextPtr->indexPosi;
+    assert(curContext != nullptr);
+
+
     scaler::SymID symbolId = curContextPtr->symId[curContextPtr->indexPosi];
     void *callerAddr = (void *) curContextPtr->callerAddr[curContextPtr->indexPosi];
     const long long &preHookTimestamp = curContextPtr->timeStamp[curContextPtr->indexPosi];
+    --curContextPtr->indexPosi;
+    assert(curContextPtr->indexPosi >= 1);
 
     scaler::ExtSymInfo &curElfSymInfo = _this->allExtSymbol.internalArr[symbolId];
 
@@ -285,7 +287,7 @@ void *afterHookHandler() {
         curElfSymInfo.addrResolved = true;
         //Resolve address
         curElfSymInfo.libFileId = _this->pmParser.findExecNameByAddr(*curElfSymInfo.gotEntryAddr);
-        //assert(curElfSymInfo.libFileId != -1);
+        assert(curElfSymInfo.libFileId != -1);
     }
 
     DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu",
@@ -319,7 +321,8 @@ void __attribute__((used, naked, noinline)) myPltEntry() {
  */
 void __attribute__((used, naked, noinline)) callIdSaver() {
     __asm__ __volatile__ (
-    //Save Id to memory
+    //Save Id to memory (Redzone 128+register 128+ funcId 8 + alignment 8)
+    "subq $0x110,%rsp\n\t"
     "pushq $0x11223344\n\t"
     //Jmp to prehookHandler
     "movq $0x1122334455667788,%r11\n\t"

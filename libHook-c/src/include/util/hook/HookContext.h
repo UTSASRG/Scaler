@@ -16,9 +16,9 @@ public:
     //todo: Initialize using maximum stack size
 
     //Variables used to determine whether it's called by hook handler or not
-    uint64_t callerAddr[MAX_CALL_DEPTH+1];
-    long long timeStamp[MAX_CALL_DEPTH+1];
-    scaler::SymID symId[MAX_CALL_DEPTH+1];
+    uint64_t callerAddr[MAX_CALL_DEPTH + 1];
+    long long timeStamp[MAX_CALL_DEPTH + 1];
+    scaler::SymID symId[MAX_CALL_DEPTH + 1];
     ssize_t indexPosi;
 
     scaler::Array<uint64_t> timingArr;

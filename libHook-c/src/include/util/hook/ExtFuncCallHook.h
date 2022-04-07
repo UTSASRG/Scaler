@@ -87,6 +87,8 @@ namespace scaler {
 
         bool fillAddrAndSymId2IdSaver(uint8_t *prehookAddr, uint32_t funcId, uint8_t *idSaverEntry);
 
+        bool fillAddrAndSymId2LdJumper(uint8_t *firstPltEntryAddr, uint32_t funcId, uint8_t *ldJumperEntry);
+
         void parseRequiredInfo();
 
         /**

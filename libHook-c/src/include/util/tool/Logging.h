@@ -3,8 +3,8 @@
 
 #include <cstdio>
 
-#define PRINT_INFO_LOG true
-#define PRINT_DBG_LOG false
+#define PRINT_INFO_LOG false
+#define PRINT_DBG_LOG true
 #define PRINT_ERR_LOG false
 #if PRINT_DBG_LOG
 
@@ -50,6 +50,12 @@
 // Print log strings using printf template format
 #define INFO_LOGS(fmt, ...) fprintf(stdout,"INFO: %s:%d  ",__FILE__,__LINE__); fprintf(stdout,fmt,__VA_ARGS__); fprintf(stdout,"\n")
 // Print a single error string
+#else
+
+#define INFO_LOG(str)
+
+#define INFO_LOGS(fmt, ...)
+
 #endif
 
 
