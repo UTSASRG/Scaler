@@ -276,7 +276,8 @@ void *afterHookHandler() {
 
     scaler::SymID symbolId = curContextPtr->symId[curContextPtr->indexPosi];
     void *callerAddr = (void *) curContextPtr->callerAddr[curContextPtr->indexPosi];
-    const long long &preHookTimestamp = curContextPtr->timeStamp[curContextPtr->indexPosi];
+    curContextPtr->timingArr.internalArr[symbolId]=getunixtimestampms()-curContextPtr->timeStamp[curContextPtr->indexPosi];
+
     --curContextPtr->indexPosi;
     assert(curContextPtr->indexPosi >= 1);
 
