@@ -6,10 +6,11 @@
 #include <type/InvocationTree.h>
 #include "ExtFuncCallHook.h"
 
+
 extern "C" {
 
 
-#define MAX_CALL_DEPTH 2 //N+1 because of dummy variable
+#define MAX_CALL_DEPTH 100 //N+1 because of dummy variable
 
 class HookContext {
 public:
@@ -43,6 +44,17 @@ public:
 
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
+
+
+class DataSaver {
+public:
+    char initializeMe = 0;
+
+    ~DataSaver();
+};
+
+
+static thread_local DataSaver saverElem;
 
 extern __thread HookContext *curContext;
 

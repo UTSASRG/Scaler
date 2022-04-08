@@ -111,6 +111,10 @@ namespace scaler {
             return size;
         }
 
+        virtual inline ssize_t getTypeSizeInBytes() {
+            return sizeof(T);
+        }
+
         virtual inline bool willExpand() {
             return size == internalArrSize;
         }

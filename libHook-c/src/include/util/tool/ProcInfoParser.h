@@ -107,7 +107,7 @@ namespace scaler {
      */
     class PmParser : public Object {
     public:
-        PmParser();
+        PmParser(std::string folderName);
 
         /**
         * Determine whether current elf file use relative address or absolute address
@@ -140,6 +140,7 @@ namespace scaler {
 
         Array<PMEntry> pmEntryArray;
         std::vector<std::string> fileNameArr;
+        std::string folderName;
     };
 
 };

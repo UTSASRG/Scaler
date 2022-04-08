@@ -29,7 +29,7 @@ TEST(ELFParser_Linux, parseFuncName) {
     //Invoke libTest, and several system functions
     void *a = malloc(1);
 
-    PmParser pmParser;
+    PmParser pmParser("datapath");
 
     //Parse current ELF file and see if those method exists and if address matches
 //    ELFParser parser(pmParser.curExecAbsolutePath);

@@ -17,11 +17,13 @@
 #include <util/hook/HookContext.h>
 #include <util/tool/StringTool.h>
 #include <util/tool/AddrFileIdMapping.h>
+#include <util/tool/Timer.h>
 
 namespace scaler {
 
 
     bool ExtFuncCallHook::install() {
+        createRecordingFolder();
 
         //Parse filenames
         pmParser.parsePMMap();
@@ -90,9 +92,9 @@ namespace scaler {
 
     ExtFuncCallHook *ExtFuncCallHook::instance = nullptr;
 
-    ExtFuncCallHook *ExtFuncCallHook::getInst() {
+    ExtFuncCallHook *ExtFuncCallHook::getInst(std::string folderName) {
         if (!instance) {
-            instance = new ExtFuncCallHook();
+            instance = new ExtFuncCallHook(folderName);
             if (!instance) { fatalError("Cannot allocate memory for ExtFuncCallHookAsm");
                 return nullptr;
             }
@@ -106,12 +108,7 @@ namespace scaler {
         uninstall();
     }
 
-    ExtFuncCallHook::ExtFuncCallHook(PmParser &parser) : pmParser(parser),
-                                                         elfImgInfoMap() {
-
-    }
-
-    ExtFuncCallHook::ExtFuncCallHook() {
+    ExtFuncCallHook::ExtFuncCallHook(std::string folderName) : folderName(folderName), pmParser(folderName) {
 
     }
 
@@ -142,7 +139,12 @@ namespace scaler {
             adjustMemPerm(pltSecureSection.startAddr, pltSecureSection.startAddr + pltSecureSection.size,
                           PROT_READ | PROT_WRITE | PROT_EXEC);
         }
-
+        std::stringstream ss;
+        ss << scaler::ExtFuncCallHook::instance->folderName << "/symbolInfo.txt";
+        FILE *symInfoFile = fopen(ss.str().c_str(), "wb");
+        if (!symInfoFile) { fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
+        }
+        fprintf(symInfoFile, "%s,%s,%s\n", "funcName", "fileId", "symIdInFile");
 
         assert(pltSection.size / pltSection.entrySize == parser.relaEntrySize + 1);
         for (ssize_t i = 0; i < parser.relaEntrySize; ++i) {
@@ -178,6 +180,8 @@ namespace scaler {
             newSym->pltEntryAddr = pltEntry;
             newSym->pltSecEntryAddr = pltSecEntry;
             newSym->pltStubId = pltStubId;
+
+            fprintf(symInfoFile, "%s,%ld,%ld\n", funcName, newSym->fileId, newSym->symIdInFile);
 
             DBG_LOGS(
                     "id:%ld funcName:%s gotAddr:%p *gotAddr:%p addressResolved:%s fileId:%zd symIdInFile:%zd pltEntryAddr:%p pltSecEntryAddr:%p",
@@ -684,6 +688,14 @@ namespace scaler {
         }
 
         return true;
+    }
+
+    void ExtFuncCallHook::createRecordingFolder() {
+        //sprintf(folderName, "scalerdata_%lu", getunixtimestampms());
+        if (mkdir(folderName.c_str(), 0755) == -1) { fatalErrorS("Cannot mkdir ./%s because: %s", folderName,
+                                                                 strerror(errono));
+        }
+
     }
 
 

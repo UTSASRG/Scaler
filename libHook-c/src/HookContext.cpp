@@ -1,7 +1,8 @@
 #include <util/hook/HookContext.h>
 
 extern "C" {
-HookContext::HookContext(ssize_t libFileSize, ssize_t hookedSymbolSize) : memArrayHeap(1), timingArr(hookedSymbolSize),indexPosi(0) {
+HookContext::HookContext(ssize_t libFileSize, ssize_t hookedSymbolSize) : memArrayHeap(1), timingArr(hookedSymbolSize),
+                                                                          indexPosi(0) {
 
 //    //Initialize root node
 //    rootNode = memArrayHeap.allocArr(1);
@@ -18,6 +19,8 @@ HookContext::HookContext(ssize_t libFileSize, ssize_t hookedSymbolSize) : memArr
     timeStamp[indexPosi] = 0;
     symId[indexPosi] = 0;
     indexPosi = 1;
+
+    saverElem.initializeMe = 1; //Force initialize tls
 
 }
 
@@ -46,5 +49,27 @@ __thread HookContext *curContext __attribute((tls_model("initial-exec")));
 
 __thread uint8_t bypassCHooks __attribute((tls_model("initial-exec"))) = SCALER_FALSE; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
 
+DataSaver::~DataSaver() {
+    bypassCHooks = SCALER_TRUE;
+    if (!curContext) { fatalError("curContext is not initialized, won't save anything");
+        return;
+    }
+    HookContext *curContextPtr = curContext;
+    std::stringstream ss;
+    ss << scaler::ExtFuncCallHook::instance->folderName << "/threadTiming_" << pthread_self() << ".bin";
+    INFO_LOGS("Saving timing data to %s", ss.str().c_str());
+    FILE *threadDataSaver = fopen(ss.str().c_str(), "wb");
+    if (!threadDataSaver) { fatalErrorS("Cannot fopen %s because:%s", ss.str().c_str(),
+                                        strerrno(errno));
+    }
+
+    if (fwrite(curContextPtr->timingArr.data(), curContextPtr->timingArr.getTypeSizeInBytes(),
+               curContextPtr->timingArr.getSize(), threadDataSaver) !=
+        curContextPtr->timingArr.getSize()) { fatalErrorS("Cannot write %s because:%s", ss.str().c_str(),
+                                                          strerrno(errno))
+    }
+    fclose(threadDataSaver);
+}
 
 }
+

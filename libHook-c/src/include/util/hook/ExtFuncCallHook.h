@@ -25,7 +25,7 @@ namespace scaler {
 
     class ExtFuncCallHook {
     public:
-        ExtFuncCallHook();
+        ExtFuncCallHook(std::string folderName);
 
         ExtFuncCallHook(ExtFuncCallHook &) = delete;
 
@@ -44,11 +44,11 @@ namespace scaler {
         Array<ssize_t> pltRelaIndexMap;//All external symbols in ELF image
         uint8_t *callIdSavers = nullptr;
         uint8_t *ldCallers = nullptr;
+        std::string folderName;
 
         /**
          * Private constructor
          */
-        explicit ExtFuncCallHook(PmParser &parser);
 
         inline bool isSymbolAddrResolved(ExtSymInfo &symInfo) {
 //            //Check whether its value has 6 bytes offset as its plt entry start address
@@ -60,7 +60,7 @@ namespace scaler {
             return false;
         }
 
-        static ExtFuncCallHook *getInst();
+        static ExtFuncCallHook *getInst(std::string folderName);
 
         static ExtFuncCallHook *instance;
 
@@ -96,6 +96,8 @@ namespace scaler {
          * @return
          */
         bool replacePltEntry();
+
+        void createRecordingFolder();
     };
 
 }

@@ -276,7 +276,8 @@ void *afterHookHandler() {
 
     scaler::SymID symbolId = curContextPtr->symId[curContextPtr->indexPosi];
     void *callerAddr = (void *) curContextPtr->callerAddr[curContextPtr->indexPosi];
-    curContextPtr->timingArr.internalArr[symbolId]=getunixtimestampms()-curContextPtr->timeStamp[curContextPtr->indexPosi];
+    curContextPtr->timingArr.internalArr[symbolId] +=
+            getunixtimestampms() - curContextPtr->timeStamp[curContextPtr->indexPosi];
 
     --curContextPtr->indexPosi;
     assert(curContextPtr->indexPosi >= 1);
@@ -293,18 +294,7 @@ void *afterHookHandler() {
 
     DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu",
              pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms());
-//
-//    //Resolve library id
 
-//
-//    //Move
-//
-//
-//    //Save this operation
-//    const long long duration = getunixtimestampms() - preHookTimestamp;
-//    if (curContextPtr->initialized == SCALER_TRUE) {
-//        //Timing here
-//    }
     bypassCHooks = SCALER_FALSE;
     return callerAddr;
 }
@@ -330,3 +320,5 @@ void __attribute__((used, naked, noinline)) callIdSaver() {
     "jmpq *%r11\n\t"
     );
 }
+
+

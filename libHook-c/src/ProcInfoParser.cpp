@@ -11,13 +11,14 @@
 #include <util/tool/StringTool.h>
 #include <set>
 #include <climits>
+#include <utility>
 
 
 #define PROCMAPS_LINE_MAX_LENGTH  (PATH_MAX + 100)
 namespace scaler {
 
 
-    PmParser::PmParser() : pmEntryArray(70) {
+    PmParser::PmParser(std::string fileName) : folderName(std::move(fileName)), pmEntryArray(70) {
     }
 
     bool PmParser::parsePMMap() {
@@ -44,6 +45,13 @@ namespace scaler {
         char pathName[PATH_MAX];
         char permStr[8];
         ssize_t fileId = -1;
+        std::stringstream ss;
+        ss << folderName << "/fileName.txt";
+        FILE *fileNameStrTbl = fopen(ss.str().c_str(), "w");
+        if (!fileNameStrTbl) { fatalErrorS("Cannot open %s", ss.str().c_str());
+        }
+
+        fprintf(fileNameStrTbl, "%s,%s\n", "fileId", "pathName");
 
         while (fgets(procMapLine, sizeof(procMapLine), procFile)) {
 #ifndef NDEBUG
@@ -71,8 +79,6 @@ namespace scaler {
 //            }
 
 
-
-
             //Check scanf succeeded or not
             if (scanfReadNum == 3) {
                 //DBG_LOGS("No file name, ignore line: %s", procMapLine);
@@ -82,8 +88,8 @@ namespace scaler {
                 //DBG_LOGS("Illegal filename, ignore line:%s", procMapLine);
                 pmEntryArray.popBack();
                 continue;
-            } else if (scanfReadNum != 4) {
-                fatalErrorS("Parsing line %s failed, if this line looks normal check limits?", procMapLine);
+            } else if (scanfReadNum != 4) { fatalErrorS(
+                        "Parsing line %s failed, if this line looks normal check limits?", procMapLine);
             }
 
             if (strStartsWith(fileName, "libScalerHook")) {
@@ -110,7 +116,8 @@ namespace scaler {
             if (permStr[3] == 'p') {
                 newEntry->setP();
             }
-            //Update filepathname
+
+
             //Check whether this is a new file
             ssize_t pathNameLen = strnlen(pathName, sizeof(pathName));
             if (pathNameLen != prevPathNameLen || strncmp(prevPathname, pathName, pathNameLen) != 0) {
@@ -119,8 +126,13 @@ namespace scaler {
                 memcpy(prevPathname, pathName, pathNameLen + 1);
                 //Write filename to disk
 
+                //Update filepathname
+
                 fileNameArr.emplace_back(pathName);
                 ++fileId;
+
+                //fileNameStrTbl
+                fprintf(fileNameStrTbl, "%zd,%s\n", fileId, pathName);
                 //DBG_LOGS("%s\n", pathName);
 #ifndef NDEBUG
                 //Check fileId overflow
@@ -134,7 +146,7 @@ namespace scaler {
             newEntry->fileId = fileId;
 
         }
-
+        fclose(fileNameStrTbl);
         fclose(procFile);
         fclose(execNameFile);
 
@@ -195,8 +207,7 @@ namespace scaler {
 
         //It is possible that the address falls within the range of last entry. We need to check this scenario
 
-        if (lo == -1) {
-            fatalErrorS(
+        if (lo == -1) { fatalErrorS(
                     "Cannot find addr %p in pmMap. The address is lower than the lowest address if /proc/{pid}/maps.",
                     addr);
             exit(-1);
