@@ -215,14 +215,14 @@ void __attribute__((naked)) asmHookHandler() {
 // 1234: address resolved, pre-hook only (Fastest)
 // else pre+afterhook. Check hook installation in afterhook
 __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId) {
+    HookContext *curContextPtr = curContext;
+
     //Assumes _this->allExtSymbol won't change
-    scaler::ExtFuncCallHook *_this = scaler::ExtFuncCallHook::instance;
-    scaler::ExtSymInfo &curElfSymInfo = _this->allExtSymbol.internalArr[symId];
+    scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symId];
     void *retOriFuncAddr = nullptr;
-    scaler::ELFImgInfo &curImgInfo = _this->elfImgInfoMap.internalArr[curElfSymInfo.fileId];
 
     if (unlikely(!curElfSymInfo.addrResolved)) {
-        retOriFuncAddr = _this->ldCallers + symId * 32;
+        retOriFuncAddr = curContextPtr->_this->ldCallers + symId * 32;
     } else {
         retOriFuncAddr = *curElfSymInfo.gotEntryAddr;
     }
@@ -231,16 +231,23 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
      * No counting, no measuring time (If scaler is not installed, then tls is not initialized)
      * This may happen for external function call before the initTLS in dummy thread function
      */
-    HookContext *curContextPtr = curContext;
 
     if (unlikely(curContextPtr == NULL)) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
         return retOriFuncAddr;
-    } else if (bypassCHooks == SCALER_TRUE || curContextPtr->indexPosi >= MAX_CALL_DEPTH ||
-               ((uint64_t) curContextPtr->callerAddr[curContextPtr->indexPosi] == nextCallAddr) ||
-               curContext == NULL) {
+    } else if (unlikely(bypassCHooks == SCALER_TRUE)) {
+        //Skip afterhook
+        asm volatile ("movq $1234, %%rdi" : /* No outputs. */
+        :/* No inputs. */:"rdi");
+        return retOriFuncAddr;
+    } else if (unlikely(curContextPtr->indexPosi >= MAX_CALL_DEPTH)) {
+        //Skip afterhook
+        asm volatile ("movq $1234, %%rdi" : /* No outputs. */
+        :/* No inputs. */:"rdi");
+        return retOriFuncAddr;
+    } else if (unlikely((uint64_t) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr == nextCallAddr)) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
@@ -259,36 +266,39 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
     * Setup environment for afterhook
     */
     ++curContextPtr->indexPosi;
-    curContextPtr->timeStamp[curContextPtr->indexPosi] = getunixtimestampms();
-    curContextPtr->symId[curContextPtr->indexPosi] = symId;
-    curContextPtr->callerAddr[curContextPtr->indexPosi] = nextCallAddr;
 
+    uint32_t lo, hi;
+    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+    curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp = ((int64_t) hi << 32) | lo;
+    curContextPtr->hookTuple[curContextPtr->indexPosi].symId = symId;
+    curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = nextCallAddr;
     bypassCHooks = SCALER_FALSE;
     return retOriFuncAddr;
 }
 
 void *afterHookHandler() {
     bypassCHooks = SCALER_TRUE;
-    scaler::ExtFuncCallHook *_this = scaler::ExtFuncCallHook::instance;
     HookContext *curContextPtr = curContext;
     assert(curContext != nullptr);
 
 
-    scaler::SymID symbolId = curContextPtr->symId[curContextPtr->indexPosi];
-    void *callerAddr = (void *) curContextPtr->callerAddr[curContextPtr->indexPosi];
-    curContextPtr->timingArr.internalArr[symbolId] +=
-            getunixtimestampms() - curContextPtr->timeStamp[curContextPtr->indexPosi];
+    scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
+    void *callerAddr = (void *) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr;
+
+    uint32_t lo, hi;
+    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+    curContextPtr->timingArr->internalArr[symbolId] +=
+            (((int64_t) hi << 32) | lo) - curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp;
 
     --curContextPtr->indexPosi;
     assert(curContextPtr->indexPosi >= 1);
 
-    scaler::ExtSymInfo &curElfSymInfo = _this->allExtSymbol.internalArr[symbolId];
-
+    scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symbolId];
 
     if (unlikely(!curElfSymInfo.addrResolved)) {
         curElfSymInfo.addrResolved = true;
         //Resolve address
-        curElfSymInfo.libFileId = _this->pmParser.findExecNameByAddr(*curElfSymInfo.gotEntryAddr);
+        curElfSymInfo.libFileId = curContextPtr->_this->pmParser.findExecNameByAddr(*curElfSymInfo.gotEntryAddr);
         assert(curElfSymInfo.libFileId != -1);
     }
 
