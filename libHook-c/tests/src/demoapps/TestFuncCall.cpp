@@ -84,9 +84,12 @@ public:
 };
 
 int main() {
+    scaler::ExtFuncCallHook::getInst("scalerdata_test")->install();
+    funcA();
+    callFuncA();
+    return 0;
     printf("Calling funcA\n");
 
-    scaler::ExtFuncCallHook::getInst()->install();
 
     auto actualStart = getunixtimestampms();
     pthread_t pt1 = pthread_self();

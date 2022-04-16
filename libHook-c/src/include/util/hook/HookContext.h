@@ -6,36 +6,56 @@
 #include <type/InvocationTree.h>
 #include "ExtFuncCallHook.h"
 
-extern "C" {
-class HookContext {
-public:
-    //todo: Initialize using maximum stack size
-    scaler::FStack<scaler::SymID, 8192> symId;
 
-    //Variables used to determine whether it's called by hook handler or not
-    scaler::FStack<void *, 8192> callerAddr;
-    scaler::FStack<long long, 8192> timeStamp;
+extern "C" {
+
+
+#define MAX_CALL_DEPTH 64 //N+1 because of dummy variable
+
+struct HookTuple{
+    uint64_t callerAddr;
+    int64_t timeStamp;
+    int64_t symId;
+};
+
+struct HookContext {
+    //todo: Initialize using maximum stack size
+    int64_t indexPosi;//8bytes
+    scaler::Array<uint64_t> *timingArr; //8bytes
     //Records which function calls which function for how long, the index is scalerid (Only contains hooked function)
     //todo: Replace timingMatrix to a class
-    int64_t curThreadNumber = 1; //The default one is main thread
-
+    int64_t curThreadNumber = 1; //The default one is main thread 8bytes
+    scaler::ExtFuncCallHook *_this = nullptr; //8bytes
     //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
-    bool isThreadCratedByMyself = false;
-    bool threadTerminatedPeacefully = false;
-    short initialized = 0;
-
-    scaler::InvocationTree *rootNode = nullptr;
-    scaler::InvocationTree *curNode = nullptr;
-    short curNodeLevel = 0; //Which level is curNode. This number is used to help afterhook to move curNode to the correct level and record. This is necessary since we don't know symbol address in prehook.
-    scaler::MemoryHeapArray<scaler::InvocationTree> memArrayHeap;
-
-    HookContext(ssize_t libFileSize, ssize_t hookedSymbolSize);
-
-    ~HookContext();
+    uint8_t isThreadCratedByMyself = false;
+    uint8_t threadTerminatedPeacefully = false;
+    uint8_t initialized = 0;
+    uint8_t pad1=0;
+    uint8_t pad2=0;
+    uint8_t pad3=0;
+    uint8_t pad4=0;
+    uint8_t pad5=0;
+    uint64_t dummy1=0;
+    uint64_t dummy2=0;
+    uint64_t dummy3=0;
+    //New cacheline
+    //Variables used to determine whether it's called by hook handler or not
+    HookTuple hookTuple[MAX_CALL_DEPTH]; //8bytes aligned
 };
 
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
+
+
+class DataSaver {
+public:
+    char initializeMe = 0;
+
+    ~DataSaver();
+};
+
+
+static thread_local DataSaver saverElem;
 
 extern __thread HookContext *curContext;
 

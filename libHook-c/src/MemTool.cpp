@@ -11,6 +11,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <cstring>
+#include <csignal>
 
 namespace scaler {
 
@@ -56,9 +57,12 @@ namespace scaler {
         if (mprotect(startPtrBound, memoryLength, prem) != 0) {
             ERR_LOGS("Could not change the process memory permission at %p-%p because: %s", startPtrBound, endPtrBound,
                      strerror(errno));
+            signal(SIGINT, 0);
             return false;
         }
         return true;
     }
+
+
 }
 #endif

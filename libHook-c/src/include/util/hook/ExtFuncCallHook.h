@@ -25,7 +25,7 @@ namespace scaler {
 
     class ExtFuncCallHook {
     public:
-        ExtFuncCallHook();
+        ExtFuncCallHook(std::string folderName);
 
         ExtFuncCallHook(ExtFuncCallHook &) = delete;
 
@@ -42,14 +42,13 @@ namespace scaler {
         Array<ELFImgInfo> elfImgInfoMap;//Mapping fileID to ELFImgInfo
         Array<ExtSymInfo> allExtSymbol;//All external symbols in ELF image
         Array<ssize_t> pltRelaIndexMap;//All external symbols in ELF image
-        ssize_t hookedExtSymSize = 0;
         uint8_t *callIdSavers = nullptr;
         uint8_t *ldCallers = nullptr;
+        std::string folderName;
 
         /**
          * Private constructor
          */
-        explicit ExtFuncCallHook(PmParser &parser);
 
         inline bool isSymbolAddrResolved(ExtSymInfo &symInfo) {
 //            //Check whether its value has 6 bytes offset as its plt entry start address
@@ -61,7 +60,7 @@ namespace scaler {
             return false;
         }
 
-        static ExtFuncCallHook *getInst();
+        static ExtFuncCallHook *getInst(std::string folderName);
 
         static ExtFuncCallHook *instance;
 
@@ -72,12 +71,12 @@ namespace scaler {
 
         inline bool
         parseSecInfos(ELFParser &elfParser, ELFSecInfo &pltInfo, ELFSecInfo &pltSecInfo, ELFSecInfo &gotInfo,
-                      uint8_t *baseAddr);
+                      uint8_t *baseAddr, uint8_t *startAddr, uint8_t *endAddr);
 
         bool
         parseSymbolInfo(ELFParser &parser, ssize_t fileId, uint8_t *baseAddr, ELFSecInfo &pltSection,
                         ELFSecInfo &pltSecureSection,
-                        ELFSecInfo &gotSec);
+                        ELFSecInfo &gotSec, uint8_t *startAddr, uint8_t *endAddr);
 
         bool makeGOTWritable(ELFSecInfo &gotSec, bool writable);
 
@@ -88,6 +87,8 @@ namespace scaler {
 
         bool fillAddrAndSymId2IdSaver(uint8_t *prehookAddr, uint32_t funcId, uint8_t *idSaverEntry);
 
+        bool fillAddrAndSymId2LdJumper(uint8_t *firstPltEntryAddr, uint32_t funcId, uint8_t *ldJumperEntry);
+
         void parseRequiredInfo();
 
         /**
@@ -95,6 +96,8 @@ namespace scaler {
          * @return
          */
         bool replacePltEntry();
+
+        void createRecordingFolder();
     };
 
 }

@@ -15,7 +15,13 @@ extern "C" {
 int doubletake_main(int argc, char **argv, char **envp) {
     INFO_LOGS("libHook-c Ver %s", CMAKE_SCALERRUN_VERSION);
     INFO_LOGS("Main thread id is%lu", pthread_self());
-    scaler::ExtFuncCallHook::getInst()->install();
+
+    std::stringstream ss;
+    ss << "scalerdata_" << getunixtimestampms();
+    scaler::ExtFuncCallHook::getInst(ss.str())->install();
+
+    INFO_LOG("Scaler install finished");
+
     int ret = real_main(argc, argv, envp);
     return ret;
 }
@@ -26,8 +32,7 @@ int doubletake_libc_start_main(main_fn_t main_fn, int argc, char **argv, void (*
     using namespace scaler;
     // Find the real __libc_start_main
     auto real_libc_start_main = (decltype(__libc_start_main) *) dlsym(RTLD_NEXT, "__libc_start_main");
-    if (!real_libc_start_main) {
-        fatalError("Cannot find __libc_start_main.");
+    if (!real_libc_start_main) { fatalError("Cannot find __libc_start_main.");
         return -1;
     }
     // Save the program's real main function

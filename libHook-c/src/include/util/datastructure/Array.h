@@ -111,6 +111,10 @@ namespace scaler {
             return size;
         }
 
+        virtual inline ssize_t getTypeSizeInBytes() {
+            return sizeof(T);
+        }
+
         virtual inline bool willExpand() {
             return size == internalArrSize;
         }
@@ -133,10 +137,11 @@ namespace scaler {
             return true;
         }
 
+        T *internalArr = nullptr;
+
     protected:
         ssize_t internalArrSize = 0;
         ssize_t size = 0;
-        T *internalArr = nullptr;
 
         virtual void expand(ssize_t minimumSize) {
             T *oldInternalArr = internalArr;

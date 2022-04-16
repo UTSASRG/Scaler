@@ -6,6 +6,8 @@
 #define SCALER_MEMORYTOOL_H
 
 #include <cstdio>
+#include <cstdint>
+
 
 //Address is aligned to page_size. Map addr to the starting of page boundary
 //mprotect requires address to be a page boundary
@@ -17,6 +19,16 @@ namespace scaler {
 
     bool adjustMemPerm(void *startPtr, void *endPtr, int prem);
 
+    inline uint8_t *autoAddBaseAddr(uint8_t *targetAddr, uint8_t *baseAddr, uint8_t *startAddr, uint8_t *endAddr) {
+        uint8_t *rlt = baseAddr + (uint64_t) targetAddr;
+        if (rlt < startAddr && endAddr > rlt) {
+            //Rlt not in the desired range
+            rlt = targetAddr;
+        } else if (startAddr <= targetAddr &&
+                   targetAddr <= endAddr) {
+            rlt = targetAddr;
+        }
+        return rlt;
+    }
 }
-
 #endif //SCALER_MEMORYTOOL_H
