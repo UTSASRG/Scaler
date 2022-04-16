@@ -29,7 +29,7 @@ namespace scaler {
 
         bool getSecHeader(const int secType, const std::string &secName, Elf64_Shdr &section);
 
-        void getExtSymbolInfo(ssize_t &relaSymId,const char *& funcName,Elf64_Word & bind, Elf64_Word& type);
+        void getExtSymbolInfo(ssize_t &relaSymId, const char *&funcName, Elf64_Word &bind, Elf64_Word &type);
 
         ssize_t getExtSymbolStrOffset(ssize_t &relaSymId);
 
@@ -44,6 +44,10 @@ namespace scaler {
 
         Elf64_Shdr *secHdr = nullptr;
         ssize_t secHdrSize = 0;
+
+        Elf64_Phdr *progHdr = nullptr;
+        ssize_t progHdrSize = 0;
+
         const char *secHdrStrtbl = nullptr;//Secion Name String Table
 
         Elf64_Dyn *dynSection = nullptr;
@@ -65,8 +69,8 @@ namespace scaler {
 
         bool readSecContentWoMemReuse(Elf64_Shdr &curSecHdr, void *&rltAddr, const ssize_t &oriSecSize);
 
-        void *parseSecLoc(Elf64_Shdr &curHeader, uint8_t *baseAddr);
-
+//        void *parseSecLoc(Elf64_Shdr &curHeader, uint8_t *baseAddr,uint8_t *possibleStartAddr,
+//                          uint8_t *possibleEndAddr);
 
 
     protected:
@@ -85,6 +89,7 @@ namespace scaler {
         inline bool readDynSymTable();
 
 
+        bool verifyDynamicLibrary();
     };
 
 }

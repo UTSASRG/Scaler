@@ -95,7 +95,8 @@ namespace scaler {
     ExtFuncCallHook *ExtFuncCallHook::getInst(std::string folderName) {
         if (!instance) {
             instance = new ExtFuncCallHook(folderName);
-            if (!instance) { fatalError("Cannot allocate memory for ExtFuncCallHookAsm");
+            if (!instance) {
+                fatalError("Cannot allocate memory for ExtFuncCallHookAsm");
                 return nullptr;
             }
         }
@@ -121,7 +122,8 @@ namespace scaler {
     }
 
     bool ExtFuncCallHook::parseSymbolInfo(ELFParser &parser, ssize_t fileId, uint8_t *baseAddr, ELFSecInfo &pltSection,
-                                          ELFSecInfo &pltSecureSection, ELFSecInfo &gotSec) {
+                                          ELFSecInfo &pltSecureSection, ELFSecInfo &gotSec, uint8_t *startAddr,
+                                          uint8_t *endAddr) {
 
         //assert(sizeof(ExtSymInfo) % 32 == 0); //Force memory allignment
         //INFO_LOGS("sizeof(ExtSymInfo)=%d", a);
@@ -142,7 +144,8 @@ namespace scaler {
         std::stringstream ss;
         ss << scaler::ExtFuncCallHook::instance->folderName << "/symbolInfo.txt";
         FILE *symInfoFile = fopen(ss.str().c_str(), "wb");
-        if (!symInfoFile) { fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
+        if (!symInfoFile) {
+            fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
         }
         fprintf(symInfoFile, "%s,%s,%s\n", "funcName", "fileId", "symIdInFile");
 
@@ -157,7 +160,8 @@ namespace scaler {
             }
             //Get function id from plt entry
 
-            uint8_t **gotAddr = reinterpret_cast<uint8_t **>(parser.getRelaOffset(i) + baseAddr);
+            uint8_t **gotAddr = (uint8_t **) autoAddBaseAddr((uint8_t *) (parser.getRelaOffset(i)), baseAddr, startAddr,
+                                                             endAddr);
             uint8_t *curGotDest = *gotAddr;
             uint8_t *pltSecEntry = nullptr;
 
@@ -447,7 +451,7 @@ namespace scaler {
 
     bool ExtFuncCallHook::parseSecInfos(ELFParser &elfParser, ELFSecInfo &pltInfo, ELFSecInfo &pltSecInfo,
                                         ELFSecInfo &gotInfo,
-                                        uint8_t *baseAddr) {
+                                        uint8_t *baseAddr, uint8_t *startAddr, uint8_t *endAddr) {
         Elf64_Shdr pltHdr;
         if (!elfParser.getSecHeader(SHT_PROGBITS, ".plt", pltHdr)) {
             ERR_LOG("Cannot read .plt header");
@@ -473,12 +477,12 @@ namespace scaler {
         gotInfo.entrySize = gotHdr.sh_entsize;
 
 
-        pltInfo.startAddr = static_cast<uint8_t *>(elfParser.parseSecLoc(pltHdr, baseAddr));
-        gotInfo.startAddr = static_cast<uint8_t *>(elfParser.parseSecLoc(gotHdr, baseAddr));
+        pltInfo.startAddr = autoAddBaseAddr((uint8_t *) pltHdr.sh_addr, baseAddr, startAddr, endAddr);
+        gotInfo.startAddr = autoAddBaseAddr((uint8_t *) gotHdr.sh_addr, baseAddr, startAddr, endAddr);
 
         if (pltSecInfo.entrySize > 0) {
             //Have .plt.sec table
-            pltSecInfo.startAddr = static_cast<uint8_t *>(elfParser.parseSecLoc(pltSecHdr, baseAddr));
+            pltSecInfo.startAddr = autoAddBaseAddr((uint8_t *) pltSecHdr.sh_addr, baseAddr, startAddr, endAddr);
         } else {
             pltSecInfo.startAddr = nullptr;
         }
@@ -507,7 +511,8 @@ namespace scaler {
             pushOffset = 7;
         } else if (*dest == 0xF3) {
             pushOffset = 5;
-        } else { fatalError("Plt entry format illegal. Cannot find instruction \"push id\"");
+        } else {
+            fatalError("Plt entry format illegal. Cannot find instruction \"push id\"");
         }
 
         //Debug tips: Add breakpoint after this statement, and *pltStubId should be 0 at first, 2 at second .etc
@@ -562,40 +567,44 @@ namespace scaler {
         uint8_t *prevFileBaseAddr = pmParser.pmEntryArray[0].addrStart;
         std::string curFileName;
 
-        for (int i = 0; i < pmParser.pmEntryArray.getSize(); ++i) {
-            PMEntry &curPmEntry = pmParser.pmEntryArray[i];
-            //DBG_LOGS("%hd", curPmEntry.fileId);
-        }
-
         //Get segment info from /proc/self/maps
         for (int i = 0; i < pmParser.pmEntryArray.getSize(); ++i) {
             PMEntry &curPmEntry = pmParser.pmEntryArray[i];
 
             if (prevFileId != -1 && prevFileId != curPmEntry.fileId) {
                 //A new file discovered
-
-                //Find the entry size of plt and got
-                ELFSecInfo pltInfo;
-                ELFSecInfo pltSecInfo;
-                ELFSecInfo gotInfo;
-
-                //todo: We assume plt and got entry size is the same.
-                if (!parseSecInfos(elfParser, pltInfo, pltSecInfo, gotInfo, prevFileBaseAddr)) { fatalError(
-                            "Failed to parse plt related sections.");
-                    exit(-1);
-                }
+                curFileName = pmParser.fileNameArr[prevFileId];
+                ERR_LOGS("%s %p", curFileName.c_str(), prevFileBaseAddr);
                 ELFImgInfo *curElfImgInfo = elfImgInfoMap.pushBack();
-                curElfImgInfo->pltStartAddr = pltInfo.startAddr;
-                curElfImgInfo->pltSecStartAddr = pltSecInfo.startAddr;
-                curElfImgInfo->gotStartAddr = gotInfo.startAddr;
+                curElfImgInfo->valid = false;
+                if (elfParser.parse(curFileName.c_str())) {
+                    //Find the entry size of plt and got
+                    ELFSecInfo pltInfo;
+                    ELFSecInfo pltSecInfo;
+                    ELFSecInfo gotInfo;
 
-                DBG_LOGS("%zd:%s %p pltSecStartAddr=%p", prevFileId, pmParser.fileNameArr[prevFileId].c_str(),
-                         prevFileBaseAddr, pltSecInfo.startAddr);
+                    //todo: We assume plt and got entry size is the same.
+                    if (!parseSecInfos(elfParser, pltInfo, pltSecInfo, gotInfo, prevFileBaseAddr, prevFileBaseAddr,
+                                       pmParser.pmEntryArray[i - 1].addrEnd)) {
+                        fatalError(
+                                "Failed to parse plt related sections.");
+                        exit(-1);
+                    }
+                    curElfImgInfo->pltStartAddr = pltInfo.startAddr;
+                    curElfImgInfo->pltSecStartAddr = pltSecInfo.startAddr;
+                    curElfImgInfo->gotStartAddr = gotInfo.startAddr;
 
-                //Install hook on this file
-                if (!parseSymbolInfo(elfParser, prevFileId, prevFileBaseAddr, pltInfo, pltSecInfo,
-                                     gotInfo)) { fatalErrorS("installation for file %s failed.", curFileName.c_str());
-                    exit(-1);
+                    ERR_LOGS("%zd:%s %p pltStartAddr=%p", prevFileId, pmParser.fileNameArr[prevFileId].c_str(),
+                             prevFileBaseAddr, pltInfo.startAddr);
+
+                    //Install hook on this file
+                    if (!parseSymbolInfo(elfParser, prevFileId, prevFileBaseAddr, pltInfo, pltSecInfo,
+                                         gotInfo, prevFileBaseAddr, pmParser.pmEntryArray[i - 1].addrEnd)) {
+                        fatalErrorS("installation for file %s failed.", curFileName.c_str());
+                        exit(-1);
+                    }
+                    curElfImgInfo->valid = true;
+
                 }
                 prevFileBaseAddr = curPmEntry.addrStart;
             }
@@ -603,12 +612,6 @@ namespace scaler {
             //Move on to the next entry
             if (curPmEntry.fileId != -1) {
                 prevFileId = curPmEntry.fileId;
-
-                curFileName = pmParser.fileNameArr[curPmEntry.fileId];
-                if (!elfParser.parse(curFileName.c_str())) { fatalErrorS("Failed to parse elf file: %s",
-                                                                         curFileName.c_str());
-                    exit(-1);
-                }
             } else {
                 //This is the guard entry, break
                 break;
@@ -639,7 +642,8 @@ namespace scaler {
         for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
 
             if (!fillAddrAndSymId2IdSaver((uint8_t *) &asmHookHandler, curSymId,
-                                          curCallIdSaver)) { fatalError(
+                                          curCallIdSaver)) {
+                fatalError(
                         "fillAddrAndSymId2IdSaver failed, this should not happen");
             }
             curCallIdSaver += sizeof(idSaverBin);
@@ -657,7 +661,8 @@ namespace scaler {
         for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
             ELFImgInfo &curImgInfo = elfImgInfoMap[allExtSymbol[curSymId].fileId];
             if (!fillAddrAndSymId2LdJumper((uint8_t *) curImgInfo.pltStartAddr, allExtSymbol[curSymId].pltStubId,
-                                           curLdCaller)) { fatalError(
+                                           curLdCaller)) {
+                fatalError(
                         "fillAddrAndSymId2IdSaver failed, this should not happen");
             }
             curLdCaller += sizeof(ldJumperBin);
@@ -673,12 +678,14 @@ namespace scaler {
             ExtSymInfo &curSym = allExtSymbol[curSymId];
             if (curSym.pltSecEntryAddr) {
                 //Replace .plt.sec
-                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltSecEntryAddr)) { fatalError(
+                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltSecEntryAddr)) {
+                    fatalError(
                             "pltSecAddr installation failed, this should not happen");
                 }
             } else {
                 //Replace .plt
-                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltEntryAddr)) { fatalError(
+                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltEntryAddr)) {
+                    fatalError(
                             "pltEntry installation failed, this should not happen");
                 }
             }
@@ -692,8 +699,9 @@ namespace scaler {
 
     void ExtFuncCallHook::createRecordingFolder() {
         //sprintf(folderName, "scalerdata_%lu", getunixtimestampms());
-        if (mkdir(folderName.c_str(), 0755) == -1) { fatalErrorS("Cannot mkdir ./%s because: %s", folderName,
-                                                                 strerror(errono));
+        if (mkdir(folderName.c_str(), 0755) == -1) {
+            fatalErrorS("Cannot mkdir ./%s because: %s", folderName.c_str(),
+                        strerror(errno));
         }
 
     }

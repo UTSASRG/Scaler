@@ -42,6 +42,11 @@ namespace scaler {
             return false;
         }
 
+        if (!verifyDynamicLibrary()) {
+            return false;
+        }
+
+
         if (!readELFSectionHeader()) {
             return false;
         }
@@ -88,7 +93,10 @@ namespace scaler {
         secHdrSize = elfHdr.e_shnum;
 
         //Read all section headers
-        secHdr = static_cast<Elf64_Shdr *>(malloc(elfHdr.e_shnum * sizeof(Elf64_Shdr)));
+        if (!secHdr || elfHdr.e_shnum > secHdrSize) {
+            secHdr = static_cast<Elf64_Shdr *>(malloc(elfHdr.e_shnum * sizeof(Elf64_Shdr)));
+            secHdrSize = elfHdr.e_shnum;
+        }
         if (!fread(secHdr, sizeof(ElfW(Shdr)), elfHdr.e_shnum, file)) {
             ERR_LOGS("Failed to read elfHdr because: %s", strerror(errno));
             return false;
@@ -132,6 +140,8 @@ namespace scaler {
             free(dynSymTbl);
         if (dynStrTbl)
             free((void *) dynStrTbl);
+        if (progHdr)
+            free(progHdr);
     }
 
     bool ELFParser::readSecContent(Elf64_Shdr &curSecHdr, void *&rltAddr,
@@ -218,7 +228,6 @@ namespace scaler {
     }
 
 
-
     inline bool ELFParser::readDynStrTable() {
         Elf64_Shdr curHeader;
         if (!getSecHeader(SHT_STRTAB, ".dynstr", curHeader)) {
@@ -284,31 +293,58 @@ namespace scaler {
         return relaSection[relaSymId].r_offset;
     }
 
-    void *ELFParser::parseSecLoc(Elf64_Shdr &curHeader, uint8_t *baseAddr) {
+//    void *ELFParser::parseSecLoc(Elf64_Shdr &curHeader, uint8_t *baseAddr, uint8_t *possibleStartAddr,
+//                                 uint8_t *possibleEndAddr) {
+//        assert(possibleStartAddr != nullptr);
+//        assert(possibleEndAddr != nullptr);
 
-        void *rlt = baseAddr + curHeader.sh_addr;
+//        void *rlt = autoAddBaseAddr((uint8_t*)curHeader.sh_addr,baseAddr,possibleStartAddr,possibleEndAddr);
+
 
 #ifndef NDEBUG
-//        //Compare bit by bit between rlt and content read from file.
-//
-//        uint8_t *pltFromFile = nullptr;
-//        if (!readSecContent(curHeader,
-//                            reinterpret_cast<void *&>(pltFromFile), 0)) {
-//            fatalError("Cannot parse .plt from elf file");
-//        }
-//
-//        for (int i = 0; i < min<Elf64_Xword>(16 * 4, curHeader.sh_size); ++i) {
-//            assert(pltFromFile[i] == *((uint8_t *) rlt + i));
-//        }
-//        free(pltFromFile);
+        //        //Compare bit by bit between rlt and content read from file.
+        //
+        //        uint8_t *pltFromFile = nullptr;
+        //        if (!readSecContent(curHeader,
+        //                            reinterpret_cast<void *&>(pltFromFile), 0)) {
+        //            fatalError("Cannot parse .plt from elf file");
+        //        }
+        //
+        //        for (int i = 0; i < min<Elf64_Xword>(16 * 4, curHeader.sh_size); ++i) {
+        //            assert(pltFromFile[i] == *((uint8_t *) rlt + i));
+        //        }
+        //        free(pltFromFile);
 #endif
-        return rlt;
-    }
+//        return rlt;
+//    }
 
     ssize_t ELFParser::getExtSymbolStrOffset(ssize_t &relaSymId) {
         ssize_t relIdx = ELF64_R_SYM(relaSection[relaSymId].r_info);
         ssize_t strIdx = dynSymTbl[relIdx].st_name;
         return strIdx;
+    }
+
+    bool ELFParser::verifyDynamicLibrary() {
+
+        if (!progHdr || progHdrSize < elfHdr.e_phnum) {
+            //Read all section headers
+            progHdr = static_cast<Elf64_Phdr *>(malloc(elfHdr.e_phnum * sizeof(Elf64_Phdr)));
+            progHdrSize = elfHdr.e_phnum;
+        }
+
+        if (!fread(progHdr, sizeof(Elf64_Phdr), progHdrSize, file)) {
+            ERR_LOGS("Failed to read elfHdr because: %s", strerror(errno));
+            return false;
+        }
+        bool foundProgHdr = false;
+        for (int i = 0; i < progHdrSize; ++i) {
+            if (progHdr[i].p_type == PT_DYNAMIC) {
+                foundProgHdr = true;
+                return true;
+            }
+        }
+
+        return foundProgHdr;
     }
 
 

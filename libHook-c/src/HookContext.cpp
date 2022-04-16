@@ -32,6 +32,8 @@ HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
 }
 
 bool initTLS() {
+    assert(scaler::ExtFuncCallHook::instance != nullptr);
+
     //Put a dummy variable to avoid null checking
     //Initialize saving data structure
     curContext = constructContext(
@@ -63,13 +65,13 @@ DataSaver::~DataSaver() {
     INFO_LOGS("Saving timing data to %s", ss.str().c_str());
     FILE *threadDataSaver = fopen(ss.str().c_str(), "wb");
     if (!threadDataSaver) { fatalErrorS("Cannot fopen %s because:%s", ss.str().c_str(),
-                                        strerrno(errno));
+                                        strerror(errno));
     }
 
     if (fwrite(curContextPtr->timingArr->data(), curContextPtr->timingArr->getTypeSizeInBytes(),
                curContextPtr->timingArr->getSize(), threadDataSaver) !=
         curContextPtr->timingArr->getSize()) { fatalErrorS("Cannot write %s because:%s", ss.str().c_str(),
-                                                           strerrno(errno))
+                                                           strerror(errno))
     }
     fclose(threadDataSaver);
 }

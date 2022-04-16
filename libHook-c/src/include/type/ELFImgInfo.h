@@ -13,6 +13,7 @@ namespace scaler {
         uint8_t *pltSecStartAddr;
         uint8_t *gotStartAddr;
         int64_t firstSymIndex;
+        bool valid = false;
     };
 }
 #endif //SCALER_ELFIMGINFO_H

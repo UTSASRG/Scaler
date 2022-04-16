@@ -71,12 +71,12 @@ namespace scaler {
 
         inline bool
         parseSecInfos(ELFParser &elfParser, ELFSecInfo &pltInfo, ELFSecInfo &pltSecInfo, ELFSecInfo &gotInfo,
-                      uint8_t *baseAddr);
+                      uint8_t *baseAddr, uint8_t *startAddr, uint8_t *endAddr);
 
         bool
         parseSymbolInfo(ELFParser &parser, ssize_t fileId, uint8_t *baseAddr, ELFSecInfo &pltSection,
                         ELFSecInfo &pltSecureSection,
-                        ELFSecInfo &gotSec);
+                        ELFSecInfo &gotSec, uint8_t *startAddr, uint8_t *endAddr);
 
         bool makeGOTWritable(ELFSecInfo &gotSec, bool writable);
 

@@ -2,7 +2,7 @@ project(Hook VERSION 0.1.7)
 
 # Set global (Relative this folder until reset) compiler options
 
-set(SCALER_HOOK_COMPILATION_FLAGS "-O4" "-g" "-Werror")
+set(SCALER_HOOK_COMPILATION_FLAGS "-O0" "-g" "-Werror")
 # https://json.nlohmann.me/integration/cmake/
 
 

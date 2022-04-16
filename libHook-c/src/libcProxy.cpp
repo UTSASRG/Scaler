@@ -19,6 +19,9 @@ int doubletake_main(int argc, char **argv, char **envp) {
     std::stringstream ss;
     ss << "scalerdata_" << getunixtimestampms();
     scaler::ExtFuncCallHook::getInst(ss.str())->install();
+
+    INFO_LOG("Scaler install finished");
+
     int ret = real_main(argc, argv, envp);
     return ret;
 }
