@@ -6,9 +6,9 @@
 
 extern "C" {
 
-static ssize_t bucketSize;
-static uint8_t *hookBaseAddr;
 
+extern uint8_t *callIdSavers;
+extern uint8_t *ldCallers;
 void __attribute__((naked)) asmHookHandler();
 /**
 * A handler written in C. It calls custom handler and calculates actual function address

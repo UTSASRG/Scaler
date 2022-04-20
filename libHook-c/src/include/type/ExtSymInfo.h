@@ -20,7 +20,7 @@ namespace scaler {
         uint8_t *pltEntryAddr = nullptr; //(8 bytes)
         uint8_t *pltSecEntryAddr = nullptr; //(8 bytes)
         uint64_t pltStubId = 0; //(8 bytes)
-        FileID libFileId = -1; //(8 bytes)
+        FileID libFileId = -1; //(8 bytes) Deprecated, move to a dedicated array
         bool addrResolved = false;
         char padding1;
         char padding2;

@@ -25,18 +25,30 @@ namespace scaler {
     bool ExtFuncCallHook::install() {
         createRecordingFolder();
 
+        std::stringstream ss;
+        ss << scaler::ExtFuncCallHook::instance->folderName << "/symbolInfo.txt";
+        FILE *symInfoFile = fopen(ss.str().c_str(), "a");
+        if (!symInfoFile) {
+            fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
+        }
+        fprintf(symInfoFile, "%s,%s,%s\n", "funcName", "fileId", "symIdInFile");
+        fclose(symInfoFile);
+
+        ERR_LOG("Here am I");
+
         //Parse filenames
         pmParser.parsePMMap();
         //Get pltBaseAddr
 
         parseRequiredInfo();
 
-        replacePltEntry();
-
         if (!initTLS()) {
             ERR_LOG("Failed to initialize TLS");
             //This is the main thread
         }
+
+        replacePltEntry();
+
 
         DBG_LOG("Finished installation");
 
@@ -143,12 +155,10 @@ namespace scaler {
         }
         std::stringstream ss;
         ss << scaler::ExtFuncCallHook::instance->folderName << "/symbolInfo.txt";
-        FILE *symInfoFile = fopen(ss.str().c_str(), "wb");
+        FILE *symInfoFile = fopen(ss.str().c_str(), "a");
         if (!symInfoFile) {
             fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
         }
-        fprintf(symInfoFile, "%s,%s,%s\n", "funcName", "fileId", "symIdInFile");
-
         assert(pltSection.size / pltSection.entrySize == parser.relaEntrySize + 1);
         for (ssize_t i = 0; i < parser.relaEntrySize; ++i) {
             const char *funcName;
@@ -193,7 +203,7 @@ namespace scaler {
                     newSym->addrResolved ? "Resolved" : "Unresolved", fileId,
                     newSym->symIdInFile, newSym->pltEntryAddr, newSym->pltSecEntryAddr);
         }
-
+        fclose(symInfoFile);
         return true;
     }
 
@@ -262,6 +272,8 @@ namespace scaler {
             } else if (strncmp(funcName, "_setjmp", 7) == 0) {
                 return false;
             }
+
+
         } else if (funcNameLen == 8) {
             if (strncmp(funcName, "_longjmp", 8) == 0) {
                 return false;
@@ -574,7 +586,7 @@ namespace scaler {
             if (prevFileId != -1 && prevFileId != curPmEntry.fileId) {
                 //A new file discovered
                 curFileName = pmParser.fileNameArr[prevFileId];
-                ERR_LOGS("%s %p", curFileName.c_str(), prevFileBaseAddr);
+                //ERR_LOGS("%s %p", curFileName.c_str(), prevFileBaseAddr);
                 ELFImgInfo *curElfImgInfo = elfImgInfoMap.pushBack();
                 curElfImgInfo->valid = false;
                 if (elfParser.parse(curFileName.c_str())) {
@@ -627,7 +639,7 @@ namespace scaler {
         callIdSavers = static_cast<uint8_t *>(mmap(NULL, allExtSymbol.getSize() * sizeof(idSaverBin),
                                                    PROT_READ | PROT_WRITE,
                                                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
-        //Allocate ldCaller (ldCaller has the smae structure as idSaver)
+
         ldCallers = static_cast<uint8_t *>(mmap(NULL, allExtSymbol.getSize() * sizeof(idSaverBin),
                                                 PROT_READ | PROT_WRITE,
                                                 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));

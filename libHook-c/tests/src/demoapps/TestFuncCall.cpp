@@ -84,10 +84,8 @@ public:
 };
 
 int main() {
-    scaler::ExtFuncCallHook::getInst("scalerdata_test")->install();
     funcA();
     callFuncA();
-    return 0;
     printf("Calling funcA\n");
 
 

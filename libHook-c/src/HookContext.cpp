@@ -1,4 +1,6 @@
 #include <util/hook/HookContext.h>
+#include <util/tool/Timer.h>
+#include <util/tool/FileTool.h>
 
 extern "C" {
 
@@ -6,6 +8,7 @@ HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
 
     HookContext *rlt = new HookContext();
     rlt->timingArr = new scaler::Array<uint64_t>(hookedSymbolSize);
+    rlt->timingArr->setSize(hookedSymbolSize);
 //    memArrayHeap(1), timingArr(hookedSymbolSize),
 //            indexPosi(0)
 
@@ -41,7 +44,8 @@ bool initTLS() {
             scaler::ExtFuncCallHook::instance->allExtSymbol.getSize() + 1);
 
 
-    if (!curContext) { fatalError("Failed to allocate memory for Context");
+    if (!curContext) {
+        fatalError("Failed to allocate memory for Context");
         return false;
     }
 
@@ -56,23 +60,69 @@ __thread uint8_t bypassCHooks __attribute((tls_model("initial-exec"))) = SCALER_
 
 DataSaver::~DataSaver() {
     bypassCHooks = SCALER_TRUE;
-    if (!curContext) { fatalError("curContext is not initialized, won't save anything");
+    HookContext *curContextPtr = curContext;
+    if (!curContextPtr->endTImestamp) {
+        //Not finished succesfully
+        curContextPtr->endTImestamp = getunixtimestampms();
+    }
+
+    if (!curContext) {
+        fatalError("curContext is not initialized, won't save anything");
         return;
     }
-    HookContext *curContextPtr = curContext;
     std::stringstream ss;
     ss << scaler::ExtFuncCallHook::instance->folderName << "/threadTiming_" << pthread_self() << ".bin";
     INFO_LOGS("Saving timing data to %s", ss.str().c_str());
     FILE *threadDataSaver = fopen(ss.str().c_str(), "wb");
-    if (!threadDataSaver) { fatalErrorS("Cannot fopen %s because:%s", ss.str().c_str(),
-                                        strerror(errno));
+    if (!threadDataSaver) {
+        fatalErrorS("Cannot fopen %s because:%s", ss.str().c_str(),
+                    strerror(errno));
     }
 
+    //Main application at the end
+    curContextPtr->timingArr->internalArr[curContextPtr->timingArr->getSize() - 1] =
+            curContextPtr->endTImestamp - curContextPtr->startTImestamp;
+
+
+    if (fwrite(&curContextPtr->curFileId, sizeof(HookContext::curFileId), 1, threadDataSaver) != 1) {
+        fatalErrorS("Cannot curFileId of %s because:%s", ss.str().c_str(),
+                    strerror(errno));
+    }
+
+    int64_t timeEntrySize = curContextPtr->timingArr->getSize();
+    if (fwrite(&timeEntrySize, sizeof(int64_t), 1, threadDataSaver) != 1) {
+        fatalErrorS("Cannot write timeEntrySize of %s because:%s", ss.str().c_str(),
+                    strerror(errno));
+    }
     if (fwrite(curContextPtr->timingArr->data(), curContextPtr->timingArr->getTypeSizeInBytes(),
                curContextPtr->timingArr->getSize(), threadDataSaver) !=
-        curContextPtr->timingArr->getSize()) { fatalErrorS("Cannot write %s because:%s", ss.str().c_str(),
-                                                           strerror(errno))
+        curContextPtr->timingArr->getSize()) {
+        fatalErrorS("Cannot write timingArr of %s because:%s", ss.str().c_str(),
+                    strerror(errno));
     }
+
+    if (curContextPtr->isMainThread) {
+        ss.str("");
+        ss << scaler::ExtFuncCallHook::instance->folderName << "/realFileId.bin";
+        //The real id of each function is resolved in after hook, so I can only save it in datasaver
+
+        int fd;
+
+        size_t realFileIdSizeInBytes = (curContextPtr->_this->allExtSymbol.getSize() + 1) * sizeof(ssize_t);
+        size_t *realFileIdMem = nullptr;
+        if (!scaler::fOpen4Write<size_t>(ss.str().c_str(), fd, realFileIdSizeInBytes, realFileIdMem)) {
+            fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
+        }
+
+        for (int i = 0; i < curContextPtr->_this->allExtSymbol.getSize(); ++i) {
+            realFileIdMem[i] = curContextPtr->_this->pmParser.findExecNameByAddr(*(curContextPtr->_this->allExtSymbol[i].gotEntryAddr));
+        }
+        if (!scaler::fClose<size_t>(fd, realFileIdSizeInBytes, realFileIdMem)) {
+            fatalError("Cannot close file");
+        }
+    }
+
+
     fclose(threadDataSaver);
 }
 

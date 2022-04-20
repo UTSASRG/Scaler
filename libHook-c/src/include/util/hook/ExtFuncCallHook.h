@@ -42,8 +42,7 @@ namespace scaler {
         Array<ELFImgInfo> elfImgInfoMap;//Mapping fileID to ELFImgInfo
         Array<ExtSymInfo> allExtSymbol;//All external symbols in ELF image
         Array<ssize_t> pltRelaIndexMap;//All external symbols in ELF image
-        uint8_t *callIdSavers = nullptr;
-        uint8_t *ldCallers = nullptr;
+
         std::string folderName;
 
         /**

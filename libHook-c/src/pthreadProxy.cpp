@@ -1,5 +1,6 @@
 #include <util/hook/proxy/pthreadProxy.h>
 #include <util/hook/HookContext.h>
+#include <util/tool/Timer.h>
 
 extern "C" {
 typedef int (*pthread_create_origt)(pthread_t *, const pthread_attr_t *, void *(*)(void *), void *);
@@ -39,14 +40,15 @@ void *dummy_thread_function(void *data) {
     args = nullptr;
 
     HookContext *curContextPtr = curContext;
-
-    //curContextPtr->threadCreationTimestamp = getunixtimestampms();
+    assert(curContextPtr != NULL);
+    curContextPtr->curFileId = curContextPtr->_this->pmParser.findExecNameByAddr(
+            (void *) actualFuncPtr);
+    curContextPtr->startTImestamp = getunixtimestampms();
     actualFuncPtr(argData);
     /**
      * Perform required actions after each thread function completes
      */
-    curContextPtr->threadTerminatedPeacefully = true;
-    //curContextPtr->threadTerminateTimestamp = getunixtimestampms();
+    curContextPtr->endTImestamp = getunixtimestampms();
 
     return nullptr;
 }
@@ -62,7 +64,8 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     //    fatalError("Failed to parse the caller address for pthread_create")
     //    exit(-1);
     //}
-    DBG_LOGS("%lu created a thread pthread_create", pthread_self());
+    ERR_LOG("Pthread create");
+
 
     if (pthread_create_orig == nullptr) {
         //load plt hook address

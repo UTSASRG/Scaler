@@ -6,7 +6,6 @@
       <file path="$PROJECT_DIR$/Analyzer/PerfDataImporter/src" />
     </sourceRoots>
     <excludeRoots>
-      <file path="$PROJECT_DIR$/Analyzer" />
       <file path="$PROJECT_DIR$/libHook" />
     </excludeRoots>
   </component>

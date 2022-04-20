@@ -94,3 +94,6 @@ bool scaler::getPWD(std::string &retPwdPath) {
         return true;
     }
 }
+
+
+

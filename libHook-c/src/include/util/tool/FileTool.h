@@ -10,6 +10,11 @@
 #include <cstdio>
 #include <vector>
 #include <sstream>
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <cstring>
+#include <unistd.h>
+#include "Logging.h"
 
 namespace scaler {
     /**
@@ -32,7 +37,49 @@ namespace scaler {
 
     bool extractFileName(std::string absolutePath, std::string &pathName, std::string &fileName);
 
-    bool getPWD(std::string& retPwdPath);
+    bool getPWD(std::string &retPwdPath);
+
+    /**
+     * Open a new file and write to it
+     * @param fd Returned file descriptor
+     * @param rltMemAddr
+     * @return Success or not
+     */
+    template<typename T>
+    bool fOpen4Write(const char *fileName, int &fd, size_t fileSizeInBytes, T *&rltMemAddr){
+        fd = open(fileName, O_RDWR | O_CREAT | O_TRUNC, (mode_t) 0644);
+        if (fd == -1) {
+            ERR_LOGS("Cannot open %s because:%s", fileName, strerror(errno));
+            return false;
+        }
+
+        rltMemAddr = (T *) mmap(NULL, fileSizeInBytes,
+                                   PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        if (rltMemAddr == MAP_FAILED) {
+            ERR_LOGS("Cannot mmap %s because:%s", fileName, strerror(errno));
+            close(fd);
+            return false;
+        }
+
+        if (ftruncate(fd, fileSizeInBytes) == -1) {
+            ERR_LOGS("Cannot truncate %s because:%s", fileName, strerror(errno));
+            close(fd);
+            return false;
+        }
+
+        return true;
+    }
+
+    template<typename T>
+    bool fClose(int &fd, size_t fileSizeInBytes, T *&rltMemAddr) {
+        if (munmap(rltMemAddr, fileSizeInBytes) == -1) {
+            ERR_LOG("Cannot close file");
+            return false;
+        }
+        close(fd);
+        return true;
+    }
+
 }
 
 

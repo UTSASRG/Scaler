@@ -209,20 +209,29 @@ void __attribute__((naked)) asmHookHandler() {
     );
 
 }
-
+uint8_t *callIdSavers=nullptr;
+uint8_t *ldCallers=nullptr;
 
 //Return magic number definition:
-// 1234: address resolved, pre-hook only (Fastest)
-// else pre+afterhook. Check hook installation in afterhook
+//1234: address resolved, pre-hook only (Fastest)
+//else pre+afterhook. Check hook installation in afterhook
 __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId) {
     HookContext *curContextPtr = curContext;
+    void *retOriFuncAddr = nullptr;
+
+    if (unlikely(curContextPtr == NULL)) {
+        retOriFuncAddr = ldCallers + symId * 32;
+        //Skip afterhook
+        asm volatile ("movq $1234, %%rdi" : /* No outputs. */
+        :/* No inputs. */:"rdi");
+        return retOriFuncAddr;
+    }
 
     //Assumes _this->allExtSymbol won't change
     scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symId];
-    void *retOriFuncAddr = nullptr;
 
     if (unlikely(!curElfSymInfo.addrResolved)) {
-        retOriFuncAddr = curContextPtr->_this->ldCallers + symId * 32;
+        retOriFuncAddr = ldCallers + symId * 32;
     } else {
         retOriFuncAddr = *curElfSymInfo.gotEntryAddr;
     }
@@ -232,12 +241,7 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
      * This may happen for external function call before the initTLS in dummy thread function
      */
 
-    if (unlikely(curContextPtr == NULL)) {
-        //Skip afterhook
-        asm volatile ("movq $1234, %%rdi" : /* No outputs. */
-        :/* No inputs. */:"rdi");
-        return retOriFuncAddr;
-    } else if (unlikely(bypassCHooks == SCALER_TRUE)) {
+    if (unlikely(bypassCHooks == SCALER_TRUE)) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
@@ -298,8 +302,8 @@ void *afterHookHandler() {
     if (unlikely(!curElfSymInfo.addrResolved)) {
         curElfSymInfo.addrResolved = true;
         //Resolve address
-        curElfSymInfo.libFileId = curContextPtr->_this->pmParser.findExecNameByAddr(*curElfSymInfo.gotEntryAddr);
-        assert(curElfSymInfo.libFileId != -1);
+        //curElfSymInfo.libFileId = curContextPtr->_this->pmParser.findExecNameByAddr(*curElfSymInfo.gotEntryAddr);
+        //assert(curElfSymInfo.libFileId != -1);
     }
 
     DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu",
