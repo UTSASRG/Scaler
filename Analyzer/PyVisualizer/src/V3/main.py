@@ -17,7 +17,10 @@ def parsePthreadId(fileNameList):
     raise Exception('Cannot find pthread library in fileList')
 
 
-scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
+# scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
+
+scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/swaptions/scalerdata_30493032039599146'
+
 df = pd.read_csv(os.path.join(scalerDataFolder, 'fileName.txt'))
 fileNameList = df['pathName'].to_list()
 pthreadFileId = parsePthreadId(fileNameList)
@@ -90,13 +93,13 @@ def generateTimingStruct(aggregatedTimeEntries):
     for i in range(len(timingRecord)):
         curFileRecord = timingRecord[i]
         curFileRecord.selfDuration += curFileRecord.totalDuration
-        curFileRecord.selfDurationPercent = curFileRecord.selfDuration / applicationDuration * 100
+        curFileRecord.selfDurationPerc0ent = curFileRecord.selfDuration / applicationDuration * 100
         for j in curFileRecord.extFileTiming.keys():
             curExtFileRecord = curFileRecord.extFileTiming[j]
             curExtFileRecord.totalExtTimePercent = curExtFileRecord.totalExtTime/curFileRecord.totalDuration * 100
             for k in curExtFileRecord.extSymTiming.keys():
                 curExtSymRecord = curExtFileRecord.extSymTiming[k]
-                curExtSymRecord.timePercent = curExtSymRecord.time / curExtFileRecord.totalExtTime
+                curExtSymRecord.timePercent = curExtSymRecord.time / curExtFileRecord.totalExtTime * 100
 
     print(timingRecord)
 
