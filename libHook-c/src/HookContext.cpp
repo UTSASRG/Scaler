@@ -59,8 +59,19 @@ __thread HookContext *curContext __attribute((tls_model("initial-exec")));
 __thread uint8_t bypassCHooks __attribute((tls_model("initial-exec"))) = SCALER_FALSE; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
 
 DataSaver::~DataSaver() {
+    saveData();
+}
+
+void saveData() {
     bypassCHooks = SCALER_TRUE;
     HookContext *curContextPtr = curContext;
+
+    if (curContextPtr->dataSaved) {
+        DBG_LOG("Data already saved for this thread");
+        return;
+    }
+    curContextPtr->dataSaved = true;
+
     if (!curContextPtr->endTImestamp) {
         //Not finished succesfully
         curContextPtr->endTImestamp = getunixtimestampms();
@@ -72,7 +83,7 @@ DataSaver::~DataSaver() {
     }
     std::stringstream ss;
     ss << scaler::ExtFuncCallHook::instance->folderName << "/threadTiming_" << pthread_self() << ".bin";
-    INFO_LOGS("Saving timing data to %s", ss.str().c_str());
+    //INFO_LOGS("Saving timing data to %s", ss.str().c_str());
     FILE *threadDataSaver = fopen(ss.str().c_str(), "wb");
     if (!threadDataSaver) {
         fatalErrorS("Cannot fopen %s because:%s", ss.str().c_str(),
@@ -100,6 +111,7 @@ DataSaver::~DataSaver() {
         fatalErrorS("Cannot write timingArr of %s because:%s", ss.str().c_str(),
                     strerror(errno));
     }
+    INFO_LOGS("Saving data to %s, %lu", scaler::ExtFuncCallHook::instance->folderName.c_str(),pthread_self());
 
     if (curContextPtr->isMainThread) {
         ss.str("");

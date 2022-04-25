@@ -27,7 +27,7 @@ struct HookContext {
     scaler::ExtFuncCallHook *_this = nullptr; //8bytes
     //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
     uint8_t isMainThread = false;
-    uint8_t pad0 = false;
+    uint8_t dataSaved = false;
     uint8_t initialized = 0;
     uint8_t pad1 = 0;
     uint8_t pad2 = 0;
@@ -53,6 +53,7 @@ public:
     ~DataSaver();
 };
 
+void saveData();
 
 static thread_local DataSaver saverElem;
 

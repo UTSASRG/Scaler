@@ -5,9 +5,11 @@
 #include <util/config/Config.h>
 #include <exceptions/ScalerException.h>
 #include <util/tool/Timer.h>
+#include <util/tool/FileTool.h>
 #include <util/hook/proxy/libcProxy.h>
 #include <util/hook/ExtFuncCallHook.h>
 #include <util/hook/HookContext.h>
+#include <util/hook/ExtFuncCallHook.h>
 
 main_fn_t real_main;
 
@@ -17,8 +19,14 @@ int doubletake_main(int argc, char **argv, char **envp) {
     INFO_LOGS("libHook-c Ver %s", CMAKE_SCALERRUN_VERSION);
     INFO_LOGS("Main thread id is%lu", pthread_self());
 
+    char pathName[PATH_MAX];
+    if (!getcwd(pathName, sizeof(pathName))) {
+        fatalErrorS("Cannot get cwd because: %s", strerror(errno));
+    }
+
+
     std::stringstream ss;
-    ss << "scalerdata_" << getunixtimestampms();
+    ss << pathName << "/" << "scalerdata_" << getunixtimestampms();
     scaler::ExtFuncCallHook::getInst(ss.str())->install();
     //Calculate the main application time
 
@@ -29,6 +37,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
     curContextPtr->isMainThread = true;
     int ret = real_main(argc, argv, envp);
     curContextPtr->endTImestamp = getunixtimestampms();
+    saveData();
     return ret;
 }
 

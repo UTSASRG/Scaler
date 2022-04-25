@@ -34,7 +34,6 @@ namespace scaler {
         fprintf(symInfoFile, "%s,%s,%s\n", "funcName", "fileId", "symIdInFile");
         fclose(symInfoFile);
 
-        ERR_LOG("Here am I");
 
         //Parse filenames
         pmParser.parsePMMap();

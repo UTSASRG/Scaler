@@ -64,7 +64,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     //    fatalError("Failed to parse the caller address for pthread_create")
     //    exit(-1);
     //}
-    ERR_LOG("Pthread create");
+    INFO_LOG("Pthread create");
 
 
     if (pthread_create_orig == nullptr) {
@@ -83,6 +83,9 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     args->actual_thread_function = start;
     args->data = arg;
     // Call the actual pthread_create
-    return pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
+
+    int retVal = pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
+    saveData();
+    return retVal;
 }
 }
