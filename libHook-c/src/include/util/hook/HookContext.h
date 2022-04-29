@@ -61,6 +61,7 @@ extern __thread HookContext *curContext;
 
 extern __thread uint8_t bypassCHooks; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
 
+extern scaler::SymID pthreadCreateSymId;
 
 
 bool initTLS();

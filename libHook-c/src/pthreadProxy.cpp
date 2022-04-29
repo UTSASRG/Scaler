@@ -49,7 +49,7 @@ void *dummy_thread_function(void *data) {
      * Perform required actions after each thread function completes
      */
     curContextPtr->endTImestamp = getunixtimestampms();
-
+    saveData();
     return nullptr;
 }
 
@@ -84,8 +84,15 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     args->data = arg;
     // Call the actual pthread_create
 
+    uint64_t pthreadCreateStart=getunixtimestampms();
     int retVal = pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
-    saveData();
+    uint64_t pthreadCreateEnd=getunixtimestampms();
+
+    HookContext* curContextPtr=curContext;
+    //Attribute time to pthread_create
+    curContextPtr->timingArr->internalArr[pthreadCreateSymId] +=
+            pthreadCreateEnd - pthreadCreateStart;
+
     return retVal;
 }
 }

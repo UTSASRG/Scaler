@@ -111,7 +111,7 @@ void saveData() {
         fatalErrorS("Cannot write timingArr of %s because:%s", ss.str().c_str(),
                     strerror(errno));
     }
-    INFO_LOGS("Saving data to %s, %lu", scaler::ExtFuncCallHook::instance->folderName.c_str(),pthread_self());
+    INFO_LOGS("Saving data to %s, %lu", scaler::ExtFuncCallHook::instance->folderName.c_str(), pthread_self());
 
     if (curContextPtr->isMainThread) {
         ss.str("");
@@ -127,7 +127,8 @@ void saveData() {
         }
 
         for (int i = 0; i < curContextPtr->_this->allExtSymbol.getSize(); ++i) {
-            realFileIdMem[i] = curContextPtr->_this->pmParser.findExecNameByAddr(*(curContextPtr->_this->allExtSymbol[i].gotEntryAddr));
+            realFileIdMem[i] = curContextPtr->_this->pmParser.findExecNameByAddr(
+                    *(curContextPtr->_this->allExtSymbol[i].gotEntryAddr));
         }
         if (!scaler::fClose<size_t>(fd, realFileIdSizeInBytes, realFileIdMem)) {
             fatalError("Cannot close file");

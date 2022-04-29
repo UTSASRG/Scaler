@@ -19,7 +19,7 @@ def parsePthreadId(fileNameList):
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
-scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/swaptions/scalerdata_30493032039599146'
+scalerDataFolder = '/media/umass/datasystem/steven/Downloads/Perf-Parsec-Callgraph/freqmine/scalerdata'
 
 df = pd.read_csv(os.path.join(scalerDataFolder, 'fileName.txt'))
 fileNameList = df['pathName'].to_list()
@@ -55,23 +55,25 @@ def generateTimingStruct(aggregatedTimeEntries):
         record.fileName = fileNameList[i]
         timingRecord.append(record)
 
+    for i in range(len(symbolNameList)):
+        if symbolNameList[i] == 'pthread_create':
+            # Attribute this time to pthread library
+            realFileId[i] = pthreadFileId
+
+
     # Insert the time of the main application
     timingRecord[0].totalDuration = aggregatedTimeEntries[-1]
 
-    #Loop through all timing entries and attribute time
+    # Loop through all timing entries and attribute time
     for i in range(len(aggregatedTimeEntries) - 1):
         # Add current symbol time to corresponding file entry
         if aggregatedTimeEntries[i] > 0:
             # Correct symbol ID
             if realFileId[i] >= len(fileNameList):
-                if symbolNameList[i] == 'pthread_create':
-                    # Attribute this time to pthread library
-                    realFileId[i] = pthreadFileId
-                else:
-                    print(
-                        'Symbol %s was located in unhooked file. Is it overrided by an unhooked file?' % symbolNameList[
-                            i])
-                    continue
+                print(
+                    'Symbol %s was located in unhooked file. Is it overrided by an unhooked file?' % symbolNameList[
+                        i])
+                continue
 
             # Attribute time with respect to the caller
             curFileRecord = timingRecord[symbolFileIdList[i]]
@@ -86,6 +88,7 @@ def generateTimingStruct(aggregatedTimeEntries):
 
             # Attribute time with respect to call-ee
             realFileRecord = timingRecord[realFileId[i]]
+            print(realFileId[i])
             realFileRecord.fileName = fileNameList[realFileId[i]]
             realFileRecord.totalDuration += aggregatedTimeEntries[i]
 
@@ -96,7 +99,7 @@ def generateTimingStruct(aggregatedTimeEntries):
         curFileRecord.selfDurationPerc0ent = curFileRecord.selfDuration / applicationDuration * 100
         for j in curFileRecord.extFileTiming.keys():
             curExtFileRecord = curFileRecord.extFileTiming[j]
-            curExtFileRecord.totalExtTimePercent = curExtFileRecord.totalExtTime/curFileRecord.totalDuration * 100
+            curExtFileRecord.totalExtTimePercent = curExtFileRecord.totalExtTime / curFileRecord.totalDuration * 100
             for k in curExtFileRecord.extSymTiming.keys():
                 curExtSymRecord = curExtFileRecord.extSymTiming[k]
                 curExtSymRecord.timePercent = curExtSymRecord.time / curExtFileRecord.totalExtTime * 100

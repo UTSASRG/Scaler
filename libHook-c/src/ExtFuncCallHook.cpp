@@ -19,7 +19,9 @@
 #include <util/tool/AddrFileIdMapping.h>
 #include <util/tool/Timer.h>
 
+scaler::SymID pthreadCreateSymId;
 namespace scaler {
+
 
 
     bool ExtFuncCallHook::install() {
@@ -164,7 +166,7 @@ namespace scaler {
             Elf64_Word type;
             Elf64_Word bind;
             parser.getExtSymbolInfo(i, funcName, bind, type);
-            if (!shouldHookThisSymbol(funcName, bind, type)) {
+            if (!shouldHookThisSymbol(funcName, bind, type, allExtSymbol.getSize())) {
                 continue;
             }
             //Get function id from plt entry
@@ -207,7 +209,8 @@ namespace scaler {
     }
 
 
-    bool ExtFuncCallHook::shouldHookThisSymbol(const char *funcName, Elf64_Word &bind, Elf64_Word &type) {
+    bool
+    ExtFuncCallHook::shouldHookThisSymbol(const char *funcName, Elf64_Word &bind, Elf64_Word &type, SymID curSymId) {
         if (bind != STB_GLOBAL || type != STT_FUNC) {
             return false;
         }
@@ -340,6 +343,10 @@ namespace scaler {
                 return false;
             } else if (strncmp(funcName, "__cxa_bad_cast", 14) == 0) {
                 return false;
+            } else if (strncmp(funcName, "pthread_create", 14) == 0) {
+                pthreadCreateSymId = curSymId;
+                //This is important to make sure pthread_create is recorded
+                return true;
             }
         } else if (funcNameLen == 15) {
             if (strncmp(funcName, "____longjmp_chk", 15) == 0) {
@@ -605,8 +612,8 @@ namespace scaler {
                     curElfImgInfo->pltSecStartAddr = pltSecInfo.startAddr;
                     curElfImgInfo->gotStartAddr = gotInfo.startAddr;
 
-                    ERR_LOGS("%zd:%s %p pltStartAddr=%p", prevFileId, pmParser.fileNameArr[prevFileId].c_str(),
-                             prevFileBaseAddr, pltInfo.startAddr);
+                    //ERR_LOGS("%zd:%s %p pltStartAddr=%p", prevFileId, pmParser.fileNameArr[prevFileId].c_str(),
+                    //         prevFileBaseAddr, pltInfo.startAddr);
 
                     //Install hook on this file
                     if (!parseSymbolInfo(elfParser, prevFileId, prevFileBaseAddr, pltInfo, pltSecInfo,
