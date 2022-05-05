@@ -43,13 +43,19 @@ void *dummy_thread_function(void *data) {
     assert(curContextPtr != NULL);
     curContextPtr->curFileId = curContextPtr->_this->pmParser.findExecNameByAddr(
             (void *) actualFuncPtr);
+
+    /**
+     * Register this thread with the main thread
+     */
+    threadContextMap.pushBack(curContextPtr);
+
     curContextPtr->startTImestamp = getunixtimestampms();
     actualFuncPtr(argData);
     /**
      * Perform required actions after each thread function completes
      */
     curContextPtr->endTImestamp = getunixtimestampms();
-    saveData();
+    saveData(curContextPtr);
     return nullptr;
 }
 

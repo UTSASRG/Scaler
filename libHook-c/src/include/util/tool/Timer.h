@@ -3,7 +3,7 @@
 //
 
 #ifndef SCALER_TIME_H
-#define SCALER_TIMER_H
+#define SCALER_TIME_H
 
 #include <inttypes.h>
 

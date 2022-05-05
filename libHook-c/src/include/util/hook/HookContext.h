@@ -4,6 +4,7 @@
 #include <util/datastructure/FStack.h>
 #include <cstdio>
 #include <type/InvocationTree.h>
+#include <util/tool/Timer.h>
 #include "ExtFuncCallHook.h"
 
 extern "C" {
@@ -36,12 +37,12 @@ struct HookContext {
     uint8_t pad5 = 0;
     uint64_t startTImestamp;
     uint64_t endTImestamp;
-    uint64_t *realFileIdArr = nullptr; //Used to record real id
+    pthread_mutex_t *threadDataSavingLock = nullptr; //Used to record real id
     //New cacheline
     //Variables used to determine whether it's called by hook handler or not
     HookTuple hookTuple[MAX_CALL_DEPTH]; //8bytes aligned
+    pthread_t threadId;
 };
-
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
 
@@ -53,7 +54,9 @@ public:
     ~DataSaver();
 };
 
-void saveData();
+
+void saveData(HookContext *context,bool finalize=false);
+
 
 static thread_local DataSaver saverElem;
 
@@ -63,7 +66,12 @@ extern __thread uint8_t bypassCHooks; //Anything that is not SCALER_FALSE should
 
 extern scaler::SymID pthreadCreateSymId;
 
+extern scaler::Vector<HookContext *> threadContextMap;
+
+extern pthread_mutex_t threadDataSavingLock;
 
 bool initTLS();
+
+
 }
 #endif

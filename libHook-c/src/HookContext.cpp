@@ -1,6 +1,7 @@
 #include <util/hook/HookContext.h>
 #include <util/tool/Timer.h>
 #include <util/tool/FileTool.h>
+#include <cxxabi.h>
 
 extern "C" {
 
@@ -8,6 +9,12 @@ HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
 
     HookContext *rlt = new HookContext();
     rlt->timingArr = new scaler::Array<uint64_t>(hookedSymbolSize);
+    rlt->threadDataSavingLock = new pthread_mutex_t();
+
+    pthread_mutexattr_t Attr;
+    pthread_mutexattr_init(&Attr);
+    pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(rlt->threadDataSavingLock, &Attr);
     rlt->timingArr->setSize(hookedSymbolSize);
 //    memArrayHeap(1), timingArr(hookedSymbolSize),
 //            indexPosi(0)
@@ -29,6 +36,7 @@ HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
     assert(scaler::ExtFuncCallHook::instance != nullptr);
     rlt->_this = scaler::ExtFuncCallHook::instance;
 
+    rlt->threadId = pthread_self();
     saverElem.initializeMe = 1; //Force initialize tls
 
     return rlt;
@@ -49,6 +57,7 @@ bool initTLS() {
         return false;
     }
 
+
     //RuntimeInfo newInfo;
 
     return true;
@@ -59,15 +68,19 @@ __thread HookContext *curContext __attribute((tls_model("initial-exec")));
 __thread uint8_t bypassCHooks __attribute((tls_model("initial-exec"))) = SCALER_FALSE; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
 
 DataSaver::~DataSaver() {
-    saveData();
+    saveData(curContext);
 }
 
-void saveData() {
+void saveData(HookContext *curContextPtr, bool finalize) {
     bypassCHooks = SCALER_TRUE;
-    HookContext *curContextPtr = curContext;
+    if (!curContextPtr) {
+        curContextPtr = curContext;
+    }
+    pthread_mutex_lock(curContextPtr->threadDataSavingLock);
 
     if (curContextPtr->dataSaved) {
         DBG_LOG("Data already saved for this thread");
+        pthread_mutex_unlock(curContextPtr->threadDataSavingLock);
         return;
     }
     curContextPtr->dataSaved = true;
@@ -82,7 +95,7 @@ void saveData() {
         return;
     }
     std::stringstream ss;
-    ss << scaler::ExtFuncCallHook::instance->folderName << "/threadTiming_" << pthread_self() << ".bin";
+    ss << scaler::ExtFuncCallHook::instance->folderName << "/threadTiming_" << curContextPtr->threadId << ".bin";
     //INFO_LOGS("Saving timing data to %s", ss.str().c_str());
     FILE *threadDataSaver = fopen(ss.str().c_str(), "wb");
     if (!threadDataSaver) {
@@ -113,7 +126,7 @@ void saveData() {
     }
     INFO_LOGS("Saving data to %s, %lu", scaler::ExtFuncCallHook::instance->folderName.c_str(), pthread_self());
 
-    if (curContextPtr->isMainThread) {
+    if (curContextPtr->isMainThread || finalize) {
         ss.str("");
         ss << scaler::ExtFuncCallHook::instance->folderName << "/realFileId.bin";
         //The real id of each function is resolved in after hook, so I can only save it in datasaver
@@ -133,10 +146,24 @@ void saveData() {
         if (!scaler::fClose<size_t>(fd, realFileIdSizeInBytes, realFileIdMem)) {
             fatalError("Cannot close file");
         }
+
+        INFO_LOG("Save data of all existing threads");
+        for (int i = 0; i < threadContextMap.getSize(); ++i) {
+            HookContext *threadContext = threadContextMap[i];
+            if (!threadContext->dataSaved) {
+                pthread_mutex_lock(threadContext->threadDataSavingLock);
+                INFO_LOGS("Thread data not saved, save it %d/%zd", i, threadContextMap.getSize());
+                saveData(threadContext);
+                pthread_mutex_unlock(threadContext->threadDataSavingLock);
+            } else {
+                INFO_LOGS("Thread data already saved, skip %d/%zd", i, threadContextMap.getSize());
+            }
+        }
     }
 
-
     fclose(threadDataSaver);
+    pthread_mutex_unlock(curContextPtr->threadDataSavingLock);
+
 }
 
 }
