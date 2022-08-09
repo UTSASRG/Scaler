@@ -25,8 +25,9 @@ namespace scaler {
         //todo: Check initialized
         explicit Array(const ssize_t &initialSize = 1) : internalArrSize(initialSize), size(0) {
             if (initialSize > 0) {
-                internalArr = (T *) mmap(NULL, internalArrSize * sizeof(T), PROT_READ | PROT_WRITE,
-                                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+                internalArr = (T *) malloc( internalArrSize * sizeof(T));
+                INFO_LOGS("Internal array %d bytes",internalArrSize * sizeof(T));
+                assert(internalArr != nullptr);
                 memset(internalArr, 0, internalArrSize * sizeof(T));
             }
         }
@@ -37,16 +38,15 @@ namespace scaler {
 
         virtual ~Array() {
             if (internalArr)
-                munmap(internalArr, internalArrSize * sizeof(T));
+                free(internalArr);
         }
 
         Array &operator=(const Array &rho) {
             if (&rho != this) {
                 if (internalArr)
-                    munmap(internalArr, internalArrSize * sizeof(T));
+                    free(internalArr);
 
-                internalArr = (T *) mmap(NULL, rho.internalArrSize * sizeof(T), PROT_READ | PROT_WRITE,
-                                         MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+                internalArr = (T *) malloc( rho.internalArrSize * sizeof(T));
                 size = rho.size;
                 internalArrSize = rho.internalArrSize;
                 memcpy(internalArr, rho.internalArr, rho.internalArrSize * sizeof(T));
@@ -132,7 +132,7 @@ namespace scaler {
         }
 
         bool release() {
-            munmap(internalArr, internalArrSize * sizeof(T));
+            free(internalArr);
             internalArr = nullptr;
             return true;
         }
@@ -148,12 +148,11 @@ namespace scaler {
 
             ssize_t newSize = max<ssize_t>(minimumSize, internalArrSize * 2);
 
-            internalArr = (T *) mmap(NULL, newSize * sizeof(T), PROT_READ | PROT_WRITE,
-                                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            internalArr = (T *) malloc( newSize * sizeof(T));
             memset(internalArr, 0, newSize * sizeof(T));
 
             memcpy(internalArr, oldInternalArr, internalArrSize * sizeof(T));
-            munmap(oldInternalArr, internalArrSize * sizeof(T));
+            free(oldInternalArr);
             internalArrSize = newSize;
         }
     };

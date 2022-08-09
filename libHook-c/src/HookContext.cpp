@@ -6,11 +6,19 @@
 extern "C" {
 
 HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
-
-    HookContext *rlt = new HookContext();
-    rlt->timingArr = new scaler::Array<uint64_t>(hookedSymbolSize);
-    rlt->threadDataSavingLock = new pthread_mutex_t();
-
+    uint8_t *contextHeap = static_cast<uint8_t *>(mmap(NULL, sizeof(HookContext) +
+                                                             sizeof(scaler::Array<uint64_t>) +
+                                                             sizeof(pthread_mutex_t), PROT_READ | PROT_WRITE,
+                                                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
+    INFO_LOGS("Context size=%lu", sizeof(HookContext) +
+                                  sizeof(scaler::Array<uint64_t>) +
+                                  sizeof(pthread_mutex_t));
+    HookContext *rlt = reinterpret_cast<HookContext *>(contextHeap);
+    assert(rlt != nullptr);
+    memset(rlt, 0, sizeof(HookContext) + sizeof(scaler::Array<uint64_t>) + sizeof(pthread_mutex_t));
+    rlt->timingArr = new(contextHeap + sizeof(HookContext)) scaler::Array<uint64_t>(hookedSymbolSize);
+    rlt->threadDataSavingLock = reinterpret_cast<pthread_mutex_t *>(contextHeap + sizeof(HookContext) +
+                                                                    sizeof(scaler::Array<uint64_t>));
     pthread_mutexattr_t Attr;
     pthread_mutexattr_init(&Attr);
     pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
@@ -40,6 +48,15 @@ HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
     saverElem.initializeMe = 1; //Force initialize tls
 
     return rlt;
+}
+
+bool destructContext() {
+    HookContext *curContextPtr = curContext;
+    delete curContextPtr->timingArr;
+    munmap(curContextPtr, sizeof(HookContext) +
+                          sizeof(scaler::Array<uint64_t>) +
+                          sizeof(pthread_mutex_t));
+    curContext = nullptr;
 }
 
 bool initTLS() {

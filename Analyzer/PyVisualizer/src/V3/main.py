@@ -19,7 +19,8 @@ def parsePthreadId(fileNameList):
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
-scalerDataFolder = '/media/umass/datasystem/steven/Downloads/Perf-Parsec-Callgraph/freqmine/scalerdata'
+scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/streamcluster/scalerdata_34017004153973114'
+# '/media/umass/datasystem/steven/Downloads/Perf-Parsec-Callgraph/ferret/scalerdata'
 
 df = pd.read_csv(os.path.join(scalerDataFolder, 'fileName.txt'))
 fileNameList = df['pathName'].to_list()
@@ -99,10 +100,10 @@ def generateTimingStruct(aggregatedTimeEntries):
         curFileRecord.selfDurationPerc0ent = curFileRecord.selfDuration / applicationDuration * 100
         for j in curFileRecord.extFileTiming.keys():
             curExtFileRecord = curFileRecord.extFileTiming[j]
-            curExtFileRecord.totalExtTimePercent = curExtFileRecord.totalExtTime / curFileRecord.totalDuration * 100
+            curExtFileRecord.totalExtTimePercent = curExtFileRecord.totalExtTime / applicationDuration * 100
             for k in curExtFileRecord.extSymTiming.keys():
                 curExtSymRecord = curExtFileRecord.extSymTiming[k]
-                curExtSymRecord.timePercent = curExtSymRecord.time / curExtFileRecord.totalExtTime * 100
+                curExtSymRecord.timePercent = curExtSymRecord.time / applicationDuration * 100
 
     print(timingRecord)
 

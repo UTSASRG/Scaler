@@ -14,22 +14,34 @@
 
 main_fn_t real_main;
 
+
+bool installed=false;
+
 extern "C" {
 scaler::Vector<HookContext *> threadContextMap;
 #ifndef MANUAL_INSTALL
 
+
 int doubletake_main(int argc, char **argv, char **envp) {
+//    if(strncmp(argv[0],"/usr/local/bin/memcached123",24)!=0){
+//        int ret = real_main(argc, argv, envp);
+//        return ret;
+//    }
+    installed=true;
+
     INFO_LOGS("libHook-c Ver %s", CMAKE_SCALERRUN_VERSION);
     INFO_LOGS("Main thread id is%lu", pthread_self());
+    INFO_LOGS("Program Name: %s", argv[0]);
 
     char pathName[PATH_MAX];
-    if (!getcwd(pathName, sizeof(pathName))) {
-        fatalErrorS("Cannot get cwd because: %s", strerror(errno));
-    }
-
+//    if (!getcwd(pathName, sizeof(pathName))) {
+//        fatalErrorS("Cannot get cwd because: %s", strerror(errno));
+//    }
+    strncpy(pathName,"/media/umass/datasystem/steven/Downloads",strlen("/media/umass/datasystem/steven/Downloads"));
 
     std::stringstream ss;
-    ss << pathName << "/" << "scalerdata_" << getunixtimestampms();
+    ss << "/media/umass/datasystem/steven/Downloads" << "/" << "scalerdata_" << getunixtimestampms();
+    INFO_LOGS("Folder name is %s",pathName);
     scaler::ExtFuncCallHook::getInst(ss.str())->install();
     //Calculate the main application time
 
@@ -69,6 +81,12 @@ int doubletake_libc_start_main(main_fn_t main_fn, int argc, char **argv, void (*
 
 void exit(int __status) {
     auto realExit = (exit_origt) dlsym(RTLD_NEXT, "exit");
+
+    if(!installed){
+        realExit(__status);
+        return;
+    }
+
     curContext->endTImestamp = getunixtimestampms();
     saveData(curContext, true);
     realExit(__status);

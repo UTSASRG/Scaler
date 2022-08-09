@@ -31,7 +31,8 @@ namespace scaler {
             ERR_LOGS("Cannot open %s because: %s", procIdStr, strerror(errno));
             return false;
         }
-        FILE *execNameFile = fopen("fileName.txt", "w");
+
+        FILE *execNameFile = fopen("/media/umass/datasystem/steven/fileName.txt", "w");
         if (!execNameFile) {
             ERR_LOGS("Cannot open %s because: %s", "fileName.txt", strerror(errno));
             return false;

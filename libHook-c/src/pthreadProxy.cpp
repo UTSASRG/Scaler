@@ -59,10 +59,12 @@ void *dummy_thread_function(void *data) {
     return nullptr;
 }
 
+extern bool installed;
+
 // Main Pthread wrapper functions.
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)(void *), void *arg) {
     //register uint64_t rbp asm ("rbp");
-    //register uint64_t rsp asm ("rsp");
+    //register uint64_t rsp asm ("rsp");c
     //void **callerAddr1 = reinterpret_cast<void **>(rbp+8);
     //void *callerAddrPtr = *reinterpret_cast<void **>(rsp + 0x8 + 0x40);
     //uint8_t callOpCode = *reinterpret_cast<uint8_t *>((uint64_t) callerAddrPtr - 0x5);
@@ -80,6 +82,10 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
             fatalError("Cannot find the address of pthread_create");
             return false;
         }
+    }
+
+    if(!installed){
+        return pthread_create_orig(thread, attr, start, (void *) arg);
     }
 
     auto threadID = pthread_self();
