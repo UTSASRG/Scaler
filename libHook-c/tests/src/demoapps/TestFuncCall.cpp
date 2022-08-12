@@ -5,7 +5,9 @@
 #include <sys/prctl.h>
 #include <thread>
 #include <cassert>
-#include <util/hook/ExtFuncCallHook.h>
+#include <iostream>
+
+//#include <util/hook/ExtFuncCallHook.h>
 
 using namespace std;
 
@@ -84,6 +86,16 @@ public:
 };
 
 int main() {
+
+    funcA();
+//    asm volatile (
+//            "jmpq *0x290841A2AD7A(%%rip)\n\t"
+//            "jmpq *0x4(%%rip)\n\t"
+//            "jmpq *0x4(%%rip)\n\t"
+//            "jmpq *0x4(%%rip)\n\t"
+//            "jmpq *0x4(%%rip)\n\t"
+//            "jmpq *0x4(%%rip)\n\t"
+//    :/* No inputs. */:"rdi");
     funcA();
     callFuncA();
 //    printf("Calling funcA\n");

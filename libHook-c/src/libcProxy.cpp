@@ -6,6 +6,7 @@
 #include <exceptions/ScalerException.h>
 #include <util/tool/Timer.h>
 #include <util/tool/FileTool.h>
+
 #include <util/hook/proxy/libcProxy.h>
 #include <util/hook/ExtFuncCallHook.h>
 #include <util/hook/HookContext.h>
@@ -23,15 +24,19 @@ scaler::Vector<HookContext *> threadContextMap;
 
 
 int doubletake_main(int argc, char **argv, char **envp) {
-//    if(strncmp(argv[0],"/usr/local/bin/memcached123",24)!=0){
+//    if(!scaler::strEndsWith(argv[0],"libscalerhook") && !scaler::strEndsWith(argv[0],"pthread")){
 //        int ret = real_main(argc, argv, envp);
 //        return ret;
 //    }
-    installed=true;
+
 
     INFO_LOGS("libHook-c Ver %s", CMAKE_SCALERRUN_VERSION);
     INFO_LOGS("Main thread id is%lu", pthread_self());
     INFO_LOGS("Program Name: %s", argv[0]);
+    // int ret1 = real_main(argc, argv, envp);
+    // return ret1;
+    installed=true;
+
 
     char pathName[PATH_MAX];
 //    if (!getcwd(pathName, sizeof(pathName))) {
@@ -59,7 +64,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
 
     int ret = real_main(argc, argv, envp);
     curContextPtr->endTImestamp = getunixtimestampms();
-    saveData(curContextPtr);
+    //saveData(curContextPtr);
     return ret;
 }
 
@@ -88,7 +93,7 @@ void exit(int __status) {
     }
 
     curContext->endTImestamp = getunixtimestampms();
-    saveData(curContext, true);
+    //saveData(curContext, true);
     realExit(__status);
 }
 

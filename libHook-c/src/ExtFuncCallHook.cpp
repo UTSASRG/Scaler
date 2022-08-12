@@ -221,11 +221,14 @@ namespace scaler {
 //            fatalError("Function has no name?!");
         }
 
-//        if (strncmp(funcName, "funcA", funcNameLen) == 0) {
-//            return true;
-//        } else {
-//            return false;
-//        }
+//        INFO_LOGS("%s",funcName);
+
+        if (strncmp(funcName, "funcA", funcNameLen) == 0) {
+            INFO_LOG("FuncA encountered");
+            return true;
+        } else {
+            return false;
+        }
 
 
         if (scaler::strStartsWith(funcName, "__")) {
@@ -508,6 +511,7 @@ namespace scaler {
         return pltInfo.startAddr != nullptr && gotInfo.startAddr != nullptr;
     }
 
+    //Cache line is 32 bytes, data should be 1/2/4/8/16/32 aligned
     //16bytes aligned. 0x90 are for alignment purpose
     uint8_t pltEntryBin[] = {0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                              0x00, 0x00, 0x41, 0xff, 0xE3, 0x90, 0x90, 0x90};
@@ -515,8 +519,7 @@ namespace scaler {
     uint8_t idSaverBin[] = {0x48, 0x81, 0xEC, 0x10, 0x01, 0x00, 0x00, 0x68,
                             0x00, 0x00, 0x00, 0x00, 0x49, 0xBB, 0x00, 0x00,
                             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41, 0xFF,
-                            0xE3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
-                            0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
+                            0xE3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
 
     uint8_t ldJumperBin[] = {0x68, 0x00, 0x00, 0x00, 0x00, 0x49, 0xBB, 0x00,
                              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41,
@@ -659,7 +662,7 @@ namespace scaler {
         //Fill address and ids in callIdSaver
         for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
 
-            if (!fillAddrAndSymId2IdSaver((uint8_t *) &asmHookHandler, curSymId,
+            if (!fillAddrAndSymId2IdSaver((uint8_t *) &unifiedHookHandler, curSymId,
                                           curCallIdSaver)) {
                 fatalError(
                         "fillAddrAndSymId2IdSaver failed, this should not happen");

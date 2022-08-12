@@ -55,7 +55,7 @@ void *dummy_thread_function(void *data) {
      * Perform required actions after each thread function completes
      */
     curContextPtr->endTImestamp = getunixtimestampms();
-    saveData(curContextPtr);
+    //saveData(curContextPtr);
     return nullptr;
 }
 

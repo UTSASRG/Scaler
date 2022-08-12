@@ -17,7 +17,7 @@ add_library(Testlib-FuncCall SHARED lib/FunctionCall/FuncWithDiffParms.cpp
         lib/FunctionCall/TenThousandFunc.cpp)
 target_include_directories(Testlib-FuncCall PUBLIC lib/FunctionCall/include)
 target_compile_options(Testlib-FuncCall PRIVATE ${TEST_FLAGS} -Werror)
-target_link_options(Testlib-FuncCall PUBLIC "-zlazy")
+target_link_options(Testlib-FuncCall PUBLIC "-znow")
 ## A library that calls Testlib-FuncCall
 
 add_library(Testlib-CallFuncCall SHARED lib/CallFunctionCall/CallFunctionCall.cpp)
@@ -73,8 +73,8 @@ target_link_libraries(ScalerHook-demoapps-Exceptions PUBLIC ScalerHook-HookAutoA
 target_compile_options(ScalerHook-demoapps-Exceptions PRIVATE ${TEST_FLAGS} -Werror)
 
 add_executable(ScalerHook-demoapps-FuncCall src/demoapps/TestFuncCall.cpp)
-target_link_libraries(ScalerHook-demoapps-FuncCall PUBLIC ScalerHook-HookAutoAsm-C Testlib-FuncCall
-        Testlib-CallFuncCall KuBoPltHook dl)
+target_link_libraries(ScalerHook-demoapps-FuncCall PUBLIC  Testlib-FuncCall
+        Testlib-CallFuncCall ScalerHook-HookAutoAsm-C dl) # KuBoPltHook
 target_compile_options(ScalerHook-demoapps-FuncCall PRIVATE ${TEST_FLAGS} -Werror)
 
 add_executable(ScalerHook-demoapps-HookEverything src/demoapps/TestHookEverything.cpp)

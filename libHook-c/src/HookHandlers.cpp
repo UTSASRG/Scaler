@@ -29,6 +29,8 @@
 //    POPZMM(1)\
 //    POPZMM(0)
 
+
+
 #define ASM_SAVE_ENV_PREHOOK \
     "movq %rax,0x08(%rsp)\n\t" \
     "movq %rcx,0x18(%rsp)\n\t" \
@@ -209,8 +211,9 @@ void __attribute__((naked)) asmHookHandler() {
     );
 
 }
-uint8_t *callIdSavers=nullptr;
-uint8_t *ldCallers=nullptr;
+
+uint8_t *callIdSavers = nullptr;
+uint8_t *ldCallers = nullptr;
 
 //Return magic number definition:
 //1234: address resolved, pre-hook only (Fastest)
@@ -241,7 +244,7 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
      * This may happen for external function call before the initTLS in dummy thread function
      */
 
-    if (unlikely(bypassCHooks == SCALER_TRUE)) {
+    if (unlikely(bypassCHooks == SCALER_TRUE) || true) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
@@ -311,6 +314,119 @@ void *afterHookHandler() {
 
     bypassCHooks = SCALER_FALSE;
     return callerAddr;
+}
+
+
+void unifiedHookHandler()  {
+    uint64_t nextCallAddr;
+    uint64_t symId;
+    __asm__ __volatile__ (
+    "SAVE_ENV_START:"
+    /**
+    * Save environment
+    */
+
+    //Parameter passing registers
+    "movq %%rax,0x10(%%rbp)\n\t"
+    "movq %%rcx,0x18(%%rbp)\n\t"
+    "movq %%rdx,0x20(%%rbp)\n\t"
+    "movq %%rsi,0x28(%%rbp)\n\t"
+    "movq %%rdi,0x30(%%rbp)\n\t"
+    "movq %%r8,0x38(%%rbp)\n\t"
+    "movq %%r9,0x40(%%rbp)\n\t"
+    "movq %%r10,0x48(%%rbp)\n\t"
+
+    //Call-ee saved registers
+    "movq %%rbx,0x50(%%rbp)\n\t"
+    "movq %%r12,0x58(%%rbp)\n\t"
+    "movq %%r13,0x60(%%rbp)\n\t"
+    "movq %%r14,0x68(%%rbp)\n\t"
+    "movq %%r15,0x70(%%rbp)\n\t"
+    //"stmxcsr 0x78(%%rsp)\n\t" // 2 Bytes, count as 4 Bytes
+    //"fstcw 0x80(%%rsp)\n\t" // 4 Bytes
+    //rsp%10h=0
+    //        PUSHZMM(0) //16
+    //        PUSHZMM(1) //16
+    //        PUSHZMM(2) //16
+    //        PUSHZMM(3) //16
+    //        PUSHZMM(4) //16
+    //        PUSHZMM(5) //16
+    //        PUSHZMM(6) //16
+    //        PUSHZMM(7) //16
+
+    : /* No Inputs */
+    : /* No Inputs */
+    :);
+
+    __asm__ __volatile__ (
+    /**
+    * Getting PLT entry address and caller address from stack
+    */
+    "movq 0x120(%%rbp),%0\n\t" //First parameter, return addr
+    "SAVE_ENV_END:"
+    "movq 0x8(%%rbp),%1\n\t" //Second parameter, symbolId (Pushed to stack by idsaver)
+    : "=rmi" (nextCallAddr), "=rmi" (symId)
+    : /* No Inputs */
+    :"rbp");
+
+    //Prehook
+
+    HookContext *curContextPtr = curContext;
+    void *retOriFuncAddr = nullptr;
+
+//    if (unlikely(curContextPtr == NULL)) {
+//        retOriFuncAddr = ldCallers + symId * 32;
+//        //Skip afterhook
+//        asm volatile ("movq $1234, %%rdi" : /* No outputs. */
+//        :/* No inputs. */:"rdi");
+//    }
+//
+    //Assumes _this->allExtSymbol won't change
+    scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symId];
+
+    if (unlikely(!curElfSymInfo.addrResolved)) {
+        retOriFuncAddr = ldCallers + symId * 32;
+    } else {
+        retOriFuncAddr = *curElfSymInfo.gotEntryAddr;
+    }
+
+    //Directly jump to destination
+    __asm__ __volatile__ (
+    "movq %0,%%r11\n\t"
+
+    /**
+    * Restore environment
+    */
+    "RESTORE_ENV_START:"
+    //Call-ee saved registers
+//    "fldcw 0x80(%%rbp)\n\t" // 4 Bytes
+//    "ldmxcsr 0x78(%%rbp)\n\t" // 2 Bytes, count as 4 Bytes
+    "movq 0x70(%%rbp),%%r15\n\t"
+    "movq 0x68(%%rbp),%%r14\n\t"
+    "movq 0x60(%%rbp),%%r13\n\t"
+    "movq 0x58(%%rbp),%%r12\n\t"
+    "movq 0x50(%%rbp),%%rbx\n\t"
+
+    //Restore parameter passing register
+    "movq 0x48(%%rbp),%%r10\n\t"\
+    "movq 0x40(%%rbp),%%r9\n\t"\
+    "movq 0x38(%%rbp),%%r8\n\t"\
+    "movq 0x30(%%rbp),%%rdi\n\t"\
+    "movq 0x28(%%rbp),%%rsi\n\t"\
+    "movq 0x20(%%rbp),%%rdx\n\t"\
+    "movq 0x18(%%rbp),%%rcx\n\t"\
+    "movq 0x10(%%rbp),%%rax\n\t"
+
+    //Restore rbp value to its original value
+    "movq (%%rbp),%%rbp\n\t"
+    //Restore rsp to original value (Uncomment the following to only enable prehook)
+    "addq $0x130,%%rsp\n\t"
+    "RESTORE_ENV_END:"
+    "jmpq *%%r11\n\t"
+    : /* No Outputs */
+    : "r" (retOriFuncAddr)
+    :"rax", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "rsp", "r11");
+
 }
 
 void __attribute__((used, naked, noinline)) myPltEntry() {

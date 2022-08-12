@@ -85,7 +85,7 @@ __thread HookContext *curContext __attribute((tls_model("initial-exec")));
 __thread uint8_t bypassCHooks __attribute((tls_model("initial-exec"))) = SCALER_FALSE; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
 
 DataSaver::~DataSaver() {
-    saveData(curContext);
+    //saveData(curContext);
 }
 
 void saveData(HookContext *curContextPtr, bool finalize) {
@@ -170,7 +170,7 @@ void saveData(HookContext *curContextPtr, bool finalize) {
             if (!threadContext->dataSaved) {
                 pthread_mutex_lock(threadContext->threadDataSavingLock);
                 INFO_LOGS("Thread data not saved, save it %d/%zd", i, threadContextMap.getSize());
-                saveData(threadContext);
+                //saveData(threadContext);
                 pthread_mutex_unlock(threadContext->threadDataSavingLock);
             } else {
                 INFO_LOGS("Thread data already saved, skip %d/%zd", i, threadContextMap.getSize());

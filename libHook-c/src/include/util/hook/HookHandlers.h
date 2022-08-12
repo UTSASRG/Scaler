@@ -30,5 +30,8 @@ void __attribute__((used, naked, noinline)) callIdSaver();
 void __attribute__((used, naked, noinline)) callLd();
 
 static uint64_t pltEntryAddr = reinterpret_cast<uint64_t>(&myPltEntry);
+
+void __attribute__((used,optimize(3))) unifiedHookHandler();
+
 }
 #endif
