@@ -354,11 +354,6 @@ void unifiedHookHandler()  {
     //        PUSHZMM(6) //16
     //        PUSHZMM(7) //16
 
-    : /* No Inputs */
-    : /* No Inputs */
-    :);
-
-    __asm__ __volatile__ (
     /**
     * Getting PLT entry address and caller address from stack
     */

@@ -221,14 +221,14 @@ namespace scaler {
 //            fatalError("Function has no name?!");
         }
 
-//        INFO_LOGS("%s",funcName);
+//        if (strncmp(funcName, "funcA", funcNameLen) == 0) {
+//            return true;
+//        } else {
+//            return false;
+//        }
 
-        if (strncmp(funcName, "funcA", funcNameLen) == 0) {
-            INFO_LOG("FuncA encountered");
-            return true;
-        } else {
-            return false;
-        }
+
+
 
 
         if (scaler::strStartsWith(funcName, "__")) {
