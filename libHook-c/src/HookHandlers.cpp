@@ -80,8 +80,6 @@
 void __attribute__((naked)) asmHookHandler() {
     //todo: Calculate values based on rsp rathe than saving them to registers
     __asm__ __volatile__ (
-
-
     //The first six integer or pointer arguments are passed in registers RDI, RSI, RDX, RCX, R8, R9
     // (R10 is used as a static chain pointer in case of nested functions[25]:21),
     //XMM0, XMM1, XMM2, XMM3, XMM4, XMM5, XMM6 and XMM7  are used for the first floating point arguments
@@ -336,3 +334,16 @@ void __attribute__((used, naked, noinline)) callIdSaver() {
 }
 
 
+/**
+ * This code should be put into plt entry, but plt entry have no more space.
+ * 32bytes aligned
+ */
+void __attribute__((used, naked, noinline,optimize(0))) callIdSaver1() {
+    __asm__ __volatile__ (
+    "movq $0x1122334455667788,%r11\n\t"
+    "jmpq (%r11)\n\t"
+    "pushq $0x11223344\n\t"
+    "movq $0x1122334455667788,%r11\n\t"
+    "jmpq *%r11\n\t"
+    );
+}

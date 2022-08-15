@@ -85,6 +85,7 @@ public:
 
 int main() {
     funcA();
+    funcA();
     callFuncA();
 //    printf("Calling funcA\n");
 //

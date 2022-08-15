@@ -23,7 +23,6 @@ scaler::SymID pthreadCreateSymId;
 namespace scaler {
 
 
-
     bool ExtFuncCallHook::install() {
         createRecordingFolder();
 
@@ -199,10 +198,10 @@ namespace scaler {
             fprintf(symInfoFile, "%s,%ld,%ld\n", funcName, newSym->fileId, newSym->symIdInFile);
 
             DBG_LOGS(
-                    "id:%ld funcName:%s gotAddr:%p *gotAddr:%p addressResolved:%s fileId:%zd symIdInFile:%zd pltEntryAddr:%p pltSecEntryAddr:%p",
+                    "id:%ld funcName:%s gotAddr:%p *gotAddr:%p addressResolved:%s fileId:%zd symIdInFile:%zd pltEntryAddr:%p pltSecEntryAddr:%p pltStubId:%lu",
                     allExtSymbol.getSize() - 1, funcName, gotAddr, *gotAddr,
                     newSym->addrResolved ? "Resolved" : "Unresolved", fileId,
-                    newSym->symIdInFile, newSym->pltEntryAddr, newSym->pltSecEntryAddr);
+                    newSym->symIdInFile, newSym->pltEntryAddr, newSym->pltSecEntryAddr, newSym->pltStubId);
         }
         fclose(symInfoFile);
         return true;
@@ -512,11 +511,10 @@ namespace scaler {
     uint8_t pltEntryBin[] = {0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                              0x00, 0x00, 0x41, 0xff, 0xE3, 0x90, 0x90, 0x90};
     //32bytes aligned. 0x90 are for alignment purpose
-    uint8_t idSaverBin[] = {0x48, 0x81, 0xEC, 0x10, 0x01, 0x00, 0x00, 0x68,
-                            0x00, 0x00, 0x00, 0x00, 0x49, 0xBB, 0x00, 0x00,
-                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41, 0xFF,
-                            0xE3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
-                            0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
+    uint8_t idSaverBin[] = {0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                            0x00, 0x00, 0x41, 0xFF, 0x23, 0x68, 0x00, 0x00,
+                            0x00, 0x00, 0x49, 0xBB, 0x00, 0x00, 0x00, 0x00,
+                            0x00, 0x00, 0x00, 0x00, 0x41, 0xFF, 0xE3, 0x90};
 
     uint8_t ldJumperBin[] = {0x68, 0x00, 0x00, 0x00, 0x00, 0x49, 0xBB, 0x00,
                              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41,
@@ -547,16 +545,19 @@ namespace scaler {
         return true;
     }
 
-    bool ExtFuncCallHook::fillAddrAndSymId2IdSaver(uint8_t *prehookAddr, uint32_t funcId, uint8_t *idSaverEntry) {
+    bool ExtFuncCallHook::fillAddrAndSymId2IdSaver(uint8_t **gotAddr, uint8_t *firstPltEntry, uint32_t funcIdInFile,
+                                                   uint8_t *idSaverEntry) {
 
         //Copy code
         memcpy(idSaverEntry, idSaverBin, sizeof(idSaverBin));
-        //Copy funcId
-        assert(sizeof(funcId) == 4);
-        memcpy(idSaverEntry + 8, &funcId, sizeof(funcId));
-        //Copy instructionId
+
         assert(sizeof(uint8_t **) == 8);
-        memcpy(idSaverEntry + 14, &prehookAddr, sizeof(uint8_t **));
+        //Fill got address
+        memcpy(idSaverEntry + 2, &gotAddr, sizeof(uint8_t **));
+        //Fill function id
+        memcpy(idSaverEntry + 14, &funcIdInFile, sizeof(uint32_t));
+        //Fill first plt address
+        memcpy(idSaverEntry + 20, &firstPltEntry, sizeof(uint8_t *));
         return true;
     }
 
@@ -658,8 +659,10 @@ namespace scaler {
         uint8_t *curCallIdSaver = callIdSavers;
         //Fill address and ids in callIdSaver
         for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
+            ExtSymInfo &curSymInfo = allExtSymbol[curSymId];
+            ELFImgInfo &curImgInfo = elfImgInfoMap[allExtSymbol[curSymId].fileId];
 
-            if (!fillAddrAndSymId2IdSaver((uint8_t *) &asmHookHandler, curSymId,
+            if (!fillAddrAndSymId2IdSaver(curSymInfo.gotEntryAddr, curImgInfo.pltStartAddr, curSymInfo.pltStubId,
                                           curCallIdSaver)) {
                 fatalError(
                         "fillAddrAndSymId2IdSaver failed, this should not happen");
@@ -671,29 +674,30 @@ namespace scaler {
         /**
          * Prepare ldcaller
          */
-        adjustMemPerm(ldCallers, ldCallers + allExtSymbol.getSize() * sizeof(ldJumperBin),
-                      PROT_READ | PROT_WRITE | PROT_EXEC);
-
-        uint8_t *curLdCaller = ldCallers;
-        //Fill address and ids in callIdSaver
-        for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
-            ELFImgInfo &curImgInfo = elfImgInfoMap[allExtSymbol[curSymId].fileId];
-            if (!fillAddrAndSymId2LdJumper((uint8_t *) curImgInfo.pltStartAddr, allExtSymbol[curSymId].pltStubId,
-                                           curLdCaller)) {
-                fatalError(
-                        "fillAddrAndSymId2IdSaver failed, this should not happen");
-            }
-            curLdCaller += sizeof(ldJumperBin);
-            assert(sizeof(ldJumperBin) == 32);
-        }
-
+//        adjustMemPerm(ldCallers, ldCallers + allExtSymbol.getSize() * sizeof(ldJumperBin),
+//                      PROT_READ | PROT_WRITE | PROT_EXEC);
+//
+//        uint8_t *curLdCaller = ldCallers;
+//        //Fill address and ids in callIdSaver
+//        for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
+//            ELFImgInfo &curImgInfo = elfImgInfoMap[allExtSymbol[curSymId].fileId];
+//            if (!fillAddrAndSymId2LdJumper((uint8_t *) curImgInfo.pltStartAddr, allExtSymbol[curSymId].pltStubId,
+//                                           curLdCaller)) {
+//                fatalError(
+//                        "fillAddrAndSymId2IdSaver failed, this should not happen");
+//            }
+//            curLdCaller += sizeof(ldJumperBin);
+//            assert(sizeof(ldJumperBin) == 32);
+//        }
 
         /**
-         * replace plt entry or replace .plt (Or directly replace .plt.sec)
+         * Replace plt entry or replace .plt (Or directly replace .plt.sec)
          */
         curCallIdSaver = callIdSavers;
         for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
             ExtSymInfo &curSym = allExtSymbol[curSymId];
+            ELFImgInfo &curImgInfo = elfImgInfoMap[curSym.fileId];
+
             if (curSym.pltSecEntryAddr) {
                 //Replace .plt.sec
                 if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltSecEntryAddr)) {
@@ -706,6 +710,11 @@ namespace scaler {
                     fatalError(
                             "pltEntry installation failed, this should not happen");
                 }
+            }
+            //Replace got entry, 16 is the size of a plt entry
+            if (abs(curSym.pltEntryAddr - *curSym.gotEntryAddr) < 16) {
+                //Address not resolved
+                *curSym.gotEntryAddr = curCallIdSaver + 13;
             }
 
             curCallIdSaver += sizeof(idSaverBin);

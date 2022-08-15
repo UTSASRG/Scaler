@@ -50,13 +50,12 @@ namespace scaler {
          */
 
         inline bool isSymbolAddrResolved(ExtSymInfo &symInfo) {
-//            //Check whether its value has 6 bytes offset as its plt entry start address
-//            int64_t myPltStartAddr = (int64_t) symInfo.pltEntry;
-//            int64_t curGotAddr = (int64_t) *symInfo.gotEntry;
-//            assert(symInfo.pltEntry != nullptr);
-//            int64_t offset = curGotAddr - myPltStartAddr;
-//            return offset > 6 || offset < -6;
-            return false;
+            //Check whether its value has 6 bytes offset as its plt entry start address
+            ELFImgInfo &curImg = elfImgInfoMap[symInfo.fileId];
+            int64_t myPltStartAddr = (int64_t) curImg.pltStartAddr;
+            int64_t curGotAddr = (int64_t) symInfo.gotEntryAddr;
+            int64_t offset = curGotAddr - myPltStartAddr;
+            return offset > 6 || offset < -6;
         }
 
         static ExtFuncCallHook *getInst(std::string folderName);
@@ -84,7 +83,8 @@ namespace scaler {
 
         bool fillAddr2pltEntry(uint8_t *funcAddr, uint8_t *retPltEntry);
 
-        bool fillAddrAndSymId2IdSaver(uint8_t *prehookAddr, uint32_t funcId, uint8_t *idSaverEntry);
+        bool fillAddrAndSymId2IdSaver(uint8_t **gotAddr, uint8_t *firstPltEntry, uint32_t funcIdInFile,
+                                      uint8_t *idSaverEntry);
 
         bool fillAddrAndSymId2LdJumper(uint8_t *firstPltEntryAddr, uint32_t funcId, uint8_t *ldJumperEntry);
 
