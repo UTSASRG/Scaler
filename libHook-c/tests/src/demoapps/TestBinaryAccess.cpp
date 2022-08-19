@@ -27,6 +27,7 @@ int main() {
     printf("Mem write %lu\n", duration);
 
 
+
     start = getunixtimestampms();
     for (int i = 0; i < pow(10,5); ++i) {
         __asm__ (
@@ -41,5 +42,34 @@ int main() {
     duration = stop - start;
     printf("Mem read %lu\n", duration);
 
+
+    start = getunixtimestampms();
+    for (int i = 0; i < pow(10,5); ++i) {
+        __asm__ (
+        "addq $0x1,(%0)\n\t"
+        ://Output
+        : "r" (array)//Input
+        : "r11"//Clobbers
+        );
+    }
+    stop = getunixtimestampms();
+
+    duration = stop - start;
+    printf("Mem add %lu\n", duration);
+
+
+    start = getunixtimestampms();
+    for (int i = 0; i < pow(10,5); ++i) {
+        __asm__ (
+        "lock addq $0x1,(%0)\n\t"
+        ://Output
+        : "r" (array)//Input
+        : "r11"//Clobbers
+        );
+    }
+    stop = getunixtimestampms();
+
+    duration = stop - start;
+    printf("Mem atomic add %lu\n", duration);
     return 0;
 }
