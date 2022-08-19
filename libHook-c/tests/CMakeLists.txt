@@ -99,6 +99,9 @@ target_include_directories(ScalerHook-demoapps-Pthread PUBLIC libtest/header)
 target_link_libraries(ScalerHook-demoapps-Pthread ScalerHook-HookAutoAsm-C Testlib-FuncCall pthread dl)
 target_compile_options(ScalerHook-demoapps-Pthread PRIVATE ${TEST_FLAGS} -Werror)
 
+add_executable(ScalerHook-demoapps-BinaryAccess src/demoapps/TestBinaryAccess.cpp)
+target_include_directories(ScalerHook-demoapps-BinaryAccess PUBLIC libtest/header)
+
 
 add_executable(ScalerHook-proof-Threadlocal src/demoapps/TestThreadLocalAssembly.cpp)
 target_include_directories(ScalerHook-proof-Threadlocal PUBLIC libtest/header)
