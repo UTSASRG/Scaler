@@ -11,8 +11,7 @@ namespace scaler {
     class MemoryHeapArrayC {
     public:
         MemoryHeapArrayC(const ssize_t &initialSize = 4096) : internalArrSize(initialSize) {
-            internalArr = (OBJTYPE *) mmap(NULL, initialSize * sizeof(OBJTYPE), PROT_READ | PROT_WRITE,
-                                           MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            internalArr = (OBJTYPE *) malloc(initialSize * sizeof(OBJTYPE));
             memset(internalArr, 0, initialSize * sizeof(OBJTYPE));
 
         }

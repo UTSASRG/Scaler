@@ -330,8 +330,6 @@ void __attribute__((used, naked, noinline)) callIdSaver() {
     //Jmp to prehookHandler
     "movq $0x1122334455667788,%r11\n\t"
     "jmpq *%r11\n\t"
-
-    //A 64 bit number
     );
 }
 
@@ -340,21 +338,14 @@ void __attribute__((used, naked, noinline)) callIdSaver() {
  * This code should be put into plt entry, but plt entry have no more space.
  * 32bytes aligned
  */
-void __attribute__((used, naked, noinline,optimize(0))) callIdSaver1() {
+void __attribute__((used, naked, noinline)) callIdSaver1() {
     __asm__ __volatile__ (
-    "lock addq $0x1,0x29(%rip)\n\t" //Atomic function counting
-
+    "movabs $0x1122334455667788,%r11\n\t"
+    "movq (%r11),%r11\n\t"
     "movq $0x1122334455667788,%r11\n\t"
     "jmpq (%r11)\n\t"
     "pushq $0x11223344\n\t"
     "movq $0x1122334455667788,%r11\n\t"
     "jmpq *%r11\n\t"
-    );
-}
-
-void __attribute__((used, naked, noinline)) atomicAdd() {
-    __asm__ __volatile__ (
-    //Save Id to memory (Redzone 128+register 128+ funcId 8 + alignment 8)
-    "lock addq $0x1,0x11223344(%rip)\n\t"
     );
 }

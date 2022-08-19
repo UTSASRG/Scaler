@@ -20,6 +20,8 @@
 #include <util/tool/Timer.h>
 
 scaler::SymID pthreadCreateSymId;
+
+uint32_t *countingArr = nullptr;
 namespace scaler {
 
 
@@ -41,6 +43,11 @@ namespace scaler {
         //Get pltBaseAddr
 
         parseRequiredInfo();
+
+        //Allocate counting array todo:Mem leak
+        countingArr = (uint32_t *) mmap(nullptr, sizeof(uint32_t) * allExtSymbol.getSize(),
+                                        PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE,
+                                        -1, 0); //todo: memory leak
 
         if (!initTLS()) {
             ERR_LOG("Failed to initialize TLS");
@@ -511,12 +518,21 @@ namespace scaler {
     uint8_t pltEntryBin[] = {0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                              0x00, 0x00, 0x41, 0xff, 0xE3, 0x90, 0x90, 0x90};
     //32bytes aligned. 0x90 are for alignment purpose
-    uint8_t idSaverBin[] = {0xF0, 0x48, 0x83, 0x05, 0x20, 0x00, 0x00, 0x00,
-                            0x01, 0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00,
-                            0x00, 0x00, 0x00, 0x41, 0xFF, 0x23, 0x68, 0x00,
-                            0x00, 0x00, 0x00, 0x49, 0xBB, 0x00, 0x00, 0x00,
-                            0x00, 0x00, 0x00, 0x00, 0x00, 0x41, 0xFF, 0xE3, 0x90,
-                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    uint8_t idSaverBin[] = {
+            0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+            0x4D, 0x8B, 0x1B, 0x90, 0x90, 0x90, 0x90,
+//          0x49, 0xC7, 0x03, 0x01, 0x00, 0x00, 0x00,
+
+            0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+            0x41, 0xFF, 0x23,
+
+            0x68, 0x00, 0x00, 0x00, 0x00,
+
+            0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+            0x41, 0xFF, 0xE3, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
     uint8_t ldJumperBin[] = {0x68, 0x00, 0x00, 0x00, 0x00, 0x49, 0xBB, 0x00,
                              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41,
@@ -548,18 +564,22 @@ namespace scaler {
     }
 
     bool ExtFuncCallHook::fillAddrAndSymId2IdSaver(uint8_t **gotAddr, uint8_t *firstPltEntry, uint32_t funcIdInFile,
-                                                   uint8_t *idSaverEntry) {
+                                                   uint32_t *countingRecEntry, uint8_t *idSaverEntry) {
 
         //Copy code
         memcpy(idSaverEntry, idSaverBin, sizeof(idSaverBin));
 
         assert(sizeof(uint8_t **) == 8);
+
+        //Fill counting location address
+        memcpy(idSaverEntry + 2, &countingRecEntry, sizeof(uint32_t **));
+
         //Fill got address
-        memcpy(idSaverEntry + 2 + 9, &gotAddr, sizeof(uint8_t **));
+        memcpy(idSaverEntry + 2 + 17, &gotAddr, sizeof(uint8_t **));
         //Fill function id
-        memcpy(idSaverEntry + 14 + 9, &funcIdInFile, sizeof(uint32_t));
+        memcpy(idSaverEntry + 14 + 17, &funcIdInFile, sizeof(uint32_t));
         //Fill first plt address
-        memcpy(idSaverEntry + 20 + 9, &firstPltEntry, sizeof(uint8_t *));
+        memcpy(idSaverEntry + 20 + 17, &firstPltEntry, sizeof(uint8_t *));
         return true;
     }
 
@@ -665,7 +685,7 @@ namespace scaler {
             ELFImgInfo &curImgInfo = elfImgInfoMap[allExtSymbol[curSymId].fileId];
 
             if (!fillAddrAndSymId2IdSaver(curSymInfo.gotEntryAddr, curImgInfo.pltStartAddr, curSymInfo.pltStubId,
-                                          curCallIdSaver)) {
+                                          countingArr+50, curCallIdSaver)) {
                 fatalError(
                         "fillAddrAndSymId2IdSaver failed, this should not happen");
             }
@@ -716,7 +736,7 @@ namespace scaler {
             //Replace got entry, 16 is the size of a plt entry
             if (abs(curSym.pltEntryAddr - *curSym.gotEntryAddr) < 16) {
                 //Address not resolved
-                *curSym.gotEntryAddr = curCallIdSaver + 13+9;
+                *curSym.gotEntryAddr = curCallIdSaver + 13 + 17;
             }
 
             curCallIdSaver += sizeof(idSaverBin);

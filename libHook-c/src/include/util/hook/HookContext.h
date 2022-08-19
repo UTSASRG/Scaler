@@ -9,7 +9,8 @@
 
 extern "C" {
 
-
+static uint64_t testA = 0;
+static uint64_t *testAddr = 0;
 #define MAX_CALL_DEPTH 64 //N+1 because of dummy variable
 
 struct HookTuple {
@@ -45,7 +46,7 @@ struct HookContext {
 };
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
-
+extern uint32_t *countingArr;
 
 class DataSaver {
 public:
@@ -55,7 +56,7 @@ public:
 };
 
 
-void saveData(HookContext *context,bool finalize=false);
+void saveData(HookContext *context, bool finalize = false);
 
 
 static thread_local DataSaver saverElem;
