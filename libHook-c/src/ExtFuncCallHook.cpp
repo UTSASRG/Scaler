@@ -45,7 +45,7 @@ namespace scaler {
         parseRequiredInfo();
 
         //Allocate counting array todo:Mem leak
-        countingArr = (uint32_t *) mmap(nullptr, sizeof(uint32_t) * allExtSymbol.getSize(),
+        countingArr = (uint32_t *) mmap(nullptr, sizeof(uint32_t) * allExtSymbol.getSize() * 2,
                                         PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE,
                                         -1, 0); //todo: memory leak
 
@@ -521,8 +521,14 @@ namespace scaler {
     uint8_t idSaverBin[] = {
             0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 
+            //Use mov
             0x4D, 0x8B, 0x1B, 0x90, 0x90, 0x90, 0x90,
-//          0x49, 0xC7, 0x03, 0x01, 0x00, 0x00, 0x00,
+            //Use add
+//            0x90, 0x49, 0x83, 0x03, 0x01, 0x90, 0x90,
+            //Use lock.add
+//            0xF0, 0x49, 0x83, 0x03, 0x01, 0x90, 0x90,
+
+
 
             0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 
@@ -685,7 +691,7 @@ namespace scaler {
             ELFImgInfo &curImgInfo = elfImgInfoMap[allExtSymbol[curSymId].fileId];
 
             if (!fillAddrAndSymId2IdSaver(curSymInfo.gotEntryAddr, curImgInfo.pltStartAddr, curSymInfo.pltStubId,
-                                          countingArr+50, curCallIdSaver)) {
+                                          countingArr + curSymId, curCallIdSaver)) {
                 fatalError(
                         "fillAddrAndSymId2IdSaver failed, this should not happen");
             }
