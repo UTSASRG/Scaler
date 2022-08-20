@@ -333,15 +333,56 @@ void __attribute__((used, naked, noinline)) callIdSaver() {
     );
 }
 
+/*
+uint8_t idSaverBin[] = {
+        0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 
+        //Use mov
+        0x4D, 0x8B, 0x1B, 0x90, 0x90, 0x90, 0x90,
+        //Use add
+//            0x90, 0x49, 0x83, 0x03, 0x01, 0x90, 0x90,
+        //Use lock.add
+//            0xF0, 0x49, 0x83, 0x03, 0x01, 0x90, 0x90,
+
+
+
+        0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+        0x41, 0xFF, 0x23,
+
+        0x68, 0x00, 0x00, 0x00, 0x00,
+
+        0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+
+        0x41, 0xFF, 0xE3, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+*/
 /**
  * This code should be put into plt entry, but plt entry have no more space.
  * 32bytes aligned
  */
-void __attribute__((used, naked, noinline)) callIdSaver1() {
+void __attribute__((used, naked, noinline)) callIdSaverScheme2() {
     __asm__ __volatile__ (
     "movabs $0x1122334455667788,%r11\n\t"
     "movq (%r11),%r11\n\t"
+    "movq $0x1122334455667788,%r11\n\t"
+    "jmpq (%r11)\n\t"
+    "pushq $0x11223344\n\t"
+    "movq $0x1122334455667788,%r11\n\t"
+    "jmpq *%r11\n\t"
+    );
+}
+
+void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
+    __asm__ __volatile__ (
+    //Access TLS
+    "movabs $0x1122334455667788,%r11\n\t"
+    "mov %fs:(%r11),%r11\n\t" //Now r11 has tls variable
+    //Check whether the context is initialized
+    "cmpq $0,(%r11)\n\t"
+    //Skip processing if true
+    "jz SKIP\n\t" //Add unlikely flag
+
+    "SKIP:"
     "movq $0x1122334455667788,%r11\n\t"
     "jmpq (%r11)\n\t"
     "pushq $0x11223344\n\t"

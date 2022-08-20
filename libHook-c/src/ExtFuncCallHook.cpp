@@ -227,11 +227,11 @@ namespace scaler {
 //            fatalError("Function has no name?!");
         }
 
-//        if (strncmp(funcName, "funcA", funcNameLen) == 0) {
-//            return true;
-//        } else {
-//            return false;
-//        }
+        if (strncmp(funcName, "funcA", funcNameLen) == 0) {
+            return true;
+        } else {
+            return false;
+        }
 
 
         if (scaler::strStartsWith(funcName, "__")) {
@@ -519,26 +519,36 @@ namespace scaler {
                              0x00, 0x00, 0x41, 0xff, 0xE3, 0x90, 0x90, 0x90};
     //32bytes aligned. 0x90 are for alignment purpose
     uint8_t idSaverBin[] = {
+            /**
+             * Read TLS
+             */
+            //movabs $0x1122334455667788,%r11
             0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            //mov %fs:(%r11),%r11
+            0x64, 0x4D, 0x8B, 0x1B,
+            //cmpq $0,(%r11)
+            0x49, 0x83, 0x3B, 0x00,
+            //jz SKIP
+            0x74, 0x00,
 
-            //Use mov
-            0x4D, 0x8B, 0x1B, 0x90, 0x90, 0x90, 0x90,
-            //Use add
-//            0x90, 0x49, 0x83, 0x03, 0x01, 0x90, 0x90,
-            //Use lock.add
-//            0xF0, 0x49, 0x83, 0x03, 0x01, 0x90, 0x90,
-
-
-
+            /**
+             * Jmp GOT
+             */
+            //SKIP:
+            //movq $0x1122334455667788,%r11
             0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-
+            //jmpq (%r11)
             0x41, 0xFF, 0x23,
-
+            /**
+             * Call ld
+             */
+            //pushq $0x11223344
             0x68, 0x00, 0x00, 0x00, 0x00,
-
+            //movq $0x1122334455667788,%r11
             0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-
-            0x41, 0xFF, 0xE3, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+            //jmpq *%r11
+            0x41, 0xFF, 0xE3
+    };
 
     uint8_t ldJumperBin[] = {0x68, 0x00, 0x00, 0x00, 0x00, 0x49, 0xBB, 0x00,
                              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41,
@@ -570,7 +580,7 @@ namespace scaler {
     }
 
     bool ExtFuncCallHook::fillAddrAndSymId2IdSaver(uint8_t **gotAddr, uint8_t *firstPltEntry, uint32_t funcIdInFile,
-                                                   uint32_t *countingRecEntry, uint8_t *idSaverEntry) {
+                                                   uint32_t *tlsOffset, uint8_t *idSaverEntry) {
 
         //Copy code
         memcpy(idSaverEntry, idSaverBin, sizeof(idSaverBin));
@@ -578,14 +588,14 @@ namespace scaler {
         assert(sizeof(uint8_t **) == 8);
 
         //Fill counting location address
-        memcpy(idSaverEntry + 2, &countingRecEntry, sizeof(uint32_t **));
+        memcpy(idSaverEntry + 2, &tlsOffset, sizeof(uint32_t **));
 
         //Fill got address
-        memcpy(idSaverEntry + 2 + 17, &gotAddr, sizeof(uint8_t **));
+        memcpy(idSaverEntry + 2 + 20, &gotAddr, sizeof(uint8_t **));
         //Fill function id
-        memcpy(idSaverEntry + 14 + 17, &funcIdInFile, sizeof(uint32_t));
+        memcpy(idSaverEntry + 14 + 20, &funcIdInFile, sizeof(uint32_t));
         //Fill first plt address
-        memcpy(idSaverEntry + 20 + 17, &firstPltEntry, sizeof(uint8_t *));
+        memcpy(idSaverEntry + 20 + 20, &firstPltEntry, sizeof(uint8_t *));
         return true;
     }
 
@@ -690,8 +700,10 @@ namespace scaler {
             ExtSymInfo &curSymInfo = allExtSymbol[curSymId];
             ELFImgInfo &curImgInfo = elfImgInfoMap[allExtSymbol[curSymId].fileId];
 
+            uint32_t *tlsOffset = reinterpret_cast<uint32_t *>(-32);
+
             if (!fillAddrAndSymId2IdSaver(curSymInfo.gotEntryAddr, curImgInfo.pltStartAddr, curSymInfo.pltStubId,
-                                          countingArr + curSymId, curCallIdSaver)) {
+                                          tlsOffset, curCallIdSaver)) {
                 fatalError(
                         "fillAddrAndSymId2IdSaver failed, this should not happen");
             }
@@ -742,7 +754,7 @@ namespace scaler {
             //Replace got entry, 16 is the size of a plt entry
             if (abs(curSym.pltEntryAddr - *curSym.gotEntryAddr) < 16) {
                 //Address not resolved
-                *curSym.gotEntryAddr = curCallIdSaver + 13 + 17;
+                *curSym.gotEntryAddr = curCallIdSaver + 13 + 20;
             }
 
             curCallIdSaver += sizeof(idSaverBin);
