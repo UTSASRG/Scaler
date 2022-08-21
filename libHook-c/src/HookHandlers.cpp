@@ -374,13 +374,18 @@ void __attribute__((used, naked, noinline)) callIdSaverScheme2() {
 
 void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
     __asm__ __volatile__ (
-    //Access TLS
+    /**
+     * Access TLS
+     */
     "movabs $0x1122334455667788,%r11\n\t"
-    "mov %fs:(%r11),%r11\n\t" //Now r11 has tls variable
+    "mov %fs:(%r11),%r11\n\t" //Now r11 points to the tls header
     //Check whether the context is initialized
     "cmpq $0,(%r11)\n\t"
     //Skip processing if true
-    "jz SKIP\n\t" //Add unlikely flag
+    "jz SKIP\n\t"
+
+    //Add 1 to the corresponding entry
+    "addq $1,0x11223344(%r11)\n\t"
 
     "SKIP:"
     "movq $0x1122334455667788,%r11\n\t"

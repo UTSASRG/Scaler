@@ -65,7 +65,7 @@ bool destructContext() {
  * This code should be put into plt entry, but plt entry have no more space.
  * 32bytes aligned
  */
-void __attribute__((used, noinline, optimize(3))) accessTLS() {
+void __attribute__((used, noinline, optimize(3))) demoAccessTLS() {
 
     auto &i __attribute__((used)) = curContext;
     auto &j __attribute__((used)) = curContext->timingArr;
@@ -92,7 +92,7 @@ bool initTLS() {
     curContext = constructContext(
             scaler::ExtFuncCallHook::instance->elfImgInfoMap.getSize(),
             scaler::ExtFuncCallHook::instance->allExtSymbol.getSize() + 1);
-    accessTLS();
+    demoAccessTLS();
 
     if (!curContext) {
         fatalError("Failed to allocate memory for Context");

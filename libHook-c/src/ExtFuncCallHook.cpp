@@ -529,8 +529,11 @@ namespace scaler {
             //cmpq $0,(%r11)
             0x49, 0x83, 0x3B, 0x00,
             //jz SKIP
-            0x74, 0x00,
+            0x74, 0x08,
 
+            //addq $1,0x44332211(%r11)
+            0x49, 0x83, 0x83, 0x00, 0x00, 0x00, 0x00, 0x01,
+//            0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
             /**
              * Jmp GOT
              */
@@ -548,6 +551,8 @@ namespace scaler {
             0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             //jmpq *%r11
             0x41, 0xFF, 0xE3
+
+
     };
 
     uint8_t ldJumperBin[] = {0x68, 0x00, 0x00, 0x00, 0x00, 0x49, 0xBB, 0x00,
@@ -580,7 +585,7 @@ namespace scaler {
     }
 
     bool ExtFuncCallHook::fillAddrAndSymId2IdSaver(uint8_t **gotAddr, uint8_t *firstPltEntry, uint32_t funcIdInFile,
-                                                   uint32_t *tlsOffset, uint8_t *idSaverEntry) {
+                                                   uint32_t *tlsOffset, uint32_t arrOffset, uint8_t *idSaverEntry) {
 
         //Copy code
         memcpy(idSaverEntry, idSaverBin, sizeof(idSaverBin));
@@ -590,12 +595,16 @@ namespace scaler {
         //Fill counting location address
         memcpy(idSaverEntry + 2, &tlsOffset, sizeof(uint32_t **));
 
+        arrOffset += 0x650;
+        memcpy(idSaverEntry + 23, &arrOffset, sizeof(uint32_t));
+
+
         //Fill got address
-        memcpy(idSaverEntry + 2 + 20, &gotAddr, sizeof(uint8_t **));
+        memcpy(idSaverEntry + 2 + 28, &gotAddr, sizeof(uint8_t **));
         //Fill function id
-        memcpy(idSaverEntry + 14 + 20, &funcIdInFile, sizeof(uint32_t));
+        memcpy(idSaverEntry + 14 + 28, &funcIdInFile, sizeof(uint32_t));
         //Fill first plt address
-        memcpy(idSaverEntry + 20 + 20, &firstPltEntry, sizeof(uint8_t *));
+        memcpy(idSaverEntry + 20 + 28, &firstPltEntry, sizeof(uint8_t *));
         return true;
     }
 
@@ -703,7 +712,7 @@ namespace scaler {
             uint32_t *tlsOffset = reinterpret_cast<uint32_t *>(-32);
 
             if (!fillAddrAndSymId2IdSaver(curSymInfo.gotEntryAddr, curImgInfo.pltStartAddr, curSymInfo.pltStubId,
-                                          tlsOffset, curCallIdSaver)) {
+                                          tlsOffset, curSymId, curCallIdSaver)) {
                 fatalError(
                         "fillAddrAndSymId2IdSaver failed, this should not happen");
             }
@@ -754,7 +763,7 @@ namespace scaler {
             //Replace got entry, 16 is the size of a plt entry
             if (abs(curSym.pltEntryAddr - *curSym.gotEntryAddr) < 16) {
                 //Address not resolved
-                *curSym.gotEntryAddr = curCallIdSaver + 13 + 20;
+                *curSym.gotEntryAddr = curCallIdSaver + 13 + 28;
             }
 
             curCallIdSaver += sizeof(idSaverBin);
