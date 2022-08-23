@@ -19,10 +19,16 @@ struct HookTuple {
     int64_t symId;
 };
 
+struct RecTuple {
+    uint64_t timestamp;
+    int64_t count;
+    uint32_t gap;
+};
+
 struct HookContext {
     //todo: Initialize using maximum stack size
     int64_t indexPosi;//8bytes
-    scaler::Array<uint64_t> *timingArr; //8bytes
+    scaler::Array<RecTuple> *recArr; //8bytes
     //Records which function calls which function for how long, the index is scalerid (Only contains hooked function)
     //todo: Replace timingMatrix to a class
     int64_t curFileId = 1; //The default one is main thread 8bytes

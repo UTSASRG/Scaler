@@ -227,11 +227,11 @@ namespace scaler {
 //            fatalError("Function has no name?!");
         }
 
-        if (strncmp(funcName, "funcA", funcNameLen) == 0) {
-            return true;
-        } else {
-            return false;
-        }
+//        if (strncmp(funcName, "funcA", funcNameLen) == 0) {
+//            return true;
+//        } else {
+//            return false;
+//        }
 
 
         if (scaler::strStartsWith(funcName, "__")) {
@@ -518,32 +518,82 @@ namespace scaler {
     uint8_t pltEntryBin[] = {0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                              0x00, 0x00, 0x41, 0xff, 0xE3, 0x90, 0x90, 0x90};
     //32bytes aligned. 0x90 are for alignment purpose
+
+    const int READ_TLS_PART_START = 0;
+
+    const int COUNTING_PART_START = READ_TLS_PART_START + 20;
+    const int COUNT_OFFSET1 = COUNTING_PART_START + 12, COUNT_OFFSET1_SIZE = 32;
+    const int COUNT_OFFSET2 = COUNTING_PART_START + 23, COUNT_OFFSET2_SIZE = 32;
+    const int GAP_OFFSET = COUNTING_PART_START + 30, GAP_OFFSET_SIZE = 32;
+
+    const int SKIP_PART_START = COUNTING_PART_START + 45;
+    const int GOT_ADDR = SKIP_PART_START + 2, GOT_ADDR_SIZE = 64;
+    const int CALL_LD_INST = SKIP_PART_START + 13;
+    const int PLT_STUB_ID = SKIP_PART_START + 14, PLT_STUB_ID_SIZE = 32;
+    const int PLT_START_ADDR = SKIP_PART_START + 20, PLT_START_ADDR_SIZE = 64;
+
+    const int COUNT_OFFSET_IN_RECARR = 0x8;
+    const int GAP_OFFSET_IN_RECARR = 0x10;
+
+    const int TIMING_PART_START = SKIP_PART_START + 31;
+    const int SYM_ID = TIMING_PART_START + 1, FUNC_ID_SIZE = 32;
+    const int ASM_HOOK_HANDLER_ADDR = TIMING_PART_START + 7, ASM_HOOK_HANDLER_ADDR_SIZE = 64;
+
     uint8_t idSaverBin[] = {
             /**
-             * Read TLS
+             * Read TLS part
              */
-            //movabs $0x1122334455667788,%r11
-            0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            //movabs $-32,%r11
+            0x49, 0xBB, 0xE0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
             //mov %fs:(%r11),%r11
             0x64, 0x4D, 0x8B, 0x1B,
-            //cmpq $0,(%r11)
-            0x49, 0x83, 0x3B, 0x00,
-            //jz SKIP
-            0x74, 0x08,
+            //cmpq $0,%r11
+            0x49, 0x83, 0xFB, 0x00,
+            //je SKIP
+            0x74, 0x2D,
 
-            //addq $1,0x44332211(%r11)
-            0x49, 0x83, 0x83, 0x00, 0x00, 0x00, 0x00, 0x01,
-//            0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
             /**
-             * Jmp GOT
+             * Counting part
+             */
+            //push %r10
+            0x41, 0x52,
+            //mov    0x650(%r11),%r11
+            0x4D, 0x8B, 0x9B, 0x50, 0x06, 0x00, 0x00,
+            //mov    0x00000000(%r11),%r10
+            0x4D, 0x8B, 0x93, 0x00, 0x00, 0x00, 0x00,
+            //add    $0x1,%r10
+            0x49, 0x83, 0xC2, 0x00,
+            //mov    %r10,0x11223344(%r11)
+            0x4D, 0x89, 0x93, 0x00, 0x00, 0x00, 0x00,
+            //mov    0x11223344(%r11),%r11
+            0x4D, 0x8B, 0x9B, 0x00, 0x00, 0x00, 0x00,
+            //and    %r11,%r10
+            0x4D, 0x21,0xDA,
+            //cmpq   $0x0,%r10
+            0x49, 0x83, 0xFA, 0x00,
+            //pop    %r10
+            0x41, 0x5A,
+            //jz TIMING_JUMPER
+            0x74, 0x1F,
+
+            /**
+             * SKIP part
              */
             //SKIP:
             //movq $0x1122334455667788,%r11
             0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             //jmpq (%r11)
             0x41, 0xFF, 0x23,
+
+            //pushq $0x11223344
+            0x68, 0x00, 0x00, 0x00, 0x00,
+            //movq $0x1122334455667788,%r11
+            0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            //jmpq *%r11
+            0x41, 0xFF, 0xE3,
+
             /**
-             * Call ld
+             * TIMING part
              */
             //pushq $0x11223344
             0x68, 0x00, 0x00, 0x00, 0x00,
@@ -551,8 +601,6 @@ namespace scaler {
             0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             //jmpq *%r11
             0x41, 0xFF, 0xE3
-
-
     };
 
     uint8_t ldJumperBin[] = {0x68, 0x00, 0x00, 0x00, 0x00, 0x49, 0xBB, 0x00,
@@ -584,27 +632,36 @@ namespace scaler {
         return true;
     }
 
-    bool ExtFuncCallHook::fillAddrAndSymId2IdSaver(uint8_t **gotAddr, uint8_t *firstPltEntry, uint32_t funcIdInFile,
-                                                   uint32_t *tlsOffset, uint32_t arrOffset, uint8_t *idSaverEntry) {
+    bool ExtFuncCallHook::fillAddrAndSymId2IdSaver(uint8_t **gotAddr, uint8_t *firstPltEntry, uint32_t symId,
+                                                   uint32_t pltStubId,
+                                                   uint32_t countOffset, uint32_t gapOffset, uint8_t *idSaverEntry) {
 
         //Copy code
         memcpy(idSaverEntry, idSaverBin, sizeof(idSaverBin));
 
         assert(sizeof(uint8_t **) == 8);
 
-        //Fill counting location address
-        memcpy(idSaverEntry + 2, &tlsOffset, sizeof(uint32_t **));
+        //Fill TLS offset (Address filled directly inside)
 
-        arrOffset += 0x650;
-        memcpy(idSaverEntry + 23, &arrOffset, sizeof(uint32_t));
+        memcpy(idSaverEntry + COUNT_OFFSET1, &countOffset, sizeof(uint32_t));
+        memcpy(idSaverEntry + COUNT_OFFSET2, &countOffset, sizeof(uint32_t));
 
+        memcpy(idSaverEntry + GAP_OFFSET, &gapOffset, sizeof(uint32_t));
 
         //Fill got address
-        memcpy(idSaverEntry + 2 + 28, &gotAddr, sizeof(uint8_t **));
+        memcpy(idSaverEntry + GOT_ADDR, &gotAddr, sizeof(uint8_t **));
         //Fill function id
-        memcpy(idSaverEntry + 14 + 28, &funcIdInFile, sizeof(uint32_t));
+        memcpy(idSaverEntry + PLT_STUB_ID, &pltStubId, sizeof(uint32_t));
         //Fill first plt address
-        memcpy(idSaverEntry + 20 + 28, &firstPltEntry, sizeof(uint8_t *));
+        memcpy(idSaverEntry + PLT_START_ADDR, &firstPltEntry, sizeof(uint8_t *));
+
+        //Fill symId
+        memcpy(idSaverEntry + SYM_ID, &symId, sizeof(uint32_t));
+
+        uint8_t* asmHookPtr=(uint8_t*)&asmTimingHandler;
+        //Fill asmTimingHandler
+        memcpy(idSaverEntry + ASM_HOOK_HANDLER_ADDR, (void *) &asmHookPtr, sizeof(void *));
+
         return true;
     }
 
@@ -709,10 +766,11 @@ namespace scaler {
             ExtSymInfo &curSymInfo = allExtSymbol[curSymId];
             ELFImgInfo &curImgInfo = elfImgInfoMap[allExtSymbol[curSymId].fileId];
 
-            uint32_t *tlsOffset = reinterpret_cast<uint32_t *>(-32);
 
-            if (!fillAddrAndSymId2IdSaver(curSymInfo.gotEntryAddr, curImgInfo.pltStartAddr, curSymInfo.pltStubId,
-                                          tlsOffset, curSymId, curCallIdSaver)) {
+            if (!fillAddrAndSymId2IdSaver(curSymInfo.gotEntryAddr, curImgInfo.pltStartAddr, curSymId,
+                                          curSymInfo.pltStubId,
+                                          curSymId * sizeof(RecTuple) + COUNT_OFFSET_IN_RECARR,
+                                          curSymId * sizeof(RecTuple) + GAP_OFFSET_IN_RECARR, curCallIdSaver)) {
                 fatalError(
                         "fillAddrAndSymId2IdSaver failed, this should not happen");
             }
@@ -763,7 +821,7 @@ namespace scaler {
             //Replace got entry, 16 is the size of a plt entry
             if (abs(curSym.pltEntryAddr - *curSym.gotEntryAddr) < 16) {
                 //Address not resolved
-                *curSym.gotEntryAddr = curCallIdSaver + 13 + 28;
+                *curSym.gotEntryAddr = curCallIdSaver + CALL_LD_INST;
             }
 
             curCallIdSaver += sizeof(idSaverBin);

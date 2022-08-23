@@ -9,7 +9,9 @@ extern "C" {
 
 extern uint8_t *callIdSavers;
 extern uint8_t *ldCallers;
-void __attribute__((naked)) asmHookHandler();
+void __attribute__((naked)) asmTimingHandler();
+void __attribute__((naked)) asmCountingHandler();
+
 /**
 * A handler written in C. It calls custom handler and calculates actual function address
 * In the new code, .plt and .plt.sec uses the same handler. Since we currently don't calculate

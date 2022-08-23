@@ -16,15 +16,25 @@ HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
                                      sizeof(pthread_mutex_t), &testA);
     HookContext *rlt = reinterpret_cast<HookContext *>(contextHeap);
     assert(rlt != nullptr);
-    memset(rlt, 0, sizeof(HookContext) + sizeof(scaler::Array<uint64_t>) + sizeof(pthread_mutex_t));
-    rlt->timingArr = new(contextHeap + sizeof(HookContext)) scaler::Array<uint64_t>(hookedSymbolSize);
+    memset(rlt, 0, sizeof(HookContext) + sizeof(scaler::Array<RecTuple>) + sizeof(pthread_mutex_t));
+    rlt->recArr = new(contextHeap + sizeof(HookContext)) scaler::Array<RecTuple>(hookedSymbolSize);
     rlt->threadDataSavingLock = reinterpret_cast<pthread_mutex_t *>(contextHeap + sizeof(HookContext) +
                                                                     sizeof(scaler::Array<uint64_t>));
+
+
     pthread_mutexattr_t Attr;
     pthread_mutexattr_init(&Attr);
     pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
     pthread_mutex_init(rlt->threadDataSavingLock, &Attr);
-    rlt->timingArr->setSize(hookedSymbolSize);
+    rlt->recArr->setSize(hookedSymbolSize);
+    //Initialize gap to one
+    for (int i = 0; i < rlt->recArr->getSize(); ++i) {
+        //number mod 2^n is equivalent to stripping off all but the n lowest-order
+        rlt->recArr->internalArr[i].gap = 0b11; //%4=2^2
+        rlt->recArr->internalArr[i].count = 1;
+    }
+
+
 //    memArrayHeap(1), timingArr(hookedSymbolSize),
 //            indexPosi(0)
 
@@ -53,7 +63,7 @@ HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
 
 bool destructContext() {
     HookContext *curContextPtr = curContext;
-    delete curContextPtr->timingArr;
+    delete curContextPtr->recArr;
     munmap(curContextPtr, sizeof(HookContext) +
                           sizeof(scaler::Array<uint64_t>) +
                           sizeof(pthread_mutex_t));
@@ -65,20 +75,26 @@ bool destructContext() {
  * This code should be put into plt entry, but plt entry have no more space.
  * 32bytes aligned
  */
-void __attribute__((used, noinline, optimize(3))) demoAccessTLS() {
+void __attribute__((used, noinline, optimize(3))) printRecOffset() {
 
-    auto &i __attribute__((used)) = curContext;
-    auto &j __attribute__((used)) = curContext->timingArr;
-    auto &k __attribute__((used)) = curContext->timingArr->internalArr;
+    auto i __attribute__((used)) = (uint8_t *) curContext;
+    auto j __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr;
 
-    printf("%p.%p,%p", i, j, k);
+    auto k __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0];
+    auto l __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].count;
+    auto m __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].gap;
+
+    DBG_LOGS("\nTLS offset: Check assembly\n"
+             "RecArr Offset: 0x%x\n"
+             "Counting Entry Offset: 0x%x\n"
+             "Gap Entry Offset: 0x%x\n", j - i, l - k, m - k);
 }
 
 
 void __attribute__((used, noinline, optimize(3))) accessTLS1() {
     HookContext *contextPtr __attribute__((used)) = curContext;
-    auto &j __attribute__((used)) = contextPtr->timingArr;
-    auto &k __attribute__((used)) = contextPtr->timingArr->internalArr;
+    auto &j __attribute__((used)) = contextPtr->recArr;
+    auto &k __attribute__((used)) = contextPtr->recArr->internalArr;
     printf("%p.%p,%p", contextPtr, j, k);
 
 
@@ -92,8 +108,9 @@ bool initTLS() {
     curContext = constructContext(
             scaler::ExtFuncCallHook::instance->elfImgInfoMap.getSize(),
             scaler::ExtFuncCallHook::instance->allExtSymbol.getSize() + 1);
-    demoAccessTLS();
-
+#ifdef PRINT_DBG_LOG
+    printRecOffset();
+#endif
     if (!curContext) {
         fatalError("Failed to allocate memory for Context");
         return false;
@@ -146,7 +163,7 @@ void saveData(HookContext *curContextPtr, bool finalize) {
     }
 
     //Main application at the end
-    curContextPtr->timingArr->internalArr[curContextPtr->timingArr->getSize() - 1] =
+    curContextPtr->recArr->internalArr[curContextPtr->recArr->getSize() - 1].timestamp =
             curContextPtr->endTImestamp - curContextPtr->startTImestamp;
 
 
@@ -155,14 +172,14 @@ void saveData(HookContext *curContextPtr, bool finalize) {
                     strerror(errno));
     }
 
-    int64_t timeEntrySize = curContextPtr->timingArr->getSize();
+    int64_t timeEntrySize = curContextPtr->recArr->getSize();
     if (fwrite(&timeEntrySize, sizeof(int64_t), 1, threadDataSaver) != 1) {
         fatalErrorS("Cannot write timeEntrySize of %s because:%s", ss.str().c_str(),
                     strerror(errno));
     }
-    if (fwrite(curContextPtr->timingArr->data(), curContextPtr->timingArr->getTypeSizeInBytes(),
-               curContextPtr->timingArr->getSize(), threadDataSaver) !=
-        curContextPtr->timingArr->getSize()) {
+    if (fwrite(curContextPtr->recArr->data(), curContextPtr->recArr->getTypeSizeInBytes(),
+               curContextPtr->recArr->getSize(), threadDataSaver) !=
+        curContextPtr->recArr->getSize()) {
         fatalErrorS("Cannot write timingArr of %s because:%s", ss.str().c_str(),
                     strerror(errno));
     }

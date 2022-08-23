@@ -84,7 +84,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
         }
     }
 
-    if(!installed){
+    if (!installed) {
         return pthread_create_orig(thread, attr, start, (void *) arg);
     }
 
@@ -96,13 +96,13 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     args->data = arg;
     // Call the actual pthread_create
 
-    uint64_t pthreadCreateStart=getunixtimestampms();
+    uint64_t pthreadCreateStart = getunixtimestampms();
     int retVal = pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
-    uint64_t pthreadCreateEnd=getunixtimestampms();
+    uint64_t pthreadCreateEnd = getunixtimestampms();
 
-    HookContext* curContextPtr=curContext;
+    HookContext *curContextPtr = curContext;
     //Attribute time to pthread_create
-    curContextPtr->timingArr->internalArr[pthreadCreateSymId] +=
+    curContextPtr->recArr->internalArr[pthreadCreateSymId].timestamp +=
             pthreadCreateEnd - pthreadCreateStart;
 
     return retVal;

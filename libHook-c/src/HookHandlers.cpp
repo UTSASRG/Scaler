@@ -77,7 +77,7 @@
  *
  * oldrsp-0        caller(return) address
  */
-void __attribute__((naked)) asmHookHandler() {
+void __attribute__((naked)) asmTimingHandler() {
     //todo: Calculate values based on rsp rathe than saving them to registers
     __asm__ __volatile__ (
     //The first six integer or pointer arguments are passed in registers RDI, RSI, RDX, RCX, R8, R9
@@ -207,8 +207,10 @@ void __attribute__((naked)) asmHookHandler() {
     );
 
 }
-uint8_t *callIdSavers=nullptr;
-uint8_t *ldCallers=nullptr;
+
+
+uint8_t *callIdSavers = nullptr;
+uint8_t *ldCallers = nullptr;
 
 //Return magic number definition:
 //1234: address resolved, pre-hook only (Fastest)
@@ -289,7 +291,7 @@ void *afterHookHandler() {
 
     uint32_t lo, hi;
     __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    curContextPtr->timingArr->internalArr[symbolId] +=
+    curContextPtr->recArr->internalArr[symbolId].timestamp +=
             (((int64_t) hi << 32) | lo) - curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp;
 
     --curContextPtr->indexPosi;
@@ -318,78 +320,46 @@ void __attribute__((used, naked, noinline)) myPltEntry() {
     );
 }
 
-/**
- * This code should be put into plt entry, but plt entry have no more space.
- * 32bytes aligned
- */
-void __attribute__((used, naked, noinline)) callIdSaver() {
-    __asm__ __volatile__ (
-    //Save Id to memory (Redzone 128+register 128+ funcId 8 + alignment 8)
-    "subq $0x110,%rsp\n\t"
-    "pushq $0x11223344\n\t"
-    //Jmp to prehookHandler
-    "movq $0x1122334455667788,%r11\n\t"
-    "jmpq *%r11\n\t"
-    );
-}
-
-/*
-uint8_t idSaverBin[] = {
-        0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-
-        //Use mov
-        0x4D, 0x8B, 0x1B, 0x90, 0x90, 0x90, 0x90,
-        //Use add
-//            0x90, 0x49, 0x83, 0x03, 0x01, 0x90, 0x90,
-        //Use lock.add
-//            0xF0, 0x49, 0x83, 0x03, 0x01, 0x90, 0x90,
-
-
-
-        0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-
-        0x41, 0xFF, 0x23,
-
-        0x68, 0x00, 0x00, 0x00, 0x00,
-
-        0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-
-        0x41, 0xFF, 0xE3, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-*/
-/**
- * This code should be put into plt entry, but plt entry have no more space.
- * 32bytes aligned
- */
-void __attribute__((used, naked, noinline)) callIdSaverScheme2() {
-    __asm__ __volatile__ (
-    "movabs $0x1122334455667788,%r11\n\t"
-    "movq (%r11),%r11\n\t"
-    "movq $0x1122334455667788,%r11\n\t"
-    "jmpq (%r11)\n\t"
-    "pushq $0x11223344\n\t"
-    "movq $0x1122334455667788,%r11\n\t"
-    "jmpq *%r11\n\t"
-    );
-}
-
 void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
     __asm__ __volatile__ (
     /**
-     * Access TLS
+     * Access TLS, make sure it's initialized
      */
-    "movabs $0x1122334455667788,%r11\n\t"
+    "movabs $-32,%r11\n\t"//Move the tls offset of context to r11
     "mov %fs:(%r11),%r11\n\t" //Now r11 points to the tls header
     //Check whether the context is initialized
-    "cmpq $0,(%r11)\n\t"
-    //Skip processing if true
+    "cmpq $0,%r11\n\t"
+    //Skip processing if context is not initialized
     "jz SKIP\n\t"
 
-    //Add 1 to the corresponding entry
-    "addq $1,0x11223344(%r11)\n\t"
+    "pushq %r10\n\t"
 
+    "movq 0x650(%r11),%r11\n\t" //Fetch recArr.internalArr address from TLS -> r11
+    "movq 0x11223344(%r11),%r10\n\t" //Fetch recArr.internalArr[symId].count in Heap to -> r10
+    "addq $1,%r10\n\t" //count + 1
+    "movq %r10,0x11223344(%r11)\n\t" //Store count
+
+    "movq 0x11223344(%r11),%r11\n\t" //Fetch recArr.internalArr[symId].gap in Heap to -> r11
+    "andq %r11,%r10\n\t" //count value (r10) % gap (r11) -> r11, gap value must be a power of 2
+    "cmpq $0,%r10\n\t" //If necessary count % gap == 0. Use timing
+    "pop %r10\n\t"
+    "jz TIMING_JUMPER\n\t" //Check if context is initialized
+
+    /**
+    * Return
+    */
     "SKIP:"
-    "movq $0x1122334455667788,%r11\n\t"
+    "movq $0x1122334455667788,%r11\n\t" //GOT address
     "jmpq (%r11)\n\t"
+    "pushq $0x11223344\n\t" //Plt stub id
+    "movq $0x1122334455667788,%r11\n\t" //First plt entry
+    "jmpq *%r11\n\t"
+
+    /**
+     * Timing
+     */
+    //Perform timing
+    "TIMING_JUMPER:"
     "pushq $0x11223344\n\t"
     "movq $0x1122334455667788,%r11\n\t"
     "jmpq *%r11\n\t"
