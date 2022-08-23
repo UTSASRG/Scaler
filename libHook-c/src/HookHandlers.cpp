@@ -325,7 +325,7 @@ void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
     /**
      * Access TLS, make sure it's initialized
      */
-    "movabs $-32,%r11\n\t"//Move the tls offset of context to r11
+    "mov $0x1122334455667788,%r11\n\t"//Move the tls offset of context to r11
     "mov %fs:(%r11),%r11\n\t" //Now r11 points to the tls header
     //Check whether the context is initialized
     "cmpq $0,%r11\n\t"

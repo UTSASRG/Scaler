@@ -520,6 +520,7 @@ namespace scaler {
     //32bytes aligned. 0x90 are for alignment purpose
 
     const int READ_TLS_PART_START = 0;
+    const int COUNT_TLS_ARR_ADDR = READ_TLS_PART_START + 2;
 
     const int COUNTING_PART_START = READ_TLS_PART_START + 20;
     const int COUNT_OFFSET1 = COUNTING_PART_START + 12, COUNT_OFFSET1_SIZE = 32;
@@ -543,8 +544,8 @@ namespace scaler {
             /**
              * Read TLS part
              */
-            //movabs $-32,%r11
-            0x49, 0xBB, 0xE0, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+            //mov $0x1122334455667788,%r11
+            0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             //mov %fs:(%r11),%r11
             0x64, 0x4D, 0x8B, 0x1B,
             //cmpq $0,%r11
@@ -568,7 +569,7 @@ namespace scaler {
             //mov    0x11223344(%r11),%r11
             0x4D, 0x8B, 0x9B, 0x00, 0x00, 0x00, 0x00,
             //and    %r11,%r10
-            0x4D, 0x21,0xDA,
+            0x4D, 0x21, 0xDA,
             //cmpq   $0x0,%r10
             0x49, 0x83, 0xFA, 0x00,
             //pop    %r10
@@ -641,6 +642,16 @@ namespace scaler {
 
         assert(sizeof(uint8_t **) == 8);
 
+        uint8_t *tlsOffset = nullptr;
+        __asm__ __volatile__ (
+            "movq 0x2F6DE0(%%rip),%0\n\t"
+            :"=r" (tlsOffset)
+            :
+            :
+        );
+
+        memcpy(idSaverEntry + COUNT_TLS_ARR_ADDR, &tlsOffset, sizeof(void *));
+
         //Fill TLS offset (Address filled directly inside)
 
         memcpy(idSaverEntry + COUNT_OFFSET1, &countOffset, sizeof(uint32_t));
@@ -658,7 +669,7 @@ namespace scaler {
         //Fill symId
         memcpy(idSaverEntry + SYM_ID, &symId, sizeof(uint32_t));
 
-        uint8_t* asmHookPtr=(uint8_t*)&asmTimingHandler;
+        uint8_t *asmHookPtr = (uint8_t *) &asmTimingHandler;
         //Fill asmTimingHandler
         memcpy(idSaverEntry + ASM_HOOK_HANDLER_ADDR, (void *) &asmHookPtr, sizeof(void *));
 
