@@ -20,10 +20,11 @@ struct HookTuple {
 };
 
 struct RecTuple {
-    uint64_t timestamp;
-    int64_t count;
-    uint32_t gap;
+    uint64_t timestamp; //8
+    int64_t count; //8
+    uint32_t gap; //4
 };
+
 
 struct HookContext {
     //todo: Initialize using maximum stack size

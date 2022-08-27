@@ -105,6 +105,9 @@ bool initTLS() {
 
     //Put a dummy variable to avoid null checking
     //Initialize saving data structure
+
+    assert(sizeof(RecTuple) == 24);
+
     curContext = constructContext(
             scaler::ExtFuncCallHook::instance->elfImgInfoMap.getSize(),
             scaler::ExtFuncCallHook::instance->allExtSymbol.getSize() + 1);

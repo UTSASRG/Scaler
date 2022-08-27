@@ -519,63 +519,36 @@ namespace scaler {
                              0x00, 0x00, 0x41, 0xff, 0xE3, 0x90, 0x90, 0x90};
     //32bytes aligned. 0x90 are for alignment purpose
 
-    const int READ_TLS_PART_START = 0;
-    const int COUNT_TLS_ARR_ADDR = READ_TLS_PART_START + 2;
+    const int JMP_TO_ASMCOUNTINGHANDLER_PART = 0;
+    const int COUNT_TLS_ARR_ADDR = JMP_TO_ASMCOUNTINGHANDLER_PART + 2;
+    const int SYM_ID = JMP_TO_ASMCOUNTINGHANDLER_PART + 24, FUNC_ID_SIZE = 32;
+    const int COUNTING_HANDLER_ADDR = JMP_TO_ASMCOUNTINGHANDLER_PART + 30;
 
-    const int COUNTING_PART_START = READ_TLS_PART_START + 20;
-    const int COUNT_OFFSET1 = COUNTING_PART_START + 12, COUNT_OFFSET1_SIZE = 32;
-    const int COUNT_OFFSET2 = COUNTING_PART_START + 23, COUNT_OFFSET2_SIZE = 32;
-    const int GAP_OFFSET = COUNTING_PART_START + 30, GAP_OFFSET_SIZE = 32;
-
-    const int SKIP_PART_START = COUNTING_PART_START + 45;
+    const int SKIP_PART_START = JMP_TO_ASMCOUNTINGHANDLER_PART + 41;
     const int GOT_ADDR = SKIP_PART_START + 2, GOT_ADDR_SIZE = 64;
-    const int CALL_LD_INST = SKIP_PART_START + 13;
+    const int CALL_LD_INST_ADDR = SKIP_PART_START + 13;
     const int PLT_STUB_ID = SKIP_PART_START + 14, PLT_STUB_ID_SIZE = 32;
     const int PLT_START_ADDR = SKIP_PART_START + 20, PLT_START_ADDR_SIZE = 64;
 
     const int COUNT_OFFSET_IN_RECARR = 0x8;
     const int GAP_OFFSET_IN_RECARR = 0x10;
 
-    const int TIMING_PART_START = SKIP_PART_START + 31;
-    const int SYM_ID = TIMING_PART_START + 1, FUNC_ID_SIZE = 32;
-    const int ASM_HOOK_HANDLER_ADDR = TIMING_PART_START + 7, ASM_HOOK_HANDLER_ADDR_SIZE = 64;
-
     uint8_t idSaverBin[] = {
             /**
-             * Read TLS part
+             * Jump to amsCounting Part
              */
             //mov $0x1122334455667788,%r11
             0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            //mov %fs:(%r11),%r11
-            0x64, 0x4D, 0x8B, 0x1B,
-            //cmpq $0,%r11
-            0x49, 0x83, 0xFB, 0x00,
-            //je SKIP
-            0x74, 0x2D,
-
-            /**
-             * Counting part
-             */
-            //push %r10
-            0x41, 0x52,
-            //mov    0x650(%r11),%r11
-            0x4D, 0x8B, 0x9B, 0x50, 0x06, 0x00, 0x00,
-            //mov    0x00000000(%r11),%r10
-            0x4D, 0x8B, 0x93, 0x00, 0x00, 0x00, 0x00,
-            //add    $0x1,%r10
-            0x49, 0x83, 0xC2, 0x00,
-            //mov    %r10,0x11223344(%r11)
-            0x4D, 0x89, 0x93, 0x00, 0x00, 0x00, 0x00,
-            //mov    0x11223344(%r11),%r11
-            0x4D, 0x8B, 0x9B, 0x00, 0x00, 0x00, 0x00,
-            //and    %r11,%r10
-            0x4D, 0x21, 0xDA,
-            //cmpq   $0x0,%r10
-            0x49, 0x83, 0xFA, 0x00,
-            //pop    %r10
-            0x41, 0x5A,
-            //jz TIMING_JUMPER
-            0x74, 0x1F,
+            //sub    $40,%rsp
+            0x48, 0x83, 0xEC, 0x28,
+            //movq    %r11, 8(%rsp)
+            0x4C, 0x89, 0x5C, 0x24,0x08,
+            //movq   $0x11223344, 16(%rsp)
+            0x48, 0xC7, 0x44, 0x24, 0x10, 0x00, 0x00, 0x00, 0x00,
+            //mov $0x1122334455667788,%r11
+            0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            //call   *%r11
+            0x41, 0xFF, 0xD3,
 
             /**
              * SKIP part
@@ -592,16 +565,6 @@ namespace scaler {
             0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             //jmpq *%r11
             0x41, 0xFF, 0xE3,
-
-            /**
-             * TIMING part
-             */
-            //pushq $0x11223344
-            0x68, 0x00, 0x00, 0x00, 0x00,
-            //movq $0x1122334455667788,%r11
-            0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            //jmpq *%r11
-            0x41, 0xFF, 0xE3
     };
 
     uint8_t ldJumperBin[] = {0x68, 0x00, 0x00, 0x00, 0x00, 0x49, 0xBB, 0x00,
@@ -636,28 +599,32 @@ namespace scaler {
     bool ExtFuncCallHook::fillAddrAndSymId2IdSaver(uint8_t **gotAddr, uint8_t *firstPltEntry, uint32_t symId,
                                                    uint32_t pltStubId,
                                                    uint32_t countOffset, uint32_t gapOffset, uint8_t *idSaverEntry) {
+        //Used to conveniently calculate TLS offset
+        uint8_t *tlsOffset = nullptr;
+
+        __asm__ __volatile__ (
+        "movq 0x2F5EF4(%%rip),%0\n\t"
+        : "=r" (tlsOffset)
+        :
+        :
+        );
+        //7ffff7dcdc50
 
         //Copy code
         memcpy(idSaverEntry, idSaverBin, sizeof(idSaverBin));
 
         assert(sizeof(uint8_t **) == 8);
 
-        uint8_t *tlsOffset = nullptr;
-        __asm__ __volatile__ (
-            "movq 0x2F6DE0(%%rip),%0\n\t"
-            :"=r" (tlsOffset)
-            :
-            :
-        );
 
         memcpy(idSaverEntry + COUNT_TLS_ARR_ADDR, &tlsOffset, sizeof(void *));
 
+        //Fill symbol Id
+        memcpy(idSaverEntry + SYM_ID, &symId, sizeof(uint32_t));
+
         //Fill TLS offset (Address filled directly inside)
+        uint8_t *asmCountingHandlerAddr = (uint8_t *) &asmCountingHandler;
+        memcpy(idSaverEntry + COUNTING_HANDLER_ADDR, &asmCountingHandlerAddr, sizeof(uint64_t));
 
-        memcpy(idSaverEntry + COUNT_OFFSET1, &countOffset, sizeof(uint32_t));
-        memcpy(idSaverEntry + COUNT_OFFSET2, &countOffset, sizeof(uint32_t));
-
-        memcpy(idSaverEntry + GAP_OFFSET, &gapOffset, sizeof(uint32_t));
 
         //Fill got address
         memcpy(idSaverEntry + GOT_ADDR, &gotAddr, sizeof(uint8_t **));
@@ -665,13 +632,6 @@ namespace scaler {
         memcpy(idSaverEntry + PLT_STUB_ID, &pltStubId, sizeof(uint32_t));
         //Fill first plt address
         memcpy(idSaverEntry + PLT_START_ADDR, &firstPltEntry, sizeof(uint8_t *));
-
-        //Fill symId
-        memcpy(idSaverEntry + SYM_ID, &symId, sizeof(uint32_t));
-
-        uint8_t *asmHookPtr = (uint8_t *) &asmTimingHandler;
-        //Fill asmTimingHandler
-        memcpy(idSaverEntry + ASM_HOOK_HANDLER_ADDR, (void *) &asmHookPtr, sizeof(void *));
 
         return true;
     }
@@ -832,7 +792,7 @@ namespace scaler {
             //Replace got entry, 16 is the size of a plt entry
             if (abs(curSym.pltEntryAddr - *curSym.gotEntryAddr) < 16) {
                 //Address not resolved
-                *curSym.gotEntryAddr = curCallIdSaver + CALL_LD_INST;
+                *curSym.gotEntryAddr = curCallIdSaver + CALL_LD_INST_ADDR;
             }
 
             curCallIdSaver += sizeof(idSaverBin);

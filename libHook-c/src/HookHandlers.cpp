@@ -209,6 +209,61 @@ void __attribute__((naked)) asmTimingHandler() {
 }
 
 
+void __attribute__((naked)) asmCountingHandler() {
+    __asm__ __volatile__ (
+
+    "movq 16(%rsp),%r11\n\t" //Retrieve tls addr from stack
+    "mov %fs:(%r11),%r11\n\t" //Now r11 points to the tls header
+    //Check whether the context is initialized
+    "cmpq $0,%r11\n\t"
+    //Skip processing if context is not initialized
+
+
+    "jz RETURN\n\t"
+
+    "movq %r10,-20(%rsp)\n\t"
+    "movq 0x650(%r11),%r11\n\t" //Fetch recArr.internalArr address from TLS -> r11
+
+    "movq $0, %r10\n\t" //Mov entry address to r11
+
+    "movsxl 24(%rsp),%r10\n\t"//Calculate saving entry offset in bytes and save to r10
+    "imulq $24,%r10\n\t" //sizeof(RecArr)==24 24*funcId=recEntry offset
+
+
+    "addq %r10, %r11\n\t" //Mov entry address to r11
+
+    "movq 0x8(%r11),%r10\n\t" //Fetch recArr.internalArr[symId].count in Heap to -> r10
+    "addq $0,%r10\n\t" //count + 1
+    "movq %r10,0x8(%r11)\n\t" //Store count
+
+    "movq 0x10(%r11),%r11\n\t" //Fetch recArr.internalArr[symId].gap in Heap to -> r11
+    "andq %r11,%r10\n\t" //count value (r10) % gap (r11) -> r11, gap value must be a power of 2
+    "cmpq $0,%r10\n\t" //If necessary count % gap == 0. Use timing
+    "movq -20(%rsp),%r10\n\t"
+    "jz TIMING_JUMPER\n\t" //Check if context is initialized
+
+    /**
+     * Return
+     */
+    "RETURN:"
+    "movq (%rsp),%r11\n\t"
+    "addq $0x30,%rsp\n\t"
+    "jmpq %r11\n\t"
+
+    /**
+     * Timing
+     */
+    //Perform timing
+    "TIMING_JUMPER:"
+    "jmp asmTimingHandler@plt\n\t"
+
+
+    );
+
+
+}
+
+
 uint8_t *callIdSavers = nullptr;
 uint8_t *ldCallers = nullptr;
 
@@ -326,24 +381,13 @@ void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
      * Access TLS, make sure it's initialized
      */
     "mov $0x1122334455667788,%r11\n\t"//Move the tls offset of context to r11
-    "mov %fs:(%r11),%r11\n\t" //Now r11 points to the tls header
-    //Check whether the context is initialized
-    "cmpq $0,%r11\n\t"
-    //Skip processing if context is not initialized
-    "jz SKIP\n\t"
 
-    "pushq %r10\n\t"
-
-    "movq 0x650(%r11),%r11\n\t" //Fetch recArr.internalArr address from TLS -> r11
-    "movq 0x11223344(%r11),%r10\n\t" //Fetch recArr.internalArr[symId].count in Heap to -> r10
-    "addq $1,%r10\n\t" //count + 1
-    "movq %r10,0x11223344(%r11)\n\t" //Store count
-
-    "movq 0x11223344(%r11),%r11\n\t" //Fetch recArr.internalArr[symId].gap in Heap to -> r11
-    "andq %r11,%r10\n\t" //count value (r10) % gap (r11) -> r11, gap value must be a power of 2
-    "cmpq $0,%r10\n\t" //If necessary count % gap == 0. Use timing
-    "pop %r10\n\t"
-    "jz TIMING_JUMPER\n\t" //Check if context is initialized
+    "subq $40,%rsp\n\t"
+    "movq %r11,8(%rsp)\n\t" //Save tls pointer, 8 bytes
+    "movq $0x11223344,16(%rsp)\n\t" //Save funcId, 4 bytes
+    //Jump to Save return address
+    "mov $0x1122334455667788,%r11\n\t"//Move the tls offset of context to r11
+    "callq *%r11\n\t" //Save func address, 8 bytes
 
     /**
     * Return
@@ -355,13 +399,5 @@ void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
     "movq $0x1122334455667788,%r11\n\t" //First plt entry
     "jmpq *%r11\n\t"
 
-    /**
-     * Timing
-     */
-    //Perform timing
-    "TIMING_JUMPER:"
-    "pushq $0x11223344\n\t"
-    "movq $0x1122334455667788,%r11\n\t"
-    "jmpq *%r11\n\t"
     );
 }
