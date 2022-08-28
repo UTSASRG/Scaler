@@ -30,8 +30,8 @@ HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
     //Initialize gap to one
     for (int i = 0; i < rlt->recArr->getSize(); ++i) {
         //number mod 2^n is equivalent to stripping off all but the n lowest-order
-        rlt->recArr->internalArr[i].gap = 0b11; //%4=2^2
-        rlt->recArr->internalArr[i].count = 1;
+        rlt->recArr->internalArr[i].gap = 0; //0x11 if %4, because 4=2^2
+        rlt->recArr->internalArr[i].count = 0;
     }
 
 

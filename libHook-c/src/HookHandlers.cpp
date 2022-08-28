@@ -217,24 +217,10 @@ uint8_t *ldCallers = nullptr;
 //else pre+afterhook. Check hook installation in afterhook
 __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId) {
     HookContext *curContextPtr = curContext;
-    void *retOriFuncAddr = nullptr;
-
-    if (unlikely(curContextPtr == NULL)) {
-        retOriFuncAddr = ldCallers + symId * 32;
-        //Skip afterhook
-        asm volatile ("movq $1234, %%rdi" : /* No outputs. */
-        :/* No inputs. */:"rdi");
-        return retOriFuncAddr;
-    }
 
     //Assumes _this->allExtSymbol won't change
     scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symId];
-
-    if (unlikely(!curElfSymInfo.addrResolved)) {
-        retOriFuncAddr = ldCallers + symId * 32;
-    } else {
-        retOriFuncAddr = *curElfSymInfo.gotEntryAddr;
-    }
+    void *retOriFuncAddr = *curElfSymInfo.gotEntryAddr;
 
     /**
      * No counting, no measuring time (If scaler is not installed, then tls is not initialized)
@@ -277,7 +263,7 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
     curContextPtr->hookTuple[curContextPtr->indexPosi].symId = symId;
     curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = nextCallAddr;
     bypassCHooks = SCALER_FALSE;
-    return retOriFuncAddr;
+    return *curElfSymInfo.gotEntryAddr;
 }
 
 void *afterHookHandler() {
@@ -360,7 +346,8 @@ void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
      */
     //Perform timing
     "TIMING_JUMPER:"
-    "pushq $0x11223344\n\t"
+    "subq $0x110,%rsp\n\t" //rsp -= 0xx110
+    "pushq $0x11223344\n\t" //Save funcId to stack
     "movq $0x1122334455667788,%r11\n\t"
     "jmpq *%r11\n\t"
     );

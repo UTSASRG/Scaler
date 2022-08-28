@@ -8,7 +8,6 @@ extern "C" {
 
 
 extern uint8_t *callIdSavers;
-extern uint8_t *ldCallers;
 void __attribute__((naked)) asmTimingHandler();
 void __attribute__((naked)) asmCountingHandler();
 

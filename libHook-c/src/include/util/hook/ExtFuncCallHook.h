@@ -87,7 +87,6 @@ namespace scaler {
                                       uint32_t pltStubId,
                                       uint32_t countOffset, uint32_t gapOffset, uint8_t *idSaverEntry);
 
-        bool fillAddrAndSymId2LdJumper(uint8_t *firstPltEntryAddr, uint32_t funcId, uint8_t *ldJumperEntry);
 
         void parseRequiredInfo();
 
