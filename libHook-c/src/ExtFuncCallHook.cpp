@@ -225,8 +225,6 @@ namespace scaler {
         }
 
 
-
-
         if (scaler::strStartsWith(funcName, "__")) {
             return false;
         }
@@ -530,8 +528,8 @@ namespace scaler {
     const int GAP_OFFSET_IN_RECARR = 0x10;
 
     const int TIMING_PART_START = SKIP_PART_START + 31;
-    const int SYM_ID = TIMING_PART_START + 8, FUNC_ID_SIZE = 32;
-    const int ASM_HOOK_HANDLER_ADDR = TIMING_PART_START + 14, ASM_HOOK_HANDLER_ADDR_SIZE = 64;
+    const int SYM_ID = TIMING_PART_START + 1, FUNC_ID_SIZE = 32;
+    const int ASM_HOOK_HANDLER_ADDR = TIMING_PART_START + 7, ASM_HOOK_HANDLER_ADDR_SIZE = 64;
 
     uint8_t idSaverBin[] = {
             /**
@@ -589,8 +587,6 @@ namespace scaler {
             /**
              * TIMING part
              */
-            //sub     rsp, 110h
-            0x48, 0x81, 0xEC, 0x10, 0x01, 0x00, 0x00,
             //pushq $0x11223344
             0x68, 0x00, 0x00, 0x00, 0x00,
             //movq $0x1122334455667788,%r11
@@ -638,7 +634,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-        "movq 0x2F4118(%%rip),%0\n\t"
+        "movq 0x2F40F0(%%rip),%0\n\t"
         :"=r" (tlsOffset)
         :
         :
