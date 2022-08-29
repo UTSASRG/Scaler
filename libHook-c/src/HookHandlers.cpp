@@ -21,9 +21,8 @@
 */
 
 
-#define SAVE_ALL
+#define SAVE_COMPACT
 #ifdef SAVE_ALL
-
 #define SAVE_PRE  \
     /*The stack should be 16 bytes aligned before start this block*/ \
     /*ZMM registers are ignored. Normally we do not use them in out hook*/ \
@@ -113,11 +112,58 @@
     "vmovdqu64 0x50(%rsp),%zmm1 \n\t"/*64bytes*/                           \
     /*https://www.cs.mcgill.ca/~cs573/winter2001/AttLinux_syntax.htm*/     \
     "fnsave 0x90(%rsp)\n\t" /*108bytes*/
+#endif
 
-#define PRE_RSP_RESTORE_OFFSET "0x118" //SAVE_BYTES_PRE+0x8
+//In this mode, we reduce registers that is not used.
+#ifdef SAVE_COMPACT
+#define SAVE_PRE  \
+    /*The stack should be 16 bytes aligned before start this block*/ \
+    /*ZMM registers are ignored. Normally we do not use them in out hook*/ \
+    /*Parameter passing registers*/       \
+    "movq %rax,0x08(%rsp)\n\t" /*8 bytes*/\
+    "movq %rcx,0x10(%rsp)\n\t" /*8 bytes*/\
+    "movq %rdx,0x18(%rsp)\n\t" /*8 bytes*/\
+    "movq %rsi,0x20(%rsp)\n\t" /*8 bytes*/\
+    "movq %rdi,0x28(%rsp)\n\t" /*8 bytes*/\
+    "movq %r8,0x30(%rsp)\n\t"  /*8 bytes*/\
+    "movq %r9,0x38(%rsp)\n\t"  /*8 bytes*/\
+    "movq %r10,0x40(%rsp)\n\t" /*8 bytes*/\
+
+#define SAVE_BYTES_PRE "0x48" //0x40+8
+#define SAVE_BYTES_PRE_plus8 "0x50" //0x40+0x8
+#define SAVE_BYTES_PRE_plus16 "0x58" //0x40+0x10
+
+//Do not write restore by yourself, copy previous code and reverse operand order
+#define RESTORE_PRE  \
+    "movq 0x08(%rsp),%rax\n\t" /*8 bytes*/\
+    "movq 0x10(%rsp),%rcx\n\t" /*8 bytes*/\
+    "movq 0x18(%rsp),%rdx\n\t" /*8 bytes*/\
+    "movq 0x20(%rsp),%rsi\n\t" /*8 bytes*/\
+    "movq 0x28(%rsp),%rdi\n\t" /*8 bytes*/\
+    "movq 0x30(%rsp),%r8\n\t"  /*8 bytes*/\
+    "movq 0x38(%rsp),%r9\n\t"  /*8 bytes*/\
+    "movq 0x40(%rsp),%r10\n\t" /*8 bytes*/\
+
+
+
+#define SAVE_POST  \
+    /*The stack should be 16 bytes aligned before start this block*/       \
+    /*ZMM registers are ignored. Normally we do not use them in out hook*/ \
+    /*Parameter passing registers*/                                        \
+    "movq %rax,(%rsp)\n\t" /*8 bytes*/                                     \
+    "movq %rdx,0x8(%rsp)\n\t" /*8 bytes*/                                  \
+
+#define SAVE_BYTES_POST "0xFC" /*0x90+108*/
+
+
+#define RESTORE_POST  \
+    /*Parameter passing registers*/                                        \
+    "movq (%rsp),%rax\n\t" /*8 bytes*/                                     \
+    "movq 0x8(%rsp),%rdx\n\t" /*8 bytes*/                                  \
+
 
 #endif
-//0x118
+
 
 /**
  * Source code version for #define IMPL_ASMHANDLER
@@ -237,7 +283,7 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
 
     //DBG_LOGS("FileId=%lu, pltId=%zd prehook", fileId, pltEntryIndex);
 
-    printf("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu\n", pthread_self(),
+    DBG_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu\n", pthread_self(),
              curElfSymInfo.fileId, symId, (void *) nextCallAddr, getunixtimestampms());
     //assert(curContext != nullptr);
 
@@ -319,7 +365,7 @@ void *afterHookHandler() {
     scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symbolId];
 
 
-    printf("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu\n",
+    DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu\n",
              pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms());
 
     bypassCHooks = SCALER_FALSE;
