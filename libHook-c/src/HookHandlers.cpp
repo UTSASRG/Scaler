@@ -353,7 +353,6 @@ void *afterHookHandler() {
     uint32_t lo, hi;
     __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
     uint64_t duration = (((int64_t) hi << 32) | lo) - curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp;
-    curContextPtr->recArr->internalArr[symbolId].totalDuration += duration;
 
     --curContextPtr->indexPosi;
     assert(curContextPtr->indexPosi >= 1);
@@ -362,27 +361,34 @@ void *afterHookHandler() {
 
     //compare current timestamp with the previous timestamp
 
-    int64_t &c = curContextPtr->recArr->internalArr[symbolId].count;
+    int64_t &c = curContextPtr->recArr->internalArr[symbolId].localCount;
+    curContextPtr->recArr->internalArr[symbolId].globalCount += c;
     float &meanDuration = curContextPtr->recArr->internalArr[symbolId].meanDuration;
     uint32_t &durThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
-    if (likely(curContextPtr->recArr->internalArr[symbolId].count > 1000)) {
-        //Calculation phase
-        int64_t timeDiff = duration - meanDuration;
-        if (timeDiff < -durThreshold || timeDiff > durThreshold) {
-            //Bump gap to zero
-            curContextPtr->recArr->internalArr[symbolId].gap = 0;
-        } else {
-            //Increase gap to a larger value
-            //Once every 1024 times. 1024 = 2^10 then set gap to 0b1111111111
+
+    if (c < (1 << 10)) {
+        curContextPtr->recArr->internalArr[symbolId].totalDuration += duration;
+
+        if (c > (1 << 9)) {
+            //Calculation phase
+            int64_t timeDiff = duration - meanDuration;
+
+            if (timeDiff < -durThreshold || timeDiff > durThreshold) {
+                //Bump gap to zero
+                curContextPtr->recArr->internalArr[symbolId].gap = 0;
+            }
+
+        } else if (c < (1 << 9)) {
+            //Counting only, no modifying gap. Here the gap should be zero. Meaning every invocation counts
+            //https://blog.csdn.net/u014485485/article/details/77679669
+            meanDuration += (duration - meanDuration) / (int32_t) c; //c<100, safe conversion
+        } else if (c == (1 << 9)) {
+            durThreshold = meanDuration * 0.01;
             curContextPtr->recArr->internalArr[symbolId].gap = 0b1111111111;
         }
-
-    } else if (curContextPtr->recArr->internalArr[symbolId].count < 1000) {
-        //Counting only, no modifying gap. Here the gap should be zero. Meaning every invocation counts
-        //https://blog.csdn.net/u014485485/article/details/77679669
-        meanDuration += (duration - meanDuration) / (int32_t) c; //c<100, safe conversion
-    } else if (curContextPtr->recArr->internalArr[symbolId].count == 1000) {
-        durThreshold = meanDuration * 0.01;
+    } else {
+        curContextPtr->recArr->internalArr[symbolId].totalDuration += (uint64_t) ((c - (1 << 10)) * meanDuration);
+        c = 1 << 10;
     }
 
     DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu\n",

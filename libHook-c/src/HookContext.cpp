@@ -31,7 +31,8 @@ HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
     for (int i = 0; i < rlt->recArr->getSize(); ++i) {
         //number mod 2^n is equivalent to stripping off all but the n lowest-order
         rlt->recArr->internalArr[i].gap = 0; //0x11 if %4, because 4=2^2 Initially time everything
-        rlt->recArr->internalArr[i].count = 0;
+        rlt->recArr->internalArr[i].localCount = 0;
+        rlt->recArr->internalArr[i].globalCount = 0;
     }
 
 
@@ -81,7 +82,7 @@ void __attribute__((used, noinline, optimize(3))) printRecOffset() {
     auto j __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr;
 
     auto k __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0];
-    auto l __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].count;
+    auto l __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].localCount;
     auto m __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].gap;
 
     printf("\nTLS offset: Check assembly\n"

@@ -21,7 +21,8 @@ struct HookTuple {
 
 struct RecTuple {
     uint64_t totalDuration;
-    int64_t count;
+    int64_t localCount;
+    int64_t globalCount;
     uint32_t gap;
     float meanDuration;
     uint32_t durThreshold;
