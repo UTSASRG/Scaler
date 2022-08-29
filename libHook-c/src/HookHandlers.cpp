@@ -237,7 +237,7 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
 
     //DBG_LOGS("FileId=%lu, pltId=%zd prehook", fileId, pltEntryIndex);
 
-    DBG_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu", pthread_self(),
+    printf("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu\n", pthread_self(),
              curElfSymInfo.fileId, symId, (void *) nextCallAddr, getunixtimestampms());
     //assert(curContext != nullptr);
 
@@ -318,14 +318,8 @@ void *afterHookHandler() {
 
     scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symbolId];
 
-    if (unlikely(!curElfSymInfo.addrResolved)) {
-        curElfSymInfo.addrResolved = true;
-        //Resolve address
-        //curElfSymInfo.libFileId = curContextPtr->_this->pmParser.findExecNameByAddr(*curElfSymInfo.gotEntryAddr);
-        //assert(curElfSymInfo.libFileId != -1);
-    }
 
-    DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu",
+    printf("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu\n",
              pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms());
 
     bypassCHooks = SCALER_FALSE;

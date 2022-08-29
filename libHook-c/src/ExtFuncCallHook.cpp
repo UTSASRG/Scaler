@@ -191,7 +191,7 @@ namespace scaler {
             ExtSymInfo *newSym = allExtSymbol.pushBack();
 
 
-            newSym->addrResolved = abs(curGotDest - pltSection.startAddr) > pltSection.size;
+//            newSym->addrResolved = abs(curGotDest - pltSection.startAddr) > pltSection.size;
             newSym->fileId = fileId;
             newSym->symIdInFile = i;
             newSym->gotEntryAddr = gotAddr;
