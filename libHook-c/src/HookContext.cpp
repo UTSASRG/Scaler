@@ -30,7 +30,7 @@ HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
     //Initialize gap to one
     for (int i = 0; i < rlt->recArr->getSize(); ++i) {
         //number mod 2^n is equivalent to stripping off all but the n lowest-order
-        rlt->recArr->internalArr[i].gap = 0; //0x11 if %4, because 4=2^2
+        rlt->recArr->internalArr[i].gap = 0; //0x11 if %4, because 4=2^2 Initially time everything
         rlt->recArr->internalArr[i].count = 0;
     }
 
@@ -84,7 +84,7 @@ void __attribute__((used, noinline, optimize(3))) printRecOffset() {
     auto l __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].count;
     auto m __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].gap;
 
-    DBG_LOGS("\nTLS offset: Check assembly\n"
+    printf("\nTLS offset: Check assembly\n"
              "RecArr Offset: 0x%x\n"
              "Counting Entry Offset: 0x%x\n"
              "Gap Entry Offset: 0x%x\n", j - i, l - k, m - k);
@@ -165,7 +165,7 @@ void saveData(HookContext *curContextPtr, bool finalize) {
     }
 
     //Main application at the end
-    curContextPtr->recArr->internalArr[curContextPtr->recArr->getSize() - 1].timestamp =
+    curContextPtr->recArr->internalArr[curContextPtr->recArr->getSize() - 1].totalDuration =
             curContextPtr->endTImestamp - curContextPtr->startTImestamp;
 
 

@@ -336,9 +336,6 @@ __attribute__((used)) void *dbgPreHandler(uint64_t nextCallAddr, uint64_t symId)
     :/* No inputs. */
     :"rax", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "rbx", "rbp", "r12", "r13", "r14", "r15", "zmm0", "zmm1", "zmm3", "zmm4", "zmm5", "zmm6", "zmm7");
 
-
-
-
     //Skip afterhook
     asm volatile ("movq $1234, %%rdi" : /* No outputs. */
     :/* No inputs. */:"rdi");
@@ -350,20 +347,43 @@ void *afterHookHandler() {
     HookContext *curContextPtr = curContext;
     assert(curContext != nullptr);
 
-
     scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
     void *callerAddr = (void *) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr;
 
     uint32_t lo, hi;
     __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    curContextPtr->recArr->internalArr[symbolId].timestamp +=
-            (((int64_t) hi << 32) | lo) - curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp;
+    uint64_t duration = (((int64_t) hi << 32) | lo) - curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp;
+    curContextPtr->recArr->internalArr[symbolId].totalDuration += duration;
 
     --curContextPtr->indexPosi;
     assert(curContextPtr->indexPosi >= 1);
 
     scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symbolId];
 
+    //compare current timestamp with the previous timestamp
+
+    int64_t &c = curContextPtr->recArr->internalArr[symbolId].count;
+    float &meanDuration = curContextPtr->recArr->internalArr[symbolId].meanDuration;
+    uint32_t &durThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
+    if (likely(curContextPtr->recArr->internalArr[symbolId].count > 1000)) {
+        //Calculation phase
+        int64_t timeDiff = duration - meanDuration;
+        if (timeDiff < -durThreshold || timeDiff > durThreshold) {
+            //Bump gap to zero
+            curContextPtr->recArr->internalArr[symbolId].gap = 0;
+        } else {
+            //Increase gap to a larger value
+            //Once every 1024 times. 1024 = 2^10 then set gap to 0b1111111111
+            curContextPtr->recArr->internalArr[symbolId].gap = 0b1111111111;
+        }
+
+    } else if (curContextPtr->recArr->internalArr[symbolId].count < 1000) {
+        //Counting only, no modifying gap. Here the gap should be zero. Meaning every invocation counts
+        //https://blog.csdn.net/u014485485/article/details/77679669
+        meanDuration += (duration - meanDuration) / (int32_t) c; //c<100, safe conversion
+    } else if (curContextPtr->recArr->internalArr[symbolId].count == 1000) {
+        durThreshold = meanDuration * 0.01;
+    }
 
     DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu\n",
              pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms());

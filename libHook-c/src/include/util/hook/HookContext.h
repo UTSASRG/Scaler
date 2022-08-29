@@ -14,15 +14,17 @@ static uint64_t *testAddr = 0;
 #define MAX_CALL_DEPTH 64 //N+1 because of dummy variable
 
 struct HookTuple {
-    uint64_t callerAddr;
-    int64_t timeStamp;
-    int64_t symId;
+    uint64_t callerAddr; //8
+    int64_t timeStamp; //8
+    int64_t symId; //8
 };
 
 struct RecTuple {
-    uint64_t timestamp;
+    uint64_t totalDuration;
     int64_t count;
     uint32_t gap;
+    float meanDuration;
+    uint32_t durThreshold;
 };
 
 struct HookContext {

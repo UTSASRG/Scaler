@@ -225,7 +225,13 @@ namespace scaler {
         }
 
 
-        if (scaler::strStartsWith(funcName, "__")) {
+//        if (scaler::strStartsWith(funcName, "__")) {
+//            return false;
+//        }
+
+        if (strncmp(funcName, "funcA", 5) == 0) {
+            return true;
+        }else{
             return false;
         }
 
@@ -595,11 +601,6 @@ namespace scaler {
             0x41, 0xFF, 0xE3
     };
 
-    uint8_t ldJumperBin[] = {0x68, 0x00, 0x00, 0x00, 0x00, 0x49, 0xBB, 0x00,
-                             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x41,
-                             0xFF, 0xE3, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90,
-                             0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
-
     uint32_t ExtFuncCallHook::parsePltStubId(uint8_t *dest) {
         int pushOffset = -1;
         if (*dest == 0xFF) {
@@ -634,7 +635,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-        "movq 0x2F40F0(%%rip),%0\n\t"
+        "movq 0x2F41B0(%%rip),%0\n\t"
         :"=r" (tlsOffset)
         :
         :
