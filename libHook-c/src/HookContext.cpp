@@ -4,6 +4,7 @@
 #include <cxxabi.h>
 
 extern "C" {
+static thread_local DataSaver saverElem;
 
 HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
 
@@ -85,7 +86,7 @@ void __attribute__((used, noinline, optimize(3))) printRecOffset() {
     auto l __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].localCount;
     auto m __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].gap;
 
-    printf("\nTLS offset: Check assembly\n"
+    DBG_LOGS("\nTLS offset: Check assembly\n"
              "RecArr Offset: 0x%x\n"
              "Counting Entry Offset: 0x%x\n"
              "Gap Entry Offset: 0x%x\n", j - i, l - k, m - k);
@@ -136,6 +137,7 @@ void saveData(HookContext *curContextPtr, bool finalize) {
     if (!curContextPtr) {
         curContextPtr = curContext;
     }
+
     pthread_mutex_lock(curContextPtr->threadDataSavingLock);
 
     if (curContextPtr->dataSaved) {

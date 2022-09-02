@@ -2,7 +2,7 @@ project(Hook VERSION 0.1.7)
 
 # Set global (Relative this folder until reset) compiler options
 
-set(SCALER_HOOK_COMPILATION_FLAGS "-O3" "-g" )
+set(SCALER_HOOK_COMPILATION_FLAGS "-O3" "-g")
 # https://json.nlohmann.me/integration/cmake/
 
 
@@ -37,7 +37,7 @@ include(${CMAKE_SOURCE_DIR}/proto/findThisGrpc.cmake)
 # Scaler hook library itself. Users need to manually install scalerhook through library functions.
 add_library(ScalerHook-HookManualAsm-C SHARED
         ${HookSrc} src/libcProxy.cpp)
-target_include_directories(ScalerHook-HookManualAsm-C PUBLIC   src/include lib/inireader)
+target_include_directories(ScalerHook-HookManualAsm-C PUBLIC src/include lib/inireader)
 target_link_libraries(ScalerHook-HookManualAsm-C PUBLIC pthread dl)
 target_compile_options(ScalerHook-HookManualAsm-C PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
 target_compile_definitions(ScalerHook-HookManualAsm-C PRIVATE MANUAL_INSTALL CMAKE_SCALERRUN_VERSION="${PROJECT_VERSION}")
@@ -60,6 +60,10 @@ target_compile_definitions(ScalerHook-HookAutoAsm-C PUBLIC CMAKE_SCALERRUN_VERSI
 #add_library(ScalerHook-HookAuto-Brkpoint SHARED src/autoinstall.cpp)
 #target_link_libraries(ScalerHook-HookAuto-Brkpoint PUBLIC ScalerHook-HookBrkpoint)
 #target_compile_options(ScalerHook-HookAuto-Brkpoint PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
+
+add_executable(ScalerHook-Visualizer src/Visualizer.cpp)
+target_include_directories(ScalerHook-Visualizer PUBLIC src/include)# ${PROTO_SRC_DIR})
+target_compile_definitions(ScalerHook-Visualizer PUBLIC CMAKE_SCALERRUN_VERSION="${PROJECT_VERSION}" NDEBUG) #NDEBUG
 
 #Add tests
 add_subdirectory(tests)

@@ -146,21 +146,42 @@
 
 
 
+//#define SAVE_POST  \
+//    /*The stack should be 16 bytes aligned before start this block*/       \
+//    /*ZMM registers are ignored. Normally we do not use them in out hook*/ \
+//    /*Parameter passing registers*/                                        \
+//    "movq %rax,(%rsp)\n\t" /*8 bytes*/                                     \
+//    "movq %rdx,0x8(%rsp)\n\t" /*8 bytes*/                                  \
+//
+//#define SAVE_BYTES_POST "0x90" /*0x8+0x8+0x80*/
+//
+//#define RESTORE_POST  \
+//    /*Parameter passing registers*/                                        \
+//    "movq (%rsp),%rax\n\t" /*8 bytes*/                                     \
+//    "movq 0x8(%rsp),%rdx\n\t" /*8 bytes*/                                  \
+
 #define SAVE_POST  \
     /*The stack should be 16 bytes aligned before start this block*/       \
     /*ZMM registers are ignored. Normally we do not use them in out hook*/ \
     /*Parameter passing registers*/                                        \
     "movq %rax,(%rsp)\n\t" /*8 bytes*/                                     \
     "movq %rdx,0x8(%rsp)\n\t" /*8 bytes*/                                  \
+    "movdqu %xmm0,0x10(%rsp) \n\t"/*25bytes*/                              \
+    "movdqu %xmm1,0x30(%rsp) \n\t"/*64bytes*/                            \
+    /*https://www.cs.mcgill.ca/~cs573/winter2001/AttLinux_syntax.htm*/     \
+    "fsave 0x50(%rsp)\n\t" /*108bytes*/                                              \
 
-#define SAVE_BYTES_POST "0xFC" /*0x90+108*/
+#define SAVE_BYTES_POST "0xBC" /*0x50+108*/
 
 
 #define RESTORE_POST  \
     /*Parameter passing registers*/                                        \
     "movq (%rsp),%rax\n\t" /*8 bytes*/                                     \
     "movq 0x8(%rsp),%rdx\n\t" /*8 bytes*/                                  \
-
+    "movdqu 0x10(%rsp),%xmm0 \n\t"/*64bytes*/                           \
+    "movdqu 0x30(%rsp),%xmm1 \n\t"/*64bytes*/                           \
+    /*https://www.cs.mcgill.ca/~cs573/winter2001/AttLinux_syntax.htm*/     \
+    "fnsave 0x50(%rsp)\n\t" /*108bytes*/
 
 #endif
 

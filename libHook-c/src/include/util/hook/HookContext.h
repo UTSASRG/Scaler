@@ -34,24 +34,19 @@ struct HookContext {
     scaler::Array<RecTuple> *recArr; //8bytes
     //Records which function calls which function for how long, the index is scalerid (Only contains hooked function)
     //todo: Replace timingMatrix to a class
-    int64_t curFileId = 1; //The default one is main thread 8bytes
+    int64_t curFileId = 1; //Which library created the current thread? The default one is main thread
     scaler::ExtFuncCallHook *_this = nullptr; //8bytes
     //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
-    uint8_t isMainThread = false;
-    uint8_t dataSaved = false;
-    uint8_t initialized = 0;
-    uint8_t pad1 = 0;
-    uint8_t pad2 = 0;
-    uint8_t pad3 = 0;
-    uint8_t pad4 = 0;
-    uint8_t pad5 = 0;
     uint64_t startTImestamp;
     uint64_t endTImestamp;
-    pthread_mutex_t *threadDataSavingLock = nullptr; //Used to record real id
+    pthread_mutex_t *threadDataSavingLock = nullptr; //Used to make sure thread data is not saved twice
     //New cacheline
     //Variables used to determine whether it's called by hook handler or not
     HookTuple hookTuple[MAX_CALL_DEPTH]; //8bytes aligned
     pthread_t threadId;
+    uint8_t dataSaved = false;
+    uint8_t isMainThread = false;
+    uint8_t initialized = 0;
 };
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
@@ -67,8 +62,6 @@ public:
 
 void saveData(HookContext *context, bool finalize = false);
 
-
-static thread_local DataSaver saverElem;
 
 extern __thread HookContext *curContext;
 

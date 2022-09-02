@@ -225,13 +225,7 @@ namespace scaler {
         }
 
 
-//        if (scaler::strStartsWith(funcName, "__")) {
-//            return false;
-//        }
-
-        if (strncmp(funcName, "funcA", 5) == 0) {
-            return true;
-        }else{
+        if (scaler::strStartsWith(funcName, "__")) {
             return false;
         }
 
@@ -635,7 +629,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-        "movq 0x2F31B0(%%rip),%0\n\t"
+        "movq 0x2F4120(%%rip),%0\n\t"
         :"=r" (tlsOffset)
         :
         :
