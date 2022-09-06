@@ -166,22 +166,22 @@
     /*Parameter passing registers*/                                        \
     "movq %rax,(%rsp)\n\t" /*8 bytes*/                                     \
     "movq %rdx,0x8(%rsp)\n\t" /*8 bytes*/                                  \
-    "movdqu %xmm0,0x10(%rsp) \n\t"/*25bytes*/                              \
-    "movdqu %xmm1,0x30(%rsp) \n\t"/*64bytes*/                            \
+    /*"movdqu %xmm0,0x10(%rsp) \n\t"*//*25bytes*/                              \
+    /*"movdqu %xmm1,0x30(%rsp) \n\t"*//*64bytes*/                            \
     /*https://www.cs.mcgill.ca/~cs573/winter2001/AttLinux_syntax.htm*/     \
-    "fsave 0x50(%rsp)\n\t" /*108bytes*/                                              \
+    /*"fsave 0x10(%rsp)\n\t"*/ /*108bytes*/                                              \
 
-#define SAVE_BYTES_POST "0xBC" /*0x50+108*/
+#define SAVE_BYTES_POST "0x10" /*0x10+108*/
 
 
 #define RESTORE_POST  \
     /*Parameter passing registers*/                                        \
     "movq (%rsp),%rax\n\t" /*8 bytes*/                                     \
     "movq 0x8(%rsp),%rdx\n\t" /*8 bytes*/                                  \
-    "movdqu 0x10(%rsp),%xmm0 \n\t"/*64bytes*/                           \
-    "movdqu 0x30(%rsp),%xmm1 \n\t"/*64bytes*/                           \
+    /*"movdqu 0x10(%rsp),%xmm0 \n\t"*//*64bytes*/                           \
+    /*"movdqu 0x30(%rsp),%xmm1 \n\t"*//*64bytes*/                           \
     /*https://www.cs.mcgill.ca/~cs573/winter2001/AttLinux_syntax.htm*/     \
-    "fnsave 0x50(%rsp)\n\t" /*108bytes*/
+    /*"fnsave 0x10(%rsp)\n\t"*/ /*108bytes*/
 
 #endif
 
@@ -373,7 +373,7 @@ void *afterHookHandler() {
 
     uint32_t lo, hi;
     __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    uint64_t duration = (((int64_t) hi << 32) | lo) - curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp;
+//    uint64_t duration = (((int64_t) hi << 32) | lo) - curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp;
 
     --curContextPtr->indexPosi;
     assert(curContextPtr->indexPosi >= 1);
@@ -382,38 +382,38 @@ void *afterHookHandler() {
 
     //compare current timestamp with the previous timestamp
 
-    int64_t &c = curContextPtr->recArr->internalArr[symbolId].localCount;
-    curContextPtr->recArr->internalArr[symbolId].globalCount += c;
-    float &meanDuration = curContextPtr->recArr->internalArr[symbolId].meanDuration;
-    uint32_t &durThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
+//    int64_t &c = curContextPtr->recArr->internalArr[symbolId].localCount;
+//    float &meanDuration = curContextPtr->recArr->internalArr[symbolId].meanDuration;
+//    uint32_t &durThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
+//
+//    if (c < (1 << 10)) {
+//        curContextPtr->recArr->internalArr[symbolId].totalDuration += duration;
+//
+//        if (c > (1 << 9)) {
+//            //Calculation phase
+//            int64_t timeDiff = duration - meanDuration;
+//
+//            if (timeDiff < -durThreshold || timeDiff > durThreshold) {
+//                //Bump gap to zero
+//                curContextPtr->recArr->internalArr[symbolId].gap = 0;
+//            }
+//
+//        } else if (c < (1 << 9)) {
+//            //Counting only, no modifying gap. Here the gap should be zero. Meaning every invocation counts
+//            //https://blog.csdn.net/u014485485/article/details/77679669
+//            meanDuration += (duration - meanDuration) / (int32_t) c; //c<100, safe conversion
+//        } else if (c == (1 << 9)) {
+//            durThreshold = meanDuration * 0.01;
+//            curContextPtr->recArr->internalArr[symbolId].gap = 0b1111111111;
+//        }
+//    } else {
+//        curContextPtr->recArr->internalArr[symbolId].totalDuration += (uint64_t) ((c - (1 << 10)) * meanDuration);
+//        curContextPtr->recArr->internalArr[symbolId].globalCount += c - (1 << 10);
+//        c = 1 << 10;
+//    }
 
-    if (c < (1 << 10)) {
-        curContextPtr->recArr->internalArr[symbolId].totalDuration += duration;
-
-        if (c > (1 << 9)) {
-            //Calculation phase
-            int64_t timeDiff = duration - meanDuration;
-
-            if (timeDiff < -durThreshold || timeDiff > durThreshold) {
-                //Bump gap to zero
-                curContextPtr->recArr->internalArr[symbolId].gap = 0;
-            }
-
-        } else if (c < (1 << 9)) {
-            //Counting only, no modifying gap. Here the gap should be zero. Meaning every invocation counts
-            //https://blog.csdn.net/u014485485/article/details/77679669
-            meanDuration += (duration - meanDuration) / (int32_t) c; //c<100, safe conversion
-        } else if (c == (1 << 9)) {
-            durThreshold = meanDuration * 0.01;
-            curContextPtr->recArr->internalArr[symbolId].gap = 0b1111111111;
-        }
-    } else {
-        curContextPtr->recArr->internalArr[symbolId].totalDuration += (uint64_t) ((c - (1 << 10)) * meanDuration);
-        c = 1 << 10;
-    }
-
-    DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu\n",
-             pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms());
+//    DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu\n",
+//             pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms());
 
     bypassCHooks = SCALER_FALSE;
     return callerAddr;

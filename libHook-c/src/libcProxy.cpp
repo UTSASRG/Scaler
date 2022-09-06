@@ -23,10 +23,6 @@ scaler::Vector<HookContext *> threadContextMap;
 
 
 int doubletake_main(int argc, char **argv, char **envp) {
-//    if(strncmp(argv[0],"/usr/local/bin/memcached123",24)!=0){
-//        int ret = real_main(argc, argv, envp);
-//        return ret;
-//    }
     installed=true;
 
     INFO_LOGS("libHook-c Ver %s", CMAKE_SCALERRUN_VERSION);

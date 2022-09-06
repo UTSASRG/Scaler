@@ -202,9 +202,9 @@ namespace scaler {
             fprintf(symInfoFile, "%s,%ld,%ld\n", funcName, newSym->fileId, newSym->symIdInFile);
 
             DBG_LOGS(
-                    "id:%ld funcName:%s gotAddr:%p *gotAddr:%p addressResolved:%s fileId:%zd symIdInFile:%zd pltEntryAddr:%p pltSecEntryAddr:%p pltStubId:%lu",
+                    "id:%ld funcName:%s gotAddr:%p *gotAddr:%p fileId:%zd symIdInFile:%zd pltEntryAddr:%p pltSecEntryAddr:%p pltStubId:%lu",
                     allExtSymbol.getSize() - 1, funcName, gotAddr, *gotAddr,
-                    newSym->addrResolved ? "Resolved" : "Unresolved", fileId,
+                    fileId,
                     newSym->symIdInFile, newSym->pltEntryAddr, newSym->pltSecEntryAddr, newSym->pltStubId);
         }
         fclose(symInfoFile);
