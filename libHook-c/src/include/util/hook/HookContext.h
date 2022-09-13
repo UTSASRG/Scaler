@@ -26,6 +26,7 @@ struct RecTuple {
     uint32_t gap;
     float meanDuration;
     uint32_t durThreshold;
+    uint32_t flags;
 };
 
 struct HookContext {

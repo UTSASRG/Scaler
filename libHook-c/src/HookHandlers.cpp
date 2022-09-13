@@ -388,6 +388,7 @@ void *afterHookHandler() {
 
     if (c < (1 << 10)) {
         curContextPtr->recArr->internalArr[symbolId].totalDuration += duration;
+        //printf("c > (1 << 9)=%s,c=%d\n", c > (1 << 9) ? "True" : "False", c);
 
         if (c > (1 << 9)) {
             //Calculation phase
@@ -396,6 +397,9 @@ void *afterHookHandler() {
             if (timeDiff < -durThreshold || timeDiff > durThreshold) {
                 //Bump gap to zero
                 curContextPtr->recArr->internalArr[symbolId].gap = 0;
+                //printf("Bump gap to 0\n");
+            } else {
+                //printf("Not bump gap to 0\n");
             }
 
         } else if (c < (1 << 9)) {
@@ -404,12 +408,17 @@ void *afterHookHandler() {
             meanDuration += (duration - meanDuration) / (int32_t) c; //c<100, safe conversion
         } else if (c == (1 << 9)) {
             durThreshold = meanDuration * 0.01;
+        }
+    } else if (c == (1 << 10)) {
+        if (curContextPtr->recArr->internalArr[symbolId].flags &= 0b1) {
             curContextPtr->recArr->internalArr[symbolId].gap = 0;
+        } else {
+            curContextPtr->recArr->internalArr[symbolId].gap = 0b1111111111;
         }
     } else {
         curContextPtr->recArr->internalArr[symbolId].totalDuration += (uint64_t) ((c - (1 << 10)) * meanDuration);
         curContextPtr->recArr->internalArr[symbolId].globalCount += c - (1 << 10);
-        c = 1 << 10;
+        //c = 1 << 10;
     }
 
 //    DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu\n",
