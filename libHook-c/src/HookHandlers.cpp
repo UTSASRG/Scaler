@@ -4,6 +4,7 @@
 #include <util/hook/ExtFuncCallHook.h>
 #include <util/hook/HookContext.h>
 #include <util/tool/Timer.h>
+#include <sys/times.h>
 
 #define PUSHZMM(ArgumentName) \
 "subq $64,%rsp\n\t" \
@@ -314,8 +315,20 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
     ++curContextPtr->indexPosi;
 
     uint32_t lo, hi;
-    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp = ((int64_t) hi << 32) | lo;
+
+    int64_t &c = curContextPtr->recArr->internalArr[symId].localCount;
+    if (c <= (1 << 10)) {
+
+//        struct tms asdf;
+//        times(&asdf);
+
+        uint32_t lo, hi;
+        __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+        curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp =(((int64_t) hi << 32) | lo);
+    } else {
+        __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+        curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp = ((int64_t) hi << 32) | lo;
+    }
     curContextPtr->hookTuple[curContextPtr->indexPosi].symId = symId;
     curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = nextCallAddr;
     bypassCHooks = SCALER_FALSE;
@@ -371,9 +384,31 @@ void *afterHookHandler() {
     scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
     void *callerAddr = (void *) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr;
 
-    uint32_t lo, hi;
-    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    uint64_t duration = (((int64_t) hi << 32) | lo) - curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp;
+    uint64_t duration = 0;
+
+    int64_t &c = curContextPtr->recArr->internalArr[symbolId].localCount;
+    if (c <= (1 << 10)) {
+//        struct tms asdf;
+//        times(&asdf);
+//        duration = asdf.tms_utime + asdf.tms_stime - curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp;
+        uint32_t lo, hi;
+        __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+        duration = (((int64_t) hi << 32) | lo) - curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp;
+
+    } else {
+        uint32_t lo, hi;
+        __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+        duration = (((int64_t) hi << 32) | lo) - curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp;
+    }
+
+
+#ifdef INSTR_TIMING
+    TIMING_TYPE &curSize = curContextPtr->timingVectorSize[symbolId];
+    if (curSize < TIMING_REC_COUNT) {
+        ++curSize;
+        curContextPtr->timingVectors[symbolId][curSize] = duration;
+    }
+#endif
 
     --curContextPtr->indexPosi;
     assert(curContextPtr->indexPosi >= 1);
@@ -382,7 +417,6 @@ void *afterHookHandler() {
 
     //compare current timestamp with the previous timestamp
 
-    int64_t &c = curContextPtr->recArr->internalArr[symbolId].localCount;
     float &meanDuration = curContextPtr->recArr->internalArr[symbolId].meanDuration;
     uint32_t &durThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
 
@@ -449,7 +483,7 @@ void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
 
     "pushq %r10\n\t"
 
-    "movq 0x650(%r11),%r11\n\t" //Fetch recArr.internalArr address from TLS -> r11
+    "movq 0x658(%r11),%r11\n\t" //Fetch recArr.internalArr address from TLS -> r11
     "movq 0x11223344(%r11),%r10\n\t" //Fetch recArr.internalArr[symId].count in Heap to -> r10
     "addq $1,%r10\n\t" //count + 1
     "movq %r10,0x11223344(%r11)\n\t" //Store count

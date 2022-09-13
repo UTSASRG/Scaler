@@ -21,7 +21,15 @@ HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
     rlt->recArr = new(contextHeap + sizeof(HookContext)) scaler::Array<RecTuple>(hookedSymbolSize);
     rlt->threadDataSavingLock = reinterpret_cast<pthread_mutex_t *>(contextHeap + sizeof(HookContext) +
                                                                     sizeof(scaler::Array<uint64_t>));
-
+#ifdef INSTR_TIMING
+    rlt->timingVectors = new TIMING_TYPE *[hookedSymbolSize];
+    rlt->timingVectorSize = new TIMING_TYPE[hookedSymbolSize];
+    memset(rlt->timingVectorSize, 0, sizeof(TIMING_TYPE) * hookedSymbolSize);
+    for (ssize_t i = 0; i < hookedSymbolSize; ++i) {
+        rlt->timingVectors[i] = new TIMING_TYPE[TIMING_REC_COUNT];
+        memset(rlt->timingVectors[i], 0, sizeof(TIMING_TYPE) * TIMING_REC_COUNT);
+    }
+#endif
 
     pthread_mutexattr_t Attr;
     pthread_mutexattr_init(&Attr);
@@ -86,10 +94,10 @@ void __attribute__((used, noinline, optimize(3))) printRecOffset() {
     auto l __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].localCount;
     auto m __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].gap;
 
-    DBG_LOGS("\nTLS offset: Check assembly\n"
-             "RecArr Offset: 0x%x\n"
-             "Counting Entry Offset: 0x%x\n"
-             "Gap Entry Offset: 0x%x\n", j - i, l - k, m - k);
+    printf("\nTLS offset: Check assembly\n"
+           "RecArr Offset: 0x%x\n"
+           "Counting Entry Offset: 0x%x\n"
+           "Gap Entry Offset: 0x%x\n", j - i, l - k, m - k);
 }
 
 
@@ -159,6 +167,28 @@ void saveData(HookContext *curContextPtr, bool finalize) {
         return;
     }
     std::stringstream ss;
+#ifdef INSTR_TIMING
+    for (ssize_t i = 0; i < scaler::ExtFuncCallHook::instance->allExtSymbol.getSize(); ++i) {
+        ss.str("");
+        ss << scaler::ExtFuncCallHook::instance->folderName << "/threadDetailedTiming_" << curContextPtr->threadId
+           << "_" << i << ".bin";
+        FILE *detailedTimingSaver = fopen(ss.str().c_str(), "wb");
+        if (!detailedTimingSaver) {
+            fatalErrorS("Cannot fopen %s because:%s", ss.str().c_str(),
+                        strerror(errno));
+        }
+        fwrite(&curContextPtr->timingVectorSize[i], sizeof(TIMING_TYPE), 1, detailedTimingSaver);
+        fwrite(curContextPtr->timingVectors[i], sizeof(TIMING_TYPE), curContextPtr->timingVectorSize[i],
+               detailedTimingSaver);
+        if (curContextPtr->timingVectorSize[i] > TIMING_REC_COUNT) {
+            printf("%zd:%ld\n", i, curContextPtr->timingVectorSize[i]);
+        }
+        fclose(detailedTimingSaver);
+    }
+    ss.str("");
+#endif
+
+
     ss << scaler::ExtFuncCallHook::instance->folderName << "/threadTiming_" << curContextPtr->threadId << ".bin";
     //INFO_LOGS("Saving timing data to %s", ss.str().c_str());
     FILE *threadDataSaver = fopen(ss.str().c_str(), "wb");
@@ -167,20 +197,23 @@ void saveData(HookContext *curContextPtr, bool finalize) {
                     strerror(errno));
     }
 
+
     //Main application at the end
     curContextPtr->recArr->internalArr[curContextPtr->recArr->getSize() - 1].totalDuration =
             curContextPtr->endTImestamp - curContextPtr->startTImestamp;
 
 
     if (fwrite(&curContextPtr->curFileId, sizeof(HookContext::curFileId), 1, threadDataSaver) != 1) {
-        fatalErrorS("Cannot curFileId of %s because:%s", ss.str().c_str(),
-                    strerror(errno));
+        fatalErrorS(
+                "Cannot curFileId of %s because:%s", ss.str().c_str(),
+                strerror(errno));
     }
 
     int64_t timeEntrySize = curContextPtr->recArr->getSize();
     if (fwrite(&timeEntrySize, sizeof(int64_t), 1, threadDataSaver) != 1) {
-        fatalErrorS("Cannot write timeEntrySize of %s because:%s", ss.str().c_str(),
-                    strerror(errno));
+        fatalErrorS(
+                "Cannot write timeEntrySize of %s because:%s", ss.str().c_str(),
+                strerror(errno));
     }
     if (fwrite(curContextPtr->recArr->data(), curContextPtr->recArr->getTypeSizeInBytes(),
                curContextPtr->recArr->getSize(), threadDataSaver) !=
@@ -200,7 +233,8 @@ void saveData(HookContext *curContextPtr, bool finalize) {
         size_t realFileIdSizeInBytes = (curContextPtr->_this->allExtSymbol.getSize() + 1) * sizeof(ssize_t);
         size_t *realFileIdMem = nullptr;
         if (!scaler::fOpen4Write<size_t>(ss.str().c_str(), fd, realFileIdSizeInBytes, realFileIdMem)) {
-            fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
+            fatalErrorS(
+                    "Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
         }
 
         for (int i = 0; i < curContextPtr->_this->allExtSymbol.getSize(); ++i) {

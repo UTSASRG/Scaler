@@ -36,7 +36,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
     strncpy(pathName,"/media/umass/datasystem/steven/Downloads",strlen("/media/umass/datasystem/steven/Downloads"));
 
     std::stringstream ss;
-    ss << "/media/umass/datasystem/steven/Downloads" << "/" << "scalerdata_" << getunixtimestampms();
+    ss << pathName << "/" << "scalerdata_" << getunixtimestampms();
     INFO_LOGS("Folder name is %s",pathName);
     scaler::ExtFuncCallHook::getInst(ss.str())->install();
     //Calculate the main application time

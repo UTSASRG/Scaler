@@ -273,6 +273,9 @@ target_link_libraries(ScalerHook-proof-SaveDataUponExit pthread)
 add_executable(ScalerHook-proof-threadlocalasmarray src/proofconcept/TestAccessThreadLocalArrayInAsm.cpp)
 target_link_libraries(ScalerHook-proof-threadlocalasmarray pthread)
 
+add_executable(GetUserSysRealTime src/proofconcept/getUserTime.cpp)
+target_link_libraries(GetUserSysRealTime)
+
 
 #add_executable(ScalerHook-demoapps src/proofconcept/testprog.cpp)
 #target_link_libraries(DemoProg libTest PltHookLib dl)

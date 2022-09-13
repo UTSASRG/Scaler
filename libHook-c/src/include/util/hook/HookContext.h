@@ -28,6 +28,11 @@ struct RecTuple {
     uint32_t durThreshold;
     uint32_t flags;
 };
+//#define INSTR_TIMING
+#ifdef INSTR_TIMING
+const int TIMING_REC_COUNT = 20000;
+typedef int64_t TIMING_TYPE;
+#endif
 
 struct HookContext {
     //todo: Initialize using maximum stack size
@@ -48,10 +53,17 @@ struct HookContext {
     uint8_t dataSaved = false;
     uint8_t isMainThread = false;
     uint8_t initialized = 0;
+#ifdef INSTR_TIMING
+    TIMING_TYPE **timingVectors;
+    TIMING_TYPE *timingVectorSize;
+#endif
 };
+
+
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
 extern uint32_t *countingArr;
+
 
 class DataSaver {
 public:
