@@ -32,8 +32,7 @@ HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
     for (int i = 0; i < rlt->recArr->getSize(); ++i) {
         //number mod 2^n is equivalent to stripping off all but the n lowest-order
         rlt->recArr->internalArr[i].gap = 0; //0x11 if %4, because 4=2^2 Initially time everything
-        rlt->recArr->internalArr[i].localCount = 0;
-        rlt->recArr->internalArr[i].globalCount = 0;
+        rlt->recArr->internalArr[i].count = 0;
     }
 
 
@@ -51,7 +50,7 @@ HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
 
     //Push a dummy value in the stack (Especially for callAddr, because we need to avoid null problem)
     rlt->hookTuple[rlt->indexPosi].callerAddr = 0;
-    rlt->hookTuple[rlt->indexPosi].timeStamp = 0;
+    rlt->hookTuple[rlt->indexPosi].clockCycles = 0;
     rlt->hookTuple[rlt->indexPosi].symId = 0;
     rlt->indexPosi = 1;
     assert(scaler::ExtFuncCallHook::instance != nullptr);
@@ -83,7 +82,7 @@ void __attribute__((used, noinline, optimize(3))) printRecOffset() {
     auto j __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr;
 
     auto k __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0];
-    auto l __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].localCount;
+    auto l __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].count;
     auto m __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].gap;
 
     DBG_LOGS("\nTLS offset: Check assembly\n"
@@ -113,8 +112,7 @@ bool initTLS() {
 #ifdef PRINT_DBG_LOG
     printRecOffset();
 #endif
-    if (!curContext) {
-        fatalError("Failed to allocate memory for Context");
+    if (!curContext) { fatalError("Failed to allocate memory for Context");
         return false;
     }
 
@@ -154,40 +152,39 @@ void saveData(HookContext *curContextPtr, bool finalize) {
         curContextPtr->endTImestamp = getunixtimestampms();
     }
 
-    if (!curContext) {
-        fatalError("curContext is not initialized, won't save anything");
+    if (!curContext) { fatalError("curContext is not initialized, won't save anything");
         return;
     }
     std::stringstream ss;
     ss << scaler::ExtFuncCallHook::instance->folderName << "/threadTiming_" << curContextPtr->threadId << ".bin";
     //INFO_LOGS("Saving timing data to %s", ss.str().c_str());
     FILE *threadDataSaver = fopen(ss.str().c_str(), "wb");
-    if (!threadDataSaver) {
-        fatalErrorS("Cannot fopen %s because:%s", ss.str().c_str(),
-                    strerror(errno));
+    if (!threadDataSaver) { fatalErrorS("Cannot fopen %s because:%s", ss.str().c_str(),
+                                        strerror(errno));
     }
 
     //Main application at the end
-    curContextPtr->recArr->internalArr[curContextPtr->recArr->getSize() - 1].totalDuration =
+    curContextPtr->recArr->internalArr[curContextPtr->recArr->getSize() - 1].totalClockCycles =
             curContextPtr->endTImestamp - curContextPtr->startTImestamp;
 
 
-    if (fwrite(&curContextPtr->curFileId, sizeof(HookContext::curFileId), 1, threadDataSaver) != 1) {
-        fatalErrorS("Cannot curFileId of %s because:%s", ss.str().c_str(),
-                    strerror(errno));
+    if (fwrite(&curContextPtr->curFileId, sizeof(HookContext::curFileId), 1, threadDataSaver) != 1) { fatalErrorS(
+                "Cannot curFileId of %s because:%s", ss.str().c_str(),
+                strerror(errno));
     }
 
     int64_t timeEntrySize = curContextPtr->recArr->getSize();
-    if (fwrite(&timeEntrySize, sizeof(int64_t), 1, threadDataSaver) != 1) {
-        fatalErrorS("Cannot write timeEntrySize of %s because:%s", ss.str().c_str(),
-                    strerror(errno));
+    if (fwrite(&timeEntrySize, sizeof(int64_t), 1, threadDataSaver) != 1) { fatalErrorS(
+                "Cannot write timeEntrySize of %s because:%s", ss.str().c_str(),
+                strerror(errno));
     }
     if (fwrite(curContextPtr->recArr->data(), curContextPtr->recArr->getTypeSizeInBytes(),
                curContextPtr->recArr->getSize(), threadDataSaver) !=
-        curContextPtr->recArr->getSize()) {
-        fatalErrorS("Cannot write timingArr of %s because:%s", ss.str().c_str(),
-                    strerror(errno));
+        curContextPtr->recArr->getSize()) { fatalErrorS("Cannot write timingArr of %s because:%s", ss.str().c_str(),
+                                                        strerror(errno));
     }
+
+
     INFO_LOGS("Saving data to %s, %lu", scaler::ExtFuncCallHook::instance->folderName.c_str(), pthread_self());
 
     if (curContextPtr->isMainThread || finalize) {
@@ -199,16 +196,15 @@ void saveData(HookContext *curContextPtr, bool finalize) {
 
         size_t realFileIdSizeInBytes = (curContextPtr->_this->allExtSymbol.getSize() + 1) * sizeof(ssize_t);
         size_t *realFileIdMem = nullptr;
-        if (!scaler::fOpen4Write<size_t>(ss.str().c_str(), fd, realFileIdSizeInBytes, realFileIdMem)) {
-            fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
+        if (!scaler::fOpen4Write<size_t>(ss.str().c_str(), fd, realFileIdSizeInBytes, realFileIdMem)) { fatalErrorS(
+                    "Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
         }
 
         for (int i = 0; i < curContextPtr->_this->allExtSymbol.getSize(); ++i) {
             realFileIdMem[i] = curContextPtr->_this->pmParser.findExecNameByAddr(
                     *(curContextPtr->_this->allExtSymbol[i].gotEntryAddr));
         }
-        if (!scaler::fClose<size_t>(fd, realFileIdSizeInBytes, realFileIdMem)) {
-            fatalError("Cannot close file");
+        if (!scaler::fClose<size_t>(fd, realFileIdSizeInBytes, realFileIdMem)) { fatalError("Cannot close file");
         }
 
         INFO_LOG("Save data of all existing threads");

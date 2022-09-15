@@ -15,18 +15,18 @@ static uint64_t *testAddr = 0;
 
 struct HookTuple {
     uint64_t callerAddr; //8
-    int64_t timeStamp; //8
+    int64_t clockCycles; //8
     int64_t symId; //8
+    uint32_t clockTicks; //8
 };
 
 struct RecTuple {
-    uint64_t totalDuration;
-    int64_t localCount;
-    int64_t globalCount;
-    uint32_t gap;
-    float meanDuration;
-    uint32_t durThreshold;
-    uint32_t flags;
+    uint64_t totalClockCycles; //8
+    int64_t count; //8
+    uint32_t gap; //4
+    float meanClockTick; //4
+    uint32_t durThreshold; //4
+    uint32_t flags; //4
 };
 
 struct HookContext {

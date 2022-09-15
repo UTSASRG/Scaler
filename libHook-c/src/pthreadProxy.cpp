@@ -102,7 +102,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
 
     HookContext *curContextPtr = curContext;
     //Attribute time to pthread_create
-    curContextPtr->recArr->internalArr[pthreadCreateSymId].totalDuration +=
+    curContextPtr->recArr->internalArr[pthreadCreateSymId].totalClockCycles +=
             pthreadCreateEnd - pthreadCreateStart;
 
     return retVal;

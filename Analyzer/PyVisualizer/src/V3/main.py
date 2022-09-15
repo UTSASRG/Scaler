@@ -5,7 +5,7 @@ import struct
 from typing import List
 import numpy as np
 import re
-from TimingStruct import FileRecord, ExtSymRecord
+from TimingStruct import FileRecord, ExtSymRecord, RecTuple
 
 pthreadFileRegex = re.compile(r'libpthread-.*\.so$')
 
@@ -19,7 +19,7 @@ def parsePthreadId(fileNameList):
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
-scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/streamcluster/scalerdata_34017004153973114'
+scalerDataFolder = '/media/umass/datasystem/steven/Downloads/scalerdata_6438774701359890'
 # '/media/umass/datasystem/steven/Downloads/Perf-Parsec-Callgraph/ferret/scalerdata'
 
 df = pd.read_csv(os.path.join(scalerDataFolder, 'fileName.txt'))
@@ -38,10 +38,9 @@ for fileName in os.listdir(scalerDataFolder):
     if fileName.startswith('threadTiming_'):
         threadIdList.append(fileName[len('threadTiming_'): -4])
 
-timingRecord = []  # Map file name to FileRecord struct
-
 
 def generateTimingStruct(aggregatedTimeEntries):
+    timingRecord = []  # Map file name to FileRecord struct
     mainFileId = None
     global realFileId
 
@@ -58,18 +57,17 @@ def generateTimingStruct(aggregatedTimeEntries):
 
     for i in range(len(symbolNameList)):
         if symbolNameList[i] == 'pthread_create':
-            # Attribute this time to pthread library
+            # Attribute this time to pthread library rather than scaler
             realFileId[i] = pthreadFileId
 
-
     # Insert the time of the main application
-    timingRecord[0].totalDuration = aggregatedTimeEntries[-1]
+    timingRecord[0].clockCycles.value = aggregatedTimeEntries[-1].totalClockCycles
 
     # Loop through all timing entries and attribute time
     for i in range(len(aggregatedTimeEntries) - 1):
         # Add current symbol time to corresponding file entry
-        if aggregatedTimeEntries[i] > 0:
-            # Correct symbol ID
+        if aggregatedTimeEntries[i].count > 0:
+            # Make sure symbol ID is correct
             if realFileId[i] >= len(fileNameList):
                 print(
                     'Symbol %s was located in unhooked file. Is it overrided by an unhooked file?' % symbolNameList[
@@ -79,54 +77,67 @@ def generateTimingStruct(aggregatedTimeEntries):
             # Attribute time with respect to the caller
             curFileRecord = timingRecord[symbolFileIdList[i]]
             curFileRecord.fileName = fileNameList[symbolFileIdList[i]]
-            curFileRecord.selfDuration -= aggregatedTimeEntries[i]
+            curFileRecord.clockCycles.value -= aggregatedTimeEntries[i].totalClockCycles
+
             curExtFileRecord = curFileRecord.extFileTiming[realFileId[i]]
             curExtFileRecord.fileName = fileNameList[realFileId[i]]
-            curExtFileRecord.totalExtTime += aggregatedTimeEntries[i]
+            curExtFileRecord.totalClockCycles += aggregatedTimeEntries[i].totalClockCycles
+
             curExtSymRecord = curExtFileRecord.extSymTiming[symIdInFile[i]]
             curExtSymRecord.symbolName = symbolNameList[i]
-            curExtSymRecord.time = aggregatedTimeEntries[i]
+            curExtSymRecord.totalClockCycles = aggregatedTimeEntries[i].totalClockCycles
 
             # Attribute time with respect to call-ee
             realFileRecord = timingRecord[realFileId[i]]
             print(realFileId[i])
-            realFileRecord.fileName = fileNameList[realFileId[i]]
-            realFileRecord.totalDuration += aggregatedTimeEntries[i]
+            # realFileRecord.fileName = fileNameList[realFileId[i]]
+            realFileRecord.totalClockCycles += aggregatedTimeEntries[i].totalClockCycles
 
-    applicationDuration = timingRecord[0].totalDuration
+    applicationDuration = timingRecord[0].totalClockCycles
     for i in range(len(timingRecord)):
         curFileRecord = timingRecord[i]
-        curFileRecord.selfDuration += curFileRecord.totalDuration
-        curFileRecord.selfDurationPerc0ent = curFileRecord.selfDuration / applicationDuration * 100
+        curFileRecord.selfClockCycles += curFileRecord.totalClockCycles
+        curFileRecord.selfDurationPerc0ent = curFileRecord.selfClockCycles / applicationDuration * 100
         for j in curFileRecord.extFileTiming.keys():
             curExtFileRecord = curFileRecord.extFileTiming[j]
-            curExtFileRecord.totalExtTimePercent = curExtFileRecord.totalExtTime / applicationDuration * 100
+            curExtFileRecord.totalExtTimePercent = curExtFileRecord.totalClockCycles / applicationDuration * 100
             for k in curExtFileRecord.extSymTiming.keys():
                 curExtSymRecord = curExtFileRecord.extSymTiming[k]
-                curExtSymRecord.timePercent = curExtSymRecord.time / applicationDuration * 100
+                curExtSymRecord.timePercent = curExtSymRecord.totalClockCycles / applicationDuration * 100
 
     print(timingRecord)
 
 
 def readTimingStruct(threadFileFullPath):
-    timeEntries = None
-
+    recDataArr = []
+    recTupleSize = 8 + 8 + 4 + 4 + 4 + 4
     with open(threadFileFullPath, 'rb') as f:
         byteArr = f.read()
-        mainFileId, timeEntrySize = struct.unpack_from('qq', byteArr, 0)  # 16 bytes
-        timeEntries = struct.unpack_from('%dQ' % (timeEntrySize), byteArr, 16)
-        assert (len(symbolNameList) == timeEntrySize - 1)
-        assert (len(timeEntries) == timeEntrySize)
-    return timeEntries
+        mainFileId, recArrSize = struct.unpack_from('qq', byteArr, 0)  # 16 bytes
+        f.seek(16)
+
+        for i in range(recArrSize):
+            curRecFormat = RecTuple()
+            f.readinto(curRecFormat)
+            recDataArr.append(curRecFormat)
+    assert (len(symbolNameList) == recArrSize - 1)
+    assert (len(recDataArr) == recArrSize)
+    return recDataArr
 
 
-aggregatedTimeArray = None
+aggregatedTimeArray = []
 for threadId in threadIdList:
-    entryOfThisThread = readTimingStruct(os.path.join(scalerDataFolder, 'threadTiming_%s.bin' % threadId))
-    if aggregatedTimeArray is None:
-        aggregatedTimeArray = np.array(entryOfThisThread)
+    curThreadRecArray = readTimingStruct(os.path.join(scalerDataFolder, 'threadTiming_%s.bin' % threadId))
+    if len(curThreadRecArray) != len(aggregatedTimeArray):
+        aggregatedTimeArray = curThreadRecArray.copy()
     else:
-        aggregatedTimeArray = np.add(aggregatedTimeArray, entryOfThisThread)
+        for i, curRec in curThreadRecArray:
+            aggregatedTimeArray[i].totalClockCycles += curRec.totalClockCycles
+            aggregatedTimeArray[i].count += curRec.count
+            aggregatedTimeArray[i].gap += curRec.gap
+            aggregatedTimeArray[i].meanDuration += curRec.meanDuration
+            aggregatedTimeArray[i].durThreshold += curRec.durThreshold
+            aggregatedTimeArray[i].flags |= curRec.flags
 
 # Generate graph
 generateTimingStruct(list(aggregatedTimeArray))

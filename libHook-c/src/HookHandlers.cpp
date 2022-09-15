@@ -4,6 +4,12 @@
 #include <util/hook/ExtFuncCallHook.h>
 #include <util/hook/HookContext.h>
 #include <util/tool/Timer.h>
+#include <sys/times.h>
+
+#define setbit(x, y) x|=(1<<y)
+#define clrbit(x, y) x&=～(1<<y)
+#define chkbit(x, y) x&(1<<y)
+
 
 #define PUSHZMM(ArgumentName) \
 "subq $64,%rsp\n\t" \
@@ -312,10 +318,13 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
     * Setup environment for afterhook
     */
     ++curContextPtr->indexPosi;
-
-    uint32_t lo, hi;
-    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp = ((int64_t) hi << 32) | lo;
+    int64_t &c = curContextPtr->recArr->internalArr[symId].count;
+    if (c < (1 << 10)) {
+        struct tms curTime;
+        times(&curTime);
+        curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks = curTime.tms_utime + curTime.tms_stime;
+    }
+    curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles = getunixtimestampms();
     curContextPtr->hookTuple[curContextPtr->indexPosi].symId = symId;
     curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = nextCallAddr;
     bypassCHooks = SCALER_FALSE;
@@ -364,6 +373,7 @@ __attribute__((used)) void *dbgPreHandler(uint64_t nextCallAddr, uint64_t symId)
 }
 
 void *afterHookHandler() {
+    uint64_t postHookClockCycles = getunixtimestampms();
     bypassCHooks = SCALER_TRUE;
     HookContext *curContextPtr = curContext;
     assert(curContext != nullptr);
@@ -371,9 +381,18 @@ void *afterHookHandler() {
     scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
     void *callerAddr = (void *) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr;
 
-    uint32_t lo, hi;
-    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    uint64_t duration = (((int64_t) hi << 32) | lo) - curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp;
+    uint64_t curClockTick = 0;
+    //(((int64_t) hi << 32) | lo) ;
+    int64_t &c = curContextPtr->recArr->internalArr[symbolId].count;
+
+    if (c < (1 << 10)) {
+        struct tms curTime;
+        times(&curTime);
+        curClockTick = curTime.tms_utime + curTime.tms_stime;
+    }
+
+    curContextPtr->recArr->internalArr[curContextPtr->indexPosi].totalClockCycles =
+            postHookClockCycles - curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles;
 
     --curContextPtr->indexPosi;
     assert(curContextPtr->indexPosi >= 1);
@@ -382,44 +401,41 @@ void *afterHookHandler() {
 
     //compare current timestamp with the previous timestamp
 
-    int64_t &c = curContextPtr->recArr->internalArr[symbolId].localCount;
-    float &meanDuration = curContextPtr->recArr->internalArr[symbolId].meanDuration;
-    uint32_t &durThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
-
+    float &meanClockTick = curContextPtr->recArr->internalArr[symbolId].meanClockTick;
+    uint32_t &clockTickThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
     if (c < (1 << 10)) {
-        curContextPtr->recArr->internalArr[symbolId].totalDuration += duration;
-        //printf("c > (1 << 9)=%s,c=%d\n", c > (1 << 9) ? "True" : "False", c);
 
         if (c > (1 << 9)) {
             //Calculation phase
-            int64_t timeDiff = duration - meanDuration;
+            int64_t clockTickDiff = curClockTick - meanClockTick;
 
-            if (timeDiff < -durThreshold || timeDiff > durThreshold) {
-                //Bump gap to zero
-                curContextPtr->recArr->internalArr[symbolId].gap = 0;
-                //printf("Bump gap to 0\n");
-            } else {
-                //printf("Not bump gap to 0\n");
+            if (-clockTickThreshold < clockTickDiff && clockTickDiff < clockTickThreshold) {
+                //Skip this
+                setbit(curContextPtr->recArr->internalArr[symbolId].flags, 0);
             }
 
         } else if (c < (1 << 9)) {
             //Counting only, no modifying gap. Here the gap should be zero. Meaning every invocation counts
             //https://blog.csdn.net/u014485485/article/details/77679669
-            meanDuration += (duration - meanDuration) / (int32_t) c; //c<100, safe conversion
+            meanClockTick += (curClockTick - meanClockTick) / (int32_t) c; //c<100, safe conversion
         } else if (c == (1 << 9)) {
-            durThreshold = meanDuration * 0.01;
+            //Mean calculation has finished, calculate a threshold based on that
+            clockTickThreshold = meanClockTick * 0.01;
         }
     } else if (c == (1 << 10)) {
-        if (curContextPtr->recArr->internalArr[symbolId].flags &= 0b1) {
-            curContextPtr->recArr->internalArr[symbolId].gap = 0;
-        } else {
+        if (chkbit(curContextPtr->recArr->internalArr[symbolId].flags, 0)) {
+            //Skip this symbol
             curContextPtr->recArr->internalArr[symbolId].gap = 0b1111111111;
         }
-    } else {
-        curContextPtr->recArr->internalArr[symbolId].totalDuration += (uint64_t) ((c - (1 << 10)) * meanDuration);
-        curContextPtr->recArr->internalArr[symbolId].globalCount += c - (1 << 10);
-        //c = 1 << 10;
     }
+    //RDTSCTiming if not skipped
+    if (!chkbit(curContextPtr->recArr->internalArr[symbolId].flags, 0)) {
+        curContextPtr->recArr->internalArr[symbolId].totalClockCycles +=
+                postHookClockCycles - curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles;
+    }
+
+    //c = 1 << 10;
+
 
 //    DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu\n",
 //             pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms());
