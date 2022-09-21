@@ -149,6 +149,11 @@ target_link_libraries(ScalerHook-demoapps-SameFuncDiffLib ScalerHook-HookAutoAsm
 target_compile_options(ScalerHook-demoapps-SameFuncDiffLib PRIVATE ${TEST_FLAGS} -Werror)
 
 
+add_executable(ScalerHook-demoapps-TestJump src/demoapps/TestJump.cpp)
+target_link_libraries(ScalerHook-demoapps-TestJump ScalerHook-HookAutoAsm-C Testlib-FuncCall)
+target_compile_options(ScalerHook-demoapps-TestJump PRIVATE ${TEST_FLAGS} -Werror)
+
+
 add_executable(ScalerHook-proof-TestTLS src/demoapps/TestTLS.cpp)
 target_include_directories(ScalerHook-proof-TestTLS PUBLIC)
 target_link_libraries(ScalerHook-proof-TestTLS pthread)

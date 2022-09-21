@@ -1,11 +1,8 @@
 import os
 import pandas as pd
-from struct import Struct
 import struct
-from typing import List
-import numpy as np
 import re
-from TimingStruct import FileRecord, ExtSymRecord, RecTuple
+from datastructure.TimingStruct import FileRecord, RecTuple
 
 pthreadFileRegex = re.compile(r'libpthread-.*\.so$')
 
@@ -19,8 +16,7 @@ def parsePthreadId(fileNameList):
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
-scalerDataFolder = '/media/umass/datasystem/steven/Downloads/scalerdata_6438774701359890'
-# '/media/umass/datasystem/steven/Downloads/Perf-Parsec-Callgraph/ferret/scalerdata'
+scalerDataFolder = '/media/umass/datasystem/steven/Downloads/scalerdata_7471051465385140'
 
 df = pd.read_csv(os.path.join(scalerDataFolder, 'fileName.txt'))
 fileNameList = df['pathName'].to_list()
@@ -65,7 +61,7 @@ def generateTimingStruct(aggregatedTimeEntries):
 
     # Loop through all timing entries and attribute time
     for i in range(len(aggregatedTimeEntries) - 1):
-        # Add current symbol time to corresponding file entry
+        # Add current symbol time to corresponding file entry (Only record APIs that are invoked at least once)
         if aggregatedTimeEntries[i].count > 0:
             # Make sure symbol ID is correct
             if realFileId[i] >= len(fileNameList):
@@ -74,36 +70,37 @@ def generateTimingStruct(aggregatedTimeEntries):
                         i])
                 continue
 
-            # Attribute time with respect to the caller
+            # Attribute time to callee
             curFileRecord = timingRecord[symbolFileIdList[i]]
             curFileRecord.fileName = fileNameList[symbolFileIdList[i]]
             curFileRecord.clockCycles.value -= aggregatedTimeEntries[i].totalClockCycles
 
             curExtFileRecord = curFileRecord.extFileTiming[realFileId[i]]
             curExtFileRecord.fileName = fileNameList[realFileId[i]]
-            curExtFileRecord.totalClockCycles += aggregatedTimeEntries[i].totalClockCycles
+            curExtFileRecord.clockCycles.value += aggregatedTimeEntries[i].totalClockCycles
+            curExtFileRecord.counts.value += aggregatedTimeEntries[i].count
 
             curExtSymRecord = curExtFileRecord.extSymTiming[symIdInFile[i]]
             curExtSymRecord.symbolName = symbolNameList[i]
-            curExtSymRecord.totalClockCycles = aggregatedTimeEntries[i].totalClockCycles
+            curExtSymRecord.clockCycles.value = aggregatedTimeEntries[i].totalClockCycles
+            curExtSymRecord.counts.value += aggregatedTimeEntries[i].count
 
-            # Attribute time with respect to call-ee
+            # Attribute time to caller
             realFileRecord = timingRecord[realFileId[i]]
-            print(realFileId[i])
             # realFileRecord.fileName = fileNameList[realFileId[i]]
-            realFileRecord.totalClockCycles += aggregatedTimeEntries[i].totalClockCycles
+            realFileRecord.clockCycles.value += aggregatedTimeEntries[i].totalClockCycles
 
-    applicationDuration = timingRecord[0].totalClockCycles
-    for i in range(len(timingRecord)):
-        curFileRecord = timingRecord[i]
-        curFileRecord.selfClockCycles += curFileRecord.totalClockCycles
-        curFileRecord.selfDurationPerc0ent = curFileRecord.selfClockCycles / applicationDuration * 100
-        for j in curFileRecord.extFileTiming.keys():
-            curExtFileRecord = curFileRecord.extFileTiming[j]
-            curExtFileRecord.totalExtTimePercent = curExtFileRecord.totalClockCycles / applicationDuration * 100
-            for k in curExtFileRecord.extSymTiming.keys():
-                curExtSymRecord = curExtFileRecord.extSymTiming[k]
-                curExtSymRecord.timePercent = curExtSymRecord.totalClockCycles / applicationDuration * 100
+    # applicationDuration = timingRecord[0].clockCycles.value
+    # for i in range(len(timingRecord)):
+    #     curFileRecord = timingRecord[i]
+    #     curFileRecord.selfClockCycles += curFileRecord.totalClockCycles
+    #     curFileRecord.selfDurationPerc0ent = curFileRecord.selfClockCycles / applicationDuration * 100
+    #     for j in curFileRecord.extFileTiming.keys():
+    #         curExtFileRecord = curFileRecord.extFileTiming[j]
+    #         curExtFileRecord.totalExtTimePercent = curExtFileRecord.totalClockCycles / applicationDuration * 100
+    #         for k in curExtFileRecord.extSymTiming.keys():
+    #             curExtSymRecord = curExtFileRecord.extSymTiming[k]
+    #             curExtSymRecord.timePercent = curExtSymRecord.totalClockCycles / applicationDuration * 100
 
     print(timingRecord)
 
@@ -131,11 +128,11 @@ for threadId in threadIdList:
     if len(curThreadRecArray) != len(aggregatedTimeArray):
         aggregatedTimeArray = curThreadRecArray.copy()
     else:
-        for i, curRec in curThreadRecArray:
+        for i, curRec in enumerate(curThreadRecArray):
             aggregatedTimeArray[i].totalClockCycles += curRec.totalClockCycles
             aggregatedTimeArray[i].count += curRec.count
             aggregatedTimeArray[i].gap += curRec.gap
-            aggregatedTimeArray[i].meanDuration += curRec.meanDuration
+            aggregatedTimeArray[i].meanClockTick += curRec.meanClockTick
             aggregatedTimeArray[i].durThreshold += curRec.durThreshold
             aggregatedTimeArray[i].flags |= curRec.flags
 

@@ -5,8 +5,7 @@
 #include <sys/prctl.h>
 #include <thread>
 #include <cassert>
-#include <util/hook/ExtFuncCallHook.h>
-
+#include <iostream>
 using namespace std;
 
 

@@ -3,8 +3,15 @@
 
 int main() {
     try {
-        throw 3;
+
+        try {
+            throw 3;
+        } catch (int i) {
+            printf("here\n");
+            throw 5;
+        }
     } catch (int i) {
-        printf("here");
+        printf("here1\n");
     }
+
 }

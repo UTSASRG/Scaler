@@ -12,9 +12,9 @@ HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
                                                              sizeof(scaler::Array<uint64_t>) +
                                                              sizeof(pthread_mutex_t), PROT_READ | PROT_WRITE,
                                                        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
-    INFO_LOGS("Context size=%lu %p", sizeof(HookContext) +
-                                     sizeof(scaler::Array<uint64_t>) +
-                                     sizeof(pthread_mutex_t), &testA);
+//    INFO_LOGS("Context size=%lu %p", sizeof(HookContext) +
+//                                     sizeof(scaler::Array<uint64_t>) +
+//                                     sizeof(pthread_mutex_t), &testA);
     HookContext *rlt = reinterpret_cast<HookContext *>(contextHeap);
     assert(rlt != nullptr);
     memset(rlt, 0, sizeof(HookContext) + sizeof(scaler::Array<RecTuple>) + sizeof(pthread_mutex_t));
@@ -85,7 +85,7 @@ void __attribute__((used, noinline, optimize(3))) printRecOffset() {
     auto l __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].count;
     auto m __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].gap;
 
-    DBG_LOGS("\nTLS offset: Check assembly\n"
+    printf("\nTLS offset: Check assembly\n"
              "RecArr Offset: 0x%x\n"
              "Counting Entry Offset: 0x%x\n"
              "Gap Entry Offset: 0x%x\n", j - i, l - k, m - k);
@@ -112,7 +112,8 @@ bool initTLS() {
 #ifdef PRINT_DBG_LOG
     printRecOffset();
 #endif
-    if (!curContext) { fatalError("Failed to allocate memory for Context");
+    if (!curContext) {
+        fatalError("Failed to allocate memory for Context");
         return false;
     }
 
@@ -132,97 +133,106 @@ DataSaver::~DataSaver() {
 
 void saveData(HookContext *curContextPtr, bool finalize) {
     bypassCHooks = SCALER_TRUE;
-    if (!curContextPtr) {
-        curContextPtr = curContext;
-    }
-
-    pthread_mutex_lock(curContextPtr->threadDataSavingLock);
-
-    if (curContextPtr->dataSaved) {
-        DBG_LOG("Data already saved for this thread");
-        pthread_mutex_unlock(curContextPtr->threadDataSavingLock);
-        return;
-    }
-    curContextPtr->dataSaved = true;
-
-    //Resolve real address
-
-    if (!curContextPtr->endTImestamp) {
-        //Not finished succesfully
-        curContextPtr->endTImestamp = getunixtimestampms();
-    }
-
-    if (!curContext) { fatalError("curContext is not initialized, won't save anything");
-        return;
-    }
-    std::stringstream ss;
-    ss << scaler::ExtFuncCallHook::instance->folderName << "/threadTiming_" << curContextPtr->threadId << ".bin";
-    //INFO_LOGS("Saving timing data to %s", ss.str().c_str());
-    FILE *threadDataSaver = fopen(ss.str().c_str(), "wb");
-    if (!threadDataSaver) { fatalErrorS("Cannot fopen %s because:%s", ss.str().c_str(),
-                                        strerror(errno));
-    }
-
-    //Main application at the end
-    curContextPtr->recArr->internalArr[curContextPtr->recArr->getSize() - 1].totalClockCycles =
-            curContextPtr->endTImestamp - curContextPtr->startTImestamp;
-
-
-    if (fwrite(&curContextPtr->curFileId, sizeof(HookContext::curFileId), 1, threadDataSaver) != 1) { fatalErrorS(
-                "Cannot curFileId of %s because:%s", ss.str().c_str(),
-                strerror(errno));
-    }
-
-    int64_t timeEntrySize = curContextPtr->recArr->getSize();
-    if (fwrite(&timeEntrySize, sizeof(int64_t), 1, threadDataSaver) != 1) { fatalErrorS(
-                "Cannot write timeEntrySize of %s because:%s", ss.str().c_str(),
-                strerror(errno));
-    }
-    if (fwrite(curContextPtr->recArr->data(), curContextPtr->recArr->getTypeSizeInBytes(),
-               curContextPtr->recArr->getSize(), threadDataSaver) !=
-        curContextPtr->recArr->getSize()) { fatalErrorS("Cannot write timingArr of %s because:%s", ss.str().c_str(),
-                                                        strerror(errno));
-    }
-
-
-    INFO_LOGS("Saving data to %s, %lu", scaler::ExtFuncCallHook::instance->folderName.c_str(), pthread_self());
-
-    if (curContextPtr->isMainThread || finalize) {
-        ss.str("");
-        ss << scaler::ExtFuncCallHook::instance->folderName << "/realFileId.bin";
-        //The real id of each function is resolved in after hook, so I can only save it in datasaver
-
-        int fd;
-
-        size_t realFileIdSizeInBytes = (curContextPtr->_this->allExtSymbol.getSize() + 1) * sizeof(ssize_t);
-        size_t *realFileIdMem = nullptr;
-        if (!scaler::fOpen4Write<size_t>(ss.str().c_str(), fd, realFileIdSizeInBytes, realFileIdMem)) { fatalErrorS(
-                    "Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
-        }
-
-        for (int i = 0; i < curContextPtr->_this->allExtSymbol.getSize(); ++i) {
-            realFileIdMem[i] = curContextPtr->_this->pmParser.findExecNameByAddr(
-                    *(curContextPtr->_this->allExtSymbol[i].gotEntryAddr));
-        }
-        if (!scaler::fClose<size_t>(fd, realFileIdSizeInBytes, realFileIdMem)) { fatalError("Cannot close file");
-        }
-
-        INFO_LOG("Save data of all existing threads");
-        for (int i = 0; i < threadContextMap.getSize(); ++i) {
-            HookContext *threadContext = threadContextMap[i];
-            if (!threadContext->dataSaved) {
-                pthread_mutex_lock(threadContext->threadDataSavingLock);
-                INFO_LOGS("Thread data not saved, save it %d/%zd", i, threadContextMap.getSize());
-                saveData(threadContext);
-                pthread_mutex_unlock(threadContext->threadDataSavingLock);
-            } else {
-                INFO_LOGS("Thread data already saved, skip %d/%zd", i, threadContextMap.getSize());
-            }
-        }
-    }
-
-    fclose(threadDataSaver);
-    pthread_mutex_unlock(curContextPtr->threadDataSavingLock);
+//    if (!curContextPtr) {
+//        curContextPtr = curContext;
+//    }
+//
+//    pthread_mutex_lock(curContextPtr->threadDataSavingLock);
+//
+//    if (curContextPtr->dataSaved) {
+//        DBG_LOG("Data already saved for this thread");
+//        pthread_mutex_unlock(curContextPtr->threadDataSavingLock);
+//        return;
+//    }
+//    curContextPtr->dataSaved = true;
+//
+//    //Resolve real address
+//
+//    if (!curContextPtr->endTImestamp) {
+//        //Not finished succesfully
+//        curContextPtr->endTImestamp = getunixtimestampms();
+//        INFO_LOGS("Thread not finished succesfully, record an end timestamp %lu", curContextPtr->endTImestamp);
+//    }
+//
+//    if (!curContext) {
+//        fatalError("curContext is not initialized, won't save anything");
+//        return;
+//    }
+//    std::stringstream ss;
+//    ss << scaler::ExtFuncCallHook::instance->folderName << "/threadTiming_" << curContextPtr->threadId << ".bin";
+//    //INFO_LOGS("Saving timing data to %s", ss.str().c_str());
+//    FILE *threadDataSaver = fopen(ss.str().c_str(), "wb");
+//    if (!threadDataSaver) {
+//        fatalErrorS("Cannot fopen %s because:%s", ss.str().c_str(),
+//                    strerror(errno));
+//    }
+//
+//    //Main application at the end
+//    curContextPtr->recArr->internalArr[curContextPtr->recArr->getSize() - 1].totalClockCycles =
+//            curContextPtr->endTImestamp - curContextPtr->startTImestamp;
+//    INFO_LOGS("Total cycles=%lu\n",
+//           curContextPtr->recArr->internalArr[curContextPtr->recArr->getSize() - 1].totalClockCycles);
+//
+//    if (fwrite(&curContextPtr->curFileId, sizeof(HookContext::curFileId), 1, threadDataSaver) != 1) {
+//        fatalErrorS(
+//                "Cannot curFileId of %s because:%s", ss.str().c_str(),
+//                strerror(errno));
+//    }
+//
+//    int64_t timeEntrySize = curContextPtr->recArr->getSize();
+//    if (fwrite(&timeEntrySize, sizeof(int64_t), 1, threadDataSaver) != 1) {
+//        fatalErrorS(
+//                "Cannot write timeEntrySize of %s because:%s", ss.str().c_str(),
+//                strerror(errno));
+//    }
+//    if (fwrite(curContextPtr->recArr->data(), curContextPtr->recArr->getTypeSizeInBytes(),
+//               curContextPtr->recArr->getSize(), threadDataSaver) !=
+//        curContextPtr->recArr->getSize()) {
+//        fatalErrorS("Cannot write timingArr of %s because:%s", ss.str().c_str(),
+//                    strerror(errno));
+//    }
+//
+//
+//    INFO_LOGS("Thread %lu is saving data to %s", pthread_self(), scaler::ExtFuncCallHook::instance->folderName.c_str());
+//
+//    if (curContextPtr->isMainThread || finalize) {
+//        ss.str("");
+//        ss << scaler::ExtFuncCallHook::instance->folderName << "/realFileId.bin";
+//        //The real id of each function is resolved in after hook, so I can only save it in datasaver
+//
+//        int fd;
+//
+//        size_t realFileIdSizeInBytes = (curContextPtr->_this->allExtSymbol.getSize() + 1) * sizeof(ssize_t);
+//        size_t *realFileIdMem = nullptr;
+//        if (!scaler::fOpen4Write<size_t>(ss.str().c_str(), fd, realFileIdSizeInBytes, realFileIdMem)) {
+//            fatalErrorS(
+//                    "Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
+//        }
+//
+//        for (int i = 0; i < curContextPtr->_this->allExtSymbol.getSize(); ++i) {
+//            realFileIdMem[i] = curContextPtr->_this->pmParser.findExecNameByAddr(
+//                    *(curContextPtr->_this->allExtSymbol[i].gotEntryAddr));
+//        }
+//        if (!scaler::fClose<size_t>(fd, realFileIdSizeInBytes, realFileIdMem)) {
+//            fatalError("Cannot close file");
+//        }
+//
+//        INFO_LOG("Save data of all existing threads");
+//        for (int i = 0; i < threadContextMap.getSize(); ++i) {
+//            HookContext *threadContext = threadContextMap[i];
+//            if (!threadContext->dataSaved) {
+//                pthread_mutex_lock(threadContext->threadDataSavingLock);
+//                INFO_LOGS("Thread data not saved, save it %d/%zd", i, threadContextMap.getSize());
+//                saveData(threadContext);
+//                pthread_mutex_unlock(threadContext->threadDataSavingLock);
+//            } else {
+//                INFO_LOGS("Thread data already saved, skip %d/%zd", i, threadContextMap.getSize());
+//            }
+//        }
+//    }
+//
+//    fclose(threadDataSaver);
+//    pthread_mutex_unlock(curContextPtr->threadDataSavingLock);
 
 }
 

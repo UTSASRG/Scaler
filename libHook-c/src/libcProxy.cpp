@@ -43,16 +43,17 @@ int doubletake_main(int argc, char **argv, char **envp) {
 
 
     HookContext *curContextPtr = curContext;
-    curContextPtr->curFileId = 0;
-    curContextPtr->endTImestamp = 0;
-    curContextPtr->startTImestamp = getunixtimestampms();
-    curContextPtr->isMainThread = true;
-
     /**
      * Register this thread with the main thread
      */
     threadContextMap.pushBack(curContextPtr);
+    curContextPtr->curFileId = 0;
+    curContextPtr->endTImestamp = 0;
+    curContextPtr->isMainThread = true;
 
+
+
+    curContextPtr->startTImestamp = getunixtimestampms();
     int ret = real_main(argc, argv, envp);
     curContextPtr->endTImestamp = getunixtimestampms();
     saveData(curContextPtr);

@@ -31,7 +31,8 @@ namespace scaler {
         std::stringstream ss;
         ss << scaler::ExtFuncCallHook::instance->folderName << "/symbolInfo.txt";
         FILE *symInfoFile = fopen(ss.str().c_str(), "a");
-        if (!symInfoFile) { fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
+        if (!symInfoFile) {
+            fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
         }
         fprintf(symInfoFile, "%s,%s,%s\n", "funcName", "fileId", "symIdInFile");
         fclose(symInfoFile);
@@ -113,7 +114,8 @@ namespace scaler {
     ExtFuncCallHook *ExtFuncCallHook::getInst(std::string folderName) {
         if (!instance) {
             instance = new ExtFuncCallHook(folderName);
-            if (!instance) { fatalError("Cannot allocate memory for ExtFuncCallHookAsm");
+            if (!instance) {
+                fatalError("Cannot allocate memory for ExtFuncCallHookAsm");
                 return nullptr;
             }
         }
@@ -161,7 +163,8 @@ namespace scaler {
         std::stringstream ss;
         ss << scaler::ExtFuncCallHook::instance->folderName << "/symbolInfo.txt";
         FILE *symInfoFile = fopen(ss.str().c_str(), "a");
-        if (!symInfoFile) { fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
+        if (!symInfoFile) {
+            fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
         }
         assert(pltSection.size / pltSection.entrySize == parser.relaEntrySize + 1);
         for (ssize_t i = 0; i < parser.relaEntrySize; ++i) {
@@ -169,9 +172,15 @@ namespace scaler {
             Elf64_Word type;
             Elf64_Word bind;
             parser.getExtSymbolInfo(i, funcName, bind, type);
-            if (!shouldHookThisSymbol(funcName, bind, type, allExtSymbol.getSize())) {
+
+            SymCheckRlt shouldHookCheckRlt = shouldHookThisSymbol(funcName, bind, type, allExtSymbol.getSize());
+            //todo: Change to none
+            if (shouldHookCheckRlt == SymCheckRlt::NONE || shouldHookCheckRlt == SymCheckRlt::PREONLY) {
                 continue;
             }
+
+
+
             //Get function id from plt entry
 
             uint8_t **gotAddr = (uint8_t **) autoAddBaseAddr((uint8_t *) (parser.getRelaOffset(i)), baseAddr, startAddr,
@@ -198,7 +207,9 @@ namespace scaler {
             newSym->pltEntryAddr = pltEntry;
             newSym->pltSecEntryAddr = pltSecEntry;
             newSym->pltStubId = pltStubId;
-
+            if (shouldHookCheckRlt == SymCheckRlt::PREONLY) {
+                newSym->prehookOnly = true;
+            }
             fprintf(symInfoFile, "%s,%ld,%ld\n", funcName, newSym->fileId, newSym->symIdInFile);
 
             DBG_LOGS(
@@ -212,255 +223,261 @@ namespace scaler {
     }
 
 
-    bool
+    SymCheckRlt
     ExtFuncCallHook::shouldHookThisSymbol(const char *funcName, Elf64_Word &bind, Elf64_Word &type, SymID curSymId) {
         if (bind != STB_GLOBAL || type != STT_FUNC) {
-            return false;
+            return SymCheckRlt::NONE;
         }
 
         ssize_t funcNameLen = strlen(funcName);
         if (funcNameLen == 0) {
-            return false;
-//            fatalError("Function has no name?!");
+            return SymCheckRlt::NONE;
+//            return REASON_NOTFUNC;
+            fatalError("Function has no name?!");
         }
 
-
+//        if (strncmp(funcName, "funcA", 5)==0) {
+//            return true;
+//        }else{
+//            return false;
+//        }
         if (scaler::strStartsWith(funcName, "__")) {
-            return false;
+//            printf("%s skipped\n",funcName);
+            return SymCheckRlt::NONE;
         }
 
         if (funcNameLen == 3) {
             if (strncmp(funcName, "oom", 3) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "err", 3) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 4) {
             if (strncmp(funcName, "jump", 4) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "exit", 4) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "fail", 4) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "verr", 4) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "errx", 4) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 5) {
             if (strncmp(funcName, "_exit", 5) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "abort", 5) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "_Exit", 5) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "verrx", 5) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "dlsym", 5) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 6) {
             if (strncmp(funcName, "_ZdlPv", 6) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 7) {
             if (strncmp(funcName, "_dl_sym", 7) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "longjmp", 7) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "_setjmp", 7) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
 
 
         } else if (funcNameLen == 8) {
             if (strncmp(funcName, "_longjmp", 8) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__assert", 8) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 9) {
             if (strncmp(funcName, "thrd_exit", 9) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__longjmp", 9) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 10) {
             if (strncmp(funcName, "siglongjmp", 10) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "quick_exit", 10) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__chk_fail", 10) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__REDIRECT", 10) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 11) {
             if (strncmp(funcName, "__sigsetjmp", 11) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__do_cancel", 11) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__cxa_throw", 11) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 12) {
             if (strncmp(funcName, "pthread_exit", 12) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__libc_fatal", 12) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 13) {
             if (strncmp(funcName, "__longjmp_chk", 13) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__assert_fail", 13) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__cxa_rethrow", 13) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 14) {
             if (strncmp(funcName, "__tls_get_addr", 14) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__pthread_exit", 14) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "_startup_fatal", 14) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__ia64_longjmp", 14) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__libc_longjmp", 14) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__novmxlongjmp", 14) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "nscd_run_prune", 14) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "main_loop_poll", 14) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__libc_longjmp", 14) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__libc_message", 14) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__cxa_bad_cast", 14) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "pthread_create", 14) == 0) {
                 pthreadCreateSymId = curSymId;
                 //This is important to make sure pthread_create is recorded
-                return true;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 15) {
             if (strncmp(funcName, "____longjmp_chk", 15) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__novmx_longjmp", 15) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "nscd_run_worker", 15) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "____longjmp_chk", 15) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "_dl_catch_error", 15) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 16) {
             if (strncmp(funcName, "__REDIRECT_NTHNL", 16) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__pthread_unwind", 16) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "_dl_fatal_printf", 16) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "_dl_signal_error", 16) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__longjmp_cancel", 16) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__novmx__longjmp", 16) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "_dl_allocate_tls", 16) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__call_tls_dtors", 16) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 17) {
             if (strncmp(funcName, "__tunable_get_val", 17) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "futex_fatal_error", 17) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__novmxsiglongjmp", 17) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__libc_siglongjmp", 17) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "libc_hidden_proto", 17) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "rtld_hidden_proto", 17) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__cxa_begin_catch", 17) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 18) {
             if (strncmp(funcName, "_dl_reloc_bad_type", 18) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__assert_fail_base", 18) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 19) {
             if (strncmp(funcName, "termination_handler", 19) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "receive_print_stats", 19) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "_dl_catch_exception", 19) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 20) {
             if (strncmp(funcName, "_dl_signal_exception", 20) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__assert_perror_fail", 20) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "_ZSt13get_terminatev", 20) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__cxa_free_exception", 20) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "_dl_exception_create", 20) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 21) {
             if (strncmp(funcName, "__pthread_unwind_next", 21) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__novmx__libc_longjmp", 21) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "_dl_allocate_tls_init", 21) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 22) {
             if (strncmp(funcName, "_Unwind_RaiseException", 22) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 23) {
             if (strncmp(funcName, "_dl_find_dso_for_object", 23) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "svctcp_rendezvous_abort", 23) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "_Unwind_DeleteException", 23) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 24) {
             if (strncmp(funcName, "svcunix_rendezvous_abort", 24) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__novmx__libc_siglongjmp", 24) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__cxa_allocate_exception", 24) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 28) {
             if (strncmp(funcName, "__cxa_init_primary_exception", 28) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             } else if (strncmp(funcName, "__cxa_current_exception_type", 28) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 30) {
             if (strncmp(funcName, "__cxa_free_dependent_exception", 30) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         } else if (funcNameLen == 34) {
             if (strncmp(funcName, "__cxa_allocate_dependent_exception", 34) == 0) {
-                return false;
+                return SymCheckRlt::PREONLY;
             }
         }
-        return true;
+        return SymCheckRlt::FULL;
     }
 
 
@@ -525,10 +542,10 @@ namespace scaler {
     const int PLT_START_ADDR = SKIP_PART_START + 20, PLT_START_ADDR_SIZE = 64;
 
     const int COUNT_OFFSET_IN_RECARR = 0x8;
-    const int GAP_OFFSET_IN_RECARR = 0x18;
+    const int GAP_OFFSET_IN_RECARR = 0x10;
 
     const int TIMING_PART_START = SKIP_PART_START + 31;
-    const int SYM_ID = TIMING_PART_START + 1, FUNC_ID_SIZE = 32;
+    const int SYM_ID = TIMING_PART_START + 1,   FUNC_ID_SIZE = 32;
     const int ASM_HOOK_HANDLER_ADDR = TIMING_PART_START + 7, ASM_HOOK_HANDLER_ADDR_SIZE = 64;
 
     uint8_t idSaverBin[] = {
@@ -549,8 +566,8 @@ namespace scaler {
              */
             //push %r10
             0x41, 0x52,
-            //mov    0x850(%r11),%r11
-            0x4D, 0x8B, 0x9B, 0x50, 0x08, 0x00, 0x00,
+            //mov    0xa50(%r11),%r11
+            0x4D, 0x8B, 0x9B, 0x50, 0x0a, 0x00, 0x00,
             //mov    0x00000000(%r11),%r10
             0x4D, 0x8B, 0x93, 0x00, 0x00, 0x00, 0x00,
             //add    $0x1,%r10
@@ -601,7 +618,8 @@ namespace scaler {
             pushOffset = 7;
         } else if (*dest == 0xF3) {
             pushOffset = 5;
-        } else { fatalError("Plt entry format illegal. Cannot find instruction \"push id\"");
+        } else {
+            fatalError("Plt entry format illegal. Cannot find instruction \"push id\"");
         }
 
         //Debug tips: Add breakpoint after this statement, and *pltStubId should be 0 at first, 2 at second .etc
@@ -629,7 +647,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-        "movq 0x2F40E0(%%rip),%0\n\t"
+        "movq 0x2F5078(%%rip),%0\n\t"
         :"=r" (tlsOffset)
         :
         :
@@ -690,7 +708,8 @@ namespace scaler {
 
                     //todo: We assume plt and got entry size is the same.
                     if (!parseSecInfos(elfParser, pltInfo, pltSecInfo, gotInfo, prevFileBaseAddr, prevFileBaseAddr,
-                                       pmParser.pmEntryArray[i - 1].addrEnd)) { fatalError(
+                                       pmParser.pmEntryArray[i - 1].addrEnd)) {
+                        fatalError(
                                 "Failed to parse plt related sections.");
                         exit(-1);
                     }
@@ -704,7 +723,8 @@ namespace scaler {
                     //Install hook on this file
                     if (!parseSymbolInfo(elfParser, prevFileId, prevFileBaseAddr, pltInfo, pltSecInfo,
                                          gotInfo, prevFileBaseAddr,
-                                         pmParser.pmEntryArray[i - 1].addrEnd)) { fatalErrorS(
+                                         pmParser.pmEntryArray[i - 1].addrEnd)) {
+                        fatalErrorS(
                                 "installation for file %s failed.", curFileName.c_str());
                         exit(-1);
                     }
@@ -749,7 +769,8 @@ namespace scaler {
                                           curSymInfo.pltStubId,
                                           curSymId * sizeof(RecTuple) + COUNT_OFFSET_IN_RECARR,
                                           curSymId * sizeof(RecTuple) + GAP_OFFSET_IN_RECARR,
-                                          curCallIdSaver)) { fatalError(
+                                          curCallIdSaver)) {
+                fatalError(
                         "fillAddrAndSymId2IdSaver failed, this should not happen");
             }
             curCallIdSaver += sizeof(idSaverBin);
@@ -785,12 +806,14 @@ namespace scaler {
 
             if (curSym.pltSecEntryAddr) {
                 //Replace .plt.sec
-                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltSecEntryAddr)) { fatalError(
+                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltSecEntryAddr)) {
+                    fatalError(
                             "pltSecAddr installation failed, this should not happen");
                 }
             } else {
                 //Replace .plt
-                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltEntryAddr)) { fatalError(
+                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltEntryAddr)) {
+                    fatalError(
                             "pltEntry installation failed, this should not happen");
                 }
             }
@@ -809,8 +832,9 @@ namespace scaler {
 
     void ExtFuncCallHook::createRecordingFolder() {
         //sprintf(folderName, "scalerdata_%lu", getunixtimestampms());
-        if (mkdir(folderName.c_str(), 0755) == -1) { fatalErrorS("Cannot mkdir ./%s because: %s", folderName.c_str(),
-                                                                 strerror(errno));
+        if (mkdir(folderName.c_str(), 0755) == -1) {
+            fatalErrorS("Cannot mkdir ./%s because: %s", folderName.c_str(),
+                        strerror(errno));
         }
 
     }

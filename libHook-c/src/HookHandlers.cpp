@@ -6,10 +6,6 @@
 #include <util/tool/Timer.h>
 #include <sys/times.h>
 
-#define setbit(x, y) x|=(1<<y)
-#define clrbit(x, y) x&=～(1<<y)
-#define chkbit(x, y) x&(1<<y)
-
 
 #define PUSHZMM(ArgumentName) \
 "subq $64,%rsp\n\t" \
@@ -136,9 +132,8 @@
     "movq %r10,0x40(%rsp)\n\t" /*8 bytes*/\
 
 #define SAVE_BYTES_PRE "0x48" //0x40+8
-#define SAVE_BYTES_PRE_plus8 "0x50" //0x40+0x8
-#define SAVE_BYTES_PRE_plus16 "0x58" //0x40+0x10
-
+#define SAVE_BYTES_PRE_plus8 "0x50" //0x48+0x8
+#define SAVE_BYTES_PRE_plus16 "0x58" //0x48+0x10
 //Do not write restore by yourself, copy previous code and reverse operand order
 #define RESTORE_PRE  \
     "movq 0x08(%rsp),%rax\n\t" /*8 bytes*/\
@@ -178,7 +173,7 @@
     /*"fsave 0x10(%rsp)\n\t"*/ /*108bytes*/                                              \
 
 #define SAVE_BYTES_POST "0x30" /*0x20+18*/
-
+#define SAVE_BYTES_POST_minus8 "0x28"
 
 #define RESTORE_POST  \
     /*Parameter passing registers*/                                        \
@@ -212,7 +207,7 @@ void __attribute__((naked)) asmTimingHandler() {
     /**
      * Getting PLT entry address and caller address from stack
      */
-    "movq " SAVE_BYTES_PRE_plus8 "(%rsp),%rdi\n\t" //First parameter, return addr
+    "leaq " SAVE_BYTES_PRE_plus8 "(%rsp),%rdi\n\t" //First parameter, return addr
     "movq " SAVE_BYTES_PRE "(%rsp),%rsi\n\t" //Second parameter, symbolId (Pushed to stack by idsaver)
 
     /**
@@ -234,12 +229,14 @@ void __attribute__((naked)) asmTimingHandler() {
     "addq $" SAVE_BYTES_PRE_plus16 ",%rsp\n\t" //Plus 8 is because there was a push to save 8 bytes more funcId. Another 8 is to replace return address
     "callq *%r11\n\t"
 
+
     /**
      * Call after hook
      */
     //Save return value to stack
     "subq $" SAVE_BYTES_POST ",%rsp\n\t"
     SAVE_POST
+    "leaq " SAVE_BYTES_POST_minus8 "(%rsp),%rdi\n\t" //First parameter, return addr
 
     /**
      * Call After Hook
@@ -277,7 +274,7 @@ uint8_t *ldCallers = nullptr;
 //Return magic number definition:
 //1234: address resolved, pre-hook only (Fastest)
 //else pre+afterhook. Check hook installation in afterhook
-__attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId) {
+__attribute__((used)) void *preHookHandler(uint64_t *callAddrStackAddr, uint64_t symId) {
     HookContext *curContextPtr = curContext;
 
     //Assumes _this->allExtSymbol won't change
@@ -289,7 +286,7 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
      * This may happen for external function call before the initTLS in dummy thread function
      */
 
-    if (unlikely(bypassCHooks == SCALER_TRUE)) {
+    if (unlikely(bypassCHooks == SCALER_TRUE) || curElfSymInfo.prehookOnly) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
@@ -299,8 +296,9 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
         return retOriFuncAddr;
-    } else if (unlikely((uint64_t) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr == nextCallAddr)) {
-        //Skip afterhook
+    } else if (unlikely(
+            curContextPtr->hookTuple[curContextPtr->indexPosi - 1].callerAddrStackLoc == callAddrStackAddr)) {
+        //Skip afterhook because jump is used
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
         return retOriFuncAddr;
@@ -310,23 +308,27 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
 
     //DBG_LOGS("FileId=%lu, pltId=%zd prehook", fileId, pltEntryIndex);
 
-    DBG_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu\n", pthread_self(),
-             curElfSymInfo.fileId, symId, (void *) nextCallAddr, getunixtimestampms());
+    uint64_t curTimestamp = getunixtimestampms();
+
+//    INFO_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld &RetAddr:%p RetAddr:%p Timestamp: %lu\n", pthread_self(),
+//              curElfSymInfo.fileId, symId, callAddrStackAddr, (void *) (*callAddrStackAddr), curTimestamp);
     //assert(curContext != nullptr);
 
     /**
     * Setup environment for afterhook
     */
-    ++curContextPtr->indexPosi;
     int64_t &c = curContextPtr->recArr->internalArr[symId].count;
     if (c < (1 << 10)) {
         struct tms curTime;
         times(&curTime);
         curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks = curTime.tms_utime + curTime.tms_stime;
     }
-    curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles = getunixtimestampms();
+    curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles = curTimestamp;
+//    printf("Perhook clockCycles[%ld]=%ld\n", curContextPtr->indexPosi, curTimestamp);
     curContextPtr->hookTuple[curContextPtr->indexPosi].symId = symId;
-    curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = nextCallAddr;
+    curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddrStackLoc = callAddrStackAddr;
+    curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = *callAddrStackAddr;
+    ++curContextPtr->indexPosi;
     bypassCHooks = SCALER_FALSE;
     return *curElfSymInfo.gotEntryAddr;
 }
@@ -372,11 +374,19 @@ __attribute__((used)) void *dbgPreHandler(uint64_t nextCallAddr, uint64_t symId)
     return retOriFuncAddr;
 }
 
-void *afterHookHandler() {
+//uint64_t nextCallAddr
+__attribute__((used))  void *afterHookHandler(uint64_t *callerAddrStackLoc) {
     uint64_t postHookClockCycles = getunixtimestampms();
     bypassCHooks = SCALER_TRUE;
     HookContext *curContextPtr = curContext;
     assert(curContext != nullptr);
+
+    //Unwinding check, the nextCallAddr should match prehook. Otherwise unwind
+    --curContextPtr->indexPosi;
+    while (curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddrStackLoc != callerAddrStackLoc) {
+        --curContextPtr->indexPosi;
+        INFO_LOG("[UNWINDING] Unwinding detected.....\n");
+    }
 
     scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
     void *callerAddr = (void *) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr;
@@ -391,11 +401,7 @@ void *afterHookHandler() {
         curClockTick = curTime.tms_utime + curTime.tms_stime;
     }
 
-    curContextPtr->recArr->internalArr[curContextPtr->indexPosi].totalClockCycles =
-            postHookClockCycles - curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles;
-
-    --curContextPtr->indexPosi;
-    assert(curContextPtr->indexPosi >= 1);
+//    assert(curContextPtr->indexPosi >= 1);
 
     scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symbolId];
 
@@ -411,7 +417,7 @@ void *afterHookHandler() {
 
             if (-clockTickThreshold < clockTickDiff && clockTickDiff < clockTickThreshold) {
                 //Skip this
-                setbit(curContextPtr->recArr->internalArr[symbolId].flags, 0);
+                setbit(curContextPtr->recArr->internalArr[symbolId].flags, FLAG_SHOULD_SWITCH_COUNTING);
             }
 
         } else if (c < (1 << 9)) {
@@ -423,22 +429,27 @@ void *afterHookHandler() {
             clockTickThreshold = meanClockTick * 0.01;
         }
     } else if (c == (1 << 10)) {
-        if (chkbit(curContextPtr->recArr->internalArr[symbolId].flags, 0)) {
+        if (chkbit(curContextPtr->recArr->internalArr[symbolId].flags, FLAG_SHOULD_SWITCH_COUNTING)) {
             //Skip this symbol
             curContextPtr->recArr->internalArr[symbolId].gap = 0b1111111111;
         }
     }
     //RDTSCTiming if not skipped
-    if (!chkbit(curContextPtr->recArr->internalArr[symbolId].flags, 0)) {
+    if (!chkbit(curContextPtr->recArr->internalArr[symbolId].flags, FLAG_SHOULD_SWITCH_COUNTING)) {
         curContextPtr->recArr->internalArr[symbolId].totalClockCycles +=
                 postHookClockCycles - curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles;
+//        printf("Post hook %lu - hookTuple[%lu](%lu)=%lu\n",
+//               postHookClockCycles,
+//               curContextPtr->indexPosi,
+//               curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles,
+//               postHookClockCycles - curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles);
     }
 
     //c = 1 << 10;
 
 
-//    DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu\n",
-//             pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms());
+    INFO_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu RetAddr=%p\n",
+              pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms(), callerAddr);
 
     bypassCHooks = SCALER_FALSE;
     return callerAddr;

@@ -23,6 +23,13 @@ namespace scaler {
     */
     typedef bool SYMBOL_FILTER(std::string fileName, std::string funcName);
 
+    enum SymCheckRlt{
+        PREONLY=1,
+        FULL=2,
+        NONE=3,
+    };
+
+
     class ExtFuncCallHook {
     public:
         ExtFuncCallHook(std::string folderName);
@@ -64,7 +71,7 @@ namespace scaler {
 
 
     protected:
-        inline bool shouldHookThisSymbol(const char *funcName, Elf64_Word &bind, Elf64_Word &type, SymID curSymId);
+        inline SymCheckRlt shouldHookThisSymbol(const char *funcName, Elf64_Word &bind, Elf64_Word &type, SymID curSymId);
 
 
         inline bool

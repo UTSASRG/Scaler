@@ -15,7 +15,8 @@ static uint64_t *testAddr = 0;
 
 struct HookTuple {
     uint64_t callerAddr; //8
-    int64_t clockCycles; //8
+    uint64_t * callerAddrStackLoc; //8
+    uint64_t clockCycles; //8
     int64_t symId; //8
     uint32_t clockTicks; //8
 };
