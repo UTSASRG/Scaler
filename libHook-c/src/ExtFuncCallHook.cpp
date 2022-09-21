@@ -175,7 +175,10 @@ namespace scaler {
 
             SymCheckRlt shouldHookCheckRlt = shouldHookThisSymbol(funcName, bind, type, allExtSymbol.getSize());
             //todo: Change to none
-            if (shouldHookCheckRlt == SymCheckRlt::NONE || shouldHookCheckRlt == SymCheckRlt::PREONLY) {
+
+            //
+
+            if (shouldHookCheckRlt == SymCheckRlt::NONE) {
                 continue;
             }
 
@@ -236,6 +239,7 @@ namespace scaler {
             fatalError("Function has no name?!");
         }
 
+
 //        if (strncmp(funcName, "funcA", 5)==0) {
 //            return true;
 //        }else{
@@ -248,233 +252,233 @@ namespace scaler {
 
         if (funcNameLen == 3) {
             if (strncmp(funcName, "oom", 3) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "err", 3) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 4) {
             if (strncmp(funcName, "jump", 4) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "exit", 4) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "fail", 4) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "verr", 4) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "errx", 4) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 5) {
             if (strncmp(funcName, "_exit", 5) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "abort", 5) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "_Exit", 5) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "verrx", 5) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "dlsym", 5) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 6) {
             if (strncmp(funcName, "_ZdlPv", 6) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 7) {
             if (strncmp(funcName, "_dl_sym", 7) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "longjmp", 7) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "_setjmp", 7) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
 
 
         } else if (funcNameLen == 8) {
             if (strncmp(funcName, "_longjmp", 8) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__assert", 8) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 9) {
             if (strncmp(funcName, "thrd_exit", 9) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__longjmp", 9) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 10) {
             if (strncmp(funcName, "siglongjmp", 10) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "quick_exit", 10) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__chk_fail", 10) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__REDIRECT", 10) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 11) {
             if (strncmp(funcName, "__sigsetjmp", 11) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__do_cancel", 11) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__cxa_throw", 11) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 12) {
             if (strncmp(funcName, "pthread_exit", 12) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__libc_fatal", 12) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 13) {
             if (strncmp(funcName, "__longjmp_chk", 13) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__assert_fail", 13) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__cxa_rethrow", 13) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 14) {
             if (strncmp(funcName, "__tls_get_addr", 14) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__pthread_exit", 14) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "_startup_fatal", 14) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__ia64_longjmp", 14) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__libc_longjmp", 14) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__novmxlongjmp", 14) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "nscd_run_prune", 14) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "main_loop_poll", 14) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__libc_longjmp", 14) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__libc_message", 14) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__cxa_bad_cast", 14) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "pthread_create", 14) == 0) {
                 pthreadCreateSymId = curSymId;
                 //This is important to make sure pthread_create is recorded
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 15) {
             if (strncmp(funcName, "____longjmp_chk", 15) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__novmx_longjmp", 15) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "nscd_run_worker", 15) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "____longjmp_chk", 15) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "_dl_catch_error", 15) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 16) {
             if (strncmp(funcName, "__REDIRECT_NTHNL", 16) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__pthread_unwind", 16) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "_dl_fatal_printf", 16) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "_dl_signal_error", 16) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__longjmp_cancel", 16) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__novmx__longjmp", 16) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "_dl_allocate_tls", 16) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__call_tls_dtors", 16) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 17) {
             if (strncmp(funcName, "__tunable_get_val", 17) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "futex_fatal_error", 17) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__novmxsiglongjmp", 17) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__libc_siglongjmp", 17) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "libc_hidden_proto", 17) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "rtld_hidden_proto", 17) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__cxa_begin_catch", 17) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 18) {
             if (strncmp(funcName, "_dl_reloc_bad_type", 18) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__assert_fail_base", 18) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 19) {
             if (strncmp(funcName, "termination_handler", 19) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "receive_print_stats", 19) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "_dl_catch_exception", 19) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 20) {
             if (strncmp(funcName, "_dl_signal_exception", 20) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__assert_perror_fail", 20) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "_ZSt13get_terminatev", 20) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__cxa_free_exception", 20) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "_dl_exception_create", 20) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 21) {
             if (strncmp(funcName, "__pthread_unwind_next", 21) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__novmx__libc_longjmp", 21) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "_dl_allocate_tls_init", 21) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 22) {
             if (strncmp(funcName, "_Unwind_RaiseException", 22) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 23) {
             if (strncmp(funcName, "_dl_find_dso_for_object", 23) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "svctcp_rendezvous_abort", 23) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "_Unwind_DeleteException", 23) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 24) {
             if (strncmp(funcName, "svcunix_rendezvous_abort", 24) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__novmx__libc_siglongjmp", 24) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__cxa_allocate_exception", 24) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 28) {
             if (strncmp(funcName, "__cxa_init_primary_exception", 28) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             } else if (strncmp(funcName, "__cxa_current_exception_type", 28) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 30) {
             if (strncmp(funcName, "__cxa_free_dependent_exception", 30) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         } else if (funcNameLen == 34) {
             if (strncmp(funcName, "__cxa_allocate_dependent_exception", 34) == 0) {
-                return SymCheckRlt::PREONLY;
+                return SymCheckRlt::NONE;
             }
         }
         return SymCheckRlt::FULL;
@@ -545,7 +549,7 @@ namespace scaler {
     const int GAP_OFFSET_IN_RECARR = 0x10;
 
     const int TIMING_PART_START = SKIP_PART_START + 31;
-    const int SYM_ID = TIMING_PART_START + 1,   FUNC_ID_SIZE = 32;
+    const int SYM_ID = TIMING_PART_START + 1, FUNC_ID_SIZE = 32;
     const int ASM_HOOK_HANDLER_ADDR = TIMING_PART_START + 7, ASM_HOOK_HANDLER_ADDR_SIZE = 64;
 
     uint8_t idSaverBin[] = {
@@ -647,7 +651,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-        "movq 0x2F5078(%%rip),%0\n\t"
+        "movq 0x2F6E00(%%rip),%0\n\t"
         :"=r" (tlsOffset)
         :
         :

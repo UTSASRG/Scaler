@@ -172,9 +172,9 @@
     /*https://www.cs.mcgill.ca/~cs573/winter2001/AttLinux_syntax.htm*/     \
     /*"fsave 0x10(%rsp)\n\t"*/ /*108bytes*/                                              \
 
-#define SAVE_BYTES_POST "0x30" /*0x20+18*/
-#define SAVE_BYTES_POST_minus8 "0x28"
-
+#define SAVE_BYTES_POST "0x40" /*0x20+18+10 We should not override the return address (The last +0x10) */
+#define SAVE_BYTES_POST_minus8 "0x38"
+#define POST_HOOK_FIRST_INSTR_OFFSET "−25" //This value is strictly related to previous two values todo: I cannot specify here, the offset is directly written to code
 #define RESTORE_POST  \
     /*Parameter passing registers*/                                        \
     "movq (%rsp),%rax\n\t" /*8 bytes*/                                     \
@@ -237,6 +237,7 @@ void __attribute__((naked)) asmTimingHandler() {
     "subq $" SAVE_BYTES_POST ",%rsp\n\t"
     SAVE_POST
     "leaq " SAVE_BYTES_POST_minus8 "(%rsp),%rdi\n\t" //First parameter, return addr
+    "leaq -37(%rip),%rsi\n\t" //First parameter, return addr. rsi should exactly be the starting address of the first subq
 
     /**
      * Call After Hook
@@ -310,8 +311,10 @@ __attribute__((used)) void *preHookHandler(uint64_t *callAddrStackAddr, uint64_t
 
     uint64_t curTimestamp = getunixtimestampms();
 
-//    INFO_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld &RetAddr:%p RetAddr:%p Timestamp: %lu\n", pthread_self(),
-//              curElfSymInfo.fileId, symId, callAddrStackAddr, (void *) (*callAddrStackAddr), curTimestamp);
+//    INFO_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld &RetAddr:%p  Timestamp: %lu\n",
+//              pthread_self(),
+//              curElfSymInfo.fileId, symId, callAddrStackAddr, (void *) (*callAddrStackAddr), curContextPtr->indexPosi,
+//              curTimestamp);
     //assert(curContext != nullptr);
 
     /**
@@ -375,81 +378,95 @@ __attribute__((used)) void *dbgPreHandler(uint64_t nextCallAddr, uint64_t symId)
 }
 
 //uint64_t nextCallAddr
-__attribute__((used))  void *afterHookHandler(uint64_t *callerAddrStackLoc) {
+__attribute__((used))  void *afterHookHandler(uint64_t *callerAddrStackLoc, uint64_t asmHookRetPoint) {
     uint64_t postHookClockCycles = getunixtimestampms();
     bypassCHooks = SCALER_TRUE;
+
+    if (*callerAddrStackLoc != asmHookRetPoint) {
+        //This means somehow the system modifies the return addres, we return to it directly because this execution path is not hooked by Scaler and caused by long jump
+        INFO_LOGS("Detected execution path not intercepted by Scaler. Expected %lu, got %lu", asmHookRetPoint,
+                  *callerAddrStackLoc);
+        bypassCHooks = SCALER_FALSE;
+        return (void *) *callerAddrStackLoc;
+    }
+
+
     HookContext *curContextPtr = curContext;
     assert(curContext != nullptr);
 
     //Unwinding check, the nextCallAddr should match prehook. Otherwise unwind
-    --curContextPtr->indexPosi;
-    while (curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddrStackLoc != callerAddrStackLoc) {
+    void *callerAddr = nullptr;
+    do {
         --curContextPtr->indexPosi;
-        INFO_LOG("[UNWINDING] Unwinding detected.....\n");
-    }
 
-    scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
-    void *callerAddr = (void *) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr;
+        if (curContextPtr->indexPosi < 1) {
+            fatalError("index should not be less than one. This is a bug");
+        }
 
-    uint64_t curClockTick = 0;
-    //(((int64_t) hi << 32) | lo) ;
-    int64_t &c = curContextPtr->recArr->internalArr[symbolId].count;
+        scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
+        callerAddr = (void *) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr;
 
-    if (c < (1 << 10)) {
-        struct tms curTime;
-        times(&curTime);
-        curClockTick = curTime.tms_utime + curTime.tms_stime;
-    }
+        uint64_t curClockTick = 0;
+        //(((int64_t) hi << 32) | lo) ;
+        int64_t &c = curContextPtr->recArr->internalArr[symbolId].count;
+
+        if (c < (1 << 10)) {
+            struct tms curTime;
+            times(&curTime);
+            curClockTick = curTime.tms_utime + curTime.tms_stime;
+        }
 
 //    assert(curContextPtr->indexPosi >= 1);
 
-    scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symbolId];
+        scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symbolId];
 
-    //compare current timestamp with the previous timestamp
+        //compare current timestamp with the previous timestamp
 
-    float &meanClockTick = curContextPtr->recArr->internalArr[symbolId].meanClockTick;
-    uint32_t &clockTickThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
-    if (c < (1 << 10)) {
+        float &meanClockTick = curContextPtr->recArr->internalArr[symbolId].meanClockTick;
+        uint32_t &clockTickThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
+        if (c < (1 << 10)) {
 
-        if (c > (1 << 9)) {
-            //Calculation phase
-            int64_t clockTickDiff = curClockTick - meanClockTick;
+            if (c > (1 << 9)) {
+                //Calculation phase
+                int64_t clockTickDiff = curClockTick - meanClockTick;
 
-            if (-clockTickThreshold < clockTickDiff && clockTickDiff < clockTickThreshold) {
-                //Skip this
-                setbit(curContextPtr->recArr->internalArr[symbolId].flags, FLAG_SHOULD_SWITCH_COUNTING);
+                if (-clockTickThreshold < clockTickDiff && clockTickDiff < clockTickThreshold) {
+                    //Skip this
+                    setbit(curContextPtr->recArr->internalArr[symbolId].flags, FLAG_SHOULD_SWITCH_COUNTING);
+                }
+
+            } else if (c < (1 << 9)) {
+                //Counting only, no modifying gap. Here the gap should be zero. Meaning every invocation counts
+                //https://blog.csdn.net/u014485485/article/details/77679669
+                meanClockTick += (curClockTick - meanClockTick) / (int32_t) c; //c<100, safe conversion
+            } else if (c == (1 << 9)) {
+                //Mean calculation has finished, calculate a threshold based on that
+                clockTickThreshold = meanClockTick * 0.01;
             }
-
-        } else if (c < (1 << 9)) {
-            //Counting only, no modifying gap. Here the gap should be zero. Meaning every invocation counts
-            //https://blog.csdn.net/u014485485/article/details/77679669
-            meanClockTick += (curClockTick - meanClockTick) / (int32_t) c; //c<100, safe conversion
-        } else if (c == (1 << 9)) {
-            //Mean calculation has finished, calculate a threshold based on that
-            clockTickThreshold = meanClockTick * 0.01;
+        } else if (c == (1 << 10)) {
+            if (chkbit(curContextPtr->recArr->internalArr[symbolId].flags, FLAG_SHOULD_SWITCH_COUNTING)) {
+                //Skip this symbol
+                curContextPtr->recArr->internalArr[symbolId].gap = 0b1111111111;
+            }
         }
-    } else if (c == (1 << 10)) {
-        if (chkbit(curContextPtr->recArr->internalArr[symbolId].flags, FLAG_SHOULD_SWITCH_COUNTING)) {
-            //Skip this symbol
-            curContextPtr->recArr->internalArr[symbolId].gap = 0b1111111111;
-        }
-    }
-    //RDTSCTiming if not skipped
-    if (!chkbit(curContextPtr->recArr->internalArr[symbolId].flags, FLAG_SHOULD_SWITCH_COUNTING)) {
-        curContextPtr->recArr->internalArr[symbolId].totalClockCycles +=
-                postHookClockCycles - curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles;
+        //RDTSCTiming if not skipped
+        if (!chkbit(curContextPtr->recArr->internalArr[symbolId].flags, FLAG_SHOULD_SWITCH_COUNTING)) {
+            curContextPtr->recArr->internalArr[symbolId].totalClockCycles +=
+                    postHookClockCycles - curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles;
 //        printf("Post hook %lu - hookTuple[%lu](%lu)=%lu\n",
 //               postHookClockCycles,
 //               curContextPtr->indexPosi,
 //               curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles,
 //               postHookClockCycles - curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles);
-    }
+        }
 
-    //c = 1 << 10;
+        //c = 1 << 10;
 
+//        INFO_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu IndexPosti=%ld RetAddr=%p\n",
+//                  pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms(), curContextPtr->indexPosi,
+//                  callerAddr);
+    } while (curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddrStackLoc != callerAddrStackLoc);
 
-    INFO_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu RetAddr=%p\n",
-              pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms(), callerAddr);
 
     bypassCHooks = SCALER_FALSE;
     return callerAddr;
