@@ -297,12 +297,6 @@ __attribute__((used)) void *preHookHandler(uint64_t *callAddrStackAddr, uint64_t
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
         :/* No inputs. */:"rdi");
         return retOriFuncAddr;
-    } else if (unlikely(
-            curContextPtr->hookTuple[curContextPtr->indexPosi - 1].callerAddrStackLoc == callAddrStackAddr)) {
-        //Skip afterhook because jump is used
-        asm volatile ("movq $1234, %%rdi" : /* No outputs. */
-        :/* No inputs. */:"rdi");
-        return retOriFuncAddr;
     }
 
     bypassCHooks = SCALER_TRUE;
@@ -311,10 +305,11 @@ __attribute__((used)) void *preHookHandler(uint64_t *callAddrStackAddr, uint64_t
 
     uint64_t curTimestamp = getunixtimestampms();
 
-//    INFO_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld &RetAddr:%p  Timestamp: %lu\n",
+//    printf("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld &RetAddr:%p  Timestamp: %lu\n",
 //              pthread_self(),
 //              curElfSymInfo.fileId, symId, callAddrStackAddr, (void *) (*callAddrStackAddr), curContextPtr->indexPosi,
 //              curTimestamp);
+//    printf("Here prehook\n");
     //assert(curContext != nullptr);
 
     /**
@@ -385,17 +380,42 @@ __attribute__((used))  void *afterHookHandler(uint64_t *callerAddrStackLoc) {
     HookContext *curContextPtr = curContext;
     assert(curContext != nullptr);
 
+    //It is possible that this stack is a new stack we haven't hooked.
+    //Calculate how many steps we need to move forward.
+    // In normal case, we need to move forward one step, (this pointer always points to unused position in the array)
+    // In goto case, the previous execution path is unhooked, so i will be -1 in the end
+
+    // This number is usually curContextPtr->indexPosi - 1. This number will be -1 if goto is used. This number will be >=0 if there are unwinding caused by exception .etc
+    ssize_t leftMostIndex = -1; //The left most index from the right that matches callerAddrStackLoc
+    for (int i = curContextPtr->indexPosi - 1; i >= 1; --i) {
+        if (curContextPtr->hookTuple[i].callerAddrStackLoc == callerAddrStackLoc) {
+            leftMostIndex = i;
+        } else {
+            break;
+        }
+    }
+
+    if (leftMostIndex == -1) {
+        //There is a goto. In this case, this path is not hooked, return directly to addr stored in that address
+        //This this case callerAddrStackLoc must stores a valid address rather than an address in asmTimingHandler
+        fatalError("Scaler currently does not support libc saveContext/swapContext and other coroutine implementation");
+
+        bypassCHooks = SCALER_FALSE;
+        return (void *) *callerAddrStackLoc;
+    }
+
+
+
     //Unwinding check, the nextCallAddr should match prehook. Otherwise unwind
     void *callerAddr = nullptr;
-    do {
-        --curContextPtr->indexPosi;
+    for (int i = curContextPtr->indexPosi - 1; i >= leftMostIndex; --i) {
 
-                if (curContextPtr->indexPosi < 1) {
-            fatalError("index should not be less than one. This is a bug");
+        if (i < 0) {
+            fatalError("index should not be less than 0. This is a bug");
         }
 
-        scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
-        callerAddr = (void *) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr;
+        scaler::SymID symbolId = curContextPtr->hookTuple[i].symId;
+        callerAddr = (void *) curContextPtr->hookTuple[i].callerAddr;
 
         uint64_t curClockTick = 0;
         //(((int64_t) hi << 32) | lo) ;
@@ -407,7 +427,7 @@ __attribute__((used))  void *afterHookHandler(uint64_t *callerAddrStackLoc) {
             curClockTick = curTime.tms_utime + curTime.tms_stime;
         }
 
-//    assert(curContextPtr->indexPosi >= 1);
+//    assert(i >= 1);
 
         scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symbolId];
 
@@ -443,12 +463,12 @@ __attribute__((used))  void *afterHookHandler(uint64_t *callerAddrStackLoc) {
         //RDTSCTiming if not skipped
         if (!chkbit(curContextPtr->recArr->internalArr[symbolId].flags, FLAG_SHOULD_SWITCH_COUNTING)) {
             curContextPtr->recArr->internalArr[symbolId].totalClockCycles +=
-                    postHookClockCycles - curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles;
+                    postHookClockCycles - curContextPtr->hookTuple[i].clockCycles;
 //        printf("Post hook %lu - hookTuple[%lu](%lu)=%lu\n",
 //               postHookClockCycles,
-//               curContextPtr->indexPosi,
-//               curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles,
-//               postHookClockCycles - curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles);
+//               i,
+//               curContextPtr->hookTuple[i].clockCycles,
+//               postHookClockCycles - curContextPtr->hookTuple[i].clockCycles);
         }
 
         //c = 1 << 10;
@@ -456,7 +476,8 @@ __attribute__((used))  void *afterHookHandler(uint64_t *callerAddrStackLoc) {
 //        INFO_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu IndexPosti=%ld RetAddr=%p\n",
 //                  pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms(), curContextPtr->indexPosi,
 //                  callerAddr);
-    } while (curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddrStackLoc != callerAddrStackLoc);
+    }
+    curContextPtr->indexPosi = leftMostIndex;
 
 
     bypassCHooks = SCALER_FALSE;
