@@ -38,7 +38,7 @@ __attribute__((used)) void *dbgPreHandler(uint64_t* nextCallAddr, uint64_t fileI
  * @param asmHookRetPoint The address library funciton will return to after execution. This is the address that resides in asmHookHandler
  * @return
  */
-__attribute__((used)) void *afterHookHandler(uint64_t *callerAddrStackLoc, uint64_t asmHookRetPoint);
+__attribute__((used)) void *afterHookHandler(uint64_t *callerAddrStackLoc);
 
 void __attribute__((used, naked, noinline)) myPltEntry();
 

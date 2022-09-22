@@ -23,7 +23,7 @@
 */
 
 
-#define SAVE_COMPACT
+#define SAVE_COMPACT//SAVE_COMPACT
 #ifdef SAVE_ALL
 #define SAVE_PRE  \
     /*The stack should be 16 bytes aligned before start this block*/ \
@@ -57,9 +57,9 @@
     "vmovdqu64 %zmm6,0x208(%rsp) \n\t"/*64bytes*/  \
     "vmovdqu64 %zmm7,0x248(%rsp) \n\t"/*64bytes*/  \
 
-#define SAVE_BYTES_PRE "0x288" //0x248+512
-#define SAVE_BYTES_PRE_plus8 "0x290" //0x288+0x8
-#define SAVE_BYTES_PRE_plus16 "0x298" //0x288+0x8
+#define SAVE_BYTES_PRE "0x290" //0x248+64bytes=0x288 After alignment 0x290  (This value must divide by 0x10h)
+#define SAVE_BYTES_PRE_plus8 "0x298"
+#define SAVE_BYTES_PRE_plus16 "0x2A0"
 
 //Do not write restore by yourself, copy previous code and reverse operand order
 #define RESTORE_PRE  \
@@ -103,8 +103,8 @@
     /*https://www.cs.mcgill.ca/~cs573/winter2001/AttLinux_syntax.htm*/     \
     "fsave 0x90(%rsp)\n\t" /*108bytes*/                                              \
 
-#define SAVE_BYTES_POST "0xFC" /*0x90+108*/
-
+#define SAVE_BYTES_POST "0x10C" /*0x90+108+0x10 (This value must divide by 0x10h)*/
+#define SAVE_BYTES_POST_minus8 "0x104"
 
 #define RESTORE_POST  \
     /*Parameter passing registers*/                                        \
@@ -131,9 +131,9 @@
     "movq %r9,0x38(%rsp)\n\t"  /*8 bytes*/\
     "movq %r10,0x40(%rsp)\n\t" /*8 bytes*/\
 
-#define SAVE_BYTES_PRE "0x48" //0x40+8
-#define SAVE_BYTES_PRE_plus8 "0x50" //0x48+0x8
-#define SAVE_BYTES_PRE_plus16 "0x58" //0x48+0x10
+#define SAVE_BYTES_PRE "0x50" //0x40+8 (Must be 0x10 aligned)
+#define SAVE_BYTES_PRE_plus8 "0x58" //0x48+0x8
+#define SAVE_BYTES_PRE_plus16 "0x60" //0x48+0x10
 //Do not write restore by yourself, copy previous code and reverse operand order
 #define RESTORE_PRE  \
     "movq 0x08(%rsp),%rax\n\t" /*8 bytes*/\
@@ -154,7 +154,7 @@
 //    "movq %rax,(%rsp)\n\t" /*8 bytes*/                                     \
 //    "movq %rdx,0x8(%rsp)\n\t" /*8 bytes*/                                  \
 //
-//#define SAVE_BYTES_POST "0x90" /*0x8+0x8+0x80*/
+//#define SAVE_BYTES_POST "0x90" /*0x8+0x8+0x8*/
 //
 //#define RESTORE_POST  \
 //    /*Parameter passing registers*/                                        \
@@ -174,6 +174,7 @@
 
 #define SAVE_BYTES_POST "0x40" /*0x20+18+10 We should not override the return address (The last +0x10) */
 #define SAVE_BYTES_POST_minus8 "0x38"
+
 #define POST_HOOK_FIRST_INSTR_OFFSET "−25" //This value is strictly related to previous two values todo: I cannot specify here, the offset is directly written to code
 #define RESTORE_POST  \
     /*Parameter passing registers*/                                        \
@@ -237,7 +238,6 @@ void __attribute__((naked)) asmTimingHandler() {
     "subq $" SAVE_BYTES_POST ",%rsp\n\t"
     SAVE_POST
     "leaq " SAVE_BYTES_POST_minus8 "(%rsp),%rdi\n\t" //First parameter, return addr
-    "leaq -37(%rip),%rsi\n\t" //First parameter, return addr. rsi should exactly be the starting address of the first subq
 
     /**
      * Call After Hook
@@ -327,7 +327,6 @@ __attribute__((used)) void *preHookHandler(uint64_t *callAddrStackAddr, uint64_t
         curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks = curTime.tms_utime + curTime.tms_stime;
     }
     curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles = curTimestamp;
-//    printf("Perhook clockCycles[%ld]=%ld\n", curContextPtr->indexPosi, curTimestamp);
     curContextPtr->hookTuple[curContextPtr->indexPosi].symId = symId;
     curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddrStackLoc = callAddrStackAddr;
     curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = *callAddrStackAddr;
@@ -378,17 +377,9 @@ __attribute__((used)) void *dbgPreHandler(uint64_t nextCallAddr, uint64_t symId)
 }
 
 //uint64_t nextCallAddr
-__attribute__((used))  void *afterHookHandler(uint64_t *callerAddrStackLoc, uint64_t asmHookRetPoint) {
+__attribute__((used))  void *afterHookHandler(uint64_t *callerAddrStackLoc) {
     uint64_t postHookClockCycles = getunixtimestampms();
     bypassCHooks = SCALER_TRUE;
-
-    if (*callerAddrStackLoc != asmHookRetPoint) {
-        //This means somehow the system modifies the return addres, we return to it directly because this execution path is not hooked by Scaler and caused by long jump
-        INFO_LOGS("Detected execution path not intercepted by Scaler. Expected %lu, got %lu", asmHookRetPoint,
-                  *callerAddrStackLoc);
-        bypassCHooks = SCALER_FALSE;
-        return (void *) *callerAddrStackLoc;
-    }
 
 
     HookContext *curContextPtr = curContext;
@@ -399,7 +390,7 @@ __attribute__((used))  void *afterHookHandler(uint64_t *callerAddrStackLoc, uint
     do {
         --curContextPtr->indexPosi;
 
-        if (curContextPtr->indexPosi < 1) {
+                if (curContextPtr->indexPosi < 1) {
             fatalError("index should not be less than one. This is a bug");
         }
 
