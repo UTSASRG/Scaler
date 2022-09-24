@@ -525,7 +525,7 @@ namespace scaler {
     const int PLT_START_ADDR = SKIP_PART_START + 20, PLT_START_ADDR_SIZE = 64;
 
     const int COUNT_OFFSET_IN_RECARR = 0x8;
-    const int GAP_OFFSET_IN_RECARR = 0x18;
+    const int GAP_OFFSET_IN_RECARR = 0x10;
 
     const int TIMING_PART_START = SKIP_PART_START + 31;
     const int SYM_ID = TIMING_PART_START + 1, FUNC_ID_SIZE = 32;
@@ -629,7 +629,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-        "movq 0xFCF3C(%%rip),%0\n\t"
+        "movq 0x2F5E40(%%rip),%0\n\t"
         :"=r" (tlsOffset)
         :
         :
