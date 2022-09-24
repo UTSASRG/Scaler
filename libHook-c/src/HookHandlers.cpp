@@ -305,10 +305,10 @@ __attribute__((used)) void *preHookHandler(uint64_t *callAddrStackAddr, uint64_t
 
     uint64_t curTimestamp = getunixtimestampms();
 
-//    printf("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld &RetAddr:%p  Timestamp: %lu\n",
-//              pthread_self(),
-//              curElfSymInfo.fileId, symId, callAddrStackAddr, (void *) (*callAddrStackAddr), curContextPtr->indexPosi,
-//              curTimestamp);
+    INFO_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld &RetAddr:%p  Timestamp: %lu",
+              pthread_self(),
+              curElfSymInfo.fileId, symId, callAddrStackAddr, (void *) (*callAddrStackAddr), curContextPtr->indexPosi,
+              curTimestamp);
 //    printf("Here prehook\n");
     //assert(curContext != nullptr);
 
@@ -404,8 +404,6 @@ __attribute__((used))  void *afterHookHandler(uint64_t *callerAddrStackLoc) {
         return (void *) *callerAddrStackLoc;
     }
 
-
-
     //Unwinding check, the nextCallAddr should match prehook. Otherwise unwind
     void *callerAddr = nullptr;
     for (int i = curContextPtr->indexPosi - 1; i >= leftMostIndex; --i) {
@@ -452,12 +450,12 @@ __attribute__((used))  void *afterHookHandler(uint64_t *callerAddrStackLoc) {
                 meanClockTick += (curClockTick - meanClockTick) / (int32_t) c; //c<100, safe conversion
             } else if (c == (1 << 9)) {
                 //Mean calculation has finished, calculate a threshold based on that
-                clockTickThreshold = meanClockTick * 0.01;
+                clockTickThreshold = meanClockTick * 0.1;
             }
         } else if (c == (1 << 10)) {
             if (chkbit(curContextPtr->recArr->internalArr[symbolId].flags, FLAG_SHOULD_SWITCH_COUNTING)) {
                 //Skip this symbol
-                curContextPtr->recArr->internalArr[symbolId].gap = 0b1111111111;
+                curContextPtr->recArr->internalArr[symbolId].gap = 0b11111111111111111111;
             }
         }
         //RDTSCTiming if not skipped
@@ -473,9 +471,9 @@ __attribute__((used))  void *afterHookHandler(uint64_t *callerAddrStackLoc) {
 
         //c = 1 << 10;
 
-//        INFO_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu IndexPosti=%ld RetAddr=%p\n",
-//                  pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms(), curContextPtr->indexPosi,
-//                  callerAddr);
+        INFO_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu IndexPosti=%ld RetAddr=%p\n",
+                  pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms(), curContextPtr->indexPosi,
+                  callerAddr);
     }
     curContextPtr->indexPosi = leftMostIndex;
 

@@ -3,138 +3,18 @@ import pandas as pd
 import struct
 import re
 from datastructure.TimingStruct import FileRecord, RecTuple
-
-pthreadFileRegex = re.compile(r'libpthread-.*\.so$')
-
-
-def parsePthreadId(fileNameList):
-    for i, fileName in enumerate(fileNameList):
-        if len(pthreadFileRegex.findall(fileName)) != 0:
-            return i
-    raise Exception('Cannot find pthread library in fileList')
-
+from preProcessing import aggregatePerThreadArray, generateTimingStruct, calcPercentage, readSymbolFiles
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
-scalerDataFolder = '/media/umass/datasystem/steven/Downloads/scalerdata_7471051465385140'
+scalerDataFolder = '/media/umass/datasystem/steven/Downloads/scalerdata_8363066603580528'
 
-df = pd.read_csv(os.path.join(scalerDataFolder, 'fileName.txt'))
-fileNameList = df['pathName'].to_list()
-pthreadFileId = parsePthreadId(fileNameList)
+recInfo = readSymbolFiles(scalerDataFolder)
 
-df = pd.read_csv(os.path.join(scalerDataFolder, 'symbolInfo.txt'))
-symbolNameList = df['funcName'].to_list()
-symbolFileIdList = df['fileId'].to_list()
-symIdInFile = df['symIdInFile'].to_list()
 realFileId = None
-df = pd.read_csv(os.path.join(scalerDataFolder, 'symbolInfo.txt'))
 
-threadIdList = []
-for fileName in os.listdir(scalerDataFolder):
-    if fileName.startswith('threadTiming_'):
-        threadIdList.append(fileName[len('threadTiming_'): -4])
-
-
-def generateTimingStruct(aggregatedTimeEntries):
-    timingRecord = []  # Map file name to FileRecord struct
-    mainFileId = None
-    global realFileId
-
-    with open(os.path.join(scalerDataFolder, 'realFileId.bin'), 'rb') as f:
-        byteArr1 = f.read()
-        realFileId = list(struct.unpack_from('<%dQ' % (len(aggregatedTimeEntries)), byteArr1, 0))
-        pass
-
-    # Inset record to timingRecord
-    for i in range(len(fileNameList)):
-        record = FileRecord()
-        record.fileName = fileNameList[i]
-        timingRecord.append(record)
-
-    for i in range(len(symbolNameList)):
-        if symbolNameList[i] == 'pthread_create':
-            # Attribute this time to pthread library rather than scaler
-            realFileId[i] = pthreadFileId
-
-    # Insert the time of the main application
-    timingRecord[0].clockCycles.value = aggregatedTimeEntries[-1].totalClockCycles
-
-    # Loop through all timing entries and attribute time
-    for i in range(len(aggregatedTimeEntries) - 1):
-        # Add current symbol time to corresponding file entry (Only record APIs that are invoked at least once)
-        if aggregatedTimeEntries[i].count > 0:
-            # Make sure symbol ID is correct
-            if realFileId[i] >= len(fileNameList):
-                print(
-                    'Symbol %s was located in unhooked file. Is it overrided by an unhooked file?' % symbolNameList[
-                        i])
-                continue
-
-            # Attribute time to callee
-            curFileRecord = timingRecord[symbolFileIdList[i]]
-            curFileRecord.fileName = fileNameList[symbolFileIdList[i]]
-            curFileRecord.clockCycles.value -= aggregatedTimeEntries[i].totalClockCycles
-
-            curExtFileRecord = curFileRecord.extFileTiming[realFileId[i]]
-            curExtFileRecord.fileName = fileNameList[realFileId[i]]
-            curExtFileRecord.clockCycles.value += aggregatedTimeEntries[i].totalClockCycles
-            curExtFileRecord.counts.value += aggregatedTimeEntries[i].count
-
-            curExtSymRecord = curExtFileRecord.extSymTiming[symIdInFile[i]]
-            curExtSymRecord.symbolName = symbolNameList[i]
-            curExtSymRecord.clockCycles.value = aggregatedTimeEntries[i].totalClockCycles
-            curExtSymRecord.counts.value += aggregatedTimeEntries[i].count
-
-            # Attribute time to caller
-            realFileRecord = timingRecord[realFileId[i]]
-            # realFileRecord.fileName = fileNameList[realFileId[i]]
-            realFileRecord.clockCycles.value += aggregatedTimeEntries[i].totalClockCycles
-
-    # applicationDuration = timingRecord[0].clockCycles.value
-    # for i in range(len(timingRecord)):
-    #     curFileRecord = timingRecord[i]
-    #     curFileRecord.selfClockCycles += curFileRecord.totalClockCycles
-    #     curFileRecord.selfDurationPerc0ent = curFileRecord.selfClockCycles / applicationDuration * 100
-    #     for j in curFileRecord.extFileTiming.keys():
-    #         curExtFileRecord = curFileRecord.extFileTiming[j]
-    #         curExtFileRecord.totalExtTimePercent = curExtFileRecord.totalClockCycles / applicationDuration * 100
-    #         for k in curExtFileRecord.extSymTiming.keys():
-    #             curExtSymRecord = curExtFileRecord.extSymTiming[k]
-    #             curExtSymRecord.timePercent = curExtSymRecord.totalClockCycles / applicationDuration * 100
-
-    print(timingRecord)
-
-
-def readTimingStruct(threadFileFullPath):
-    recDataArr = []
-    recTupleSize = 8 + 8 + 4 + 4 + 4 + 4
-    with open(threadFileFullPath, 'rb') as f:
-        byteArr = f.read()
-        mainFileId, recArrSize = struct.unpack_from('qq', byteArr, 0)  # 16 bytes
-        f.seek(16)
-
-        for i in range(recArrSize):
-            curRecFormat = RecTuple()
-            f.readinto(curRecFormat)
-            recDataArr.append(curRecFormat)
-    assert (len(symbolNameList) == recArrSize - 1)
-    assert (len(recDataArr) == recArrSize)
-    return recDataArr
-
-
-aggregatedTimeArray = []
-for threadId in threadIdList:
-    curThreadRecArray = readTimingStruct(os.path.join(scalerDataFolder, 'threadTiming_%s.bin' % threadId))
-    if len(curThreadRecArray) != len(aggregatedTimeArray):
-        aggregatedTimeArray = curThreadRecArray.copy()
-    else:
-        for i, curRec in enumerate(curThreadRecArray):
-            aggregatedTimeArray[i].totalClockCycles += curRec.totalClockCycles
-            aggregatedTimeArray[i].count += curRec.count
-            aggregatedTimeArray[i].gap += curRec.gap
-            aggregatedTimeArray[i].meanClockTick += curRec.meanClockTick
-            aggregatedTimeArray[i].durThreshold += curRec.durThreshold
-            aggregatedTimeArray[i].flags |= curRec.flags
-
+aggregatedTimeArray, aggregatedStartingTime = aggregatePerThreadArray(scalerDataFolder,recInfo)
 # Generate graph
-generateTimingStruct(list(aggregatedTimeArray))
+timingRecord = generateTimingStruct(list(aggregatedTimeArray), aggregatedStartingTime,recInfo)
+
+print(timingRecord)

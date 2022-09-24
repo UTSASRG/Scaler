@@ -167,11 +167,17 @@ void saveData(HookContext *curContextPtr, bool finalize) {
                     strerror(errno));
     }
 
-    //Main application at the end
+    /**
+     * Theread is no necessarily created by the main application. For the last element in the recording array, we record a
+     * a special entry where totalClockCycles denotes the thread running time, flags records the creator file id.
+     * In post-processing period, we need to add this value to the total running time of a library
+     */
     curContextPtr->recArr->internalArr[curContextPtr->recArr->getSize() - 1].totalClockCycles =
             curContextPtr->endTImestamp - curContextPtr->startTImestamp;
+    curContextPtr->recArr->internalArr[curContextPtr->recArr->getSize() - 1].flags = curContextPtr->curFileId;
+
     INFO_LOGS("Total cycles=%lu\n",
-           curContextPtr->recArr->internalArr[curContextPtr->recArr->getSize() - 1].totalClockCycles);
+              curContextPtr->recArr->internalArr[curContextPtr->recArr->getSize() - 1].totalClockCycles);
 
     if (fwrite(&curContextPtr->curFileId, sizeof(HookContext::curFileId), 1, threadDataSaver) != 1) {
         fatalErrorS(
@@ -202,17 +208,19 @@ void saveData(HookContext *curContextPtr, bool finalize) {
 
         int fd;
 
-        size_t realFileIdSizeInBytes = (curContextPtr->_this->allExtSymbol.getSize() + 1) * sizeof(ssize_t);
+        size_t realFileIdSizeInBytes = (curContextPtr->_this->allExtSymbol.getSize() + 1) *
+                                       sizeof(ssize_t); //The first element records array size
         size_t *realFileIdMem = nullptr;
         if (!scaler::fOpen4Write<size_t>(ss.str().c_str(), fd, realFileIdSizeInBytes, realFileIdMem)) {
             fatalErrorS(
                     "Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
         }
-
+        realFileIdMem[0] = curContextPtr->_this->allExtSymbol.getSize();
         for (int i = 0; i < curContextPtr->_this->allExtSymbol.getSize(); ++i) {
-            realFileIdMem[i] = curContextPtr->_this->pmParser.findExecNameByAddr(
+            realFileIdMem[i + 1] = curContextPtr->_this->pmParser.findExecNameByAddr(
                     *(curContextPtr->_this->allExtSymbol[i].gotEntryAddr));
         }
+
         if (!scaler::fClose<size_t>(fd, realFileIdSizeInBytes, realFileIdMem)) {
             fatalError("Cannot close file");
         }
