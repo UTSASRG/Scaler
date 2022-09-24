@@ -471,7 +471,7 @@ __attribute__((used))  void *afterHookHandler(uint64_t *callerAddrStackLoc) {
 
         //c = 1 << 10;
 
-        INFO_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu IndexPosti=%ld RetAddr=%p\n",
+        INFO_LOGS("[Post Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu IndexPosti=%ld RetAddr=%p\n",
                   pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms(), curContextPtr->indexPosi,
                   callerAddr);
     }
