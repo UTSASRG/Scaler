@@ -305,10 +305,10 @@ __attribute__((used)) void *preHookHandler(uint64_t *callAddrStackAddr, uint64_t
 
     uint64_t curTimestamp = getunixtimestampms();
 
-    INFO_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld &RetAddr:%p  Timestamp: %lu",
-              pthread_self(),
-              curElfSymInfo.fileId, symId, callAddrStackAddr, (void *) (*callAddrStackAddr), curContextPtr->indexPosi,
-              curTimestamp);
+//    INFO_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld &RetAddr:%p  Timestamp: %lu",
+//              pthread_self(),
+//              curElfSymInfo.fileId, symId, callAddrStackAddr, (void *) (*callAddrStackAddr), curContextPtr->indexPosi,
+//              curTimestamp);
 //    printf("Here prehook\n");
     //assert(curContext != nullptr);
 
@@ -471,9 +471,9 @@ __attribute__((used))  void *afterHookHandler(uint64_t *callerAddrStackLoc) {
 
         //c = 1 << 10;
 
-        INFO_LOGS("[Post Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu IndexPosti=%ld RetAddr=%p\n",
-                  pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms(), curContextPtr->indexPosi,
-                  callerAddr);
+//        INFO_LOGS("[Post Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu IndexPosti=%ld RetAddr=%p\n",
+//                  pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms(), curContextPtr->indexPosi,
+//                  callerAddr);
     }
     curContextPtr->indexPosi = leftMostIndex;
 
