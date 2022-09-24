@@ -72,7 +72,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     //    fatalError("Failed to parse the caller address for pthread_create")
     //    exit(-1);
     //}
-    INFO_LOG("Pthread create");
+//    INFO_LOG("Pthread create");
 
 
     if (pthread_create_orig == nullptr) {

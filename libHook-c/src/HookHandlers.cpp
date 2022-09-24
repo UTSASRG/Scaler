@@ -310,8 +310,8 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
 
     //DBG_LOGS("FileId=%lu, pltId=%zd prehook", fileId, pltEntryIndex);
 
-    DBG_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu\n", pthread_self(),
-             curElfSymInfo.fileId, symId, (void *) nextCallAddr, getunixtimestampms());
+//    INFO_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu\n", pthread_self(),
+//             curElfSymInfo.fileId, symId, (void *) nextCallAddr, getunixtimestampms());
     //assert(curContext != nullptr);
 
     /**
@@ -420,12 +420,12 @@ void *afterHookHandler() {
             meanClockTick += (curClockTick - meanClockTick) / (int32_t) c; //c<100, safe conversion
         } else if (c == (1 << 9)) {
             //Mean calculation has finished, calculate a threshold based on that
-            clockTickThreshold = meanClockTick * 0.01;
+            clockTickThreshold = meanClockTick * 0.1;
         }
     } else if (c == (1 << 10)) {
         if (chkbit(curContextPtr->recArr->internalArr[symbolId].flags, 0)) {
             //Skip this symbol
-            curContextPtr->recArr->internalArr[symbolId].gap = 0b1111111111;
+            curContextPtr->recArr->internalArr[symbolId].gap = 0;
         }
     }
     //RDTSCTiming if not skipped
@@ -437,7 +437,7 @@ void *afterHookHandler() {
     //c = 1 << 10;
 
 
-//    DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu\n",
+//    INFO_LOGS("[Post Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu\n",
 //             pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms());
 
     bypassCHooks = SCALER_FALSE;
