@@ -32,7 +32,7 @@ namespace scaler {
             return false;
         }
 
-        FILE *execNameFile = fopen("/media/umass/datasystem/steven/fileName.txt", "w");
+        FILE *execNameFile = fopen("/tmp/fileName.txt", "w");
         if (!execNameFile) {
             ERR_LOGS("Cannot open %s because: %s", "fileName.txt", strerror(errno));
             return false;
