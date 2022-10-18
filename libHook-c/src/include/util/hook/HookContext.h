@@ -23,9 +23,9 @@ struct HookTuple {
 struct RecTuple {
     uint64_t totalClockCycles; //8
     int64_t count; //8
-    uint32_t gap; //4
+    int32_t gap; //4
     float meanClockTick; //4
-    uint32_t durThreshold; //4
+    int32_t durThreshold; //4
     uint32_t flags; //4
 };
 

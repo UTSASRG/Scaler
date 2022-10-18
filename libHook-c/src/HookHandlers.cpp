@@ -319,11 +319,12 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
     */
     ++curContextPtr->indexPosi;
     int64_t &c = curContextPtr->recArr->internalArr[symId].count;
-    if (c < (1 << 10)) {
-        struct tms curTime;
-        times(&curTime);
-        curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks = curTime.tms_utime + curTime.tms_stime;
-    }
+//    if (c < (1 << 10)) {
+//        struct tms curTime;
+//        times(&curTime);
+//        curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks = curTime.tms_utime + curTime.tms_stime;
+//        printf("Clock ticks in prehook=%d\n",curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks);
+//    }
     curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles = getunixtimestampms();
     curContextPtr->hookTuple[curContextPtr->indexPosi].symId = symId;
     curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = nextCallAddr;
@@ -381,18 +382,18 @@ void *afterHookHandler() {
     scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
     void *callerAddr = (void *) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr;
 
-    uint64_t curClockTick = 0;
+//    int64_t prevClockTick = curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks;
+    uint64_t preClockCycle = curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles;
+
+//    int64_t curClockTick = 0;
     //(((int64_t) hi << 32) | lo) ;
     int64_t &c = curContextPtr->recArr->internalArr[symbolId].count;
-
-    if (c < (1 << 10)) {
-        struct tms curTime;
-        times(&curTime);
-        curClockTick = curTime.tms_utime + curTime.tms_stime;
-    }
-
-    curContextPtr->recArr->internalArr[curContextPtr->indexPosi].totalClockCycles =
-            postHookClockCycles - curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles;
+//    if (c < (1 << 10)) {
+//        struct tms curTime;
+//        clock_t rlt = times(&curTime);
+//        curClockTick = curTime.tms_utime + curTime.tms_stime - prevClockTick;
+//        printf("Clock Ticks in posthook=%ld\n", curTime.tms_utime + curTime.tms_stime);
+//    }
 
     --curContextPtr->indexPosi;
     assert(curContextPtr->indexPosi >= 1);
@@ -401,37 +402,44 @@ void *afterHookHandler() {
 
     //compare current timestamp with the previous timestamp
 
-    float &meanClockTick = curContextPtr->recArr->internalArr[symbolId].meanClockTick;
-    uint32_t &clockTickThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
+    float &meanClockCycle = curContextPtr->recArr->internalArr[symbolId].meanClockTick;
+    int32_t &clockTickThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
+
+    int64_t clockCyclesDuration = (int64_t) (postHookClockCycles - preClockCycle);
     if (c < (1 << 10)) {
 
         if (c > (1 << 9)) {
             //Calculation phase
-            int64_t clockTickDiff = curClockTick - meanClockTick;
+            int64_t clockTickDiff = clockCyclesDuration - meanClockCycle;
 
-            if (-clockTickThreshold < clockTickDiff && clockTickDiff < clockTickThreshold) {
+            if (-clockTickThreshold <= clockTickDiff && clockTickDiff <= clockTickThreshold) {
+//                printf("Skipped\n");
                 //Skip this
                 setbit(curContextPtr->recArr->internalArr[symbolId].flags, 0);
             }
+//            printf("Threshold=%d clockDiff=%ld shouldSkip?=%s\n", clockTickThreshold, clockTickDiff,
+//                   -clockTickThreshold <= clockTickDiff && clockTickDiff <= clockTickThreshold ? "True" : "False");
 
         } else if (c < (1 << 9)) {
             //Counting only, no modifying gap. Here the gap should be zero. Meaning every invocation counts
             //https://blog.csdn.net/u014485485/article/details/77679669
-            meanClockTick += (curClockTick - meanClockTick) / (int32_t) c; //c<100, safe conversion
+            meanClockCycle += (clockCyclesDuration - meanClockCycle) / (float) c; //c<100, safe conversion
+//            printf("meanClockTick += (%ld - %f) / (float) %ld\n", clockCyclesDuration, meanClockCycle, c);
         } else if (c == (1 << 9)) {
             //Mean calculation has finished, calculate a threshold based on that
-            clockTickThreshold = meanClockTick * 0.1;
+            clockTickThreshold = meanClockCycle * 0.1;
+//            printf("MeanClockTick=%f MeanClockTick*0.1=%f\n", meanClockCycle, meanClockCycle * 0.1);
         }
     } else if (c == (1 << 10)) {
         if (chkbit(curContextPtr->recArr->internalArr[symbolId].flags, 0)) {
             //Skip this symbol
+//            printf("Skipped\n");
             curContextPtr->recArr->internalArr[symbolId].gap = 0b11111111111111111111;
         }
     }
     //RDTSCTiming if not skipped
     if (!chkbit(curContextPtr->recArr->internalArr[symbolId].flags, 0)) {
-        curContextPtr->recArr->internalArr[symbolId].totalClockCycles +=
-                postHookClockCycles - curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles;
+        curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration;
     }
 
     //c = 1 << 10;
