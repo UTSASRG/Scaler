@@ -1142,8 +1142,8 @@ int main() {
     func998();
     func999();*/
 
-//    auto actualEnd = getunixtimestampms();
-//    printf("%ld-%ld=%ld\n", actualEnd, actualStart, actualEnd - actualStart);
+    auto actualEnd = getunixtimestampms();
+    printf("%ld-%ld=%ld\n", actualEnd, actualStart, actualEnd - actualStart);
 
     forwardTest();
     return 0;

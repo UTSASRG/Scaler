@@ -403,7 +403,7 @@ void *afterHookHandler() {
     //compare current timestamp with the previous timestamp
 
     float &meanClockCycle = curContextPtr->recArr->internalArr[symbolId].meanClockTick;
-    int32_t &clockTickThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
+    int32_t &clockCycleThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
 
     int64_t clockCyclesDuration = (int64_t) (postHookClockCycles - preClockCycle);
     if (c < (1 << 10)) {
@@ -412,13 +412,13 @@ void *afterHookHandler() {
             //Calculation phase
             int64_t clockTickDiff = clockCyclesDuration - meanClockCycle;
 
-            if (-clockTickThreshold <= clockTickDiff && clockTickDiff <= clockTickThreshold) {
+            if (-clockCycleThreshold <= clockTickDiff && clockTickDiff <= clockCycleThreshold) {
 //                printf("Skipped\n");
                 //Skip this
                 setbit(curContextPtr->recArr->internalArr[symbolId].flags, 0);
             }
 //            printf("Threshold=%d clockDiff=%ld shouldSkip?=%s\n", clockTickThreshold, clockTickDiff,
-//                   -clockTickThreshold <= clockTickDiff && clockTickDiff <= clockTickThreshold ? "True" : "False");
+//                   -clockTickThreshold <= clockTickDiff && clockTickDiff <        = clockTickThreshold ? "True" : "False");
 
         } else if (c < (1 << 9)) {
             //Counting only, no modifying gap. Here the gap should be zero. Meaning every invocation counts
@@ -427,13 +427,13 @@ void *afterHookHandler() {
 //            printf("meanClockTick += (%ld - %f) / (float) %ld\n", clockCyclesDuration, meanClockCycle, c);
         } else if (c == (1 << 9)) {
             //Mean calculation has finished, calculate a threshold based on that
-            clockTickThreshold = meanClockCycle * 0.1;
+            clockCycleThreshold = meanClockCycle * 0.1;
 //            printf("MeanClockTick=%f MeanClockTick*0.1=%f\n", meanClockCycle, meanClockCycle * 0.1);
         }
     } else if (c == (1 << 10)) {
         if (chkbit(curContextPtr->recArr->internalArr[symbolId].flags, 0)) {
             //Skip this symbol
-//            printf("Skipped\n");
+            //printf("Skipped\n");
             curContextPtr->recArr->internalArr[symbolId].gap = 0b11111111111111111111;
         }
     }
