@@ -10,12 +10,6 @@
 using namespace std;
 
 
-inline int64_t getunixtimestampms() {
-    uint32_t lo, hi;
-    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-    return ((int64_t) hi << 32) | lo;
-}
-
 struct A123 {
     A123(int &&n) { std::cout << "rvalue overload, n=" << n << "\n"; }
 

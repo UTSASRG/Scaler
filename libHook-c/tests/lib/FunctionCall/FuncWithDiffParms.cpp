@@ -6,12 +6,21 @@
 #include <cassert>
 
 extern "C" {
-void* callMalloc(int i) {
+void *callMalloc(int i) {
     return malloc(i);
 }
 
 void funcA() {
     printf("Inside Function A\n");
+}
+
+
+int64_t funcATimed(int& cache) {
+    int64_t time1 = getunixtimestampms();
+    for (int i = 0; i < 1 << 10; ++i) {
+        cache += i;
+    }
+    return getunixtimestampms() - time1;;
 }
 
 void loopDelay(long long times) {

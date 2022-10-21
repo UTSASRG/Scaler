@@ -6,9 +6,17 @@
 
 
 extern "C" {
-void* callMalloc(int i);
+void *callMalloc(int i);
 
 void funcA();
+
+inline int64_t getunixtimestampms() {
+    uint32_t lo, hi;
+    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+    return ((int64_t) hi << 32) | lo;
+}
+
+int64_t funcATimed(int &cache);
 
 void funcB(int a);
 
