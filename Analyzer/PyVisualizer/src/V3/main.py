@@ -1,3 +1,4 @@
+import math
 import os
 import pandas as pd
 import struct
@@ -7,20 +8,32 @@ from preProcessing import aggregatePerThreadArray, generateTimingStruct, calcPer
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
-scalerDataFolder = '/media/umass/datasystem/steven/scalerbench/mysql/issue48/workspace/scalerdata_12752056454442472'
+scalerDataFolder = '/media/umass/datasystem/steven/intel/Perf_Scaler-Parsec-Callgraph-Sig2022Fall/x264/scalerdata_12852017355851478_FGDS'
 
 recInfo = readSymbolFiles(scalerDataFolder)
 
 realFileId = None
 
-aggregatedTimeArray, aggregatedStartingTime = aggregatePerThreadArray(scalerDataFolder,recInfo)
+aggregatedTimeArray, aggregatedStartingTime = aggregatePerThreadArray(scalerDataFolder, recInfo)
 # Generate graph
-timingRecord = generateTimingStruct(list(aggregatedTimeArray), aggregatedStartingTime,recInfo)
+timingRecord = generateTimingStruct(list(aggregatedTimeArray), aggregatedStartingTime, recInfo)
 
 print(timingRecord)
 
-mysqlList= sorted(list(timingRecord[8].extFileTiming[7].extSymTiming.values()),key=lambda x: x.totalClockCycles.value,reverse=True)
+# totalSelfTime = 0
+# for fileRec in timingRecord:
+#     if fileRec.selfClockCycles.value<0:
+#         fileRec.selfClockCycles.value=0
+#     totalSelfTime += fileRec.selfClockCycles.value
+# for fileRec in timingRecord:
+#     if fileRec.selfClockCycles.value<0:
+#         fileRec.selfClockCycles.value=0
+#     print(fileRec.fileName,'\t', round(fileRec.selfClockCycles.value / totalSelfTime * 100, 2))
 
-for item in mysqlList:
-    print('%s\t%s'%(item.symbolName,item.totalClockCycles.value))
+
+#
+# mysqlList= sorted(list(timingRecord[8].extFileTiming[7].extSymTiming.values()),key=lambda x: x.totalClockCycles.value,reverse=True)
+#
+# for item in mysqlList:
+#     print('%s\t%s'%(item.symbolName,item.totalClockCycles.value))
 print('')
