@@ -188,7 +188,7 @@ void saveData(HookContext *curContextPtr, bool finalize) {
     INFO_LOGS("Saving data to %s, %lu", scaler::ExtFuncCallHook::instance->folderName.c_str(), pthread_self());
 
     if (curContextPtr->isMainThread || finalize) {
-        printf("Main thread id is: %lu", curContextPtr->threadId);
+//        printf("Main thread id is: %lu", curContextPtr->threadId);
         ss.str("");
         ss << scaler::ExtFuncCallHook::instance->folderName << "/realFileId.bin";
         //The real id of each function is resolved in after hook, so I can only save it in datasaver

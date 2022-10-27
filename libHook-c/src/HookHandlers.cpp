@@ -325,10 +325,10 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
 //        curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks = curTime.tms_utime + curTime.tms_stime;
 //        printf("Clock ticks in prehook=%d\n",curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks);
 //    }
-    curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles = getunixtimestampms();
     curContextPtr->hookTuple[curContextPtr->indexPosi].symId = symId;
     curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = nextCallAddr;
     bypassCHooks = SCALER_FALSE;
+    curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles = getunixtimestampms();
     return *curElfSymInfo.gotEntryAddr;
 }
 
@@ -499,6 +499,57 @@ void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
      */
     //Perform timing
     "TIMING_JUMPER:"
+    "pushq $0x11223344\n\t" //Save funcId to stack
+    "movq $0x1122334455667788,%r11\n\t"
+    "jmpq *%r11\n\t"
+    );
+}
+
+
+void __attribute__((used, naked, noinline)) callIdSaverScheme4() {
+    __asm__ __volatile__ (
+    /**
+     * Read TLS part
+     */
+    "mov $0x1122334455667788,%r11\n\t"//Move the tls offset of context to r11
+    "mov %fs:(%r11),%r11\n\t" //Now r11 points to the tls header
+    //Check whether the context is initialized
+    "cmpq $0,%r11\n\t"
+    //Skip processing if context is not initialized
+    "jz SKIP1\n\t"
+
+
+    /**
+     * Counting part
+     */
+    "pushq %r10\n\t"
+
+    "movq 0x650(%r11),%r11\n\t" //Fetch recArr.internalArr address from TLS -> r11
+    "movq 0x11223344(%r11),%r10\n\t" //Fetch recArr.internalArr[symId].count in Heap to -> r10
+    "addq $1,%r10\n\t" //count + 1
+    "movq %r10,0x11223344(%r11)\n\t" //Store count
+
+    "movq 0x11223344(%r11),%r11\n\t" //Fetch recArr.internalArr[symId].gap in Heap to -> r11
+    "andq %r11,%r10\n\t" //count value (r10) % gap (r11) -> r11, gap value must be a power of 2
+    "cmpq $0,%r10\n\t" //If necessary count % gap == 0. Use timing
+    "pop %r10\n\t"
+    "jz TIMING_JUMPER1\n\t" //Check if context is initialized
+
+    /**
+    * Return
+    */
+    "SKIP1:"
+    "movq $0x1122334455667788,%r11\n\t" //GOT address
+    "jmpq *(%r11)\n\t"
+    "pushq $0x11223344\n\t" //Plt stub id
+    "movq $0x1122334455667788,%r11\n\t" //First plt entry
+    "jmpq *%r11\n\t"
+
+    /**
+     * Timing
+     */
+    //Perform timing
+    "TIMING_JUMPER1:"
     "pushq $0x11223344\n\t" //Save funcId to stack
     "movq $0x1122334455667788,%r11\n\t"
     "jmpq *%r11\n\t"
