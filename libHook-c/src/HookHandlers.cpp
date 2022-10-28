@@ -395,14 +395,6 @@ void *afterHookHandler() {
 //        printf("Clock Ticks in posthook=%ld\n", curTime.tms_utime + curTime.tms_stime);
 //    }
 
-#ifdef INSTR_TIMING
-    TIMING_TYPE &curSize = curContextPtr->timingVectorSize[symbolId];
-    if (curSize < TIMING_REC_COUNT) {
-        ++curSize;
-        curContextPtr->timingVectors[symbolId][curSize] = duration;
-    }
-#endif
-
     --curContextPtr->indexPosi;
     assert(curContextPtr->indexPosi >= 1);
 
@@ -414,41 +406,50 @@ void *afterHookHandler() {
     int32_t &clockCycleThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
 
     int64_t clockCyclesDuration = (int64_t) (postHookClockCycles - preClockCycle);
-    if (c < (1 << 10)) {
 
-        if (c > (1 << 9)) {
-            //Calculation phase
-            int64_t clockTickDiff = clockCyclesDuration - meanClockCycle;
 
-            if (-clockCycleThreshold <= clockTickDiff && clockTickDiff <= clockCycleThreshold) {
-//                printf("Skipped\n");
-                //Skip this
-                setbit(curContextPtr->recArr->internalArr[symbolId].flags, 0);
-            }
-//            printf("Threshold=%d clockDiff=%ld shouldSkip?=%s\n", clockTickThreshold, clockTickDiff,
-//                   -clockTickThreshold <= clockTickDiff && clockTickDiff <        = clockTickThreshold ? "True" : "False");
-
-        } else if (c < (1 << 9)) {
-            //Counting only, no modifying gap. Here the gap should be zero. Meaning every invocation counts
-            //https://blog.csdn.net/u014485485/article/details/77679669
-            meanClockCycle += (clockCyclesDuration - meanClockCycle) / (float) c; //c<100, safe conversion
-//            printf("meanClockTick += (%ld - %f) / (float) %ld\n", clockCyclesDuration, meanClockCycle, c);
-        } else if (c == (1 << 9)) {
-            //Mean calculation has finished, calculate a threshold based on that
-            clockCycleThreshold = meanClockCycle * 0.1;
-//            printf("MeanClockTick=%f MeanClockTick*0.1=%f\n", meanClockCycle, meanClockCycle * 0.1);
-        }
-    } else if (c == (1 << 10)) {
-        if (chkbit(curContextPtr->recArr->internalArr[symbolId].flags, 0)) {
-            //Skip this symbol
-            //printf("Skipped\n");
-            curContextPtr->recArr->internalArr[symbolId].gap = 0b11111111111111111111;
-        }
+#ifdef INSTR_TIMING
+    TIMING_TYPE &curSize = detailedTimingVectorSize[symbolId];
+    if (curSize < TIMING_REC_COUNT) {
+        ++curSize;
+        detailedTimingVectors[symbolId][curSize] = clockCyclesDuration;
     }
-    //RDTSCTiming if not skipped
-    if (!chkbit(curContextPtr->recArr->internalArr[symbolId].flags, 0)) {
-        curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration;
-    }
+#endif
+//    if (c < (1 << 10)) {
+//
+//        if (c > (1 << 9)) {
+//            //Calculation phase
+//            int64_t clockTickDiff = clockCyclesDuration - meanClockCycle;
+//
+//            if (-clockCycleThreshold <= clockTickDiff && clockTickDiff <= clockCycleThreshold) {
+////                printf("Skipped\n");
+//                //Skip this
+//                setbit(curContextPtr->recArr->internalArr[symbolId].flags, 0);
+//            }
+////            printf("Threshold=%d clockDiff=%ld shouldSkip?=%s\n", clockTickThreshold, clockTickDiff,
+////                   -clockTickThreshold <= clockTickDiff && clockTickDiff <        = clockTickThreshold ? "True" : "False");
+//
+//        } else if (c < (1 << 9)) {
+//            //Counting only, no modifying gap. Here the gap should be zero. Meaning every invocation counts
+//            //https://blog.csdn.net/u014485485/article/details/77679669
+//            meanClockCycle += (clockCyclesDuration - meanClockCycle) / (float) c; //c<100, safe conversion
+////            printf("meanClockTick += (%ld - %f) / (float) %ld\n", clockCyclesDuration, meanClockCycle, c);
+//        } else if (c == (1 << 9)) {
+//            //Mean calculation has finished, calculate a threshold based on that
+//            clockCycleThreshold = meanClockCycle * 0.1;
+////            printf("MeanClockTick=%f MeanClockTick*0.1=%f\n", meanClockCycle, meanClockCycle * 0.1);
+//        }
+//    } else if (c == (1 << 10)) {
+//        if (chkbit(curContextPtr->recArr->internalArr[symbolId].flags, 0)) {
+//            //Skip this symbol
+//            //printf("Skipped\n");
+//            curContextPtr->recArr->internalArr[symbolId].gap = 0b11111111111111111111;
+//        }
+//    }
+//    //RDTSCTiming if not skipped
+//    if (!chkbit(curContextPtr->recArr->internalArr[symbolId].flags, 0)) {
+//        curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration;
+//    }
 
     //c = 1 << 10;
 

@@ -1,10 +1,11 @@
-#ifndef THREAD_LOCAL_H
-#define THREAD_LOCAL_H
+#ifndef HOOK_CONTEXT_H
+#define HOOK_CONTEXT_H
 
 #include <util/datastructure/FStack.h>
 #include <cstdio>
 #include <type/InvocationTree.h>
 #include <util/tool/Timer.h>
+#include <type/RecTuple.h>
 #include "ExtFuncCallHook.h"
 
 extern "C" {
@@ -20,19 +21,6 @@ struct HookTuple {
     uint32_t clockTicks; //8
 };
 
-struct RecTuple {
-    uint64_t totalClockCycles; //8
-    int64_t count; //8
-    int32_t gap; //4
-    float meanClockTick; //4
-    int32_t durThreshold; //4
-    uint32_t flags; //4
-};
-//#define INSTR_TIMING
-#ifdef INSTR_TIMING
-const int TIMING_REC_COUNT = 20000;
-typedef int64_t TIMING_TYPE;
-#endif
 
 struct HookContext {
     //todo: Initialize using maximum stack size
@@ -40,7 +28,7 @@ struct HookContext {
     scaler::Array<RecTuple> *recArr; //8bytes
     //Records which function calls which function for how long, the index is scalerid (Only contains hooked function)
     //todo: Replace timingMatrix to a class
-    int64_t curFileId = 1; //Which library created the current thread? The default one is main thread
+    int64_t threadCreatorFileId = 1; //Which library created the current thread? The default one is main thread
     scaler::ExtFuncCallHook *_this = nullptr; //8bytes
     //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
     uint64_t startTImestamp;
@@ -53,12 +41,7 @@ struct HookContext {
     uint8_t dataSaved = false;
     uint8_t isMainThread = false;
     uint8_t initialized = 0;
-#ifdef INSTR_TIMING
-    TIMING_TYPE **timingVectors;
-    TIMING_TYPE *timingVectorSize;
-#endif
 };
-
 
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
@@ -87,6 +70,14 @@ extern scaler::Vector<HookContext *> threadContextMap;
 extern pthread_mutex_t threadDataSavingLock;
 
 bool initTLS();
+
+
+//#define INSTR_TIMING
+#ifdef INSTR_TIMING
+extern const int TIMING_REC_COUNT;
+extern __thread TIMING_TYPE **detailedTimingVectors;
+extern __thread TIMING_TYPE *detailedTimingVectorSize;
+#endif
 
 
 }
