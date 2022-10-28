@@ -21,9 +21,9 @@ void readFileName(const char *dataFolder) {
     //Skip one line
     fscanf(fd, "%*[^\n]");
 
-    char fileIdStr[256];
+    int fileIdStr;
     char fileName[PATH_MAX];
-    while (fscanf(fd, "%s,%s", fileIdStr, fileName) == 2) {
+    while (fscanf(fd, "%d,%s", &fileIdStr, fileName) == 2) {
         fileNameMap.emplace_back(std::string(fileName));
     }
 }
@@ -40,7 +40,8 @@ void readSymbolId(const char *dataFolder) {
 
     RecSymInfo rec;
     char funcName[256];
-    while (fscanf(fd, "%s,%zd,%zd", funcName, &rec.fileId, &rec.symIdInFile) == 3) {
+    int rlt=fscanf(fd, "%s%*c %zd%*c %zd ", funcName, &rec.fileId, &rec.symIdInFile);
+    while (rlt == 3) {
         rec.funcName = funcName;
         libRecordArr.emplace_back(rec);
     }
@@ -50,17 +51,25 @@ AppRecord record;
 
 int main(int argc, char *argv[]) {
     INFO_LOGS("Visualizer Ver %s", CMAKE_SCALERRUN_VERSION);
-    const char *dataFolder = argv[1];
-
+//    const char *dataFolder = argv[1];
+    const char *dataFolder = "/media/umass/datasystem/steven/Downloads/scalerdata_6407735164429402";
     readFileName(dataFolder);
     readSymbolId(dataFolder);
 
-    //Fill libRec
     for (int i = 0; i < fileNameMap.size(); ++i) {
-        LibRecord libRec;
-        libRec.libPath = fileNameMap[i];
-        record.libRecordArr.emplace_back(libRec);
+        printf("%s\n", fileNameMap[i].c_str());
     }
+
+    for (int i = 0; i < libRecordArr.size(); ++i) {
+        printf("%s\n", libRecordArr[i].funcName.c_str());
+    }
+
+    //Fill libRec
+//    for (int i = 0; i < fileNameMap.size(); ++i) {
+//        LibRecord libRec;
+//        libRec.libPath = fileNameMap[i];
+//        record.libRecordArr.emplace_back(libRec);
+//    }
 
 
 

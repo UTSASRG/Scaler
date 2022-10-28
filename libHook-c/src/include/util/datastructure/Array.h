@@ -26,7 +26,7 @@ namespace scaler {
         explicit Array(const ssize_t &initialSize = 1) : internalArrSize(initialSize), size(0) {
             if (initialSize > 0) {
                 internalArr = (T *) malloc( internalArrSize * sizeof(T));
-                INFO_LOGS("Internal array %d bytes",internalArrSize * sizeof(T));
+//                INFO_LOGS("Internal array %d bytes",internalArrSize * sizeof(T));
                 assert(internalArr != nullptr);
                 memset(internalArr, 0, internalArrSize * sizeof(T));
             }

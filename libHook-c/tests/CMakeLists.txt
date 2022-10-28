@@ -77,6 +77,12 @@ target_link_libraries(ScalerHook-demoapps-FuncCall PUBLIC ScalerHook-HookAutoAsm
         Testlib-CallFuncCall KuBoPltHook dl)
 target_compile_options(ScalerHook-demoapps-FuncCall PRIVATE ${TEST_FLAGS} -Werror)
 
+
+add_executable(ScalerHook-demoapps-TimingAccuracy src/demoapps/TestTimingAccuracy.cpp)
+target_link_libraries(ScalerHook-demoapps-TimingAccuracy PUBLIC Testlib-FuncCall  Testlib-CallFuncCall KuBoPltHook dl)
+target_compile_options(ScalerHook-demoapps-TimingAccuracy PRIVATE ${TEST_FLAGS} -Werror)
+target_link_options(ScalerHook-demoapps-TimingAccuracy  PRIVATE "-z" "lazy")
+
 add_executable(ScalerHook-demoapps-HookEverything src/demoapps/TestHookEverything.cpp)
 target_include_directories(ScalerHook-demoapps-HookEverything PUBLIC libtest/header)
 target_link_libraries(ScalerHook-demoapps-HookEverything PUBLIC ScalerHook-HookAutoAsm-C Testlib-FuncCall

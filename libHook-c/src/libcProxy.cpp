@@ -23,7 +23,6 @@ scaler::Vector<HookContext *> threadContextMap;
 
 
 int doubletake_main(int argc, char **argv, char **envp) {
-    installed=true;
 
     INFO_LOGS("libHook-c Ver %s", CMAKE_SCALERRUN_VERSION);
     INFO_LOGS("Main thread id is%lu", pthread_self());
@@ -33,13 +32,14 @@ int doubletake_main(int argc, char **argv, char **envp) {
 //    if (!getcwd(pathName, sizeof(pathName))) {
 //        fatalErrorS("Cannot get cwd because: %s", strerror(errno));
 //    }
-    strncpy(pathName,"/media/umass/datasystem/steven/Downloads",strlen("/media/umass/datasystem/steven/Downloads"));
+    strncpy(pathName,"/tmp",strlen("/tmp"));
 
     std::stringstream ss;
-    ss << pathName << "/" << "scalerdata_" << getunixtimestampms();
+    ss << "/tmp" << "/" << "scalerdata_" << getunixtimestampms();
     INFO_LOGS("Folder name is %s",pathName);
     scaler::ExtFuncCallHook::getInst(ss.str())->install();
     //Calculate the main application time
+    installed = true;
 
 
     HookContext *curContextPtr = curContext;

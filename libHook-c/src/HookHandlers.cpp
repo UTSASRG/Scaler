@@ -6,6 +6,11 @@
 #include <util/tool/Timer.h>
 #include <sys/times.h>
 
+#define setbit(x, y) x|=(1<<y)
+#define clrbit(x, y) x&=～(1<<y)
+#define chkbit(x, y) x&(1<<y)
+
+
 #define PUSHZMM(ArgumentName) \
 "subq $64,%rsp\n\t" \
 "vmovdqu64  %zmm"#ArgumentName" ,(%rsp)\n\t"
@@ -305,33 +310,25 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
 
     //DBG_LOGS("FileId=%lu, pltId=%zd prehook", fileId, pltEntryIndex);
 
-    DBG_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu\n", pthread_self(),
-             curElfSymInfo.fileId, symId, (void *) nextCallAddr, getunixtimestampms());
+//    INFO_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu\n", pthread_self(),
+//             curElfSymInfo.fileId, symId, (void *) nextCallAddr, getunixtimestampms());
     //assert(curContext != nullptr);
 
     /**
     * Setup environment for afterhook
     */
     ++curContextPtr->indexPosi;
-
-    uint32_t lo, hi;
-
-    int64_t &c = curContextPtr->recArr->internalArr[symId].localCount;
-    if (c <= (1 << 10)) {
-
-//        struct tms asdf;
-//        times(&asdf);
-
-        uint32_t lo, hi;
-        __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-        curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp =(((int64_t) hi << 32) | lo);
-    } else {
-        __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-        curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp = ((int64_t) hi << 32) | lo;
-    }
+    int64_t &c = curContextPtr->recArr->internalArr[symId].count;
+//    if (c < (1 << 10)) {
+//        struct tms curTime;
+//        times(&curTime);
+//        curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks = curTime.tms_utime + curTime.tms_stime;
+//        printf("Clock ticks in prehook=%d\n",curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks);
+//    }
     curContextPtr->hookTuple[curContextPtr->indexPosi].symId = symId;
     curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = nextCallAddr;
     bypassCHooks = SCALER_FALSE;
+    curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles = getunixtimestampms();
     return *curElfSymInfo.gotEntryAddr;
 }
 
@@ -377,6 +374,7 @@ __attribute__((used)) void *dbgPreHandler(uint64_t nextCallAddr, uint64_t symId)
 }
 
 void *afterHookHandler() {
+    uint64_t postHookClockCycles = getunixtimestampms();
     bypassCHooks = SCALER_TRUE;
     HookContext *curContextPtr = curContext;
     assert(curContext != nullptr);
@@ -384,23 +382,18 @@ void *afterHookHandler() {
     scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
     void *callerAddr = (void *) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr;
 
-    uint64_t duration = 0;
+//    int64_t prevClockTick = curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks;
+    uint64_t preClockCycle = curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles;
 
-    int64_t &c = curContextPtr->recArr->internalArr[symbolId].localCount;
-    if (c <= (1 << 10)) {
-//        struct tms asdf;
-//        times(&asdf);
-//        duration = asdf.tms_utime + asdf.tms_stime - curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp;
-        uint32_t lo, hi;
-        __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-        duration = (((int64_t) hi << 32) | lo) - curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp;
-
-    } else {
-        uint32_t lo, hi;
-        __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-        duration = (((int64_t) hi << 32) | lo) - curContextPtr->hookTuple[curContextPtr->indexPosi].timeStamp;
-    }
-
+//    int64_t curClockTick = 0;
+    //(((int64_t) hi << 32) | lo) ;
+    int64_t &c = curContextPtr->recArr->internalArr[symbolId].count;
+//    if (c < (1 << 10)) {
+//        struct tms curTime;
+//        clock_t rlt = times(&curTime);
+//        curClockTick = curTime.tms_utime + curTime.tms_stime - prevClockTick;
+//        printf("Clock Ticks in posthook=%ld\n", curTime.tms_utime + curTime.tms_stime);
+//    }
 
 #ifdef INSTR_TIMING
     TIMING_TYPE &curSize = curContextPtr->timingVectorSize[symbolId];
@@ -417,45 +410,50 @@ void *afterHookHandler() {
 
     //compare current timestamp with the previous timestamp
 
-    float &meanDuration = curContextPtr->recArr->internalArr[symbolId].meanDuration;
-    uint32_t &durThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
+    float &meanClockCycle = curContextPtr->recArr->internalArr[symbolId].meanClockTick;
+    int32_t &clockCycleThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
 
+    int64_t clockCyclesDuration = (int64_t) (postHookClockCycles - preClockCycle);
     if (c < (1 << 10)) {
-        curContextPtr->recArr->internalArr[symbolId].totalDuration += duration;
-        //printf("c > (1 << 9)=%s,c=%d\n", c > (1 << 9) ? "True" : "False", c);
 
         if (c > (1 << 9)) {
             //Calculation phase
-            int64_t timeDiff = duration - meanDuration;
+            int64_t clockTickDiff = clockCyclesDuration - meanClockCycle;
 
-            if (timeDiff < -durThreshold || timeDiff > durThreshold) {
-                //Bump gap to zero
-                curContextPtr->recArr->internalArr[symbolId].gap = 0;
-                //printf("Bump gap to 0\n");
-            } else {
-                //printf("Not bump gap to 0\n");
+            if (-clockCycleThreshold <= clockTickDiff && clockTickDiff <= clockCycleThreshold) {
+//                printf("Skipped\n");
+                //Skip this
+                setbit(curContextPtr->recArr->internalArr[symbolId].flags, 0);
             }
+//            printf("Threshold=%d clockDiff=%ld shouldSkip?=%s\n", clockTickThreshold, clockTickDiff,
+//                   -clockTickThreshold <= clockTickDiff && clockTickDiff <        = clockTickThreshold ? "True" : "False");
 
         } else if (c < (1 << 9)) {
             //Counting only, no modifying gap. Here the gap should be zero. Meaning every invocation counts
             //https://blog.csdn.net/u014485485/article/details/77679669
-            meanDuration += (duration - meanDuration) / (int32_t) c; //c<100, safe conversion
+            meanClockCycle += (clockCyclesDuration - meanClockCycle) / (float) c; //c<100, safe conversion
+//            printf("meanClockTick += (%ld - %f) / (float) %ld\n", clockCyclesDuration, meanClockCycle, c);
         } else if (c == (1 << 9)) {
-            durThreshold = meanDuration * 0.01;
+            //Mean calculation has finished, calculate a threshold based on that
+            clockCycleThreshold = meanClockCycle * 0.1;
+//            printf("MeanClockTick=%f MeanClockTick*0.1=%f\n", meanClockCycle, meanClockCycle * 0.1);
         }
     } else if (c == (1 << 10)) {
-        if (curContextPtr->recArr->internalArr[symbolId].flags &= 0b1) {
-            curContextPtr->recArr->internalArr[symbolId].gap = 0;
-        } else {
-            curContextPtr->recArr->internalArr[symbolId].gap = 0b1111111111;
+        if (chkbit(curContextPtr->recArr->internalArr[symbolId].flags, 0)) {
+            //Skip this symbol
+            //printf("Skipped\n");
+            curContextPtr->recArr->internalArr[symbolId].gap = 0b11111111111111111111;
         }
-    } else {
-        curContextPtr->recArr->internalArr[symbolId].totalDuration += (uint64_t) ((c - (1 << 10)) * meanDuration);
-        curContextPtr->recArr->internalArr[symbolId].globalCount += c - (1 << 10);
-        //c = 1 << 10;
+    }
+    //RDTSCTiming if not skipped
+    if (!chkbit(curContextPtr->recArr->internalArr[symbolId].flags, 0)) {
+        curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration;
     }
 
-//    DBG_LOGS("[After Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu\n",
+    //c = 1 << 10;
+
+
+//    INFO_LOGS("[Post Hook] Thread ID:%lu Func(%ld) CalleeFileId(%ld) Timestamp: %lu\n",
 //             pthread_self(), symbolId, curElfSymInfo.libFileId, getunixtimestampms());
 
     bypassCHooks = SCALER_FALSE;
@@ -483,7 +481,7 @@ void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
 
     "pushq %r10\n\t"
 
-    "movq 0x658(%r11),%r11\n\t" //Fetch recArr.internalArr address from TLS -> r11
+    "movq 0x650(%r11),%r11\n\t" //Fetch recArr.internalArr address from TLS -> r11
     "movq 0x11223344(%r11),%r10\n\t" //Fetch recArr.internalArr[symId].count in Heap to -> r10
     "addq $1,%r10\n\t" //count + 1
     "movq %r10,0x11223344(%r11)\n\t" //Store count
@@ -509,6 +507,57 @@ void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
      */
     //Perform timing
     "TIMING_JUMPER:"
+    "pushq $0x11223344\n\t" //Save funcId to stack
+    "movq $0x1122334455667788,%r11\n\t"
+    "jmpq *%r11\n\t"
+    );
+}
+
+
+void __attribute__((used, naked, noinline)) callIdSaverScheme4() {
+    __asm__ __volatile__ (
+    /**
+     * Read TLS part
+     */
+    "mov $0x1122334455667788,%r11\n\t"//Move the tls offset of context to r11
+    "mov %fs:(%r11),%r11\n\t" //Now r11 points to the tls header
+    //Check whether the context is initialized
+    "cmpq $0,%r11\n\t"
+    //Skip processing if context is not initialized
+    "jz SKIP1\n\t"
+
+
+    /**
+     * Counting part
+     */
+    "pushq %r10\n\t"
+
+    "movq 0x650(%r11),%r11\n\t" //Fetch recArr.internalArr address from TLS -> r11
+    "movq 0x11223344(%r11),%r10\n\t" //Fetch recArr.internalArr[symId].count in Heap to -> r10
+    "addq $1,%r10\n\t" //count + 1
+    "movq %r10,0x11223344(%r11)\n\t" //Store count
+
+    "movq 0x11223344(%r11),%r11\n\t" //Fetch recArr.internalArr[symId].gap in Heap to -> r11
+    "andq %r11,%r10\n\t" //count value (r10) % gap (r11) -> r11, gap value must be a power of 2
+    "cmpq $0,%r10\n\t" //If necessary count % gap == 0. Use timing
+    "pop %r10\n\t"
+    "jz TIMING_JUMPER1\n\t" //Check if context is initialized
+
+    /**
+    * Return
+    */
+    "SKIP1:"
+    "movq $0x1122334455667788,%r11\n\t" //GOT address
+    "jmpq *(%r11)\n\t"
+    "pushq $0x11223344\n\t" //Plt stub id
+    "movq $0x1122334455667788,%r11\n\t" //First plt entry
+    "jmpq *%r11\n\t"
+
+    /**
+     * Timing
+     */
+    //Perform timing
+    "TIMING_JUMPER1:"
     "pushq $0x11223344\n\t" //Save funcId to stack
     "movq $0x1122334455667788,%r11\n\t"
     "jmpq *%r11\n\t"
