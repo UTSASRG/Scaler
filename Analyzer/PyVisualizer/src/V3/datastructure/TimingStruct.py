@@ -1,6 +1,10 @@
 from collections import defaultdict
 from ctypes import *
 
+'''
+Display related parameter:
+'''
+
 
 class VPG:
     def __init__(self):
@@ -63,16 +67,6 @@ class FileRecord:
         return str(self.fileName)
 
 
-class RecTuple(Structure):
-    _fields_ = [
-        ('totalClockCycles', c_uint64),
-        ('count', c_int64),
-        ('_gap', c_uint32),
-        ('_meanClockTick', c_float),
-        ('_durThreshold', c_uint32),
-        ('_flags', c_uint32)]
-
-
 class RecordingInfo:
     '''
     Used to share common information needed in processing between different functions
@@ -86,3 +80,39 @@ class RecordingInfo:
         self.symbolNameList = []
         self.symbolFileIdList = []
         self.symIdInFileList = []
+
+
+'''
+C data structures
+
+These structs should be consistent with https://github.com/UTSASRG/Scaler/blob/feature-tuneParm/libHook-c/src/include/type/RecTuple.h
+'''
+
+
+class RecTuple(Structure):
+    _fields_ = [
+        ('totalClockCycles', c_uint64),
+        ('count', c_int64),
+        ('_gap', c_uint32),
+        ('_meanClockTick', c_float),
+        ('_durThreshold', c_uint32),
+        ('_flags', c_uint32)]
+
+
+class ArrayDescriptor(Structure):
+    _fields_ = [
+        ('arrayElemSize', c_uint64),
+        ('arraySize', c_uint64),
+        ('_magicNum', c_uint8)]
+
+
+class DetailedTimingDescriptor(Structure):
+    _fields_ = [
+        ('timingSize', c_int64)]
+
+
+class ThreadCreatorInfo(Structure):
+    _fields_ = [
+        ('threadCreatorFileId', c_int64),
+        ('threadExecutionCycles', c_int64),
+        ('_magicNum', c_uint8)]

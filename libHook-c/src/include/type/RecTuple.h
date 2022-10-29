@@ -11,7 +11,6 @@ struct RecTuple {
     float meanClockTick; //4
     int32_t durThreshold; //4
     uint32_t flags; //4
-    uint8_t magicNum = 167; //1 Used to ensure the collected data format is recognized in python scripts.
 };
 
 
@@ -37,6 +36,7 @@ struct DetailedTimingDescriptor {
 struct ThreadCreatorInfo {
     uint64_t threadCreatorFileId;
     uint64_t threadExecutionCycles;
+    uint8_t magicNum = 167;  //1 Used to ensure the collected data format is recognized in python scripts.
 };
 
 

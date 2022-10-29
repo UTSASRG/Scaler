@@ -2,7 +2,8 @@ import math
 import os
 import re
 import struct
-from datastructure.TimingStruct import FileRecord, RecTuple, RecordingInfo, RecordingInfo
+from datastructure.TimingStruct import FileRecord, RecTuple, RecordingInfo, RecordingInfo, ArrayDescriptor, \
+    ThreadCreatorInfo
 import pandas as pd
 from collections import defaultdict
 
@@ -19,10 +20,15 @@ def readSymbolFiles(scalerDataFolder):
             rlt.threadIdList.append(fileName[len('threadTiming_'): -4])
 
     with open(os.path.join(scalerDataFolder, 'realFileId.bin'), 'rb') as f:
+
+        arrDesc = ArrayDescriptor()
+        f.readinto(arrDesc)
+        assert (arrDesc._magicNum == 167)
+
         byteArr1 = f.read()
-        arraySize = struct.unpack_from('Q', byteArr1, 0)  # The first element is the array size
-        rlt.realFileIdList = list(struct.unpack_from('<%dQ' % (arraySize), byteArr1,
-                                                     8))  # The last id marks the creator thread
+
+        assert (arrDesc.arrayElemSize == 8)
+        rlt.realFileIdList = list(struct.unpack_from('<%dQ' % (arrDesc.arraySize), byteArr1))
     df = pd.read_csv(os.path.join(scalerDataFolder, 'symbolInfo.txt'))
     rlt.symbolNameList = df['funcName'].to_list()
     rlt.symbolFileIdList = df['fileId'].to_list()
@@ -32,18 +38,21 @@ def readSymbolFiles(scalerDataFolder):
 
 def readTimingStruct(threadFileFullPath):
     recDataArr = []
-    recTupleSize = 8 + 8 + 4 + 4 + 4 + 4
     with open(threadFileFullPath, 'rb') as f:
-        byteArr = f.read()
-        mainFileId, recArrSize = struct.unpack_from('qq', byteArr, 0)  # 16 bytes
-        f.seek(16)
+        threadCreatorInfo = ThreadCreatorInfo()
+        f.readinto(threadCreatorInfo)
+        assert (threadCreatorInfo._magicNum == 167)
 
-        for i in range(recArrSize):
+        arrayDescriptor = ArrayDescriptor()
+        f.readinto(arrayDescriptor)
+        assert (arrayDescriptor._magicNum == 167)
+
+        for i in range(arrayDescriptor.arraySize):
             curRecFormat = RecTuple()
             f.readinto(curRecFormat)
             recDataArr.append(curRecFormat)
+
     # assert (len(symbolNameList) == recArrSize - 1)
-    assert (len(recDataArr) == recArrSize)
     return recDataArr
 
 
@@ -90,7 +99,8 @@ def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
                     aggregatedTimeArray[i].totalClockCycles += int(curRec.count * curRec._meanClockTick)
                 else:
                     aggregatedTimeArray[i].totalClockCycles += curRec.totalClockCycles
-    print('fgdsapi/api=', round(fgdsApi / api*100,2), 'fgdsCount/TotalCount=', round(fgdsCount / totalCount*100,2), sep='\t')
+    print('fgdsapi/api=', round(fgdsApi / api * 100, 2), 'fgdsCount/TotalCount=',
+          round(fgdsCount / totalCount * 100, 2), sep='\t')
     return aggregatedTimeArray, aggregatedStartingTime
 
 

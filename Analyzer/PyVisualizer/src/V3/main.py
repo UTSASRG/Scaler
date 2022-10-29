@@ -8,7 +8,7 @@ from preProcessing import aggregatePerThreadArray, generateTimingStruct, calcPer
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
-scalerDataFolder = '/media/umass/datasystem/steven/intel/Perf_Scaler-Parsec-Callgraph-Sig2022Fall/x264/scalerdata_12852017355851478_FGDS'
+scalerDataFolder = '/tmp/scalerdata_14552921505882154'
 
 recInfo = readSymbolFiles(scalerDataFolder)
 

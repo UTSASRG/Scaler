@@ -165,6 +165,7 @@ inline void saveThreadDetailedTiming(std::stringstream &ss, HookContext *curCont
         ArrayDescriptor *arrayDescriptor = reinterpret_cast<ArrayDescriptor *>(fileContentInMem);
         arrayDescriptor->arrayElemSize = sizeof(TIMING_TYPE);
         arrayDescriptor->arraySize = detailedTimingVectorSize[i];
+        arrayDescriptor->magicNum = 167;
         fileContentInMem += sizeof(ArrayDescriptor);
 
         /**
@@ -197,6 +198,7 @@ inline void savePerThreadTimingData(std::stringstream &ss, HookContext *curConte
     ThreadCreatorInfo *threadCreatorInfo = reinterpret_cast<ThreadCreatorInfo *>(fileContentInMem);
     threadCreatorInfo->threadExecutionCycles = curContextPtr->endTImestamp - curContextPtr->startTImestamp;
     threadCreatorInfo->threadCreatorFileId = curContextPtr->threadCreatorFileId;
+    threadCreatorInfo->magicNum = 167;
     fileContentInMem += sizeof(ThreadCreatorInfo);
 
     /**
@@ -205,6 +207,7 @@ inline void savePerThreadTimingData(std::stringstream &ss, HookContext *curConte
     ArrayDescriptor *arrayDescriptor = reinterpret_cast<ArrayDescriptor *>(fileContentInMem);
     arrayDescriptor->arrayElemSize = sizeof(RecTuple);
     arrayDescriptor->arraySize = curContextPtr->recArr->getSize();
+    arrayDescriptor->magicNum = 167;
     fileContentInMem += sizeof(ArrayDescriptor);
 
 
@@ -242,6 +245,7 @@ inline void saveRealFileId(std::stringstream &ss, HookContext *curContextPtr) {
     ArrayDescriptor *arrayDescriptor = reinterpret_cast<ArrayDescriptor *>(fileContentInMem);
     arrayDescriptor->arrayElemSize = sizeof(uint64_t);
     arrayDescriptor->arraySize = curContextPtr->_this->allExtSymbol.getSize();
+    arrayDescriptor->magicNum = 167;
     fileContentInMem += sizeof(ArrayDescriptor);
 
     uint64_t *realFileIdMem = reinterpret_cast<uint64_t *>(fileContentInMem);
