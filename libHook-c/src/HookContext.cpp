@@ -144,21 +144,33 @@ DataSaver::~DataSaver() {
 
 inline void saveThreadDetailedTiming(std::stringstream &ss, HookContext *curContextPtr) {
     ss.str("");
+    ss << scaler::ExtFuncCallHook::instance->folderName << "/threadDetailedTiming_" << curContextPtr->threadId
+       << ".bin";
+
+    //Calculate file total size
+    ssize_t recordedInvocationCnt = 0;
     for (ssize_t i = 0; i < scaler::ExtFuncCallHook::instance->allExtSymbol.getSize(); ++i) {
-        ss.str("");
-        ss << scaler::ExtFuncCallHook::instance->folderName << "/threadDetailedTiming_" << curContextPtr->threadId
-           << "_" << i << ".bin";
+        recordedInvocationCnt += detailedTimingVectorSize[i];
+    }
 
-        int fd;
-        size_t realFileIdSizeInBytes = sizeof(ArrayDescriptor) +
-                                       +curContextPtr->_this->allExtSymbol.getSize() * sizeof(TIMING_TYPE);
-        uint8_t *fileContentInMem = nullptr;
-        if (!scaler::fOpen4Write<uint8_t>(ss.str().c_str(), fd, realFileIdSizeInBytes, fileContentInMem)) {
-            fatalErrorS(
-                    "Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
-        }
-        uint8_t *_fileContentInMem = fileContentInMem;
+    int fd;
+    size_t realFileIdSizeInBytes = sizeof(ArrayDescriptor) * scaler::ExtFuncCallHook::instance->allExtSymbol.getSize()
+                                   + recordedInvocationCnt * sizeof(TIMING_TYPE);
 
+    uint8_t *fileContentInMem = nullptr;
+    if (!scaler::fOpen4Write<uint8_t>(ss.str().c_str(), fd, realFileIdSizeInBytes, fileContentInMem)) {
+        fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
+    }
+    uint8_t *_fileContentInMem = fileContentInMem;
+
+    /*Write whole symbol info*/
+    ArrayDescriptor *arrayDescriptor = reinterpret_cast<ArrayDescriptor *>(fileContentInMem);
+    arrayDescriptor->arrayElemSize = 0;
+    arrayDescriptor->arraySize = scaler::ExtFuncCallHook::instance->allExtSymbol.getSize();
+    arrayDescriptor->magicNum = 167;
+    fileContentInMem += sizeof(ArrayDescriptor);
+
+    for (ssize_t i = 0; i < scaler::ExtFuncCallHook::instance->allExtSymbol.getSize(); ++i) {
         /**
          * Write array descriptor first
          */
@@ -172,9 +184,10 @@ inline void saveThreadDetailedTiming(std::stringstream &ss, HookContext *curCont
          * Then write detailed timing array
          */
         memcpy(fileContentInMem, detailedTimingVectors[i], arrayDescriptor->arraySize * arrayDescriptor->arrayElemSize);
-        if (!scaler::fClose<uint8_t>(fd, realFileIdSizeInBytes, _fileContentInMem)) {
-            fatalErrorS("Cannot close file %s, because %s", ss.str().c_str(), strerror(errno));
-        }
+        fileContentInMem += arrayDescriptor->arraySize * arrayDescriptor->arrayElemSize;
+    }
+    if (!scaler::fClose<uint8_t>(fd, realFileIdSizeInBytes, _fileContentInMem)) {
+        fatalErrorS("Cannot close file %s, because %s", ss.str().c_str(), strerror(errno));
     }
 }
 

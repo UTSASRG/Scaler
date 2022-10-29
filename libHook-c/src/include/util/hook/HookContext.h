@@ -72,7 +72,7 @@ extern pthread_mutex_t threadDataSavingLock;
 bool initTLS();
 
 
-//#define INSTR_TIMING
+#define INSTR_TIMING
 #ifdef INSTR_TIMING
 extern const int TIMING_REC_COUNT;
 extern __thread TIMING_TYPE **detailedTimingVectors;

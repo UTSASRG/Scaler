@@ -4,11 +4,11 @@ import pandas as pd
 import struct
 import re
 from datastructure.TimingStruct import FileRecord, RecTuple
-from preProcessing import aggregatePerThreadArray, generateTimingStruct, calcPercentage, readSymbolFiles
+from util.TimeOutputPrarser import aggregatePerThreadArray, generateTimingStruct, calcPercentage, readSymbolFiles
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
-scalerDataFolder = '/tmp/scalerdata_14552921505882154'
+scalerDataFolder = '/tmp/scalerdata_14568349363894428'
 
 recInfo = readSymbolFiles(scalerDataFolder)
 

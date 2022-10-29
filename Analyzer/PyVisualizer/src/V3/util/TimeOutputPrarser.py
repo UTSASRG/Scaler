@@ -24,11 +24,10 @@ def readSymbolFiles(scalerDataFolder):
         arrDesc = ArrayDescriptor()
         f.readinto(arrDesc)
         assert (arrDesc._magicNum == 167)
-
-        byteArr1 = f.read()
-
         assert (arrDesc.arrayElemSize == 8)
-        rlt.realFileIdList = list(struct.unpack_from('<%dQ' % (arrDesc.arraySize), byteArr1))
+        rlt.realFileIdList = list(
+            struct.unpack_from('<%dQ' % (arrDesc.arraySize), f.read(arrDesc.arrayElemSize * arrDesc.arraySize)))
+        assert (f.read() == b'') #Make sure this is the end
     df = pd.read_csv(os.path.join(scalerDataFolder, 'symbolInfo.txt'))
     rlt.symbolNameList = df['funcName'].to_list()
     rlt.symbolFileIdList = df['fileId'].to_list()
@@ -69,6 +68,8 @@ def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
     """
     api = 0
     fgdsApi = 0
+    fgdsCount = 0
+    totalCount = 0
 
     aggregatedTimeArray = []
     aggregatedStartingTime = defaultdict(
@@ -81,7 +82,9 @@ def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
         for i, curRec in enumerate(curThreadRecArray[:-1]):
             if curRec._flags & (1 << 0):
                 fgdsApi += 1
+                fgdsCount += curRec.count
             api += 1
+            totalCount += curRec.count
             # if curRec.count>0:
             # print('totalCount',totalCount,curRec.count)
         if len(curThreadRecArray) != len(aggregatedTimeArray) + 1:
