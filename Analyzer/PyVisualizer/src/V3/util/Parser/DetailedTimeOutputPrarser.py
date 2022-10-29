@@ -9,7 +9,7 @@ from multiprocessing import Pool
 from multiprocessing import Pool, cpu_count
 import time
 
-from Analyzer.PyVisualizer.src.V3.datastructure.TimingStruct import ArrayDescriptor
+from datastructure.TimingStruct import ArrayDescriptor
 
 
 def parseSingleSymDetailedTiming(ROOT_PATH: str, threadId: str, tgtSymIds: list):

@@ -3,8 +3,10 @@ import os
 import pandas as pd
 import struct
 import re
+
+from util.Analyzer.XFA import generateXFAStruct
 from datastructure.TimingStruct import FileRecord, RecTuple
-from util.TimeOutputPrarser import aggregatePerThreadArray, generateTimingStruct, calcPercentage, readSymbolFiles
+from util.Parser.TimeOutputPrarser import aggregatePerThreadArray, readSymbolFiles
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
@@ -16,7 +18,7 @@ realFileId = None
 
 aggregatedTimeArray, aggregatedStartingTime = aggregatePerThreadArray(scalerDataFolder, recInfo)
 # Generate graph
-timingRecord = generateTimingStruct(list(aggregatedTimeArray), aggregatedStartingTime, recInfo)
+timingRecord = generateXFAStruct(list(aggregatedTimeArray), aggregatedStartingTime, recInfo)
 
 print(timingRecord)
 
