@@ -19,8 +19,6 @@ def parseSingleSymDetailedTiming(ROOT_PATH: str, threadId: str, tgtSymIds: list)
 
     rlt = {}  # SymId, timingArray
     with open(os.path.join(ROOT_PATH, 'threadDetailedTiming_%s.bin' % (threadId)), 'rb') as f:
-        fig, (ax1, ax2) = plt.subplots(2)
-
         # Get the amount of symbols in this file
         arrayDesc = ArrayDescriptor()
         f.readinto(arrayDesc)
@@ -34,6 +32,7 @@ def parseSingleSymDetailedTiming(ROOT_PATH: str, threadId: str, tgtSymIds: list)
         for curSymId in range(arrayDesc.arraySize):
             symDetailedTimingDesc = ArrayDescriptor()
             f.readinto(symDetailedTimingDesc)
+
             assert (symDetailedTimingDesc.arrayElemSize == 8)
             assert (symDetailedTimingDesc._magicNum == 167)
             if curSymId < tgtSymIds[0]:
@@ -51,5 +50,5 @@ def parseSingleSymDetailedTiming(ROOT_PATH: str, threadId: str, tgtSymIds: list)
             else:
                 # There are duplicate or negative values inside tgtSymIds
                 assert (False)
-    assert (len(tgtSymIds) == 0)
+    # assert (len(tgtSymIds) == 0)
     return rlt

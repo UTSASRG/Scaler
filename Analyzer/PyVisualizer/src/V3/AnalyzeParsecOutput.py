@@ -139,7 +139,8 @@ TIME_COMMAND = "/usr/bin/time -f 'real:%e, user:%U, sys:%S, memKB:%M' "
 RUNTIMES = 1
 CONFIG_NAMES = ['blackscholes', 'bodytrack', 'facesim', 'ferret', 'fluidanimate', 'freqmine', 'raytrace', 'swaptions',
                 'vips', 'x264']
-PRELOAD_LIST = [('Default', TIME_COMMAND), ('Perf', TIME_COMMAND + 'perf record -g -o perf.data')]
+# PRELOAD_LIST = [('Default', TIME_COMMAND), ('Perf', TIME_COMMAND + 'perf record -g -o perf.data')]
+PRELOAD_LIST = [('Scaler', 'export LD_PRELOAD=/media/umass/datasystem/steven/Scaler/cmake-build-release/libHook-c/libScalerHook-HookAutoAsm-C.so')]
 
 outputFolder = tempfile.mkdtemp()
 runBenchmark(RUNTIMES, CONFIG_NAMES, PRELOAD_LIST, 'simsmall', 64, outputFolder)

@@ -154,7 +154,8 @@ inline void saveThreadDetailedTiming(std::stringstream &ss, HookContext *curCont
     }
 
     int fd;
-    size_t realFileIdSizeInBytes = sizeof(ArrayDescriptor) * scaler::ExtFuncCallHook::instance->allExtSymbol.getSize()
+    size_t realFileIdSizeInBytes = sizeof(ArrayDescriptor) +
+                                   sizeof(ArrayDescriptor) * scaler::ExtFuncCallHook::instance->allExtSymbol.getSize()
                                    + recordedInvocationCnt * sizeof(TIMING_TYPE);
 
     uint8_t *fileContentInMem = nullptr;
