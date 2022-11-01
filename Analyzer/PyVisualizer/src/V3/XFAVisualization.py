@@ -10,7 +10,7 @@ from util.Parser.TimeOutputPrarser import aggregatePerThreadArray, readSymbolFil
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
-scalerDataFolder = '/tmp/scalerdata_14568349363894428'
+scalerDataFolder = '/tmp/scalerdata_15107715274308520'
 
 recInfo = readSymbolFiles(scalerDataFolder)
 
