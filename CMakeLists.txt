@@ -10,7 +10,11 @@ add_subdirectory(proto)
 # Adding scalerhook to this project
 # add_subdirectory(libHook)
 
+add_subdirectory(libHook/lib/watcher/lib/xed2)
+
+
 add_subdirectory(libHook-c)
+
 
 
 # Adding scalerhook to this project

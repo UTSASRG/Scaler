@@ -104,6 +104,12 @@ namespace scaler {
                 continue;
             }
 
+            if (strStartsWith(fileName, "libxed")) {
+                //DBG_LOGS("Scaler library skip");
+                pmEntryArray.popBack();
+                continue;
+            }
+
             //Parse permission
             if (permStr[0] == 'r') {
                 newEntry->setR();

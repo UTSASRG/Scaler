@@ -9,13 +9,15 @@
 #include <util/hook/proxy/libcProxy.h>
 #include <util/hook/ExtFuncCallHook.h>
 #include <util/hook/HookContext.h>
-#include <util/hook/ExtFuncCallHook.h>
+//#include <util/hook/ExtFuncCallHook.h>
+#include <util/hook/ExtFuncCallHookBrkpoint.h>
+
 #include <cxxabi.h>
 
 main_fn_t real_main;
 
 
-bool installed=false;
+bool installed = false;
 
 extern "C" {
 scaler::Vector<HookContext *> threadContextMap;
@@ -32,30 +34,30 @@ int doubletake_main(int argc, char **argv, char **envp) {
 //    if (!getcwd(pathName, sizeof(pathName))) {
 //        fatalErrorS("Cannot get cwd because: %s", strerror(errno));
 //    }
-    strncpy(pathName,"/tmp",strlen("/tmp"));
+    strncpy(pathName, "/tmp", strlen("/tmp"));
 
     std::stringstream ss;
     ss << "/tmp" << "/" << "scalerdata_" << getunixtimestampms();
-    INFO_LOGS("Folder name is %s",pathName);
-    scaler::ExtFuncCallHook::getInst(ss.str())->install();
+    INFO_LOGS("Folder name is %s", pathName);
+    scaler::ExtFuncCallHookBrkpoint::getInst(ss.str())->install();
     //Calculate the main application time
     installed = true;
 
 
-    HookContext *curContextPtr = curContext;
-    curContextPtr->curFileId = 0;
-    curContextPtr->endTImestamp = 0;
-    curContextPtr->startTImestamp = getunixtimestampms();
-    curContextPtr->isMainThread = true;
+//    HookContext *curContextPtr = curContext;
+//    curContextPtr->curFileId = 0;
+//    curContextPtr->endTImestamp = 0;
+//    curContextPtr->startTImestamp = getunixtimestampms();
+//    curContextPtr->isMainThread = true;
 
     /**
      * Register this thread with the main thread
      */
-    threadContextMap.pushBack(curContextPtr);
+//    threadContextMap.pushBack(curContextPtr);
 
     int ret = real_main(argc, argv, envp);
-    curContextPtr->endTImestamp = getunixtimestampms();
-    saveData(curContextPtr);
+//    curContextPtr->endTImestamp = getunixtimestampms();
+//    saveData(curContextPtr);
     return ret;
 }
 
@@ -78,7 +80,7 @@ int doubletake_libc_start_main(main_fn_t main_fn, int argc, char **argv, void (*
 void exit(int __status) {
     auto realExit = (exit_origt) dlsym(RTLD_NEXT, "exit");
 
-    if(!installed){
+    if (!installed) {
         realExit(__status);
         return;
     }

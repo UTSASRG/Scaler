@@ -225,6 +225,14 @@ namespace scaler {
         }
 
 
+        if (scaler::strStartsWith(funcName, "str2xed")) {
+            return false;
+        }
+
+        if (scaler::strStartsWith(funcName, "xed")) {
+            return false;
+        }
+
         if (scaler::strStartsWith(funcName, "__")) {
             return false;
         }

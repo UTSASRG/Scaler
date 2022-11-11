@@ -69,6 +69,7 @@ bool destructContext() {
                           sizeof(scaler::Array<uint64_t>) +
                           sizeof(pthread_mutex_t));
     curContext = nullptr;
+    return true;
 }
 
 

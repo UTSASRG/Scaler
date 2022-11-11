@@ -39,23 +39,23 @@ void *dummy_thread_function(void *data) {
     free(args);
     args = nullptr;
 
-    HookContext *curContextPtr = curContext;
-    assert(curContextPtr != NULL);
-    curContextPtr->curFileId = curContextPtr->_this->pmParser.findExecNameByAddr(
-            (void *) actualFuncPtr);
+//    HookContext *curContextPtr = curContext;
+//    assert(curContextPtr != NULL);
+//    curContextPtr->curFileId = curContextPtr->_this->pmParser.findExecNameByAddr(
+//            (void *) actualFuncPtr);
 
     /**
      * Register this thread with the main thread
      */
-    threadContextMap.pushBack(curContextPtr);
+//    threadContextMap.pushBack(curContextPtr);
 
-    curContextPtr->startTImestamp = getunixtimestampms();
+//    curContextPtr->startTImestamp = getunixtimestampms();
     actualFuncPtr(argData);
     /**
      * Perform required actions after each thread function completes
      */
-    curContextPtr->endTImestamp = getunixtimestampms();
-    saveData(curContextPtr);
+//    curContextPtr->endTImestamp = getunixtimestampms();
+//    saveData(curContextPtr);
     return nullptr;
 }
 
@@ -96,14 +96,14 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     args->data = arg;
     // Call the actual pthread_create
 
-    uint64_t pthreadCreateStart = getunixtimestampms();
+//    uint64_t pthreadCreateStart = getunixtimestampms();
     int retVal = pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
-    uint64_t pthreadCreateEnd = getunixtimestampms();
+//    uint64_t pthreadCreateEnd = getunixtimestampms();
 
-    HookContext *curContextPtr = curContext;
+//    HookContext *curContextPtr = curContext;
     //Attribute time to pthread_create
-    curContextPtr->recArr->internalArr[pthreadCreateSymId].totalClockCycles +=
-            pthreadCreateEnd - pthreadCreateStart;
+//    curContextPtr->recArr->internalArr[pthreadCreateSymId].totalClockCycles +=
+//            pthreadCreateEnd - pthreadCreateStart;
 
     return retVal;
 }

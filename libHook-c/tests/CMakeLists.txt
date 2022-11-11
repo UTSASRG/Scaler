@@ -77,6 +77,11 @@ target_link_libraries(ScalerHook-demoapps-FuncCall PUBLIC ScalerHook-HookAutoAsm
         Testlib-CallFuncCall KuBoPltHook dl)
 target_compile_options(ScalerHook-demoapps-FuncCall PRIVATE ${TEST_FLAGS} -Werror)
 
+add_executable(ScalerHook-demoapps-FuncCall-Brkpoint src/demoapps/TestFuncCall.cpp)
+target_link_libraries(ScalerHook-demoapps-FuncCall-Brkpoint PUBLIC ScalerHook-HookAuto-Brkpoint Testlib-FuncCall
+        Testlib-CallFuncCall KuBoPltHook dl)
+target_compile_options(ScalerHook-demoapps-FuncCall-Brkpoint PRIVATE ${TEST_FLAGS} -Werror)
+
 
 add_executable(ScalerHook-demoapps-TimingAccuracy src/demoapps/TestTimingAccuracy.cpp)
 target_link_libraries(ScalerHook-demoapps-TimingAccuracy PUBLIC Testlib-FuncCall  Testlib-CallFuncCall KuBoPltHook dl)

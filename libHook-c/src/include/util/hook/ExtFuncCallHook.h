@@ -49,6 +49,7 @@ namespace scaler {
          * Private constructor
          */
 
+
         inline bool isSymbolAddrResolved(ExtSymInfo &symInfo) {
             //Check whether its value has 6 bytes offset as its plt entry start address
             ELFImgInfo &curImg = elfImgInfoMap[symInfo.fileId];
@@ -94,7 +95,7 @@ namespace scaler {
          * Actual entry
          * @return
          */
-        bool replacePltEntry();
+        virtual bool replacePltEntry();
 
         void createRecordingFolder();
     };

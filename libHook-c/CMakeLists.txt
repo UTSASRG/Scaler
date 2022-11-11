@@ -27,6 +27,15 @@ set(HookSrc
         src/HookHandlers.cpp
         src/AddrFileIdMapping.cpp
         )
+
+set(HookSrcBrkpoint
+        ${HookSrc}
+        src/Breakpoint.cpp
+        src/ExtFuncCallHookBrkpoint.cpp
+        src/HookHandlersBrkpoint.cpp
+        src/VMEmulator.cpp
+        )
+
 #src/VMEmulator.cpp
 
 #list(APPEND CMAKE_PREFIX_PATH "/media/umass/datasystem/steven/lib/intel/build/kits/xed-install-base-2021-08-26-lin-x86-64")
@@ -56,10 +65,19 @@ target_compile_definitions(ScalerHook-HookAutoAsm-C PUBLIC CMAKE_SCALERRUN_VERSI
 
 #protobufferStatic
 
+#list(APPEND CMAKE_PREFIX_PATH "/media/umass/datasystem/steven/lib/intel/build/kits/xed-install-base-2021-08-26-lin-x86-64")
+#find_package(XED REQUIRED)
 
-#add_library(ScalerHook-HookAuto-Brkpoint SHARED src/autoinstall.cpp)
-#target_link_libraries(ScalerHook-HookAuto-Brkpoint PUBLIC ScalerHook-HookBrkpoint)
-#target_compile_options(ScalerHook-HookAuto-Brkpoint PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
+
+
+add_library(ScalerHook-HookAuto-Brkpoint SHARED src/libcProxy.cpp ${HookSrcBrkpoint})
+target_include_directories(ScalerHook-HookAuto-Brkpoint PUBLIC src/include lib/inireader)# ${PROTO_SRC_DIR})
+target_link_libraries(ScalerHook-HookAuto-Brkpoint PUBLIC pthread dl xed2)
+target_compile_options(ScalerHook-HookAuto-Brkpoint PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
+target_compile_definitions(ScalerHook-HookAuto-Brkpoint PUBLIC CMAKE_SCALERRUN_VERSION="${PROJECT_VERSION}" NDEBUG) #NDEBUG
+
+
+
 
 add_executable(ScalerHook-Visualizer src/Visualizer.cpp)
 target_include_directories(ScalerHook-Visualizer PUBLIC src/include)# ${PROTO_SRC_DIR})
