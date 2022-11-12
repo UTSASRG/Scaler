@@ -182,12 +182,9 @@ namespace scaler {
         //We could use binary search to lookup addr in this array.
 
         //Binary search impl segAddrFileMap
-        ssize_t lo = 0;
-        ssize_t hi = pmEntryArray.getSize();
-        ssize_t md;
-        bool found = false;
-        while (lo != hi) {
-            md = (lo + hi) / 2;
+        ssize_t lo = 0, md = 0, hi = pmEntryArray.getSize() - 1;
+        while (lo < hi) {
+            md = lo + (hi - lo) / 2;
             if (pmEntryArray[md].addrStart < addr) {
                 //printf("hi(%d) = md(%d) - 1=(%d)\n", hi, md, md - 1);
                 lo = md + 1;
@@ -195,35 +192,11 @@ namespace scaler {
                 //printf("lo(%d) = md(%d) + 1=(%d)\n", lo, md, md + 1);
                 hi = md;
             } else {
-                //printf("lo = md =%d\n", md);
-                lo = md;
-                found = true;
-                break;
+                //Find left bound, although this should be impossible in this case
+                hi = md;
             }
         }
-        if (!found && lo == 0) {
-            lo = -1;
-        }
-
-
-        //It is possible that the address falls within the range of last entry. We need to check this scenario
-
-        if (lo == -1) { fatalErrorS(
-                    "Cannot find addr %p in pmMap. The address is lower than the lowest address if /proc/{pid}/maps.",
-                    addr);
-            exit(-1);
-        } else if (lo == pmEntryArray.getSize()) {
-            //Address is within range
-            lo = pmEntryArray.getSize() - 1;
-        }
-
-        //Check if it's end address is indeed in this entry. If not, it is because the caller is not in procinfomapper
-        // (Maybe skipped, in this case return an id that is larger than the largest function addr)
-        if (addr > pmEntryArray[lo].addrEnd) {
-            return fileNameArr.size();
-        }
-
-        return pmEntryArray[lo].fileId;
+        return pmEntryArray[lo - 1].fileId;
     }
 
 
