@@ -35,9 +35,10 @@ def readSymbolFiles(scalerDataFolder):
     return rlt
 
 
-def readTimingStruct(threadFileFullPath):
+def readTimingStruct(ROOT_PATH,threadId):
     recDataArr = []
-    with open(threadFileFullPath, 'rb') as f:
+
+    with open(os.path.join(ROOT_PATH, 'threadTiming_%s.bin' % threadId), 'rb') as f:
         threadCreatorInfo = ThreadCreatorInfo()
         f.readinto(threadCreatorInfo)
         assert (threadCreatorInfo._magicNum == 167)
@@ -75,7 +76,7 @@ def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
     aggregatedStartingTime = defaultdict(
         lambda: 0)  # Map fileId and starting time. Thread may created by modules other than the main application
     for threadId in recInfo.threadIdList:
-        curThreadRecArray = readTimingStruct(os.path.join(scalerDataFolder, 'threadTiming_%s.bin' % threadId))
+        curThreadRecArray = readTimingStruct(scalerDataFolder,threadId)
         aggregatedStartingTime[curThreadRecArray[-1]._flags] += curThreadRecArray[-1].totalClockCycles
         # print(curThreadRecArray[-1].totalClockCycles)
 

@@ -22,12 +22,13 @@ def parseSingleSymDetailedTiming(ROOT_PATH: str, threadId: str, tgtSymIds: list)
         # Get the amount of symbols in this file
         arrayDesc = ArrayDescriptor()
         f.readinto(arrayDesc)
-        assert (tgtSymIds[-1] < arrayDesc.arraySize)
         assert (arrayDesc.arrayElemSize == 0)
         assert (arrayDesc._magicNum == 167)
 
         if tgtSymIds is None:
             tgtSymIds = range(arrayDesc.arraySize)
+        assert (tgtSymIds[-1] < arrayDesc.arraySize)
+
         detailedTimingForCurSym = None
         for curSymId in range(arrayDesc.arraySize):
             symDetailedTimingDesc = ArrayDescriptor()

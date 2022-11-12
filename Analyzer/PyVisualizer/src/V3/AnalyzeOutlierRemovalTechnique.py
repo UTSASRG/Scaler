@@ -11,14 +11,14 @@ import time
 
 from Analyzer.PyVisualizer.src.V3.datastructure.TimingStruct import ArrayDescriptor
 from Analyzer.PyVisualizer.src.V3.util.Parser.DetailedTimeOutputPrarser import parseSingleSymDetailedTiming
-from Analyzer.PyVisualizer.src.V3.util.Parser.TimeOutputPrarser import readSymbolFiles
+from Analyzer.PyVisualizer.src.V3.util.Parser.TimeOutputPrarser import readSymbolFiles, readTimingStruct
 
 
-def removeOutliers(x):
+def removeOutliersPercentage(x, lowerPerc, upperPerc):
     a = np.array(x)
-    upper_quartile = np.percentile(a, 99)
-    lower_quartile = np.percentile(a, 1)
-    x[np.hstack([np.where(x >= upper_quartile)[0], np.where(x <= lower_quartile)[0]])] = 0
+    upper_quartile = np.percentile(a, upperPerc)
+    lower_quartile = np.percentile(a, lowerPerc)
+    return x[np.logical_and((lower_quartile <= x), (x <= upper_quartile))]
 
 
 def shouldSkip(timingArr):
@@ -33,53 +33,46 @@ def shouldSkip(timingArr):
     return c1 == 0 and c2 == 0
 
 
-def saveSinglePlot(ROOT_PATH, symbolNameList, threadId, tgtSymId):
+def analyzeApi(symId, recInfo, timingArr):
     # hasPoints = False
     # ROOT_PATH: str, symbolNameList: list, threadId: str, tgtSymIds: list):
-    detailedTimingDict = parseSingleSymDetailedTiming(ROOT_PATH, threadId, [tgtSymId])
 
-    for symId, detailedTimingArr in detailedTimingDict.items():
-        fig, (ax1, ax2) = plt.subplots(2)
+    # skippedInvocationCnt = 0
+    # allInvocationRelationCnt = 0
+    # skippedApiCnt = 0
+    # allNonZeroApiCnt = 0
 
-        # if detailedTimingArr.shape[0] < 1001:
-        #     continue
-        #
-        # skipThis = shouldSkip(detailedTimingArr)
-        # if skipThis:
-        #     continue
+    # allNonZeroApiCnt += 1
+    # allInvocationRelationCnt += recStruct[symId].count
 
-        ax1.scatter(np.arange(detailedTimingArr.shape[0]), detailedTimingArr, s=10)
-        # Calculate the first 500 mean
-        mean = np.average(detailedTimingArr[0:500])
-        meanUpperbound = mean * (1 + 0.01)
-        meanLowerbound = mean * (1 - 0.01)
+    skipped = shouldSkip(timingArr)
+    errorScore = 0
+    if skipped:
+        print(recInfo.symbolNameList[symId], 'skipped')
+        removedImg = removeOutliersPercentage(timingArr[500:1000], 5, 95)
+        estimatedSum = np.average(removedImg) * 500
+        trueSum = np.sum(timingArr[500:1000])
+        errorScore = abs(estimatedSum - trueSum) / trueSum * 100
+        print('Print Errors', estimatedSum, trueSum, abs(estimatedSum - trueSum) / trueSum * 100)
 
-        ax2.scatter(np.arange(min(1000, detailedTimingArr.shape[0])),
-                    detailedTimingArr[0:min(1000, detailedTimingArr.shape[0])], s=10)
-        ax2.hlines(meanUpperbound, 0, detailedTimingArr.shape[0], colors='red')
-        ax2.hlines(meanLowerbound, 0, detailedTimingArr.shape[0], colors='red')
-        hasPoints = True
+    # if allNonZeroApiCnt > 0:
+    #     print('Skipped API Percentage', skippedApiCnt, allNonZeroApiCnt, skippedApiCnt / allNonZeroApiCnt * 100)
+    # if skippedInvocationCnt > 0:
+    #     print('Skipped Invocation Percentage', allInvocationRelationCnt, skippedInvocationCnt,
+    #           allInvocationRelationCnt / skippedInvocationCnt * 100)
 
-        print(os.path.join(ROOT_PATH, 'threadDetailedTiming_%d_%s_%s.png' % (symId, symbolNameList[symId], threadId)))
-        # if hasPoints:
-        fig.savefig(
-            os.path.join(ROOT_PATH, 'threadDetailedTiming_%d_%s_%s.png' % (symId, symbolNameList[symId], threadId)))
-        print(
-            os.path.join(ROOT_PATH, 'threadDetailedTiming_%d_%s_%s.png' % (symId, symbolNameList[symId], threadId)))
-
-    return 0
+    return skipped, errorScore
 
 
-def error_callback(e):
-    print('error')
-    print(dir(e), "\n")
-    print("-->{}<--".format(e.__cause__))
-
-
-def doIt(ROOT_PATH, pool, rltList):
+def analyzeOutlierRemovalTechnique(ROOT_PATH):
     print('========================', ROOT_PATH)
     allFiles = os.listdir(ROOT_PATH)
     symbolNum = 0
+
+    skippedInvocationCnt = 0
+    allInvocationRelationCnt = 0
+    skippedApiCnt = 0
+    allNonZeroApiCnt = 0
 
     recInfo = readSymbolFiles(ROOT_PATH)
     threadSymInfo = dict({})  # Threadid : symbol size
@@ -94,23 +87,34 @@ def doIt(ROOT_PATH, pool, rltList):
                 symbolNum = symDetailedTimingDesc.arraySize
                 threadSymInfo[threadId] = symbolNum
 
-            for symId in range(symbolNum):
-                res = pool.apply_async(saveSinglePlot, args=[ROOT_PATH, recInfo.symbolNameList, threadId, symId],
-                                       error_callback=error_callback)
-                rltList.append(res)
+            detailedTimingArr = parseSingleSymDetailedTiming(ROOT_PATH, threadId, None)
+            recArrForThisThread = readTimingStruct(ROOT_PATH, threadId)
 
-    return rltList
+            for symId, timingArr in detailedTimingArr.items():
+                skipped, errorRate = analyzeApi(symId, recInfo, timingArr)
+
+                if recArrForThisThread[symId].count > 0:
+                    # Only count non-zero api
+                    if skipped:
+                        skippedApiCnt += 1
+                        skippedInvocationCnt += recArrForThisThread[symId].count
+                    allNonZeroApiCnt += 1
+                    allInvocationRelationCnt += recArrForThisThread[symId].count
+
+    print('APIs removed percentage', skippedApiCnt / allNonZeroApiCnt * 100)
+    print('Invocation Count Removed Percentage', skippedInvocationCnt / allInvocationRelationCnt * 100)
 
 
-pool = Pool(1)
-rltList = []
-
-for ROOT_PATH in ['/tmp/scalerdata_14676207526291652']:
-    doIt(ROOT_PATH, pool, rltList)
-
-pool.close()
-while len(rltList) > 0:
-    time.sleep(2)
-    rltList = [rlt for rlt in rltList if not rlt.ready()]
-    print("%d jobs left" % len(rltList))
-pool.join()
+for ROOT_PATH in ['/media/umass/datasystem/steven/Downloads/Detailed_Timing/blackscholes',
+                  '/media/umass/datasystem/steven/Downloads/Detailed_Timing/bodytrack',
+                  '/media/umass/datasystem/steven/Downloads/Detailed_Timing/facesim',
+                  '/media/umass/datasystem/steven/Downloads/Detailed_Timing/ferret',
+                  '/media/umass/datasystem/steven/Downloads/Detailed_Timing/fluidanimate',
+                  '/media/umass/datasystem/steven/Downloads/Detailed_Timing/freqmine',
+                  '/media/umass/datasystem/steven/Downloads/Detailed_Timing/raytrace',
+                  '/media/umass/datasystem/steven/Downloads/Detailed_Timing/swaptions',
+                  '/media/umass/datasystem/steven/Downloads/Detailed_Timing/vips',
+                  '/media/umass/datasystem/steven/Downloads/Detailed_Timing/x264'
+                  ]:
+    print(ROOT_PATH)
+    analyzeOutlierRemovalTechnique(ROOT_PATH)

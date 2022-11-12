@@ -10,13 +10,21 @@ from util.Parser.TimeOutputPrarser import aggregatePerThreadArray, readSymbolFil
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
-scalerDataFolder = '/tmp/scalerdata_15107715274308520'
+scalerDataFolder = '/tmp/scalerdata_15111573633396240'
 
 recInfo = readSymbolFiles(scalerDataFolder)
 
 realFileId = None
 
 aggregatedTimeArray, aggregatedStartingTime = aggregatePerThreadArray(scalerDataFolder, recInfo)
+
+for i, v in enumerate(aggregatedTimeArray):
+    if v.count > 0:
+        curRealFileId=recInfo.realFileIdList[i]
+        if curRealFileId==len(recInfo.fileNameList):
+            curRealFileId=len(recInfo.fileNameList)-1
+        print(recInfo.symbolNameList[i], recInfo.fileNameList[curRealFileId], v.count, sep='\t')
+
 # Generate graph
 timingRecord = generateXFAStruct(list(aggregatedTimeArray), aggregatedStartingTime, recInfo)
 

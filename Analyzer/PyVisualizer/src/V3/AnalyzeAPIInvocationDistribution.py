@@ -13,7 +13,7 @@ from datastructure.TimingStruct import ArrayDescriptor
 from util.Parser.DetailedTimeOutputPrarser import parseSingleSymDetailedTiming
 from util.Parser.TimeOutputPrarser import readSymbolFiles, aggregatePerThreadArray, readTimingStruct
 
-scalerDataFolder = '/tmp/scalerdata_15056025359602938'
+scalerDataFolder = '/media/umass/datasystem/steven/Downloads/Detailed_Timing/blackscholes'
 
 recInfo = readSymbolFiles(scalerDataFolder)
 
