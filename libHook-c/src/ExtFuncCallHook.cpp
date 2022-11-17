@@ -629,7 +629,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-        "movq 0x2F6C40(%%rip),%0\n\t"
+        "movq 0x2F6910(%%rip),%0\n\t"
         :"=r" (tlsOffset)
         :
         :

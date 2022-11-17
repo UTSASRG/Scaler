@@ -3,6 +3,7 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/Analyzer/ScalerRun/lib/yamlcpp_0_7_0" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/benchmarktookit" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/libScalerHook/lib/json" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/libScalerHook/tests/lib/multithreadingtests" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/libScalerHook/tests/lib/multithreadingtests/benchmarks/pyperformance/src" vcs="Git" />

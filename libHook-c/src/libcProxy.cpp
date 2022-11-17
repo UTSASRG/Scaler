@@ -15,7 +15,7 @@
 main_fn_t real_main;
 
 
-bool installed=false;
+bool installed = false;
 
 extern "C" {
 scaler::Vector<HookContext *> threadContextMap;
@@ -23,20 +23,30 @@ scaler::Vector<HookContext *> threadContextMap;
 
 
 int doubletake_main(int argc, char **argv, char **envp) {
+    //Bypass /usr/bin/time
+
+    if (strncmp(argv[0], "time", 4) == 0 || scaler::strEndsWith(argv[0], "/time")) {
+        INFO_LOGS("libHook-c Ver %s", CMAKE_SCALERRUN_VERSION);
+        INFO_LOGS("Bypass hooking %s, because it is the time program.", argv[0]);
+        return real_main(argc, argv, envp);
+    }
+
 
     INFO_LOGS("libHook-c Ver %s", CMAKE_SCALERRUN_VERSION);
     INFO_LOGS("Main thread id is%lu", pthread_self());
     INFO_LOGS("Program Name: %s", argv[0]);
 
-    char pathName[PATH_MAX];
-//    if (!getcwd(pathName, sizeof(pathName))) {
-//        fatalErrorS("Cannot get cwd because: %s", strerror(errno));
-//    }
-    strncpy(pathName,"/tmp",strlen("/tmp"));
-
     std::stringstream ss;
-    ss << "/tmp" << "/" << "scalerdata_" << getunixtimestampms();
-    INFO_LOGS("Folder name is %s",pathName);
+
+    char *pathFromEnv = getenv("SCALER_OUTPUT_PATH");
+    if (pathFromEnv == NULL) {
+        ss << "/tmp";
+    } else {
+        ss << pathFromEnv;
+    }
+
+    ss << "/" << "scalerdata_" << getunixtimestampms();
+    INFO_LOGS("Folder name is %s", ss.str().c_str());
     scaler::ExtFuncCallHook::getInst(ss.str())->install();
     //Calculate the main application time
     installed = true;
@@ -78,7 +88,7 @@ int doubletake_libc_start_main(main_fn_t main_fn, int argc, char **argv, void (*
 void exit(int __status) {
     auto realExit = (exit_origt) dlsym(RTLD_NEXT, "exit");
 
-    if(!installed){
+    if (!installed) {
         realExit(__status);
         return;
     }
