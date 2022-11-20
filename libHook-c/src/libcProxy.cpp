@@ -26,6 +26,13 @@ scaler::Vector<HookContext *> threadContextMap;
 
 int doubletake_main(int argc, char **argv, char **envp) {
 
+    if (strncmp(argv[0],"time",4)==0 || scaler::strEndsWith(argv[0],"/time")){
+        INFO_LOGS("libHook-c Ver %s", CMAKE_SCALERRUN_VERSION);
+        INFO_LOGS("Bypass hooking %s, because it is the time program.", argv[0]);
+        return real_main(argc,argv,envp);
+    }
+
+
     INFO_LOGS("libHook-c Ver %s", CMAKE_SCALERRUN_VERSION);
     INFO_LOGS("Main thread id is%lu", pthread_self());
     INFO_LOGS("Program Name: %s", argv[0]);
