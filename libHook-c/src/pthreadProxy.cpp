@@ -50,13 +50,13 @@ void *dummy_thread_function(void *data) {
     threadContextMap.pushBack(curContextPtr);
 
     curContextPtr->startTImestamp = getunixtimestampms();
-    actualFuncPtr(argData);
+    void *threadFuncRetRlt = actualFuncPtr(argData);
     /**
      * Perform required actions after each thread function completes
      */
     curContextPtr->endTImestamp = getunixtimestampms();
     saveData(curContextPtr);
-    return nullptr;
+    return threadFuncRetRlt;
 }
 
 extern bool installed;
