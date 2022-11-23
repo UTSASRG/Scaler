@@ -109,9 +109,9 @@ bool initTLS() {
     curContext = constructContext(
             scaler::ExtFuncCallHook::instance->elfImgInfoMap.getSize(),
             scaler::ExtFuncCallHook::instance->allExtSymbol.getSize() + 1);
-#ifdef PRINT_DBG_LOG
-    printRecOffset();
-#endif
+//#ifdef PRINT_DBG_LOG
+//    printRecOffset();
+//#endif
     if (!curContext) { fatalError("Failed to allocate memory for Context");
         return false;
     }
