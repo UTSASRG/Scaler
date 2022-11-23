@@ -85,7 +85,7 @@ void __attribute__((used, noinline, optimize(3))) printRecOffset() {
     auto l __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].count;
     auto m __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].gap;
 
-    DBG_LOGS("\nTLS offset: Check assembly\n"
+    printf("\nTLS offset: Check assembly\n"
              "RecArr Offset: 0x%lx\n"
              "Counting Entry Offset: 0x%lx\n"
              "Gap Entry Offset: 0x%lx\n", j - i, l - k, m - k);
