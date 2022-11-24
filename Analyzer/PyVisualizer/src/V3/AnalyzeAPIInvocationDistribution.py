@@ -15,7 +15,7 @@ from util.Parser.TimeOutputPrarser import readSymbolFiles, aggregatePerThreadArr
 import numpy as np
 
 
-def calcInvokedApis(scalerDataFolder, recInfo):
+def calcInvokedApiNum(scalerDataFolder, recInfo):
     invokedAPIs = []
     totalAPIs = []
     for threadId in recInfo.threadIdList:
@@ -24,6 +24,14 @@ def calcInvokedApis(scalerDataFolder, recInfo):
         invokedAPIs.append(len(curThreadInvokedRecArray))
         totalAPIs.append(len(curThreadRecArray))
     return invokedAPIs, totalAPIs
+
+
+def calcInvokedApiCNT(scalerDataFolder, recInfo):
+    invokedAPICnts = []
+    for threadId in recInfo.threadIdList:
+        curThreadRecArray = readTimingStruct(scalerDataFolder, threadId)
+        invokedAPICnts.append(np.sum([rec.count for rec in curThreadRecArray]))
+    return invokedAPICnts
 
 
 def printCoverageReport(scalerDataFolder, recInfo, invokedAPIs, totalAPIs):
@@ -103,7 +111,7 @@ def printInvocNumberPerThread(scalerDataFolder):
         return
 
     recInfo = readSymbolFiles(scalerDataFolder)
-    invokedAPIs, totalAPIs = calcInvokedApis(scalerDataFolder, recInfo)
+    invokedAPIs, totalAPIs = calcInvokedApiNum(scalerDataFolder, recInfo)
 
     totalInvocationCnts = 0
 
@@ -166,7 +174,7 @@ scalerDataFolders = [
     '/media/umass/datasystem/steven/Downloads/2022-11-23_10-21-06/Application.benchmarksuite.parsec.parsec3_0.blackscholes_0/scalerdata_19148850692747664',
     '/media/umass/datasystem/steven/Downloads/2022-11-23_10-21-06/Application.benchmarksuite.parsec.parsec3_0.bodytrack_0/scalerdata_19148905483325260',
     '/media/umass/datasystem/steven/Downloads/2022-11-23_10-21-06/Application.benchmarksuite.parsec.parsec3_0.canneal_0/scalerdata_19149009421840348',
-    None,
+    '/media/umass/datasystem/steven/Downloads/2022-11-23_10-21-06/Application.benchmarksuite.parsec.parsec3_0.dedup_0/scalerdata_19272926180232932',
     '/media/umass/datasystem/steven/Downloads/2022-11-23_10-21-06/Application.benchmarksuite.parsec.parsec3_0.facesim_0/scalerdata_19149183735878138',
     '/media/umass/datasystem/steven/Downloads/2022-11-23_10-21-06/Application.benchmarksuite.parsec.parsec3_0.ferret_0/scalerdata_19149441937366104',
     '/media/umass/datasystem/steven/Downloads/2022-11-23_10-21-06/Application.benchmarksuite.parsec.parsec3_0.fluidanimate_0/scalerdata_19149498481345624',
@@ -177,7 +185,7 @@ scalerDataFolders = [
     '/media/umass/datasystem/steven/Downloads/2022-11-23_10-21-06/Application.benchmarksuite.parsec.parsec3_0.vips_0/scalerdata_19150561039693292',
     '/media/umass/datasystem/steven/Downloads/2022-11-23_10-21-06/Application.benchmarksuite.parsec.parsec3_0.x264_0/scalerdata_19150582352742288',
     '/media/umass/datasystem/steven/Downloads/2022-11-23_10-21-06/Application.db.memcached.memcached_1_6_17_0/scalerdata_19150608805586386',
-    None,
+    '/media/umass/datasystem/steven/Downloads/2022-11-23_10-21-06/Application.db.mysql.mysql_8_0_31_0/scalerdata_19272952118642124',
     '/media/umass/datasystem/steven/Downloads/2022-11-23_10-21-06/Application.db.redis.redis_7_0_4_0/scalerdata_19150762055485288',
     None,
     None,
@@ -189,6 +197,10 @@ scalerDataFolders = [
 print('Thread inovked API # imbalance Analysis')
 for scalerDataFolder in scalerDataFolders:
     printInvocNumberPerThread(scalerDataFolder)
+
+print('Thread inovked API CNT')
+for scalerDataFolder in scalerDataFolders:
+    printInvocCntPerAPI(scalerDataFolder)
 
 print('API inovked CNT Analysis')
 for scalerDataFolder in scalerDataFolders:
