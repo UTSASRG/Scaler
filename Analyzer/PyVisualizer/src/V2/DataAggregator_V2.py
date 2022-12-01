@@ -673,7 +673,7 @@ def main():
     # they can refuse it and the aggregator will use a default file path set to finalFold.folded in the repo
     root = tk.Tk()
     root.withdraw()
-    fileName = filedialog.askopenfilename()
+    fileName = ''
 
     # If an input file was selected, then we will ask them for an output file. They can opt to stop the program
     # By directly closing the file dialog twice in a row.
@@ -689,7 +689,7 @@ def main():
     if fileName == '':
         # If no file name then just default to opening a file in the repo
         # print(True)
-        fileName = "C:/Users/John/PycharmProjects/Scaler/libAnalyzer/tests/PerfTests/finalFold.folded"
+        fileName = "/media/umass/datasystem/steven/Downloads/performancetest20221124/2022-11-27_19-31-45-Perf-4000/Application.benchmarksuite.parsec.parsec3_0.blackscholes_0/Perf-Artifects/out.stacks-folded"
         # outFileName = "perfMemcachedData_V2.json"
         outFileName = "perfMemcachedData_V2_nokernelinlined.json"
         # outFileName = "perfMemcachedData_V2_noinlined.json"
@@ -709,12 +709,12 @@ def main():
     # We will handle the data differently depending on if the user wants to use the timing data
     # If "y" is entered, then we will use the time stamp info and sample data,
     # if not then we will use sample data by default
-    timestampInput = input("Use Timestamps? y/n Default is n: ")
+    timestampInput = 'n'
     if timestampInput == "y":
         # print(timestampInput)
         useTimestamps = True
 
-    inlinedInput = input("Attribute Inlined functions to last known library? y/n Default is n: ")
+    inlinedInput = 'n'
     if inlinedInput == "y":
         # print(attributeInline)
         attributeInline = True

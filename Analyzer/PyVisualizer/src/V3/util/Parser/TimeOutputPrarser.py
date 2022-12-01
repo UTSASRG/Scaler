@@ -9,6 +9,9 @@ from collections import defaultdict
 
 
 def readSymbolFiles(scalerDataFolder):
+    if scalerDataFolder is None:
+        print()
+        return
     rlt = RecordingInfo()
 
     df = pd.read_csv(os.path.join(scalerDataFolder, 'fileName.txt'))
@@ -20,7 +23,6 @@ def readSymbolFiles(scalerDataFolder):
             rlt.threadIdList.append(fileName[len('threadTiming_'): -4])
 
     with open(os.path.join(scalerDataFolder, 'realFileId.bin'), 'rb') as f:
-
         arrDesc = ArrayDescriptor()
         f.readinto(arrDesc)
         assert (arrDesc._magicNum == 167)

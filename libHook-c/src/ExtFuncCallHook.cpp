@@ -230,12 +230,39 @@ namespace scaler {
         }
 
         if (funcNameLen == 3) {
+            if (strncmp(funcName, "cos", 3) == 0) {
+                return false;
+            }else if (strncmp(funcName, "exp", 3) == 0){
+                return false;
+            }else if (strncmp(funcName, "log", 3) == 0){
+                return false;
+            }else if (strncmp(funcName, "sin", 3) == 0){
+                return false;
+            }
+
+
             if (strncmp(funcName, "oom", 3) == 0) {
                 return false;
             } else if (strncmp(funcName, "err", 3) == 0) {
                 return false;
             }
         } else if (funcNameLen == 4) {
+
+            if (strncmp(funcName, "cosf", 4) == 0) {
+                return false;
+            }else if (strncmp(funcName, "expf", 4) == 0){
+                return false;
+            }else if (strncmp(funcName, "logf", 4) == 0){
+                return false;
+            }else if (strncmp(funcName, "powf", 4) == 0){
+                return false;
+            }else if (strncmp(funcName, "sinf", 4) == 0){
+                return false;
+            }else if (strncmp(funcName, "sqrtf", 4) == 0){
+                return false;
+            }
+
+
             if (strncmp(funcName, "jump", 4) == 0) {
                 return false;
             } else if (strncmp(funcName, "exit", 4) == 0) {
@@ -248,6 +275,14 @@ namespace scaler {
                 return false;
             }
         } else if (funcNameLen == 5) {
+
+            if (strncmp(funcName, "atan2", 5) == 0) {
+                return false;
+            }else if (strncmp(funcName, "sqrtf", 5) == 0){
+                return false;
+            }
+
+
             if (strncmp(funcName, "_exit", 5) == 0) {
                 return false;
             } else if (strncmp(funcName, "abort", 5) == 0) {
