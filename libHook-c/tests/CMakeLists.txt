@@ -79,9 +79,9 @@ target_compile_options(ScalerHook-demoapps-FuncCall PRIVATE ${TEST_FLAGS} -Werro
 
 
 add_executable(ScalerHook-demoapps-TimingAccuracy src/demoapps/TestTimingAccuracy.cpp)
-target_link_libraries(ScalerHook-demoapps-TimingAccuracy PUBLIC Testlib-FuncCall  Testlib-CallFuncCall KuBoPltHook dl)
+target_link_libraries(ScalerHook-demoapps-TimingAccuracy PUBLIC Testlib-FuncCall Testlib-CallFuncCall KuBoPltHook dl)
 target_compile_options(ScalerHook-demoapps-TimingAccuracy PRIVATE ${TEST_FLAGS} -Werror)
-target_link_options(ScalerHook-demoapps-TimingAccuracy  PRIVATE "-z" "lazy")
+target_link_options(ScalerHook-demoapps-TimingAccuracy PRIVATE "-z" "lazy")
 
 add_executable(ScalerHook-demoapps-HookEverything src/demoapps/TestHookEverything.cpp)
 target_include_directories(ScalerHook-demoapps-HookEverything PUBLIC libtest/header)
@@ -207,7 +207,7 @@ add_executable(ScalerHook-parsecapps-swaptions
         src/parsecapps/swaptions/MaxFunction.cpp
         src/parsecapps/swaptions/nr_routines.cpp
         src/parsecapps/swaptions/RanUnif.cpp)
-target_link_libraries(ScalerHook-parsecapps-swaptions pthread  ScalerHook-HookAutoAsm-C)
+target_link_libraries(ScalerHook-parsecapps-swaptions pthread ScalerHook-HookAutoAsm-C)
 target_compile_options(ScalerHook-parsecapps-swaptions PRIVATE ${TEST_FLAGS} "-DENABLE_THREADS" "-fstrict-aliasing" "-fkeep-inline-functions")
 target_include_directories(ScalerHook-parsecapps-swaptions PRIVATE src/parsecapps/swaptions/include)
 target_compile_definitions(ScalerHook-parsecapps-swaptions PRIVATE ENABLE_THREADS)
@@ -278,6 +278,9 @@ target_link_libraries(ScalerHook-proof-SaveDataUponExit pthread)
 
 add_executable(ScalerHook-proof-threadlocalasmarray src/proofconcept/TestAccessThreadLocalArrayInAsm.cpp)
 target_link_libraries(ScalerHook-proof-threadlocalasmarray pthread)
+
+add_executable(GetUserSysRealTime src/proofconcept/getUserTime.cpp)
+target_link_libraries(GetUserSysRealTime)
 
 
 #add_executable(ScalerHook-demoapps src/proofconcept/testprog.cpp)

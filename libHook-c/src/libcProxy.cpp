@@ -15,7 +15,7 @@
 main_fn_t real_main;
 
 
-bool installed=false;
+bool installed = false;
 
 extern "C" {
 scaler::Vector<HookContext *> threadContextMap;
@@ -51,7 +51,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
 
 
     HookContext *curContextPtr = curContext;
-    curContextPtr->curFileId = 0;
+    curContextPtr->threadCreatorFileId = 0;
     curContextPtr->endTImestamp = 0;
     curContextPtr->startTImestamp = getunixtimestampms();
     curContextPtr->isMainThread = true;
@@ -86,7 +86,7 @@ int doubletake_libc_start_main(main_fn_t main_fn, int argc, char **argv, void (*
 void exit(int __status) {
     auto realExit = (exit_origt) dlsym(RTLD_NEXT, "exit");
 
-    if(!installed){
+    if (!installed) {
         realExit(__status);
         return;
     }

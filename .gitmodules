@@ -7,3 +7,6 @@
 [submodule "Analyzer/ScalerRun/lib/yamlcpp_0_7_0"]
 	path = Analyzer/ScalerRun/lib/yamlcpp_0_7_0
 	url = https://github.com/jbeder/yaml-cpp.git
+[submodule "benchmarktookit"]
+	path = benchmarktookit
+	url = ssh://git@code.xttech.top:6081/masslab/benchmarktookit.git

@@ -9,6 +9,10 @@ from multiprocessing import Pool
 from multiprocessing import Pool, cpu_count
 import time
 
+from Analyzer.PyVisualizer.src.V3.datastructure.TimingStruct import ArrayDescriptor
+from Analyzer.PyVisualizer.src.V3.util.DetailedTimeOutputPrarser import parseSingleSymDetailedTiming
+from Analyzer.PyVisualizer.src.V3.util.TimeOutputPrarser import readSymbolFiles
+
 
 def removeOutliers(x):
     a = np.array(x)
@@ -29,43 +33,39 @@ def shouldSkip(timingArr):
     return c1 == 0 and c2 == 0
 
 
-def saveSinglePlot(ROOT_PATH, symbolNameList, threadIdSet, symId):
+def saveSinglePlot(ROOT_PATH, symbolNameList, threadId, tgtSymId):
     # hasPoints = False
+    # ROOT_PATH: str, symbolNameList: list, threadId: str, tgtSymIds: list):
+    detailedTimingDict = parseSingleSymDetailedTiming(ROOT_PATH, threadId, [tgtSymId])
 
-    for i, threadId in enumerate(threadIdSet):
-        with open(os.path.join(ROOT_PATH, 'threadDetailedTiming_%s_%d.bin' % (threadId, symId)),
-                  'rb') as f:
-            fig, (ax1, ax2) = plt.subplots(2)
-            byteArr1 = f.read()
-            elemSize = np.fromfile(os.path.join(ROOT_PATH, 'threadDetailedTiming_%s_%d.bin' % (threadId, symId)),
-                                   np.int64, count=1, offset=0)[0]
-            if elemSize == 0:
-                continue
-            symbolTiming = np.fromfile(
-                os.path.join(ROOT_PATH, 'threadDetailedTiming_%s_%d.bin' % (threadId, symId)),
-                np.int64, offset=8)
-            skipThis = shouldSkip(symbolTiming)
-            if skipThis:
-                continue
-            if symbolTiming.shape[0] < 1001:
-                continue
-            ax1.scatter(np.arange(elemSize), symbolTiming, s=10)
-            # Calculate the first 500 mean
-            mean = np.average(symbolTiming[0:500])
-            meanUpperbound = mean * (1 + 0.01)
-            meanLowerbound = mean * (1 - 0.01)
+    for symId, detailedTimingArr in detailedTimingDict.items():
+        fig, (ax1, ax2) = plt.subplots(2)
 
-            # ax2.text(i*50, i * 20, str(np.var(symbolTiming[0:500])))
-            ax2.scatter(np.arange(1000), symbolTiming[0:1000], s=10)
-            ax2.hlines(meanUpperbound, 0, elemSize, colors='red')
-            ax2.hlines(meanLowerbound, 0, elemSize, colors='red')
-            # hasPoints = True
+        # if detailedTimingArr.shape[0] < 1001:
+        #     continue
+        #
+        # skipThis = shouldSkip(detailedTimingArr)
+        # if skipThis:
+        #     continue
 
-            # if hasPoints:
-            fig.savefig(
-                os.path.join(ROOT_PATH, 'threadDetailedTiming_%d_%s_%s.png' % (symId, symbolNameList[symId], threadId)))
-            print(
-                os.path.join(ROOT_PATH, 'threadDetailedTiming_%d_%s_%s.png' % (symId, symbolNameList[symId], threadId)))
+        ax1.scatter(np.arange(detailedTimingArr.shape[0]), detailedTimingArr, s=10)
+        # Calculate the first 500 mean
+        mean = np.average(detailedTimingArr[0:500])
+        meanUpperbound = mean * (1 + 0.01)
+        meanLowerbound = mean * (1 - 0.01)
+
+        ax2.scatter(np.arange(min(1000,detailedTimingArr.shape[0])), detailedTimingArr[0:min(1000,detailedTimingArr.shape[0])], s=10)
+        ax2.hlines(meanUpperbound, 0, detailedTimingArr.shape[0], colors='red')
+        ax2.hlines(meanLowerbound, 0, detailedTimingArr.shape[0], colors='red')
+        hasPoints = True
+
+        print(os.path.join(ROOT_PATH, 'threadDetailedTiming_%d_%s_%s.png' % (symId, symbolNameList[symId], threadId)))
+        # if hasPoints:
+        fig.savefig(
+            os.path.join(ROOT_PATH, 'threadDetailedTiming_%d_%s_%s.png' % (symId, symbolNameList[symId], threadId)))
+        print(
+            os.path.join(ROOT_PATH, 'threadDetailedTiming_%d_%s_%s.png' % (symId, symbolNameList[symId], threadId)))
+
     return 0
 
 
@@ -78,51 +78,35 @@ def error_callback(e):
 def doIt(ROOT_PATH, pool, rltList):
     print('========================', ROOT_PATH)
     allFiles = os.listdir(ROOT_PATH)
-    threadIdSet = set({})
-    maxSymId = 0
+    symbolNum = 0
+
+    recInfo = readSymbolFiles(ROOT_PATH)
+    threadSymInfo = dict({})  # Threadid : symbol size
     for fileName in allFiles:
         if fileName.startswith('threadDetailedTiming') and fileName.endswith('.bin'):
-            _, threadId, symbolId = fileName.replace('.bin', '').split('_')
-            symbolId = int(symbolId)
-            if symbolId > maxSymId:
-                maxSymId = symbolId
-            threadIdSet.add(threadId)
+            _, threadId = fileName.replace('.bin', '').split('_')
+            with open(os.path.join(ROOT_PATH, fileName), 'rb') as f:
+                symDetailedTimingDesc = ArrayDescriptor()
+                f.readinto(symDetailedTimingDesc)
+                assert (symDetailedTimingDesc.arrayElemSize == 0)
+                assert (symDetailedTimingDesc._magicNum == 167)
+                symbolNum = symDetailedTimingDesc.arraySize
+                threadSymInfo[threadId] = symbolNum
 
-    df = pd.read_csv(os.path.join(ROOT_PATH, 'fileName.txt'))
-    fileNameList = df['pathName'].to_list()
+            for symId in range(symbolNum):
+                res = pool.apply_async(saveSinglePlot, args=[ROOT_PATH, recInfo.symbolNameList, threadId, symId],
+                                       error_callback=error_callback)
+                rltList.append(res)
 
-    df = pd.read_csv(os.path.join(ROOT_PATH, 'symbolInfo.txt'))
-    symbolNameList = df['funcName'].to_list()
-    symbolFileIdList = df['fileId'].to_list()
-    symIdInFile = df['symIdInFile'].to_list()
-
-    print('Deploying tasks to pool')
-    # for symId in range(maxSymId):
-    #     saveSinglePlot(ROOT_PATH, symbolNameList, threadIdSet, symId)
-    for symId in range(maxSymId):
-        res = pool.apply_async(saveSinglePlot, args=[ROOT_PATH, symbolNameList, threadIdSet, symId],
-                               error_callback=error_callback)
-        rltList.append(res)
+    return rltList
 
 
-pool = Pool(60)
+pool = Pool(1)
 rltList = []
 
-for i in [
-    'scalerdata_6364935512299934',
-    'scalerdata_6364979105953714',
-    'scalerdata_6365014036860570',
-    'scalerdata_6365088124846144',
-    'scalerdata_6365123879328866',
-    'scalerdata_6365618607468352',
-    'scalerdata_6365739459778370',
-    'scalerdata_6365776935349298',
-    'scalerdata_6365841128804326',
-    'scalerdata_6366139523773026',
-    'scalerdata_6366165053302622'
-]:
-    ROOT_PATH = '/media/umass/datasystem/steven/Downloads/CurStrategy1/' + i
+for ROOT_PATH in ['/tmp/scalerdata_14676207526291652']:
     doIt(ROOT_PATH, pool, rltList)
+
 pool.close()
 while len(rltList) > 0:
     time.sleep(2)

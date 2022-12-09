@@ -3,22 +3,35 @@ import os
 import pandas as pd
 import struct
 import re
+
+from util.Analyzer.XFA import generateXFAStruct
 from datastructure.TimingStruct import FileRecord, RecTuple
-from preProcessing import aggregatePerThreadArray, generateTimingStruct, calcPercentage, readSymbolFiles
+from util.Parser.TimeOutputPrarser import aggregatePerThreadArray, readSymbolFiles
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
-scalerDataFolder = '/media/umass/datasystem/steven/intel/Perf_Scaler-Parsec-Callgraph-Sig2022Fall/x264/scalerdata_12852017355851478_FGDS'
+scalerDataFolder = '/media/umass/datasystem/steven/Downloads/performancetest20221124/2022-12-07_20-11-36-EffImp/Application.benchmarksuite.parsec.parsec3_0.blackscholes_0/Scaler-DBG-Artifects/scalerdata_1120018768482198'
 
 recInfo = readSymbolFiles(scalerDataFolder)
 
 realFileId = None
 
 aggregatedTimeArray, aggregatedStartingTime = aggregatePerThreadArray(scalerDataFolder, recInfo)
+
+for i, v in enumerate(aggregatedTimeArray):
+    if v.count > 0:
+        curRealFileId=recInfo.realFileIdList[i]
+        if curRealFileId==len(recInfo.fileNameList):
+            curRealFileId=len(recInfo.fileNameList)-1
+        print(recInfo.symbolNameList[i], recInfo.fileNameList[curRealFileId], v.count, sep='\t')
+
 # Generate graph
-timingRecord = generateTimingStruct(list(aggregatedTimeArray), aggregatedStartingTime, recInfo)
+timingRecord = generateXFAStruct(list(aggregatedTimeArray), aggregatedStartingTime, recInfo)
 
 print(timingRecord)
+
+for time in timingRecord:
+    print(time.fileName,time.selfClockCycles.value,sep='\t')
 
 # totalSelfTime = 0
 # for fileRec in timingRecord:

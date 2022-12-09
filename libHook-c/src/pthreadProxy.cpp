@@ -41,7 +41,7 @@ void *dummy_thread_function(void *data) {
 
     HookContext *curContextPtr = curContext;
     assert(curContextPtr != NULL);
-    curContextPtr->curFileId = curContextPtr->_this->pmParser.findExecNameByAddr(
+    curContextPtr->threadCreatorFileId = curContextPtr->_this->pmParser.findExecNameByAddr(
             (void *) actualFuncPtr);
 
     /**
