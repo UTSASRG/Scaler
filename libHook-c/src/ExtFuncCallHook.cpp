@@ -169,7 +169,8 @@ namespace scaler {
             Elf64_Word type;
             Elf64_Word bind;
             parser.getExtSymbolInfo(i, funcName, bind, type);
-            if (!shouldHookThisSymbol(funcName, bind, type, allExtSymbol.getSize())) {
+            ssize_t initialGap = 0;
+            if (!shouldHookThisSymbol(funcName, bind, type, allExtSymbol.getSize(), initialGap)) {
                 continue;
             }
             //Get function id from plt entry
@@ -198,7 +199,7 @@ namespace scaler {
             newSym->pltEntryAddr = pltEntry;
             newSym->pltSecEntryAddr = pltSecEntry;
             newSym->pltStubId = pltStubId;
-
+            newSym->initialGap = initialGap;
             fprintf(symInfoFile, "%s,%ld,%ld\n", funcName, newSym->fileId, newSym->symIdInFile);
 
             DBG_LOGS(
@@ -212,8 +213,12 @@ namespace scaler {
     }
 
 
-    bool
-    ExtFuncCallHook::shouldHookThisSymbol(const char *funcName, Elf64_Word &bind, Elf64_Word &type, SymID curSymId) {
+    const int SAMPLING_GAP = 0b0;
+
+    bool ExtFuncCallHook::shouldHookThisSymbol(const char *funcName, Elf64_Word &bind, Elf64_Word &type, SymID curSymId,
+                                               ssize_t &initialGap) {
+
+        initialGap = 0;
         if (bind != STB_GLOBAL || type != STT_FUNC) {
             return false;
         }
@@ -231,39 +236,32 @@ namespace scaler {
 
         if (funcNameLen == 3) {
             if (strncmp(funcName, "cos", 3) == 0) {
-                return false;
-            }else if (strncmp(funcName, "exp", 3) == 0){
-                return false;
-            }else if (strncmp(funcName, "log", 3) == 0){
-                return false;
-            }else if (strncmp(funcName, "sin", 3) == 0){
-                return false;
-            }
-
-
-            if (strncmp(funcName, "oom", 3) == 0) {
+                initialGap = SAMPLING_GAP;
+            } else if (strncmp(funcName, "exp", 3) == 0) {
+                initialGap = SAMPLING_GAP;
+            } else if (strncmp(funcName, "log", 3) == 0) {
+                initialGap = SAMPLING_GAP;
+            } else if (strncmp(funcName, "sin", 3) == 0) {
+                initialGap = SAMPLING_GAP;
+            } else if (strncmp(funcName, "oom", 3) == 0) {
                 return false;
             } else if (strncmp(funcName, "err", 3) == 0) {
                 return false;
             }
         } else if (funcNameLen == 4) {
-
             if (strncmp(funcName, "cosf", 4) == 0) {
-                return false;
-            }else if (strncmp(funcName, "expf", 4) == 0){
-                return false;
-            }else if (strncmp(funcName, "logf", 4) == 0){
-                return false;
-            }else if (strncmp(funcName, "powf", 4) == 0){
-                return false;
-            }else if (strncmp(funcName, "sinf", 4) == 0){
-                return false;
-            }else if (strncmp(funcName, "sqrtf", 4) == 0){
-                return false;
-            }
-
-
-            if (strncmp(funcName, "jump", 4) == 0) {
+                initialGap = SAMPLING_GAP;
+            } else if (strncmp(funcName, "expf", 4) == 0) {
+                initialGap = SAMPLING_GAP;
+            } else if (strncmp(funcName, "logf", 4) == 0) {
+                initialGap = SAMPLING_GAP;
+            } else if (strncmp(funcName, "powf", 4) == 0) {
+                initialGap = SAMPLING_GAP;
+            } else if (strncmp(funcName, "sinf", 4) == 0) {
+                initialGap = SAMPLING_GAP;
+            } else if (strncmp(funcName, "sqrtf", 4) == 0) {
+                initialGap = SAMPLING_GAP;
+            } else if (strncmp(funcName, "jump", 4) == 0) {
                 return false;
             } else if (strncmp(funcName, "exit", 4) == 0) {
                 return false;
@@ -275,15 +273,11 @@ namespace scaler {
                 return false;
             }
         } else if (funcNameLen == 5) {
-
             if (strncmp(funcName, "atan2", 5) == 0) {
-                return false;
-            }else if (strncmp(funcName, "sqrtf", 5) == 0){
-                return false;
-            }
-
-
-            if (strncmp(funcName, "_exit", 5) == 0) {
+                initialGap = SAMPLING_GAP;
+            } else if (strncmp(funcName, "sqrtf", 5) == 0) {
+                initialGap = SAMPLING_GAP;
+            } else if (strncmp(funcName, "_exit", 5) == 0) {
                 return false;
             } else if (strncmp(funcName, "abort", 5) == 0) {
                 return false;
@@ -664,7 +658,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-        "movq 0x2F6910(%%rip),%0\n\t"
+        "movq 0x2F5B60(%%rip),%0\n\t"
         :"=r" (tlsOffset)
         :
         :

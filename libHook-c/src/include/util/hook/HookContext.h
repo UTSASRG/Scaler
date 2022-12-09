@@ -21,7 +21,6 @@ struct HookTuple {
     uint32_t clockTicks; //8
 };
 
-
 struct HookContext {
     //todo: Initialize using maximum stack size
     int64_t indexPosi;//8bytes
@@ -72,7 +71,7 @@ extern pthread_mutex_t threadDataSavingLock;
 bool initTLS();
 
 
-#define INSTR_TIMING
+//#define INSTR_TIMING
 #ifdef INSTR_TIMING
 extern const int TIMING_REC_COUNT;
 extern __thread TIMING_TYPE **detailedTimingVectors;

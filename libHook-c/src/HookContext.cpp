@@ -7,7 +7,8 @@
 extern "C" {
 static thread_local DataSaver saverElem;
 
-HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
+HookContext *
+constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<scaler::ExtSymInfo> &allExtSymbol) {
 
     uint8_t *contextHeap = static_cast<uint8_t *>(mmap(NULL, sizeof(HookContext) +
                                                              sizeof(scaler::Array<uint64_t>) +
@@ -40,7 +41,7 @@ HookContext *constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize) {
     //Initialize gap to one
     for (int i = 0; i < rlt->recArr->getSize(); ++i) {
         //number mod 2^n is equivalent to stripping off all but the n lowest-order
-        rlt->recArr->internalArr[i].gap = 0; //0b11 if %4, because 4=2^2 Initially time everything
+        rlt->recArr->internalArr[i].gap = allExtSymbol[i].initialGap; //0b11 if %4, because 4=2^2 Initially time everything
         rlt->recArr->internalArr[i].count = 0;
     }
 //    memArrayHeap(1), timingArr(hookedSymbolSize),
@@ -93,9 +94,9 @@ void __attribute__((used, noinline, optimize(3))) printRecOffset() {
     auto m __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].gap;
 
     printf("\nTLS offset: Check assembly\n"
-             "RecArr Offset: 0x%lx\n"
-             "Counting Entry Offset: 0x%lx\n"
-             "Gap Entry Offset: 0x%lx\n", j - i, l - k, m - k);
+           "RecArr Offset: 0x%lx\n"
+           "Counting Entry Offset: 0x%lx\n"
+           "Gap Entry Offset: 0x%lx\n", j - i, l - k, m - k);
 }
 
 
@@ -113,12 +114,12 @@ bool initTLS() {
 
     //Put a dummy variable to avoid null checking
     //Initialize saving data structure
-    curContext = constructContext(
-            scaler::ExtFuncCallHook::instance->elfImgInfoMap.getSize(),
-            scaler::ExtFuncCallHook::instance->allExtSymbol.getSize() + 1);
-#ifdef PRINT_DBG_LOG
-    printRecOffset();
-#endif
+    curContext = constructContext(scaler::ExtFuncCallHook::instance->elfImgInfoMap.getSize(),
+                                  scaler::ExtFuncCallHook::instance->allExtSymbol.getSize() + 1,
+                                  scaler::ExtFuncCallHook::instance->allExtSymbol);
+//#ifdef PRINT_DBG_LOG
+//    printRecOffset();
+//#endif
     if (!curContext) {
         fatalError("Failed to allocate memory for Context");
         return false;
@@ -131,24 +132,27 @@ __thread HookContext *curContext __attribute((tls_model("initial-exec")));
 
 __thread uint8_t bypassCHooks __attribute((tls_model("initial-exec"))) = SCALER_FALSE; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
 
-
+#ifdef INSTR_TIMING
 const int TIMING_REC_COUNT = 20000;
 typedef int64_t TIMING_TYPE;
 __thread TIMING_TYPE **detailedTimingVectors;
 __thread TIMING_TYPE *detailedTimingVectorSize;
+#endif
 
 DataSaver::~DataSaver() {
     saveData(curContext);
 }
 
-
+#ifdef INSTR_TIMING
 inline void saveThreadDetailedTiming(std::stringstream &ss, HookContext *curContextPtr) {
     ss.str("");
     ss << scaler::ExtFuncCallHook::instance->folderName << "/threadDetailedTiming_" << curContextPtr->threadId
        << ".bin";
 
     //Calculate file total size
+
     ssize_t recordedInvocationCnt = 0;
+
     for (ssize_t i = 0; i < scaler::ExtFuncCallHook::instance->allExtSymbol.getSize(); ++i) {
         recordedInvocationCnt += detailedTimingVectorSize[i];
     }
@@ -171,6 +175,7 @@ inline void saveThreadDetailedTiming(std::stringstream &ss, HookContext *curCont
     arrayDescriptor->magicNum = 167;
     fileContentInMem += sizeof(ArrayDescriptor);
 
+
     for (ssize_t i = 0; i < scaler::ExtFuncCallHook::instance->allExtSymbol.getSize(); ++i) {
         /**
          * Write array descriptor first
@@ -191,6 +196,7 @@ inline void saveThreadDetailedTiming(std::stringstream &ss, HookContext *curCont
         fatalErrorS("Cannot close file %s, because %s", ss.str().c_str(), strerror(errno));
     }
 }
+#endif
 
 
 inline void savePerThreadTimingData(std::stringstream &ss, HookContext *curContextPtr) {

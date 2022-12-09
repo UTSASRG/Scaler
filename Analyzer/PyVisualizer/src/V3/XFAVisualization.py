@@ -10,7 +10,7 @@ from util.Parser.TimeOutputPrarser import aggregatePerThreadArray, readSymbolFil
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
-scalerDataFolder = '/tmp/scalerdata_15111573633396240'
+scalerDataFolder = '/media/umass/datasystem/steven/Downloads/performancetest20221124/2022-12-07_20-11-36-EffImp/Application.benchmarksuite.parsec.parsec3_0.blackscholes_0/Scaler-DBG-Artifects/scalerdata_1120018768482198'
 
 recInfo = readSymbolFiles(scalerDataFolder)
 
@@ -29,6 +29,9 @@ for i, v in enumerate(aggregatedTimeArray):
 timingRecord = generateXFAStruct(list(aggregatedTimeArray), aggregatedStartingTime, recInfo)
 
 print(timingRecord)
+
+for time in timingRecord:
+    print(time.fileName,time.selfClockCycles.value,sep='\t')
 
 # totalSelfTime = 0
 # for fileRec in timingRecord:

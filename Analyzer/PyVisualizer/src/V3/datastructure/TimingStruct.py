@@ -88,11 +88,11 @@ C data structures
 These structs should be consistent with https://github.com/UTSASRG/Scaler/blob/feature-tuneParm/libHook-c/src/include/type/RecTuple.h
 '''
 
-
 class RecTuple(Structure):
     _fields_ = [
         ('totalClockCycles', c_uint64),
         ('count', c_int64),
+        ('_prevCount', c_int64),
         ('_gap', c_uint32),
         ('_meanClockTick', c_float),
         ('_durThreshold', c_uint32),
