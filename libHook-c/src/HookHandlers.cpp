@@ -410,9 +410,7 @@ void *afterHookHandler() {
 #endif
 
     //RDTSCTiming if not skipped
-    curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration * (c - curContextPtr->recArr->internalArr[symbolId].prevCount + 1);
-
-    curContextPtr->recArr->internalArr[symbolId].prevCount = c;
+    curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration;
 
     bypassCHooks = SCALER_FALSE;
     return callerAddr;

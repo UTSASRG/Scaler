@@ -7,7 +7,6 @@
 struct RecTuple {
     uint64_t totalClockCycles; //8
     int64_t count; //8
-    int64_t prevCount; //8 Used to perform sampling
     int32_t gap; //4
     float meanClockTick; //4
     int32_t durThreshold; //4

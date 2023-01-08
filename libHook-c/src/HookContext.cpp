@@ -118,7 +118,7 @@ bool initTLS() {
                                   scaler::ExtFuncCallHook::instance->allExtSymbol.getSize() + 1,
                                   scaler::ExtFuncCallHook::instance->allExtSymbol);
 //#ifdef PRINT_DBG_LOG
-//    printRecOffset();
+    printRecOffset();
 //#endif
     if (!curContext) {
         fatalError("Failed to allocate memory for Context");
