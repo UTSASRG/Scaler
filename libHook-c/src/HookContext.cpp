@@ -6,6 +6,7 @@
 
 extern "C" {
 static thread_local DataSaver saverElem;
+uint32_t threadNum=0;
 
 HookContext *
 constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<scaler::ExtSymInfo> &allExtSymbol) {

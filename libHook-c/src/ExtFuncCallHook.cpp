@@ -21,7 +21,6 @@
 
 scaler::SymID pthreadCreateSymId;
 
-uint32_t *countingArr = nullptr;
 namespace scaler {
 
 
@@ -43,10 +42,6 @@ namespace scaler {
 
         parseRequiredInfo();
 
-        //Allocate counting array todo:Mem leak
-        countingArr = (uint32_t *) mmap(nullptr, sizeof(uint32_t) * allExtSymbol.getSize() * 2,
-                                        PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE,
-                                        -1, 0); //todo: memory leak
 
         if (!initTLS()) {
             ERR_LOG("Failed to initialize TLS");
@@ -658,7 +653,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-        "movq 0x2F5B30(%%rip),%0\n\t"
+        "movq 0x2F5B28(%%rip),%0\n\t"
         :"=r" (tlsOffset)
         :
         :

@@ -401,6 +401,10 @@ void *afterHookHandler() {
 
     int64_t clockCyclesDuration = (int64_t) (postHookClockCycles - preClockCycle);
 
+    if(threadNum>1){
+        clockCyclesDuration=clockCyclesDuration/threadNum;
+    }
+
 #ifdef INSTR_TIMING
     TIMING_TYPE &curSize = detailedTimingVectorSize[symbolId];
     if (curSize < TIMING_REC_COUNT) {
