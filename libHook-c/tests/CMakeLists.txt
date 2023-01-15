@@ -32,7 +32,7 @@ target_include_directories(KuBoPltHook PUBLIC lib/plthook)
 # ============================================================
 # Unit Test
 # ============================================================
-include(${CMAKE_SOURCE_DIR}/proto/findThisGrpc.cmake)
+#include(${CMAKE_SOURCE_DIR}/proto/findThisGrpc.cmake)
 
 add_executable(ScalerHook-unittests
         src/unittests/TestPMParser.cpp
@@ -56,7 +56,7 @@ add_executable(ScalerHook-unittests
         src/unittests/TestProtobuf.cpp
         ${SCALER_PROTO_SRCS})
 message("SCALER_PROTO_SRCS=1${SCLAER_GRPC_INCLUDE} 2${SCALER_PROTO_SRCS} ")
-target_link_libraries(ScalerHook-unittests PUBLIC ScalerHook-HookManualAsm-C Testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread protobuf::libprotobuf gRPC::grpc++)
+target_link_libraries(ScalerHook-unittests PUBLIC ScalerHook-HookManualAsm-C Testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread)
 target_compile_options(ScalerHook-unittests PRIVATE "-fno-access-control" ${TEST_FLAGS} -Werror)
 target_include_directories(ScalerHook-unittests PRIVATE ${SCLAER_GRPC_INCLUDE})
 message("include is ${SCLAER_GRPC++_LIBRARY}")
