@@ -6,12 +6,13 @@
 
 extern "C" {
 static thread_local DataSaver saverElem;
-uint32_t threadNum=0;
-
+uint32_t threadNum = 0;
+uint32_t applicationAPIScalerIdBoundary = 0;
 HookContext *
 constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<scaler::ExtSymInfo> &allExtSymbol) {
 
     uint8_t *contextHeap = static_cast<uint8_t *>(mmap(NULL, sizeof(HookContext) +
+                                                             sizeof(scaler::Array<uint64_t>) +
                                                              sizeof(scaler::Array<uint64_t>) +
                                                              sizeof(pthread_mutex_t), PROT_READ | PROT_WRITE,
                                                        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
@@ -20,9 +21,13 @@ constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<sc
 //                                     sizeof(pthread_mutex_t), &testA);
     HookContext *rlt = reinterpret_cast<HookContext *>(contextHeap);
     assert(rlt != nullptr);
-    memset(rlt, 0, sizeof(HookContext) + sizeof(scaler::Array<RecTuple>) + sizeof(pthread_mutex_t));
+    memset(rlt, 0, sizeof(HookContext) + sizeof(scaler::Array<RecTuple>) + sizeof(scaler::Array<RecTuple>) +
+                   sizeof(pthread_mutex_t));
     rlt->recArr = new(contextHeap + sizeof(HookContext)) scaler::Array<RecTuple>(hookedSymbolSize);
+    rlt->selfTimeArr = new(contextHeap + sizeof(HookContext) + sizeof(scaler::Array<uint64_t>)) scaler::Array<uint64_t>(
+            libFileSize);
     rlt->threadDataSavingLock = reinterpret_cast<pthread_mutex_t *>(contextHeap + sizeof(HookContext) +
+                                                                    +sizeof(scaler::Array<uint64_t>) +
                                                                     sizeof(scaler::Array<uint64_t>));
 #ifdef INSTR_TIMING
     detailedTimingVectors = new TIMING_TYPE *[hookedSymbolSize];
@@ -115,6 +120,7 @@ bool initTLS() {
 
     //Put a dummy variable to avoid null checking
     //Initialize saving data structure
+
     curContext = constructContext(scaler::ExtFuncCallHook::instance->elfImgInfoMap.getSize(),
                                   scaler::ExtFuncCallHook::instance->allExtSymbol.getSize() + 1,
                                   scaler::ExtFuncCallHook::instance->allExtSymbol);

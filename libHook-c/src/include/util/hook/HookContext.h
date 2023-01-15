@@ -25,6 +25,7 @@ struct HookContext {
     //todo: Initialize using maximum stack size
     int64_t indexPosi;//8bytes
     scaler::Array<RecTuple> *recArr; //8bytes
+    scaler::Array<uint64_t> *selfTimeArr; //8bytes
     //Records which function calls which function for how long, the index is scalerid (Only contains hooked function)
     //todo: Replace timingMatrix to a class
     int64_t threadCreatorFileId = 1; //Which library created the current thread? The default one is main thread
@@ -45,6 +46,7 @@ struct HookContext {
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
 extern uint32_t threadNum;
+extern uint32_t applicationAPIScalerIdBoundary;
 
 class DataSaver {
 public:
