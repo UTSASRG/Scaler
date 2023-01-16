@@ -4,6 +4,7 @@
   <component name="CidrRootsConfiguration">
     <sourceRoots>
       <file path="$PROJECT_DIR$/Analyzer/PerfDataImporter/src" />
+      <file path="$PROJECT_DIR$/Analyzer/PyVisualizer/src/V3" />
     </sourceRoots>
     <excludeRoots>
       <file path="$PROJECT_DIR$/libHook" />

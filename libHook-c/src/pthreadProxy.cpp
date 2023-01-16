@@ -24,6 +24,8 @@ struct dummy_thread_function_args {
 // Entering this function means the thread has been successfully created
 // Instrument thread beginning, call the original thread function, instrument thread end
 void *dummy_thread_function(void *data) {
+    __atomic_add_fetch(&threadNum, 1, __ATOMIC_RELAXED);
+
     /**
      * Perform required actions at beginning of thread
      */
@@ -56,6 +58,7 @@ void *dummy_thread_function(void *data) {
      */
     curContextPtr->endTImestamp = getunixtimestampms();
     saveData(curContextPtr);
+    __atomic_sub_fetch(&threadNum, 1, __ATOMIC_RELAXED);
     return threadFuncRetRlt;
 }
 

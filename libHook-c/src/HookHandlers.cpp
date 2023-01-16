@@ -199,74 +199,74 @@
 void __attribute__((naked)) asmTimingHandler() {
     //todo: Calculate values based on rsp rathe than saving them to registers
     __asm__ __volatile__ (
-    /**
-     * Reserve stack space
-     */
-    "subq $" SAVE_BYTES_PRE ",%rsp\n\t" //rsp -= SAVE_BYTES_PRE
+        /**
+         * Reserve stack space
+         */
+            "subq $" SAVE_BYTES_PRE ",%rsp\n\t" //rsp -= SAVE_BYTES_PRE
 
-    /**
-    * Save environment
-    */
-    SAVE_PRE
+            /**
+            * Save environment
+            */
+            SAVE_PRE
 
-    /**
-     * Getting PLT entry address and caller address from stack
-     */
-    "movq " SAVE_BYTES_PRE_plus8 "(%rsp),%rdi\n\t" //First parameter, return addr
-    "movq " SAVE_BYTES_PRE "(%rsp),%rsi\n\t" //Second parameter, symbolId (Pushed to stack by idsaver)
+            /**
+             * Getting PLT entry address and caller address from stack
+             */
+            "movq " SAVE_BYTES_PRE_plus8 "(%rsp),%rdi\n\t" //First parameter, return addr
+            "movq " SAVE_BYTES_PRE "(%rsp),%rsi\n\t" //Second parameter, symbolId (Pushed to stack by idsaver)
 
-    /**
-     * Pre-Hook
-     */
-    "call preHookHandler@plt\n\t"
+            /**
+             * Pre-Hook
+             */
+            "call preHookHandler@plt\n\t"
 
-    //Save return value to R11. This is the address of real function parsed by handler.
-    //The return address is maybe the real function address. Or a pointer to the pseodoPlt table
-    "movq %rax,%r11\n\t"
-    "cmpq $1234,%rdi\n\t"
-    "jz  RET_PREHOOK_ONLY\n\t"
+            //Save return value to R11. This is the address of real function parsed by handler.
+            //The return address is maybe the real function address. Or a pointer to the pseodoPlt table
+            "movq %rax,%r11\n\t"
+            "cmpq $1234,%rdi\n\t"
+            "jz  RET_PREHOOK_ONLY\n\t"
 
-    //=======================================> if rdi!=$1234
-    /**
-     * Call actual function
-     */
-    RESTORE_PRE
-    "addq $" SAVE_BYTES_PRE_plus16 ",%rsp\n\t" //Plus 8 is because there was a push to save 8 bytes more funcId. Another 8 is to replace return address
-    "callq *%r11\n\t"
+            //=======================================> if rdi!=$1234
+            /**
+             * Call actual function
+             */
+            RESTORE_PRE
+            "addq $" SAVE_BYTES_PRE_plus16 ",%rsp\n\t" //Plus 8 is because there was a push to save 8 bytes more funcId. Another 8 is to replace return address
+            "callq *%r11\n\t"
 
-    /**
-     * Call after hook
-     */
-    //Save return value to stack
-    "subq $" SAVE_BYTES_POST ",%rsp\n\t"
-    SAVE_POST
+            /**
+             * Call after hook
+             */
+            //Save return value to stack
+            "subq $" SAVE_BYTES_POST ",%rsp\n\t"
+            SAVE_POST
 
-    /**
-     * Call After Hook
-     */
-    //todo: This line has compilation error on the server
-    "call afterHookHandler@plt\n\t"
-    //Save return value to R11. R11 now has the address of caller.
-    "movq %rax,%r11\n\t"
+            /**
+             * Call After Hook
+             */
+            //todo: This line has compilation error on the server
+            "call afterHookHandler@plt\n\t"
+            //Save return value to R11. R11 now has the address of caller.
+            "movq %rax,%r11\n\t"
 
-    /**
-    * Restore return value
-    */
-    RESTORE_POST
+            /**
+            * Restore return value
+            */
+            RESTORE_POST
 
-    //Retrun to caller
-    "addq $" SAVE_BYTES_POST ",%rsp\n\t" //Plus 8 is because there was a push to save 8 bytes more funcId. Another 8 is to replace return address
-    "jmpq *%r11\n\t"
+            //Retrun to caller
+            "addq $" SAVE_BYTES_POST ",%rsp\n\t" //Plus 8 is because there was a push to save 8 bytes more funcId. Another 8 is to replace return address
+            "jmpq *%r11\n\t"
 
 
-    //=======================================> if rdi==$1234
-    "RET_PREHOOK_ONLY:\n\t"
-    RESTORE_PRE
-    //Restore rsp to original value (Uncomment the following to only enable prehook)
-    "addq $" SAVE_BYTES_PRE_plus8 ",%rsp\n\t" //Plus 8 is because there was a push to save 8 bytes more funcId
-    "jmpq *%r11\n\t"
+            //=======================================> if rdi==$1234
+            "RET_PREHOOK_ONLY:\n\t"
+            RESTORE_PRE
+            //Restore rsp to original value (Uncomment the following to only enable prehook)
+            "addq $" SAVE_BYTES_PRE_plus8 ",%rsp\n\t" //Plus 8 is because there was a push to save 8 bytes more funcId
+            "jmpq *%r11\n\t"
 
-    );
+            );
 
 }
 
@@ -292,17 +292,17 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
     if (unlikely(bypassCHooks == SCALER_TRUE)) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
-        :/* No inputs. */:"rdi");
+                :/* No inputs. */:"rdi");
         return retOriFuncAddr;
     } else if (unlikely(curContextPtr->indexPosi >= MAX_CALL_DEPTH)) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
-        :/* No inputs. */:"rdi");
+                :/* No inputs. */:"rdi");
         return retOriFuncAddr;
     } else if (unlikely((uint64_t) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr == nextCallAddr)) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
-        :/* No inputs. */:"rdi");
+                :/* No inputs. */:"rdi");
         return retOriFuncAddr;
     }
 
@@ -363,13 +363,13 @@ __attribute__((used)) void *dbgPreHandler(uint64_t nextCallAddr, uint64_t symId)
                   "vmovdqu64 (%%rsp), %%zmm5\n\t"
                   "vmovdqu64 (%%rsp), %%zmm6\n\t"
                   "vmovdqu64 (%%rsp), %%zmm7\n\t"
-    : /* No outputs. */
-    :/* No inputs. */
-    :"rax", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "rbx", "rbp", "r12", "r13", "r14", "r15", "zmm0", "zmm1", "zmm3", "zmm4", "zmm5", "zmm6", "zmm7");
+            : /* No outputs. */
+            :/* No inputs. */
+            :"rax", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "rbx", "rbp", "r12", "r13", "r14", "r15", "zmm0", "zmm1", "zmm3", "zmm4", "zmm5", "zmm6", "zmm7");
 
     //Skip afterhook
     asm volatile ("movq $1234, %%rdi" : /* No outputs. */
-    :/* No inputs. */:"rdi");
+            :/* No inputs. */:"rdi");
     return retOriFuncAddr;
 }
 
@@ -385,9 +385,7 @@ void *afterHookHandler() {
 //    int64_t prevClockTick = curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks;
     uint64_t preClockCycle = curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles;
 
-
     int64_t &c = curContextPtr->recArr->internalArr[symbolId].count;
-
 
     --curContextPtr->indexPosi;
     assert(curContextPtr->indexPosi >= 1);
@@ -397,9 +395,14 @@ void *afterHookHandler() {
     //compare current timestamp with the previous timestamp
 
     float &meanClockCycle = curContextPtr->recArr->internalArr[symbolId].meanClockTick;
-    int32_t &clockCycleThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
 
     int64_t clockCyclesDuration = (int64_t) (postHookClockCycles - preClockCycle);
+    int64_t scaledClockCyclesDuration;
+    if (threadNum > 1) {
+        scaledClockCyclesDuration = clockCyclesDuration / threadNum;
+    } else {
+        scaledClockCyclesDuration = clockCyclesDuration;
+    }
 
 #ifdef INSTR_TIMING
     TIMING_TYPE &curSize = detailedTimingVectorSize[symbolId];
@@ -410,7 +413,10 @@ void *afterHookHandler() {
 #endif
 
     //RDTSCTiming if not skipped
-    curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration;
+    curContextPtr->recArr->internalArr[symbolId].totalClockCycles += scaledClockCyclesDuration;
+    curContextPtr->recArr->internalArr[symbolId].totalClockCyclesUnScaled += scaledClockCyclesDuration;
+    //Attribute api time sum to selfTimeArr
+
 
     bypassCHooks = SCALER_FALSE;
     return callerAddr;
@@ -418,104 +424,104 @@ void *afterHookHandler() {
 
 void __attribute__((used, naked, noinline)) myPltEntry() {
     __asm__ __volatile__ (
-    "movq $0x1122334455667788,%r11\n\t"
-    "jmpq *%r11\n\t"
-    );
+            "movq $0x1122334455667788,%r11\n\t"
+            "jmpq *%r11\n\t"
+            );
 }
 
 void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
     __asm__ __volatile__ (
-    /**
-     * Access TLS, make sure it's initialized
-     */
-    "mov $0x1122334455667788,%r11\n\t"//Move the tls offset of context to r11
-    "mov %fs:(%r11),%r11\n\t" //Now r11 points to the tls header
-    //Check whether the context is initialized
-    "cmpq $0,%r11\n\t"
-    //Skip processing if context is not initialized
-    "jz SKIP\n\t"
+        /**
+         * Access TLS, make sure it's initialized
+         */
+            "mov $0x1122334455667788,%r11\n\t"//Move the tls offset of context to r11
+            "mov %fs:(%r11),%r11\n\t" //Now r11 points to the tls header
+            //Check whether the context is initialized
+            "cmpq $0,%r11\n\t"
+            //Skip processing if context is not initialized
+            "jz SKIP\n\t"
 
-    "pushq %r10\n\t"
+            "pushq %r10\n\t"
 
-    "movq 0x650(%r11),%r11\n\t" //Fetch recArr.internalArr address from TLS -> r11
-    "movq 0x11223344(%r11),%r10\n\t" //Fetch recArr.internalArr[symId].count in Heap to -> r10
-    "addq $1,%r10\n\t" //count + 1
-    "movq %r10,0x11223344(%r11)\n\t" //Store count
+            "movq 0x650(%r11),%r11\n\t" //Fetch recArr.internalArr address from TLS -> r11
+            "movq 0x11223344(%r11),%r10\n\t" //Fetch recArr.internalArr[symId].count in Heap to -> r10
+            "addq $1,%r10\n\t" //count + 1
+            "movq %r10,0x11223344(%r11)\n\t" //Store count
 
-    "movq 0x11223344(%r11),%r11\n\t" //Fetch recArr.internalArr[symId].gap in Heap to -> r11
-    "andq %r11,%r10\n\t" //count value (r10) % gap (r11) -> r11, gap value must be a power of 2
-    "cmpq $0,%r10\n\t" //If necessary count % gap == 0. Use timing
-    "pop %r10\n\t"
-    "jz TIMING_JUMPER\n\t" //Check if context is initialized
+            "movq 0x11223344(%r11),%r11\n\t" //Fetch recArr.internalArr[symId].gap in Heap to -> r11
+            "andq %r11,%r10\n\t" //count value (r10) % gap (r11) -> r11, gap value must be a power of 2
+            "cmpq $0,%r10\n\t" //If necessary count % gap == 0. Use timing
+            "pop %r10\n\t"
+            "jz TIMING_JUMPER\n\t" //Check if context is initialized
 
-    /**
-    * Return
-    */
-    "SKIP:"
-    "movq $0x1122334455667788,%r11\n\t" //GOT address
-    "jmpq *(%r11)\n\t"
-    "pushq $0x11223344\n\t" //Plt stub id
-    "movq $0x1122334455667788,%r11\n\t" //First plt entry
-    "jmpq *%r11\n\t"
+            /**
+            * Return
+            */
+            "SKIP:"
+            "movq $0x1122334455667788,%r11\n\t" //GOT address
+            "jmpq *(%r11)\n\t"
+            "pushq $0x11223344\n\t" //Plt stub id
+            "movq $0x1122334455667788,%r11\n\t" //First plt entry
+            "jmpq *%r11\n\t"
 
-    /**
-     * Timing
-     */
-    //Perform timing
-    "TIMING_JUMPER:"
-    "pushq $0x11223344\n\t" //Save funcId to stack
-    "movq $0x1122334455667788,%r11\n\t"
-    "jmpq *%r11\n\t"
-    );
+            /**
+             * Timing
+             */
+            //Perform timing
+            "TIMING_JUMPER:"
+            "pushq $0x11223344\n\t" //Save funcId to stack
+            "movq $0x1122334455667788,%r11\n\t"
+            "jmpq *%r11\n\t"
+            );
 }
 
 
 void __attribute__((used, naked, noinline)) callIdSaverScheme4() {
     __asm__ __volatile__ (
-    /**
-     * Read TLS part
-     */
-    "mov $0x1122334455667788,%r11\n\t"//Move the tls offset of context to r11
-    "mov %fs:(%r11),%r11\n\t" //Now r11 points to the tls header
-    //Check whether the context is initialized
-    "cmpq $0,%r11\n\t"
-    //Skip processing if context is not initialized
-    "jz SKIP1\n\t"
+        /**
+         * Read TLS part
+         */
+            "mov $0x1122334455667788,%r11\n\t"//Move the tls offset of context to r11
+            "mov %fs:(%r11),%r11\n\t" //Now r11 points to the tls header
+            //Check whether the context is initialized
+            "cmpq $0,%r11\n\t"
+            //Skip processing if context is not initialized
+            "jz SKIP1\n\t"
 
 
-    /**
-     * Counting part
-     */
-    "pushq %r10\n\t"
+            /**
+             * Counting part
+             */
+            "pushq %r10\n\t"
 
-    "movq 0x650(%r11),%r11\n\t" //Fetch recArr.internalArr address from TLS -> r11
-    "movq 0x11223344(%r11),%r10\n\t" //Fetch recArr.internalArr[symId].count in Heap to -> r10
-    "addq $1,%r10\n\t" //count + 1
-    "movq %r10,0x11223344(%r11)\n\t" //Store count
+            "movq 0x650(%r11),%r11\n\t" //Fetch recArr.internalArr address from TLS -> r11
+            "movq 0x11223344(%r11),%r10\n\t" //Fetch recArr.internalArr[symId].count in Heap to -> r10
+            "addq $1,%r10\n\t" //count + 1
+            "movq %r10,0x11223344(%r11)\n\t" //Store count
 
-    "movq 0x11223344(%r11),%r11\n\t" //Fetch recArr.internalArr[symId].gap in Heap to -> r11
-    "andq %r11,%r10\n\t" //count value (r10) % gap (r11) -> r11, gap value must be a power of 2
-    "cmpq $0,%r10\n\t" //If necessary count % gap == 0. Use timing
-    "pop %r10\n\t"
-    "jz TIMING_JUMPER1\n\t" //Check if context is initialized
+            "movq 0x11223344(%r11),%r11\n\t" //Fetch recArr.internalArr[symId].gap in Heap to -> r11
+            "andq %r11,%r10\n\t" //count value (r10) % gap (r11) -> r11, gap value must be a power of 2
+            "cmpq $0,%r10\n\t" //If necessary count % gap == 0. Use timing
+            "pop %r10\n\t"
+            "jz TIMING_JUMPER1\n\t" //Check if context is initialized
 
-    /**
-    * Return
-    */
-    "SKIP1:"
-    "movq $0x1122334455667788,%r11\n\t" //GOT address
-    "jmpq *(%r11)\n\t"
-    "pushq $0x11223344\n\t" //Plt stub id
-    "movq $0x1122334455667788,%r11\n\t" //First plt entry
-    "jmpq *%r11\n\t"
+            /**
+            * Return
+            */
+            "SKIP1:"
+            "movq $0x1122334455667788,%r11\n\t" //GOT address
+            "jmpq *(%r11)\n\t"
+            "pushq $0x11223344\n\t" //Plt stub id
+            "movq $0x1122334455667788,%r11\n\t" //First plt entry
+            "jmpq *%r11\n\t"
 
-    /**
-     * Timing
-     */
-    //Perform timing
-    "TIMING_JUMPER1:"
-    "pushq $0x11223344\n\t" //Save funcId to stack
-    "movq $0x1122334455667788,%r11\n\t"
-    "jmpq *%r11\n\t"
-    );
+            /**
+             * Timing
+             */
+            //Perform timing
+            "TIMING_JUMPER1:"
+            "pushq $0x11223344\n\t" //Save funcId to stack
+            "movq $0x1122334455667788,%r11\n\t"
+            "jmpq *%r11\n\t"
+            );
 }

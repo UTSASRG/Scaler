@@ -6,10 +6,10 @@
  */
 struct RecTuple {
     uint64_t totalClockCycles; //8
+    uint64_t totalClockCyclesUnScaled; //8
     int64_t count; //8
     int32_t gap; //4
     float meanClockTick; //4
-    int32_t durThreshold; //4
     uint32_t flags; //4
 };
 

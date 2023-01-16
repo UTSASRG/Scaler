@@ -6,14 +6,14 @@ Display related parameter:
 '''
 
 
-class VPG:
+class VLG:
     def __init__(self):
         self.value = 0
-        self.parentPercent = 0.0
+        self.localPercent = 0.0
         self.globalPercent = 0.0
 
     def __str__(self):
-        return 'Val:' + str(self.value) + ' Parent:%.5f Global:%.5f' % (self.parentPercent, self.globalPercent)
+        return 'Val:' + str(self.value) + ' Local:%.5f Global:%.5f' % (self.localPercent, self.globalPercent)
 
 
 class VG:
@@ -25,21 +25,21 @@ class VG:
         return 'Val:' + str(self.value) + ' Global:%.5f' % (self.globalPercent)
 
 
-class VTG:
+class VLG:
     def __init__(self):
         self.value = 0
-        self.totalPercent = 0
+        self.localPercent = 0
         self.globalPercent = 0
 
     def __str__(self):
-        return 'Val:' + str(self.value) + ' Total:%.5f Global:%.5f' % (self.totalPercent, self.globalPercent)
+        return 'Val:' + str(self.value) + ' Local:%.5f Global:%.5f' % (self.localPercent, self.globalPercent)
 
 
 class ExtSymRecord:
     def __init__(self):
         self.symbolName = ''
-        self.totalClockCycles = VPG()  # Key: symbolName Val: symbolTime
-        self.counts = VPG()
+        self.totalClockCycles = VLG()  # Key: symbolName Val: symbolTime
+        self.counts = VLG()
 
     def __str__(self):
         return 'Name: %s Count: %s Time: %s' % (self.symbolName, 'self.counts', str(self.totalClockCycles))
@@ -48,8 +48,8 @@ class ExtSymRecord:
 class ExtFileRecord:
     def __init__(self):
         self.fileName = ''
-        self.totalClockCycles = VPG()  # Key: symbolName Val: symbolTime
-        self.counts = VPG()
+        self.totalClockCycles = VLG()  # Key: symbolName Val: symbolTime
+        self.counts = VLG()
         self.extSymTiming = defaultdict(ExtSymRecord)  # Key: fileName Val: ExtSymTimingRecord
 
     def __str__(self):
@@ -59,8 +59,8 @@ class ExtFileRecord:
 class FileRecord:
     def __init__(self):
         self.fileName = ''
-        self.selfClockCycles = VTG()  # Key: symbolName Val: symbolTime
-        self.childrenClockCycles = VTG()  # Key: symbolName Val: symbolTime
+        self.selfClockCycles = VLG()  # Key: symbolName Val: symbolTime
+        self.childrenClockCycles = VLG()  # Key: symbolName Val: symbolTime
         self.extFileTiming = defaultdict(ExtFileRecord)  # Key: fileName Val: ExtSymTimingRecord
 
     def __str__(self):
@@ -91,11 +91,10 @@ These structs should be consistent with https://github.com/UTSASRG/Scaler/blob/f
 class RecTuple(Structure):
     _fields_ = [
         ('totalClockCycles', c_uint64),
+        ('totalClockCyclesUnScaled', c_uint64),
         ('count', c_int64),
-        ('_prevCount', c_int64),
         ('_gap', c_uint32),
         ('_meanClockTick', c_float),
-        ('_durThreshold', c_uint32),
         ('_flags', c_uint32)]
 
 

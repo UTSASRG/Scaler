@@ -20,7 +20,6 @@ namespace scaler {
         uint8_t *pltEntryAddr = nullptr; //(8 bytes)
         uint8_t *pltSecEntryAddr = nullptr; //(8 bytes)
         uint64_t pltStubId = 0; //(8 bytes)
-        FileID libFileId = -1; //(8 bytes) Deprecated, move to a dedicated array
         ssize_t initialGap = 0;//8 Bytes. Initial gap value
     };
 }

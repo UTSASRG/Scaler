@@ -21,7 +21,6 @@
 
 scaler::SymID pthreadCreateSymId;
 
-uint32_t *countingArr = nullptr;
 namespace scaler {
 
 
@@ -31,7 +30,8 @@ namespace scaler {
         std::stringstream ss;
         ss << scaler::ExtFuncCallHook::instance->folderName << "/symbolInfo.txt";
         FILE *symInfoFile = fopen(ss.str().c_str(), "a");
-        if (!symInfoFile) { fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
+        if (!symInfoFile) {
+            fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
         }
         fprintf(symInfoFile, "%s,%s,%s\n", "funcName", "fileId", "symIdInFile");
         fclose(symInfoFile);
@@ -43,10 +43,6 @@ namespace scaler {
 
         parseRequiredInfo();
 
-        //Allocate counting array todo:Mem leak
-        countingArr = (uint32_t *) mmap(nullptr, sizeof(uint32_t) * allExtSymbol.getSize() * 2,
-                                        PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE,
-                                        -1, 0); //todo: memory leak
 
         if (!initTLS()) {
             ERR_LOG("Failed to initialize TLS");
@@ -113,7 +109,8 @@ namespace scaler {
     ExtFuncCallHook *ExtFuncCallHook::getInst(std::string folderName) {
         if (!instance) {
             instance = new ExtFuncCallHook(folderName);
-            if (!instance) { fatalError("Cannot allocate memory for ExtFuncCallHookAsm");
+            if (!instance) {
+                fatalError("Cannot allocate memory for ExtFuncCallHookAsm");
                 return nullptr;
             }
         }
@@ -161,7 +158,8 @@ namespace scaler {
         std::stringstream ss;
         ss << scaler::ExtFuncCallHook::instance->folderName << "/symbolInfo.txt";
         FILE *symInfoFile = fopen(ss.str().c_str(), "a");
-        if (!symInfoFile) { fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
+        if (!symInfoFile) {
+            fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
         }
         assert(pltSection.size / pltSection.entrySize == parser.relaEntrySize + 1);
         for (ssize_t i = 0; i < parser.relaEntrySize; ++i) {
@@ -191,7 +189,6 @@ namespace scaler {
             //Make sure space is enough, if space is enough, array won't allocate
             ExtSymInfo *newSym = allExtSymbol.pushBack();
 
-
 //            newSym->addrResolved = abs(curGotDest - pltSection.startAddr) > pltSection.size;
             newSym->fileId = fileId;
             newSym->symIdInFile = i;
@@ -208,6 +205,7 @@ namespace scaler {
                     fileId,
                     newSym->symIdInFile, newSym->pltEntryAddr, newSym->pltSecEntryAddr, newSym->pltStubId);
         }
+
         fclose(symInfoFile);
         return true;
     }
@@ -553,8 +551,8 @@ namespace scaler {
     const int PLT_STUB_ID = SKIP_PART_START + 14, PLT_STUB_ID_SIZE = 32;
     const int PLT_START_ADDR = SKIP_PART_START + 20, PLT_START_ADDR_SIZE = 64;
 
-    const int COUNT_OFFSET_IN_RECARR = 0x8;
-    const int GAP_OFFSET_IN_RECARR = 0x10;
+    const int COUNT_OFFSET_IN_RECARR = 0x10;
+    const int GAP_OFFSET_IN_RECARR = 0x18;
 
     const int TIMING_PART_START = SKIP_PART_START + 31;
     const int SYM_ID = TIMING_PART_START + 1, FUNC_ID_SIZE = 32;
@@ -578,7 +576,7 @@ namespace scaler {
              */
             //push %r10
             0x41, 0x52,
-            //mov    0x850(%r11),%r11
+            //mov    0x858(%r11),%r11
             0x4D, 0x8B, 0x9B, 0x50, 0x08, 0x00, 0x00,
             //mov    0x00000000(%r11),%r10
             0x4D, 0x8B, 0x93, 0x00, 0x00, 0x00, 0x00,
@@ -630,7 +628,8 @@ namespace scaler {
             pushOffset = 7;
         } else if (*dest == 0xF3) {
             pushOffset = 5;
-        } else { fatalError("Plt entry format illegal. Cannot find instruction \"push id\"");
+        } else {
+            fatalError("Plt entry format illegal. Cannot find instruction \"push id\"");
         }
 
         //Debug tips: Add breakpoint after this statement, and *pltStubId should be 0 at first, 2 at second .etc
@@ -658,11 +657,11 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-        "movq 0x2F15F0(%%rip),%0\n\t"
-        :"=r" (tlsOffset)
-        :
-        :
-        );
+                "movq 0x2F15E8(%%rip),%0\n\t"
+                :"=r" (tlsOffset)
+                :
+                :
+                );
 
         memcpy(idSaverEntry + COUNT_TLS_ARR_ADDR, &tlsOffset, sizeof(void *));
 
@@ -719,7 +718,8 @@ namespace scaler {
 
                     //todo: We assume plt and got entry size is the same.
                     if (!parseSecInfos(elfParser, pltInfo, pltSecInfo, gotInfo, prevFileBaseAddr, prevFileBaseAddr,
-                                       pmParser.pmEntryArray[i - 1].addrEnd)) { fatalError(
+                                       pmParser.pmEntryArray[i - 1].addrEnd)) {
+                        fatalError(
                                 "Failed to parse plt related sections.");
                         exit(-1);
                     }
@@ -733,7 +733,8 @@ namespace scaler {
                     //Install hook on this file
                     if (!parseSymbolInfo(elfParser, prevFileId, prevFileBaseAddr, pltInfo, pltSecInfo,
                                          gotInfo, prevFileBaseAddr,
-                                         pmParser.pmEntryArray[i - 1].addrEnd)) { fatalErrorS(
+                                         pmParser.pmEntryArray[i - 1].addrEnd)) {
+                        fatalErrorS(
                                 "installation for file %s failed.", curFileName.c_str());
                         exit(-1);
                     }
@@ -778,7 +779,8 @@ namespace scaler {
                                           curSymInfo.pltStubId,
                                           curSymId * sizeof(RecTuple) + COUNT_OFFSET_IN_RECARR,
                                           curSymId * sizeof(RecTuple) + GAP_OFFSET_IN_RECARR,
-                                          curCallIdSaver)) { fatalError(
+                                          curCallIdSaver)) {
+                fatalError(
                         "fillAddrAndSymId2IdSaver failed, this should not happen");
             }
             curCallIdSaver += sizeof(idSaverBin);
@@ -814,12 +816,14 @@ namespace scaler {
 
             if (curSym.pltSecEntryAddr) {
                 //Replace .plt.sec
-                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltSecEntryAddr)) { fatalError(
+                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltSecEntryAddr)) {
+                    fatalError(
                             "pltSecAddr installation failed, this should not happen");
                 }
             } else {
                 //Replace .plt
-                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltEntryAddr)) { fatalError(
+                if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltEntryAddr)) {
+                    fatalError(
                             "pltEntry installation failed, this should not happen");
                 }
             }
@@ -838,8 +842,9 @@ namespace scaler {
 
     void ExtFuncCallHook::createRecordingFolder() {
         //sprintf(folderName, "scalerdata_%lu", getunixtimestampms());
-        if (mkdir(folderName.c_str(), 0755) == -1) { fatalErrorS("Cannot mkdir ./%s because: %s", folderName.c_str(),
-                                                                 strerror(errno));
+        if (mkdir(folderName.c_str(), 0755) == -1) {
+            fatalErrorS("Cannot mkdir ./%s because: %s", folderName.c_str(),
+                        strerror(errno));
         }
 
     }
