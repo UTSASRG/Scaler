@@ -91,11 +91,10 @@ These structs should be consistent with https://github.com/UTSASRG/Scaler/blob/f
 class RecTuple(Structure):
     _fields_ = [
         ('totalClockCycles', c_uint64),
+        ('totalClockCyclesUnScaled', c_uint64),
         ('count', c_int64),
-        ('_prevCount', c_int64),
         ('_gap', c_uint32),
         ('_meanClockTick', c_float),
-        ('_durThreshold', c_uint32),
         ('_flags', c_uint32)]
 
 

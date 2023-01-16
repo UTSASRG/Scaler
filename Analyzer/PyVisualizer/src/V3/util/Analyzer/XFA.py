@@ -1,7 +1,9 @@
 from datastructure.TimingStruct import RecordingInfo, FileRecord
 
 
-def generateXFAStruct(aggregatedTimeEntries, aggregatedStartingTime, recInfo: RecordingInfo):
+def generateXFAStruct(aggregatedTimeEntries: list,
+                      aggregatedCreatorTime: dict,
+                      recInfo: RecordingInfo):
     timingRecord = []  # Map file name to FileRecord struct
     mainFileId = None
 
@@ -21,7 +23,7 @@ def generateXFAStruct(aggregatedTimeEntries, aggregatedStartingTime, recInfo: Re
     totalInvocationCount = 0
 
     # Attribute the total thread running time
-    for fileId, totalClockCycles in aggregatedStartingTime.items():
+    for fileId, totalClockCycles in aggregatedCreatorTime.items():
         timingRecord[fileId].selfClockCycles.value = totalClockCycles
         totalProgramRunningTIme += totalClockCycles
 
@@ -40,7 +42,7 @@ def generateXFAStruct(aggregatedTimeEntries, aggregatedStartingTime, recInfo: Re
             # Attribute time to callee
             curFileRecord = timingRecord[recInfo.symbolFileIdList[i]]
             curFileRecord.fileName = recInfo.fileNameList[recInfo.symbolFileIdList[i]]
-            curFileRecord.selfClockCycles.value -= aggregatedTimeEntries[i].totalClockCycles
+            curFileRecord.selfClockCycles.value -= aggregatedTimeEntries[i].totalClockCyclesUnScaled
             curFileRecord.childrenClockCycles.value += aggregatedTimeEntries[i].totalClockCycles
 
             curExtFileRecord = curFileRecord.extFileTiming[recInfo.realFileIdList[i]]
@@ -56,7 +58,7 @@ def generateXFAStruct(aggregatedTimeEntries, aggregatedStartingTime, recInfo: Re
             # Attribute time to caller
             realFileRecord = timingRecord[recInfo.realFileIdList[i]]
             # realFileRecord.fileName = fileNameList[recInfo.realFileIdList[i]]
-            realFileRecord.selfClockCycles.value += aggregatedTimeEntries[i].totalClockCycles
+            realFileRecord.selfClockCycles.value += aggregatedTimeEntries[i].totalClockCyclesUnScaled
 
             totalInvocationCount += aggregatedTimeEntries[i].count
 

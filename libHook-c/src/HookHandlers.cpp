@@ -395,12 +395,13 @@ void *afterHookHandler() {
     //compare current timestamp with the previous timestamp
 
     float &meanClockCycle = curContextPtr->recArr->internalArr[symbolId].meanClockTick;
-    int32_t &clockCycleThreshold = curContextPtr->recArr->internalArr[symbolId].durThreshold;
 
     int64_t clockCyclesDuration = (int64_t) (postHookClockCycles - preClockCycle);
-    int64_t scaledClockCyclesDuration = clockCyclesDuration;
+    int64_t scaledClockCyclesDuration;
     if (threadNum > 1) {
         scaledClockCyclesDuration = clockCyclesDuration / threadNum;
+    } else {
+        scaledClockCyclesDuration = clockCyclesDuration;
     }
 
 #ifdef INSTR_TIMING
@@ -413,8 +414,8 @@ void *afterHookHandler() {
 
     //RDTSCTiming if not skipped
     curContextPtr->recArr->internalArr[symbolId].totalClockCycles += scaledClockCyclesDuration;
+    curContextPtr->recArr->internalArr[symbolId].totalClockCyclesUnScaled += scaledClockCyclesDuration;
     //Attribute api time sum to selfTimeArr
-    curContextPtr->selfTimeArr->internalArr[curElfSymInfo.fileId] += clockCyclesDuration;
 
 
     bypassCHooks = SCALER_FALSE;

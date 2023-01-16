@@ -11,7 +11,7 @@ from multiprocessing import Pool
 from multiprocessing import Pool, cpu_count
 import time
 
-from Analyzer.PyVisualizer.src.V3.util.Quantile import calcQuantile
+from util.Quantile import calcQuantile
 from datastructure.TimingStruct import ArrayDescriptor
 from util.Parser.DetailedTimeOutputPrarser import parseSingleSymDetailedTiming
 from util.Parser.TimeOutputPrarser import readSymbolFiles, aggregatePerThreadArray, readTimingStruct
@@ -107,8 +107,11 @@ def printInvocCnt(scalerDataFolder):
 
     totalCountArr1 = totalCountArr[np.where(totalCountArr > 0)]
 
-    minima, q1, q2, q3, q4, iqr, qLower, qUpper = calcQuantile(totalCountArr1)
-    print(scalerDataFolder.split('/')[-3], minima, q1, q2, q3, q4, iqr, qLower, qUpper, np.sum(totalCountArr1), sep='\t')
+    if len(totalCountArr1)==0:
+        print(scalerDataFolder.split('/')[-3], 0, 0, 0, 0, 0, 0, 0, 0, 0, sep='\t')
+    else:
+        minima, q1, q2, q3, q4, iqr, qLower, qUpper = calcQuantile(totalCountArr1)
+        print(scalerDataFolder.split('/')[-3], minima, q1, q2, q3, q4, iqr, qLower, qUpper, np.sum(totalCountArr1), sep='\t')
 
 
 class APIInfo:
@@ -217,6 +220,8 @@ scalerDataFolders = [
     '/media/umass/datasystem/steven/Downloads/performancetest20221124/2022-11-30_19-51-43-DetailedTiming/Application.db.redis.redis_7_0_4_0/Scaler-DETAIL-Artifects/scalerdata_1100850174945384',
     '/media/umass/datasystem/steven/Downloads/performancetest20221124/2022-11-30_19-51-43-DetailedTiming/Application.db.sqlite.sqlite_3_39_4_0/Scaler-DETAIL-Artifects/scalerdata_1101150204449494'
 ]
+
+scalerDataFolders = ['/tmp/scalerdata_455686173878618']
 
 print('Thread inovked API #')
 for scalerDataFolder in scalerDataFolders:

@@ -58,18 +58,18 @@ def readTimingStruct(ROOT_PATH, threadId):
     return recDataArr, threadCreatorInfo
 
 
-def readSelfTimingStruct(ROOT_PATH, threadId):
-    selfTimeList = None
-    with open(os.path.join(ROOT_PATH, 'selfTimeAttribution_%s.bin' % threadId), 'rb') as f:
-        arrayDescriptor = ArrayDescriptor()
-        f.readinto(arrayDescriptor)
-        assert (arrayDescriptor._magicNum == 167)
-
-        selfTimeList = list(struct.unpack_from('<%dQ' % (arrayDescriptor.arraySize),
-                                               f.read(arrayDescriptor.arrayElemSize * arrayDescriptor.arraySize)))
-    # assert (len(symbolNameList) == recArrSize - 1)
-    return selfTimeList
-
+# def readApiInvocTimeByLibStruct(ROOT_PATH, threadId):
+#     selfTimeList = None
+#     with open(os.path.join(ROOT_PATH, 'apiInvocTimeByLib_%s.bin' % threadId), 'rb') as f:
+#         arrayDescriptor = ArrayDescriptor()
+#         f.readinto(arrayDescriptor)
+#         assert (arrayDescriptor._magicNum == 167)
+#
+#         selfTimeList = list(struct.unpack_from('<%dQ' % (arrayDescriptor.arraySize),
+#                                                f.read(arrayDescriptor.arrayElemSize * arrayDescriptor.arraySize)))
+#     # assert (len(symbolNameList) == recArrSize - 1)
+#     return selfTimeList
+#
 
 def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
     """
@@ -83,44 +83,38 @@ def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
     :return startingInfoArray: Information about thread creator. This value is used in time aggregation steps
     """
     api = 0
-    fgdsApi = 0
-    fgdsCount = 0
     totalCount = 0
 
     aggregatedTimeArray = []
-    aggregatedStartingTime = defaultdict(
-        lambda: 0)  # Map fileId and starting time. Thread may created by modules other than the main application
+    aggregatedCreatorTime = defaultdict(
+        lambda: 0)  # Map fileId and starting time. Thread may be created by modules other than the main application
+    # aggregatedApiUnscaledInvcTimeByLib = []
+
     for threadId in recInfo.threadIdList:
         curThreadRecArray, threadCreatorInfo = readTimingStruct(scalerDataFolder, threadId)
-        aggregatedStartingTime[threadCreatorInfo.threadCreatorFileId] += threadCreatorInfo.threadExecutionCycles
+        # curApiUnscaledInvcTimeByLib = readApiInvocTimeByLibStruct(scalerDataFolder, threadId)
+
+        aggregatedCreatorTime[threadCreatorInfo.threadCreatorFileId] += threadCreatorInfo.threadExecutionCycles
         # print(curThreadRecArray[-1].totalClockCycles)
 
-        for i, curRec in enumerate(curThreadRecArray[:-1]):
-            if curRec._flags & (1 << 0):
-                fgdsApi += 1
-                fgdsCount += curRec.count
+        for i, curRec in enumerate(curThreadRecArray):
             api += 1
             totalCount += curRec.count
             # if curRec.count>0:
             # print('totalCount',totalCount,curRec.count)
-        if len(curThreadRecArray) != len(aggregatedTimeArray) + 1:
+        if len(curThreadRecArray) != len(aggregatedTimeArray):
             # First time
-            aggregatedTimeArray = curThreadRecArray[:-1].copy()
+            aggregatedTimeArray = curThreadRecArray.copy()
+            # aggregatedApiUnscaledInvcTimeByLib = curApiUnscaledInvcTimeByLib.copy()
         else:
-            for i, curRec in enumerate(curThreadRecArray[:-1]):
+            for i, curRec in enumerate(curThreadRecArray):
                 aggregatedTimeArray[i].count += curRec.count
-                # if recInfo.symbolNameList[i] == 'pthread_join':
-                #     print('Skip pthread_join')
-                #     continue
+                aggregatedTimeArray[i].totalClockCycles += curRec.totalClockCycles
 
-                if aggregatedTimeArray[i]._flags & (1 << 0):
-                    # Use mean and count to estimate total clock cycles
-                    aggregatedTimeArray[i].totalClockCycles += int(curRec.count * curRec._meanClockTick)
-                else:
-                    aggregatedTimeArray[i].totalClockCycles += curRec.totalClockCycles
-    print('fgdsapi/api=', round(fgdsApi / api * 100, 2), 'fgdsCount/TotalCount=',
-          round(fgdsCount / totalCount * 100, 2), sep='\t')
-    return aggregatedTimeArray, aggregatedStartingTime
+            # for i, curTime in enumerate(curApiUnscaledInvcTimeByLib):
+            #     aggregatedApiUnscaledInvcTimeByLib[i] += curTime
+
+    return aggregatedTimeArray, aggregatedCreatorTime
 
 
 pthreadFileRegex = re.compile(r'libpthread-.*\.so$')

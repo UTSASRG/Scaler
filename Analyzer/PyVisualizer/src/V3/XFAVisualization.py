@@ -10,28 +10,24 @@ from util.Parser.TimeOutputPrarser import aggregatePerThreadArray, readSymbolFil
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
-scalerDataFolder = '/tmp/scalerdata_339928789741076'
+scalerDataFolder = '/tmp/tmp5_2108qs/libScalerHook-HookAutoAsm-C.so/scalerdata_454232674532264'
+scalerDataFolder = '/tmp/scalerdata_457030350800482'
 
 recInfo = readSymbolFiles(scalerDataFolder)
 
 realFileId = None
 
-aggregatedTimeArray, aggregatedStartingTime = aggregatePerThreadArray(scalerDataFolder, recInfo)
+aggregatedTimeArray, aggregatedCreatorTime = aggregatePerThreadArray(scalerDataFolder,  recInfo)
+# The previous timing data is filtered, and thus it is necessary to record
 
-for i, v in enumerate(aggregatedTimeArray):
-    if v.count > 0:
-        curRealFileId=recInfo.realFileIdList[i]
-        if curRealFileId==len(recInfo.fileNameList):
-            curRealFileId=len(recInfo.fileNameList)-1
-        print(recInfo.symbolNameList[i], recInfo.fileNameList[curRealFileId], v.count, sep='\t')
 
 # Generate graph
-timingRecord = generateXFAStruct(list(aggregatedTimeArray), aggregatedStartingTime, recInfo)
+timingRecord = generateXFAStruct(list(aggregatedTimeArray),aggregatedCreatorTime, recInfo)
 
 print(timingRecord)
 
 for time in timingRecord:
-    print(time.fileName,time.selfClockCycles.value,sep='\t')
+    print(time.fileName, time.selfClockCycles.value, sep='\t')
 
 # totalSelfTime = 0
 # for fileRec in timingRecord:

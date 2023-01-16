@@ -12,7 +12,6 @@ constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<sc
 
     uint8_t *contextHeap = static_cast<uint8_t *>(mmap(NULL, sizeof(HookContext) +
                                                              sizeof(scaler::Array<uint64_t>) +
-                                                             sizeof(scaler::Array<uint64_t>) +
                                                              sizeof(pthread_mutex_t), PROT_READ | PROT_WRITE,
                                                        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
 //    INFO_LOGS("Context size=%lu %p", sizeof(HookContext) +
@@ -23,11 +22,8 @@ constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<sc
     memset(rlt, 0, sizeof(HookContext) + sizeof(scaler::Array<RecTuple>) + sizeof(scaler::Array<RecTuple>) +
                    sizeof(pthread_mutex_t));
     rlt->recArr = new(contextHeap + sizeof(HookContext)) scaler::Array<RecTuple>(hookedSymbolSize);
-    rlt->selfTimeArr = new(contextHeap + sizeof(HookContext) + sizeof(scaler::Array<uint64_t>)) scaler::Array<uint64_t>(
-            libFileSize);
     rlt->threadDataSavingLock = reinterpret_cast<pthread_mutex_t *>(contextHeap + sizeof(HookContext) +
-                                                                    +sizeof(scaler::Array<uint64_t>) +
-                                                                    sizeof(scaler::Array<uint64_t>));
+                                                                    +sizeof(scaler::Array<uint64_t>));
 #ifdef INSTR_TIMING
     detailedTimingVectors = new TIMING_TYPE *[hookedSymbolSize];
     detailedTimingVectorSize = new TIMING_TYPE[hookedSymbolSize];
@@ -121,7 +117,7 @@ bool initTLS() {
     //Initialize saving data structure
 
     curContext = constructContext(scaler::ExtFuncCallHook::instance->elfImgInfoMap.getSize(),
-                                  scaler::ExtFuncCallHook::instance->allExtSymbol.getSize() + 1,
+                                  scaler::ExtFuncCallHook::instance->allExtSymbol.getSize(),
                                   scaler::ExtFuncCallHook::instance->allExtSymbol);
 //#ifdef PRINT_DBG_LOG
     printRecOffset();
@@ -236,7 +232,11 @@ inline void savePerThreadTimingData(std::stringstream &ss, HookContext *curConte
     arrayDescriptor->magicNum = 167;
     fileContentInMem += sizeof(ArrayDescriptor);
 
-
+//    for(int i=0;i<curContextPtr->recArr->getSize();++i){
+//        if(curContextPtr->recArr->internalArr[i].count>0){
+//            printf("%ld\n",curContextPtr->recArr->internalArr[i].count);
+//        }
+//    }
     /**
      * Write recording tuple onto the disk
      */
@@ -250,38 +250,38 @@ inline void savePerThreadTimingData(std::stringstream &ss, HookContext *curConte
     INFO_LOGS("Saving data to %s, %lu", scaler::ExtFuncCallHook::instance->folderName.c_str(), pthread_self());
 }
 
-inline void savePerThreadSelfTimeData(std::stringstream &ss, HookContext *curContextPtr){
-    ss.str("");
-    ss << scaler::ExtFuncCallHook::instance->folderName << "/selfTimeAttribution_"<< curContextPtr->threadId << ".bin";
-    //The real id of each function is resolved in after hook, so I can only save it in datasaver
-
-    int fd;
-    ssize_t selfTimeSizeInBytes = sizeof(ArrayDescriptor) + (curContextPtr->selfTimeArr->getSize()) * sizeof(uint64_t);
-    uint8_t *fileContentInMem = nullptr;
-    if (!scaler::fOpen4Write<uint8_t>(ss.str().c_str(), fd, selfTimeSizeInBytes, fileContentInMem)) {
-        fatalErrorS(
-                "Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
-    }
-    uint8_t *_fileContentInMem = fileContentInMem;
-
-    /**
-     * Write array descriptor first
-     */
-    ArrayDescriptor *arrayDescriptor = reinterpret_cast<ArrayDescriptor *>(fileContentInMem);
-    arrayDescriptor->arrayElemSize = sizeof(uint64_t);
-    arrayDescriptor->arraySize = curContextPtr->selfTimeArr->getSize();
-    arrayDescriptor->magicNum = 167;
-    fileContentInMem += sizeof(ArrayDescriptor);
-
-    uint64_t *realFileIdMem = reinterpret_cast<uint64_t *>(fileContentInMem);
-    for (int i = 0; i < curContextPtr->selfTimeArr->getSize(); ++i) {
-        realFileIdMem[i] = curContextPtr->selfTimeArr->internalArr[i];
-    }
-
-    if (!scaler::fClose<uint8_t>(fd, selfTimeSizeInBytes, _fileContentInMem)) {
-        fatalErrorS("Cannot close file %s, because %s", ss.str().c_str(), strerror(errno));
-    }
-}
+//inline void saveApiInvocTimeByLib(std::stringstream &ss, HookContext *curContextPtr){
+//    ss.str("");
+//    ss << scaler::ExtFuncCallHook::instance->folderName << "/apiInvocTimeByLib_"<< curContextPtr->threadId << ".bin";
+//    //The real id of each function is resolved in after hook, so I can only save it in datasaver
+//
+//    int fd;
+//    ssize_t selfTimeSizeInBytes = sizeof(ArrayDescriptor) + (curContextPtr->selfTimeArr->getSize()) * sizeof(uint64_t);
+//    uint8_t *fileContentInMem = nullptr;
+//    if (!scaler::fOpen4Write<uint8_t>(ss.str().c_str(), fd, selfTimeSizeInBytes, fileContentInMem)) {
+//        fatalErrorS(
+//                "Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
+//    }
+//    uint8_t *_fileContentInMem = fileContentInMem;
+//
+//    /**
+//     * Write array descriptor first
+//     */
+//    ArrayDescriptor *arrayDescriptor = reinterpret_cast<ArrayDescriptor *>(fileContentInMem);
+//    arrayDescriptor->arrayElemSize = sizeof(uint64_t);
+//    arrayDescriptor->arraySize = curContextPtr->selfTimeArr->getSize();
+//    arrayDescriptor->magicNum = 167;
+//    fileContentInMem += sizeof(ArrayDescriptor);
+//
+//    uint64_t *realFileIdMem = reinterpret_cast<uint64_t *>(fileContentInMem);
+//    for (int i = 0; i < curContextPtr->selfTimeArr->getSize(); ++i) {
+//        realFileIdMem[i] = curContextPtr->selfTimeArr->internalArr[i];
+//    }
+//
+//    if (!scaler::fClose<uint8_t>(fd, selfTimeSizeInBytes, _fileContentInMem)) {
+//        fatalErrorS("Cannot close file %s, because %s", ss.str().c_str(), strerror(errno));
+//    }
+//}
 
 inline void saveRealFileId(std::stringstream &ss, HookContext *curContextPtr) {
     ss.str("");
@@ -334,7 +334,6 @@ inline void saveDataForAllOtherThread(std::stringstream &ss, HookContext *curCon
 }
 
 
-
 void saveData(HookContext *curContextPtr, bool finalize) {
     bypassCHooks = SCALER_TRUE;
     if (!curContextPtr) {
@@ -367,7 +366,7 @@ void saveData(HookContext *curContextPtr, bool finalize) {
 #endif
 
     savePerThreadTimingData(ss, curContextPtr);
-    savePerThreadSelfTimeData(ss, curContextPtr);
+//    saveApiInvocTimeByLib(ss, curContextPtr);
 
     if (curContextPtr->isMainThread || finalize) {
         saveRealFileId(ss, curContextPtr);
