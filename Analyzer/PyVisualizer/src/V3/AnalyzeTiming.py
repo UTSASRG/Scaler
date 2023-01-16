@@ -28,7 +28,7 @@ def parsePerLibSelfTime(scalerDataFolder):
     totalTimingArr = None
     totalVarianceArry = None
     for threadId in recInfo.threadIdList:
-        curThreadRecArray = readTimingStruct(scalerDataFolder, threadId)
+        curThreadRecArray, threadCreatorInfo = readTimingStruct(scalerDataFolder, threadId)
 
         cycles = np.array([rec.totalClockCycles for rec in curThreadRecArray])
         if totalTimingArr is None:
@@ -39,11 +39,11 @@ def parsePerLibSelfTime(scalerDataFolder):
     if len(totalTimingArr.shape) == 1:
         totalTimingArr = np.reshape(totalTimingArr, (1, -1))
 
-    sortedNameCntTuple = []
+    sortedNameTimeTuple = []
 
     for i in range(totalTimingArr.shape[1] - 1):
         if np.sum(totalTimingArr[:, i] > 0):
-            sortedNameCntTuple.append((i, recInfo.symbolNameList[i], recInfo.symbolFileIdList[i],
+            sortedNameTimeTuple.append((i, recInfo.symbolNameList[i], recInfo.symbolFileIdList[i],
                                        recInfo.fileNameList[recInfo.symbolFileIdList[i]],
                                        recInfo.realFileIdList[i], recInfo.fileNameList[recInfo.realFileIdList[i]],
                                        np.sum(totalTimingArr[:, i])))
@@ -52,7 +52,7 @@ def parsePerLibSelfTime(scalerDataFolder):
 
     libFileDict = defaultdict(int)
 
-    for symId, symName, invokerFIleId, invokerFileName, realFileId, realFileName, time in sorted(sortedNameCntTuple,
+    for symId, symName, invokerFIleId, invokerFileName, realFileId, realFileName, time in sorted(sortedNameTimeTuple,
                                                                                                  reverse=True,
                                                                                                  key=lambda x: x[-1]):
         libFileDict[realFileName] += time
@@ -78,9 +78,9 @@ print('Per-Lib infos')
 pathDict = defaultdict(list)
 
 for folderName in os.listdir(scalerDataFolders):
-    cache= folderName.split('.')[-1]
-    appName=cache[0:-2]
-    runTime=cache[-1:]
+    cache = folderName.split('.')[-1]
+    appName = cache[0:-2]
+    runTime = cache[-1:]
     scalerDataFolder = findScalerDataFolder(os.path.join(scalerDataFolders, folderName))
     pathDict[appName].append(scalerDataFolder)
 

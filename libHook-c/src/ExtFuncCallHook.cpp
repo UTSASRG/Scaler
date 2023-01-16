@@ -162,7 +162,6 @@ namespace scaler {
             fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
         }
         assert(pltSection.size / pltSection.entrySize == parser.relaEntrySize + 1);
-        ssize_t numOfAddedSymbols = 0;
         for (ssize_t i = 0; i < parser.relaEntrySize; ++i) {
             const char *funcName;
             Elf64_Word type;
@@ -189,7 +188,6 @@ namespace scaler {
 
             //Make sure space is enough, if space is enough, array won't allocate
             ExtSymInfo *newSym = allExtSymbol.pushBack();
-            ++numOfAddedSymbols;
 
 //            newSym->addrResolved = abs(curGotDest - pltSection.startAddr) > pltSection.size;
             newSym->fileId = fileId;
@@ -206,11 +204,6 @@ namespace scaler {
                     allExtSymbol.getSize() - 1, funcName, gotAddr, *gotAddr,
                     fileId,
                     newSym->symIdInFile, newSym->pltEntryAddr, newSym->pltSecEntryAddr, newSym->pltStubId);
-        }
-
-        if (fileId == 0) {
-            //Main application
-            applicationAPIScalerIdBoundary = numOfAddedSymbols;
         }
 
         fclose(symInfoFile);
@@ -664,7 +657,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2F1F98(%%rip),%0\n\t"
+                "movq 0x2F1FC0(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :

@@ -46,7 +46,6 @@ struct HookContext {
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
 extern uint32_t threadNum;
-extern uint32_t applicationAPIScalerIdBoundary;
 
 class DataSaver {
 public:

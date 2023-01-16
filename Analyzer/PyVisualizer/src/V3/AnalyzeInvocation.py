@@ -22,7 +22,7 @@ def calcInvokedApiNum(scalerDataFolder, recInfo):
     invokedAPIs = []
     totalAPIs = []
     for threadId in recInfo.threadIdList:
-        curThreadRecArray = readTimingStruct(scalerDataFolder, threadId)
+        curThreadRecArray,_ = readTimingStruct(scalerDataFolder, threadId)
         curThreadInvokedRecArray = [rec for rec in curThreadRecArray if rec.count > 0]
         invokedAPIs.append(len(curThreadInvokedRecArray))
         totalAPIs.append(len(curThreadRecArray))
@@ -32,7 +32,7 @@ def calcInvokedApiNum(scalerDataFolder, recInfo):
 def calcInvokedApiCNT(scalerDataFolder, recInfo):
     invokedAPICnts = []
     for threadId in recInfo.threadIdList:
-        curThreadRecArray = readTimingStruct(scalerDataFolder, threadId)
+        curThreadRecArray,_ = readTimingStruct(scalerDataFolder, threadId)
         invokedAPICnts.append(np.sum([rec.count for rec in curThreadRecArray]))
     return invokedAPICnts
 
@@ -48,7 +48,7 @@ def printInvocNumberByEachThread(scalerDataFolder):
     totalInvocationCnts = 0
 
     for threadId in recInfo.threadIdList:
-        curThreadRecArray = readTimingStruct(scalerDataFolder, threadId)
+        curThreadRecArray,_ = readTimingStruct(scalerDataFolder, threadId)
         # curThreadInvokedRecArray = [rec for rec in curThreadRecArray if rec.count > 0]
 
         times = np.array([rec.count for rec in curThreadRecArray])
@@ -71,7 +71,7 @@ def printInvocCntByEachThread(scalerDataFolder):
     totalInvocationCnts = 0
 
     for threadId in recInfo.threadIdList:
-        curThreadRecArray = readTimingStruct(scalerDataFolder, threadId)
+        curThreadRecArray,_ = readTimingStruct(scalerDataFolder, threadId)
         # curThreadInvokedRecArray = [rec for rec in curThreadRecArray if rec.count > 0]
 
         times = np.array([rec.count for rec in curThreadRecArray])
@@ -91,7 +91,7 @@ def printInvocCnt(scalerDataFolder):
 
     totalCountArr = None
     for threadId in recInfo.threadIdList:
-        curThreadRecArray = readTimingStruct(scalerDataFolder, threadId)
+        curThreadRecArray,_ = readTimingStruct(scalerDataFolder, threadId)
         # curThreadInvokedRecArray = [rec for rec in curThreadRecArray if rec.count > 0]
 
         times = np.array([rec.count for rec in curThreadRecArray])
@@ -131,7 +131,7 @@ def printPerAPIInfoAndCnts(scalerDataFolder):
     totalCountArr = None
     totalVarianceArry = None
     for threadId in recInfo.threadIdList:
-        curThreadRecArray = readTimingStruct(scalerDataFolder, threadId)
+        curThreadRecArray,_ = readTimingStruct(scalerDataFolder, threadId)
 
         counts = np.array([rec.count for rec in curThreadRecArray])
         if totalCountArr is None:
@@ -165,7 +165,7 @@ def printPerLibInfoAndCnts(scalerDataFolder):
     totalCountArr = None
     totalVarianceArry = None
     for threadId in recInfo.threadIdList:
-        curThreadRecArray = readTimingStruct(scalerDataFolder, threadId)
+        curThreadRecArray,_ = readTimingStruct(scalerDataFolder, threadId)
 
         counts = np.array([rec.count for rec in curThreadRecArray])
         if totalCountArr is None:

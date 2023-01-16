@@ -123,7 +123,7 @@ def analyzeOutlierRemovalTechnique(ROOT_PATH, methodFunction):
             _, threadId = fileName.replace('.bin', '').split('_')
 
             detailedTimingArr = parseSingleSymDetailedTiming(ROOT_PATH, threadId, None)
-            recArrForThisThread = readTimingStruct(ROOT_PATH, threadId)
+            recArrForThisThread,_ = readTimingStruct(ROOT_PATH, threadId)
             totalAPICount = len(detailedTimingArr)
             apiMetricsPerThread = []
 
