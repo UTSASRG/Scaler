@@ -5,21 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="107caec2-d35d-485d-b1fa-e3c3858cf970" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/../../../../.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/V3.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/V3.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/AnalyzeInvocation.py" beforeDir="false" afterPath="$PROJECT_DIR$/AnalyzeInvocation.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/XFAVisualization.py" beforeDir="false" afterPath="$PROJECT_DIR$/XFAVisualization.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/datastructure/TimingStruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/datastructure/TimingStruct.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/util/Analyzer/XFA.py" beforeDir="false" afterPath="$PROJECT_DIR$/util/Analyzer/XFA.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/util/Parser/TimeOutputPrarser.py" beforeDir="false" afterPath="$PROJECT_DIR$/util/Parser/TimeOutputPrarser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/ExtFuncCallHook.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/ExtFuncCallHook.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/HookContext.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/HookContext.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/HookHandlers.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/HookHandlers.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/include/type/ExtSymInfo.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/include/type/ExtSymInfo.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/include/type/RecTuple.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/include/type/RecTuple.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/include/util/hook/HookContext.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/include/util/hook/HookContext.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -189,7 +178,7 @@
       <workItem from="1668278734742" duration="229000" />
       <workItem from="1668279019538" duration="1966000" />
       <workItem from="1673840926360" duration="1640000" />
-      <workItem from="1673887707593" duration="826000" />
+      <workItem from="1673887707593" duration="3564000" />
     </task>
     <servers />
   </component>
@@ -197,23 +186,12 @@
     <option name="version" value="3" />
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/XFAVisualization.py</url>
-          <line>28</line>
-          <option name="timeStamp" value="4" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/util/Analyzer/XFA.py</url>
-          <line>34</line>
-          <option name="timeStamp" value="11" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
     <watches-manager>
       <configuration name="PythonConfigurationType">
         <watch expression="timingRecord" language="Python" />
+        <watch expression="extFileRecord.fileName" language="Python" />
+        <watch expression="extFileRecord.totalClockCycles" language="Python" />
+        <watch expression="fileRecord.extFileTiming.items()" language="Python" />
       </configuration>
     </watches-manager>
   </component>
@@ -221,6 +199,6 @@
     <SUITE FILE_PATH="coverage/V3$testBinSearch.coverage" NAME="testBinSearch Coverage Results" MODIFIED="1668280308053" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/V3$AnalyzeInvocation.coverage" NAME="AnalyzeInvocation Coverage Results" MODIFIED="1673887999877" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/V3$main.coverage" NAME="main Coverage Results" MODIFIED="1668279472793" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/V3$XFAVisualization.coverage" NAME="XFAVisualization Coverage Results" MODIFIED="1673888506976" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/V3$XFAVisualization.coverage" NAME="XFAVisualization Coverage Results" MODIFIED="1673890670837" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

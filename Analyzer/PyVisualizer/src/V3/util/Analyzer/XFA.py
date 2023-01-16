@@ -59,7 +59,6 @@ def generateXFAStruct(aggregatedTimeEntries: list,
             realFileRecord = timingRecord[recInfo.realFileIdList[i]]
             # realFileRecord.fileName = fileNameList[recInfo.realFileIdList[i]]
             realFileRecord.selfClockCycles.value += aggregatedTimeEntries[i].totalClockCyclesUnScaled
-
             totalInvocationCount += aggregatedTimeEntries[i].count
 
     timingRecord = calcPercentage(timingRecord, totalProgramRunningTIme, totalInvocationCount)
@@ -68,21 +67,25 @@ def generateXFAStruct(aggregatedTimeEntries: list,
 
 def calcPercentage(timingRecord, programRuntime, totalApiCallCount):
     for curFileRecord in timingRecord:
+        totalApiCallCountForThisCaller = 0
+        for curExtFileRecord in curFileRecord.extFileTiming.values():
+            totalApiCallCountForThisCaller+=curExtFileRecord.counts.value
+
         for curExtFileRecord in curFileRecord.extFileTiming.values():
             for curExtSymRecord in curExtFileRecord.extSymTiming.values():
                 if curExtFileRecord.counts.value > 0:
-                    curExtSymRecord.counts.parentPercent = curExtSymRecord.counts.value / curExtFileRecord.counts.value
+                    curExtSymRecord.counts.localPercent = curExtSymRecord.counts.value / curExtFileRecord.counts.value
                 else:
-                    curExtSymRecord.counts.parentPercent = 0.0
+                    curExtSymRecord.counts.localPercent = 0.0
                 if totalApiCallCount > 0:
                     curExtSymRecord.counts.globalPercent = curExtSymRecord.counts.value / totalApiCallCount
                 else:
                     curExtSymRecord.counts.globalPercent = 0.0
 
                 if curExtSymRecord.totalClockCycles.value > 0:
-                    curExtSymRecord.totalClockCycles.parentPercent = curExtSymRecord.totalClockCycles.value / curExtFileRecord.totalClockCycles.value
+                    curExtSymRecord.totalClockCycles.localPercent = curExtSymRecord.totalClockCycles.value / curExtFileRecord.totalClockCycles.value
                 else:
-                    curExtSymRecord.totalClockCycles.parentPercent = 0.0
+                    curExtSymRecord.totalClockCycles.localPercent = 0.0
 
                 if programRuntime > 0:
                     curExtSymRecord.totalClockCycles.globalPercent = curExtSymRecord.totalClockCycles.value / programRuntime
@@ -94,11 +97,16 @@ def calcPercentage(timingRecord, programRuntime, totalApiCallCount):
             else:
                 curExtFileRecord.counts.globalPercent = 0.0
 
+            if totalApiCallCountForThisCaller>0:
+                curExtFileRecord.counts.localPercent = curExtFileRecord.counts.value / totalApiCallCountForThisCaller
+            else:
+                curExtFileRecord.counts.localPercent = 0.0
+
             if curFileRecord.selfClockCycles.value + curFileRecord.childrenClockCycles.value > 0:
-                curExtFileRecord.totalClockCycles.parentPercent = curExtFileRecord.totalClockCycles.value / (
+                curExtFileRecord.totalClockCycles.localPercent = curExtFileRecord.totalClockCycles.value / (
                         curFileRecord.selfClockCycles.value + curFileRecord.childrenClockCycles.value)
             else:
-                curExtFileRecord.totalClockCycles.parentPercent = 0.0
+                curExtFileRecord.totalClockCycles.localPercent = 0.0
 
             if programRuntime > 0:
                 curExtFileRecord.totalClockCycles.globalPercent = curExtFileRecord.totalClockCycles.value / programRuntime
@@ -106,10 +114,10 @@ def calcPercentage(timingRecord, programRuntime, totalApiCallCount):
                 curExtFileRecord.totalClockCycles.globalPercent = 0.0
 
         if curFileRecord.selfClockCycles.value + curFileRecord.childrenClockCycles.value > 0:
-            curFileRecord.selfClockCycles.totalPercent = curFileRecord.selfClockCycles.value / (
+            curFileRecord.selfClockCycles.localPercent = curFileRecord.selfClockCycles.value / (
                     curFileRecord.selfClockCycles.value + curFileRecord.childrenClockCycles.value)
         else:
-            curFileRecord.selfClockCycles.totalPercent = 0.0
+            curFileRecord.selfClockCycles.localPercent = 0.0
 
         if programRuntime > 0:
             curFileRecord.selfClockCycles.globalPercent = curFileRecord.selfClockCycles.value / programRuntime
@@ -117,10 +125,10 @@ def calcPercentage(timingRecord, programRuntime, totalApiCallCount):
             curFileRecord.selfClockCycles.globalPercent = 0.0
 
         if curFileRecord.selfClockCycles.value + curFileRecord.childrenClockCycles.value > 0:
-            curFileRecord.childrenClockCycles.totalPercent = curFileRecord.childrenClockCycles.value / (
+            curFileRecord.childrenClockCycles.localPercent = curFileRecord.childrenClockCycles.value / (
                     curFileRecord.selfClockCycles.value + curFileRecord.childrenClockCycles.value)
         else:
-            curFileRecord.childrenClockCycles.totalPercent = 0.0
+            curFileRecord.childrenClockCycles.localPercent = 0.0
 
         if programRuntime > 0:
             curFileRecord.childrenClockCycles.globalPercent = curFileRecord.childrenClockCycles.value / programRuntime

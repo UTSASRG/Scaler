@@ -17,17 +17,31 @@ recInfo = readSymbolFiles(scalerDataFolder)
 
 realFileId = None
 
-aggregatedTimeArray, aggregatedCreatorTime = aggregatePerThreadArray(scalerDataFolder,  recInfo)
+aggregatedTimeArray, aggregatedCreatorTime = aggregatePerThreadArray(scalerDataFolder, recInfo)
 # The previous timing data is filtered, and thus it is necessary to record
 
 
 # Generate graph
-timingRecord = generateXFAStruct(list(aggregatedTimeArray),aggregatedCreatorTime, recInfo)
+timingRecord = generateXFAStruct(list(aggregatedTimeArray), aggregatedCreatorTime, recInfo)
 
 print(timingRecord)
 
-for time in timingRecord:
-    print(time.fileName, time.selfClockCycles.value, sep='\t')
+# for time in timingRecord:
+#     print(time.fileName, time.selfClockCycles.value, sep='\t')
+
+print('FileName', 'Time', 'TimePercent(Self)', 'TimePercent(Global)', 'Count', 'CountPercent(Self)',
+      'CountPercent(Global)', sep='\t')
+for fileId, fileRecord in enumerate(timingRecord):
+    # print(fileId, fileRecord.fileName, sep='\t')
+    print(fileRecord.fileName + ' [S]', fileRecord.selfClockCycles.value, fileRecord.selfClockCycles.localPercent,
+          fileRecord.selfClockCycles.globalPercent, '-', '-', '-', sep='\t')
+    for extFileId, extFileRecord in fileRecord.extFileTiming.items():
+        print(extFileRecord.fileName, extFileRecord.totalClockCycles.value,
+              extFileRecord.totalClockCycles.localPercent,
+              extFileRecord.totalClockCycles.globalPercent, extFileRecord.counts.value,
+              extFileRecord.counts.localPercent,
+              extFileRecord.counts.globalPercent, sep='\t')
+    print()
 
 # totalSelfTime = 0
 # for fileRec in timingRecord:
