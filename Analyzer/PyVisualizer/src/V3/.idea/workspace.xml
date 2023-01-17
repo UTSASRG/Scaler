@@ -7,8 +7,7 @@
     <list default="true" id="107caec2-d35d-485d-b1fa-e3c3858cf970" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/XFAVisualization.py" beforeDir="false" afterPath="$PROJECT_DIR$/XFAVisualization.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/datastructure/TimingStruct.py" beforeDir="false" afterPath="$PROJECT_DIR$/datastructure/TimingStruct.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/util/Analyzer/XFA.py" beforeDir="false" afterPath="$PROJECT_DIR$/util/Analyzer/XFA.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/HookHandlers.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/HookHandlers.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -42,19 +41,19 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "WebServerToolWindowFactoryState": "false",
-    "last_opened_file_path": "/home/steven/Scaler/Analyzer/PyVisualizer/src/V3",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/steven/Scaler/Analyzer/PyVisualizer/src/V3&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected="Python.XFAVisualization">
     <configuration name="AnalyzeInvocation" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="V3" />
@@ -179,6 +178,8 @@
       <workItem from="1668279019538" duration="1966000" />
       <workItem from="1673840926360" duration="1640000" />
       <workItem from="1673887707593" duration="3564000" />
+      <workItem from="1673906935787" duration="1359000" />
+      <workItem from="1673909156080" duration="947000" />
     </task>
     <servers />
   </component>
@@ -199,6 +200,6 @@
     <SUITE FILE_PATH="coverage/V3$testBinSearch.coverage" NAME="testBinSearch Coverage Results" MODIFIED="1668280308053" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/V3$AnalyzeInvocation.coverage" NAME="AnalyzeInvocation Coverage Results" MODIFIED="1673887999877" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/V3$main.coverage" NAME="main Coverage Results" MODIFIED="1668279472793" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/V3$XFAVisualization.coverage" NAME="XFAVisualization Coverage Results" MODIFIED="1673890670837" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/V3$XFAVisualization.coverage" NAME="XFAVisualization Coverage Results" MODIFIED="1673909233994" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>

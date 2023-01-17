@@ -7,6 +7,7 @@
 extern "C" {
 static thread_local DataSaver saverElem;
 uint32_t threadNum = 0;
+uint64_t threadAttributionWallClock=0;
 HookContext *
 constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<scaler::ExtSymInfo> &allExtSymbol) {
 
@@ -14,6 +15,7 @@ constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<sc
                                                              sizeof(scaler::Array<uint64_t>) +
                                                              sizeof(pthread_mutex_t), PROT_READ | PROT_WRITE,
                                                        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
+
 //    INFO_LOGS("Context size=%lu %p", sizeof(HookContext) +
 //                                     sizeof(scaler::Array<uint64_t>) +
 //                                     sizeof(pthread_mutex_t), &testA);

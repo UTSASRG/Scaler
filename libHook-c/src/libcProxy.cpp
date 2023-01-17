@@ -53,7 +53,8 @@ int doubletake_main(int argc, char **argv, char **envp) {
     HookContext *curContextPtr = curContext;
     curContextPtr->threadCreatorFileId = 0;
     curContextPtr->endTImestamp = 0;
-    curContextPtr->startTImestamp = getunixtimestampms();
+    scaledWallClock = getunixtimestampms();
+    curContextPtr->startTImestamp = scaledWallClock;
     curContextPtr->isMainThread = true;
 
     /**

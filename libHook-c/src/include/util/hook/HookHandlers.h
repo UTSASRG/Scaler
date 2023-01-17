@@ -3,6 +3,8 @@
 #define SCALER_HOOKHANDLERS_H
 
 #include <type/ExtSymInfo.h>
+#include <util/hook/LogicalClock.h>
+
 
 extern "C" {
 

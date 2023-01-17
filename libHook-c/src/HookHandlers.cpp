@@ -414,7 +414,7 @@ void *afterHookHandler() {
 
     //RDTSCTiming if not skipped
     curContextPtr->recArr->internalArr[symbolId].totalClockCycles += scaledClockCyclesDuration;
-    curContextPtr->recArr->internalArr[symbolId].totalClockCyclesUnScaled += scaledClockCyclesDuration;
+    curContextPtr->recArr->internalArr[symbolId].totalClockCyclesUnScaled += clockCyclesDuration;
     //Attribute api time sum to selfTimeArr
 
 
