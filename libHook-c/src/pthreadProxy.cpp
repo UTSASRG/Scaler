@@ -1,6 +1,7 @@
 #include <util/hook/proxy/pthreadProxy.h>
 #include <util/hook/HookContext.h>
 #include <util/tool/Timer.h>
+#include "util/hook/LogicalClock.h"
 
 extern "C" {
 typedef int (*pthread_create_origt)(pthread_t *, const pthread_attr_t *, void *(*)(void *), void *);
@@ -24,7 +25,6 @@ struct dummy_thread_function_args {
 // Entering this function means the thread has been successfully created
 // Instrument thread beginning, call the original thread function, instrument thread end
 void *dummy_thread_function(void *data) {
-    __atomic_add_fetch(&threadNum, 1, __ATOMIC_RELAXED);
 
     /**
      * Perform required actions at beginning of thread
@@ -51,12 +51,12 @@ void *dummy_thread_function(void *data) {
      */
     threadContextMap.pushBack(curContextPtr);
 
-    curContextPtr->startTImestamp = getunixtimestampms();
+    threadCreationRecord(curContextPtr);
     void *threadFuncRetRlt = actualFuncPtr(argData);
     /**
      * Perform required actions after each thread function completes
      */
-    curContextPtr->endTImestamp = getunixtimestampms();
+    threadTerminatedRecord(curContextPtr);
     saveData(curContextPtr);
     __atomic_sub_fetch(&threadNum, 1, __ATOMIC_RELAXED);
     return threadFuncRetRlt;

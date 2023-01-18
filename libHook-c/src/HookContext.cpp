@@ -3,10 +3,10 @@
 #include <util/tool/FileTool.h>
 #include <cxxabi.h>
 #include <type/RecTuple.h>
+#include "util/hook/LogicalClock.h"
 
 extern "C" {
 static thread_local DataSaver saverElem;
-uint32_t threadNum = 0;
 HookContext *
 constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<scaler::ExtSymInfo> &allExtSymbol) {
 
@@ -349,11 +349,8 @@ void saveData(HookContext *curContextPtr, bool finalize) {
     }
     curContextPtr->dataSaved = true;
 
-    //Resolve real address
-    if (!curContextPtr->endTImestamp) {
-        //Not finished succesfully
-        curContextPtr->endTImestamp = getunixtimestampms();
-    }
+    //Resolve thread final time
+    threadTerminatedRecord(curContextPtr);
 
     if (!curContext) {
         fatalError("curContext is not initialized, won't save anything");

@@ -11,6 +11,7 @@
 #include <util/hook/HookContext.h>
 #include <util/hook/ExtFuncCallHook.h>
 #include <cxxabi.h>
+#include "util/hook/LogicalClock.h"
 
 main_fn_t real_main;
 
@@ -53,7 +54,7 @@ int doubletake_main(int argc, char **argv, char **envp) {
     HookContext *curContextPtr = curContext;
     curContextPtr->threadCreatorFileId = 0;
     curContextPtr->endTImestamp = 0;
-    curContextPtr->startTImestamp = getunixtimestampms();
+    initClockAttribution(curContextPtr);
     curContextPtr->isMainThread = true;
 
     /**

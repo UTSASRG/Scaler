@@ -26,6 +26,7 @@ set(HookSrc
         src/ELFImgInfo.cpp
         src/HookHandlers.cpp
         src/AddrFileIdMapping.cpp
+        src/LogicalClock.cpp
         )
 #src/VMEmulator.cpp
 
