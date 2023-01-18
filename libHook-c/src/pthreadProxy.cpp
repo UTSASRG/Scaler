@@ -58,7 +58,6 @@ void *dummy_thread_function(void *data) {
      */
     threadTerminatedRecord(curContextPtr);
     saveData(curContextPtr);
-    __atomic_sub_fetch(&threadNum, 1, __ATOMIC_RELAXED);
     return threadFuncRetRlt;
 }
 

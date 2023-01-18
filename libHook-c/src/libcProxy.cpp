@@ -63,7 +63,8 @@ int doubletake_main(int argc, char **argv, char **envp) {
     threadContextMap.pushBack(curContextPtr);
 
     int ret = real_main(argc, argv, envp);
-    curContextPtr->endTImestamp = getunixtimestampms();
+
+    threadTerminatedRecord(curContextPtr);
     saveData(curContextPtr);
     return ret;
 }
@@ -92,7 +93,6 @@ void exit(int __status) {
         return;
     }
 
-    curContext->endTImestamp = getunixtimestampms();
     saveData(curContext, true);
     realExit(__status);
 }

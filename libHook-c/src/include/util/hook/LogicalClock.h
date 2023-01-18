@@ -22,8 +22,7 @@ inline void threadCreationRecord(HookContext *curContext) {
     uint64_t wallClockCurSnapshot = getunixtimestampms();
 
     //Built-in Function: type __atomic_fetch_add (type *ptr, type val, int memorder)
-    __atomic_fetch_add(&threadAttributionClock,
-                       threadAttributionClock + (wallClockCurSnapshot - wallclockSnapshot) / threadNum,
+    __atomic_fetch_add(&threadAttributionClock,(wallClockCurSnapshot - wallclockSnapshot) / threadNum,
                        __ATOMIC_ACQ_REL);
     __atomic_add_fetch(&threadNum, 1, __ATOMIC_ACQ_REL);
 

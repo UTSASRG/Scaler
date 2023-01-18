@@ -42,7 +42,7 @@ def generateXFAStruct(aggregatedTimeEntries: list,
             # Attribute time to callee
             curFileRecord = timingRecord[recInfo.symbolFileIdList[i]]
             curFileRecord.fileName = recInfo.fileNameList[recInfo.symbolFileIdList[i]]
-            curFileRecord.selfClockCycles.value -= aggregatedTimeEntries[i].totalClockCyclesUnScaled
+            curFileRecord.selfClockCycles.value -= aggregatedTimeEntries[i].totalClockCycles
             curFileRecord.childrenClockCycles.value += aggregatedTimeEntries[i].totalClockCycles
 
             curExtFileRecord = curFileRecord.extFileTiming[recInfo.realFileIdList[i]]
@@ -58,7 +58,7 @@ def generateXFAStruct(aggregatedTimeEntries: list,
             # Attribute time to caller
             realFileRecord = timingRecord[recInfo.realFileIdList[i]]
             # realFileRecord.fileName = fileNameList[recInfo.realFileIdList[i]]
-            realFileRecord.selfClockCycles.value += aggregatedTimeEntries[i].totalClockCyclesUnScaled
+            realFileRecord.selfClockCycles.value += aggregatedTimeEntries[i].totalClockCycles
             totalInvocationCount += aggregatedTimeEntries[i].count
 
     timingRecord = calcPercentage(timingRecord, totalProgramRunningTIme, totalInvocationCount)
