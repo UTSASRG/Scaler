@@ -12,6 +12,7 @@
 #include <util/hook/ExtFuncCallHook.h>
 #include <cxxabi.h>
 #include "util/hook/LogicalClock.h"
+#include "util/hook/DataSaver.h"
 
 main_fn_t real_main;
 
@@ -64,7 +65,6 @@ int doubletake_main(int argc, char **argv, char **envp) {
 
     int ret = real_main(argc, argv, envp);
 
-    threadTerminatedRecord(curContextPtr);
     saveData(curContextPtr);
     return ret;
 }

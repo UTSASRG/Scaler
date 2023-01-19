@@ -27,6 +27,7 @@ set(HookSrc
         src/HookHandlers.cpp
         src/AddrFileIdMapping.cpp
         src/LogicalClock.cpp
+        src/DataSaver.cpp
         )
 #src/VMEmulator.cpp
 

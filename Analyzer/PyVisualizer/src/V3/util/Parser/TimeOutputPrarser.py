@@ -93,7 +93,7 @@ def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
     for threadId in recInfo.threadIdList:
         curThreadRecArray, threadCreatorInfo = readTimingStruct(scalerDataFolder, threadId)
         # curApiUnscaledInvcTimeByLib = readApiInvocTimeByLibStruct(scalerDataFolder, threadId)
-
+        print(threadCreatorInfo.threadExecutionCycles)
         aggregatedCreatorTime[threadCreatorInfo.threadCreatorFileId] += threadCreatorInfo.threadExecutionCycles
         # print(curThreadRecArray[-1].totalClockCycles)
 
@@ -113,7 +113,6 @@ def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
 
             # for i, curTime in enumerate(curApiUnscaledInvcTimeByLib):
             #     aggregatedApiUnscaledInvcTimeByLib[i] += curTime
-
     return aggregatedTimeArray, aggregatedCreatorTime
 
 

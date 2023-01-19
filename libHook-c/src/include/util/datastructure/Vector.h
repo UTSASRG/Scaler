@@ -7,6 +7,7 @@
 #include <cstring>
 #include <utility>
 #include <util/datastructure/ForwardIterator.h>
+#include <util/tool/SpinLock.h>
 
 namespace scaler {
     template<typename T>
@@ -103,7 +104,7 @@ namespace scaler {
             return *this;
         };
 
-        virtual bool isEmpty() const {
+        virtual bool isEmpty() {
             return size == 0;
         }
 
@@ -153,22 +154,22 @@ namespace scaler {
             size = 0;
         }
 
-        const VectorIterator<T> &begin() override {
+        VectorIterator<T> &begin() override {
             beginIter.index = size == 0 ? -1 : 0;
             return beginIter;
         }
 
-        const VectorIterator<T> &end() override {
+        VectorIterator<T> &end() override {
             endIter.index = size == 0 ? -1 : size;
             return endIter;
         }
 
-        const VectorIterator<T> &rbegin() override {
+        VectorIterator<T> &rbegin() override {
             rbeginIter.index = size == 0 ? -1 : size - 1;
             return rbeginIter;
         }
 
-        const VectorIterator<T> &rend() override {
+        VectorIterator<T> &rend() override {
             rendIter.index = -1;
             return rendIter;
         }
@@ -207,6 +208,129 @@ namespace scaler {
         }
     };
 
+    /**
+     * Thread safe vector
+     * todo: improve with atomic RWlock
+     */
+    template<typename T>
+    class SVector : public Vector<T> {
+    public:
+        explicit SVector(const ssize_t &initialSize=0) : Vector<T>(initialSize) {
+        }
+
+        SVector(const SVector &rho) : SVector() {
+            atomicSpinLock(vectorLock);
+            operator=(rho);
+            atomicSpinUnlock(vectorLock);
+        }
+
+        SVector &operator=(const SVector &rho) {
+            atomicSpinLock(vectorLock);
+            Vector < T > ::operator=(rho);
+            atomicSpinUnlock(vectorLock);
+            return *this;
+        };
+
+        bool isEmpty() override {
+            bool rlt;
+            atomicSpinLock(vectorLock);
+            rlt = Vector<T>::isEmpty();
+            atomicSpinUnlock(vectorLock);
+            return rlt;
+        }
+
+        T &operator[](const ssize_t &index) override {
+            atomicSpinLock(vectorLock);
+            T &rlt = Vector < T > ::operator[](index);
+            atomicSpinUnlock(vectorLock);
+            return rlt;
+        }
+
+        void erase(const ssize_t &index) override {
+            atomicSpinLock(vectorLock);
+            Vector < T > ::erase(index);
+            atomicSpinUnlock(vectorLock);
+        }
+
+        void insertAt(const ssize_t &index, const T &newElem) override {
+            atomicSpinLock(vectorLock);
+            Vector < T > ::insertAt(index, newElem);
+            atomicSpinUnlock(vectorLock);
+        }
+
+        void pushBack(const T &newElem) override {
+            atomicSpinLock(vectorLock);
+            Vector <T>::insertAt(Vector <T>::size, newElem);
+            atomicSpinUnlock(vectorLock);
+        }
+
+
+        void pushBack(const T &&newElem) override {
+            atomicSpinLock(vectorLock);
+            Vector<T>::insertAt(Vector<T>::size, std::move(newElem));
+            atomicSpinUnlock(vectorLock);
+        }
+
+        ssize_t getSize() override {
+            ssize_t rlt;
+            atomicSpinLock(this->vectorLock);
+            rlt = Vector < T > ::getSize();
+            atomicSpinUnlock(this->vectorLock);
+            return rlt;
+        }
+
+        bool willExpand() override {
+            bool rlt;
+            atomicSpinLock(this->vectorLock);
+            rlt = Vector < T > ::willExpand();
+            atomicSpinUnlock(this->vectorLock);
+            return rlt;
+        }
+
+        void clear() override {
+            atomicSpinLock(this->vectorLock);
+            Vector < T > ::clear();
+            atomicSpinUnlock(this->vectorLock);
+        }
+
+        VectorIterator<T> &begin() override {
+            atomicSpinLock(this->vectorLock);
+            VectorIterator<T> &rlt = Vector <T> ::begin();
+            atomicSpinUnlock(this->vectorLock);
+            return rlt;
+        }
+
+        VectorIterator<T> &end() override {
+            atomicSpinLock(this->vectorLock);
+            VectorIterator<T> &rlt = Vector < T > ::end();
+            atomicSpinUnlock(this->vectorLock);
+            return rlt;
+        }
+
+        VectorIterator<T> &rbegin() override {
+            atomicSpinLock(this->vectorLock);
+            VectorIterator<T> &rlt = Vector < T > ::rbegin();
+            atomicSpinUnlock(this->vectorLock);
+            return rlt;
+        }
+
+        VectorIterator<T> &rend() override {
+            atomicSpinLock(this->vectorLock);
+            VectorIterator<T> &rlt = Vector < T > ::rend();
+            atomicSpinUnlock(this->vectorLock);
+            return rlt;
+        }
+
+        bool release() override {
+            atomicSpinLock(this->vectorLock);
+            bool rlt = Vector < T > ::release();
+            atomicSpinUnlock(this->vectorLock);
+            return rlt;
+        }
+
+    protected:
+        bool vectorLock = false;
+    };
 
 }
 #endif

@@ -5,6 +5,7 @@
 #include <util/hook/HookContext.h>
 #include <util/tool/Timer.h>
 #include <sys/times.h>
+#include "util/hook/LogicalClock.h"
 
 #define setbit(x, y) x|=(1<<y)
 #define clrbit(x, y) x&=～(1<<y)
@@ -327,8 +328,8 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
 //    }
     curContextPtr->hookTuple[curContextPtr->indexPosi].symId = symId;
     curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = nextCallAddr;
-    bypassCHooks = SCALER_FALSE;
     curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles = getunixtimestampms();
+    bypassCHooks = SCALER_FALSE;
     return *curElfSymInfo.gotEntryAddr;
 }
 

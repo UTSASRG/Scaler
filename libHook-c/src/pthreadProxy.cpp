@@ -2,6 +2,7 @@
 #include <util/hook/HookContext.h>
 #include <util/tool/Timer.h>
 #include "util/hook/LogicalClock.h"
+#include "util/hook/DataSaver.h"
 
 extern "C" {
 typedef int (*pthread_create_origt)(pthread_t *, const pthread_attr_t *, void *(*)(void *), void *);
@@ -53,10 +54,6 @@ void *dummy_thread_function(void *data) {
 
     threadCreationRecord(curContextPtr);
     void *threadFuncRetRlt = actualFuncPtr(argData);
-    /**
-     * Perform required actions after each thread function completes
-     */
-    threadTerminatedRecord(curContextPtr);
     saveData(curContextPtr);
     return threadFuncRetRlt;
 }
@@ -105,7 +102,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     HookContext *curContextPtr = curContext;
     //Attribute time to pthread_create
     curContextPtr->recArr->internalArr[pthreadCreateSymId].totalClockCycles +=
-            pthreadCreateEnd - pthreadCreateStart;
+            (pthreadCreateEnd - pthreadCreateStart) / threadNum;
 
     return retVal;
 }

@@ -32,7 +32,6 @@ struct HookContext {
     //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
     uint64_t startTImestamp;
     uint64_t endTImestamp;
-    pthread_mutex_t *threadDataSavingLock = nullptr; //Used to make sure thread data is not saved twice
     //New cacheline
     //Variables used to determine whether it's called by hook handler or not
     HookTuple hookTuple[MAX_CALL_DEPTH]; //8bytes aligned
@@ -44,18 +43,6 @@ struct HookContext {
 
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
-extern uint32_t threadNum;
-
-class DataSaver {
-public:
-    char initializeMe = 0;
-
-    ~DataSaver();
-};
-
-
-void saveData(HookContext *context, bool finalize = false);
-
 
 extern __thread HookContext *curContext;
 
@@ -65,17 +52,11 @@ extern scaler::SymID pthreadCreateSymId;
 
 extern scaler::Vector<HookContext *> threadContextMap;
 
-extern pthread_mutex_t threadDataSavingLock;
+class DataSaver;
+extern thread_local DataSaver saverElem;
+
 
 bool initTLS();
-
-
-//#define INSTR_TIMING
-#ifdef INSTR_TIMING
-extern const int TIMING_REC_COUNT;
-extern __thread TIMING_TYPE **detailedTimingVectors;
-extern __thread TIMING_TYPE *detailedTimingVectorSize;
-#endif
 
 
 }
