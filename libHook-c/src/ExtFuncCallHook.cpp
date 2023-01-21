@@ -577,7 +577,7 @@ namespace scaler {
             //push %r10
             0x41, 0x52,
             //mov    0x858(%r11),%r11
-            0x4D, 0x8B, 0x9B, 0x50, 0x08, 0x00, 0x00,
+            0x4D, 0x8B, 0x9B, 0x48, 0x08, 0x00, 0x00,
             //mov    0x00000000(%r11),%r10
             0x4D, 0x8B, 0x93, 0x00, 0x00, 0x00, 0x00,
             //add    $0x1,%r10
@@ -657,7 +657,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2F15E8(%%rip),%0\n\t"
+                "movq 0x2F16C8(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :

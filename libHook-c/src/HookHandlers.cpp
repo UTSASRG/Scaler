@@ -397,12 +397,6 @@ void *afterHookHandler() {
     float &meanClockCycle = curContextPtr->recArr->internalArr[symbolId].meanClockTick;
 
     int64_t clockCyclesDuration = (int64_t) (postHookClockCycles - preClockCycle);
-    int64_t scaledClockCyclesDuration;
-    if (threadNum > 1) {
-        scaledClockCyclesDuration = clockCyclesDuration / threadNum;
-    } else {
-        scaledClockCyclesDuration = clockCyclesDuration;
-    }
 
 #ifdef INSTR_TIMING
     TIMING_TYPE &curSize = detailedTimingVectorSize[symbolId];
@@ -412,10 +406,20 @@ void *afterHookHandler() {
     }
 #endif
 
-    //RDTSCTiming if not skipped
-    curContextPtr->recArr->internalArr[symbolId].totalClockCycles += scaledClockCyclesDuration;
-    curContextPtr->recArr->internalArr[symbolId].totalClockCyclesUnScaled += scaledClockCyclesDuration;
-    //Attribute api time sum to selfTimeArr
+    //Attribute scaled clock cycle to API
+    curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration / threadNumPhase;
+    //curContextPtr->recArr->internalArr[symbolId].totalClockCyclesUnScaled += scaledClockCyclesDuration;
+    //Attribute scaled clock cycle to Application
+    curContextPtr->threadExecTime += (postHookClockCycles - curContextPtr->prevWallClockSnapshot) / threadNumPhase;
+
+    DBG_LOGS("Thread=%lu AttributingAPITime (%lu - %lu) / %u=%ld", pthread_self(), postHookClockCycles, preClockCycle,
+              threadNumPhase, clockCyclesDuration / threadNumPhase);
+    DBG_LOGS("Thread=%lu AttributingThreadEndTime+=(%lu - %lu) / %u=%lu", pthread_self(), postHookClockCycles,
+              curContextPtr->prevWallClockSnapshot, threadNumPhase,
+              (postHookClockCycles - curContextPtr->prevWallClockSnapshot) / threadNumPhase);
+
+
+    curContextPtr->prevWallClockSnapshot = postHookClockCycles;
 
 
     bypassCHooks = SCALER_FALSE;

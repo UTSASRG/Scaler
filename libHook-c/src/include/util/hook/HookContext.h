@@ -30,9 +30,8 @@ struct HookContext {
     int64_t threadCreatorFileId = 1; //Which library created the current thread? The default one is main thread
     scaler::ExtFuncCallHook *_this = nullptr; //8bytes
     //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
-    uint64_t startTImestamp;
-    uint64_t endTImestamp;
-    pthread_mutex_t *threadDataSavingLock = nullptr; //Used to make sure thread data is not saved twice
+    uint64_t prevWallClockSnapshot; //Used for application time attribution
+    uint64_t threadExecTime; //Used for application time attribution
     //New cacheline
     //Variables used to determine whether it's called by hook handler or not
     HookTuple hookTuple[MAX_CALL_DEPTH]; //8bytes aligned
@@ -45,6 +44,7 @@ struct HookContext {
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
 extern uint32_t threadNum;
+extern uint32_t threadNumPhase;
 
 class DataSaver {
 public:

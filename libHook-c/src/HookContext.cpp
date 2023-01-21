@@ -6,7 +6,8 @@
 
 extern "C" {
 static thread_local DataSaver saverElem;
-uint32_t threadNum = 0;
+uint32_t threadNum = 0; //Actual thread number
+uint32_t threadNumPhase = 0; //https://github.com/UTSASRG/Scaler/issues/86#issuecomment-1399292049. Thread number for current period.
 HookContext *
 constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<scaler::ExtSymInfo> &allExtSymbol) {
 
@@ -19,11 +20,9 @@ constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<sc
 //                                     sizeof(pthread_mutex_t), &testA);
     HookContext *rlt = reinterpret_cast<HookContext *>(contextHeap);
     assert(rlt != nullptr);
-    memset(rlt, 0, sizeof(HookContext) + sizeof(scaler::Array<RecTuple>) + sizeof(scaler::Array<RecTuple>) +
-                   sizeof(pthread_mutex_t));
+    memset(rlt, 0, sizeof(HookContext) + sizeof(scaler::Array<RecTuple>) + sizeof(scaler::Array<RecTuple>));
     rlt->recArr = new(contextHeap + sizeof(HookContext)) scaler::Array<RecTuple>(hookedSymbolSize);
-    rlt->threadDataSavingLock = reinterpret_cast<pthread_mutex_t *>(contextHeap + sizeof(HookContext) +
-                                                                    +sizeof(scaler::Array<uint64_t>));
+
 #ifdef INSTR_TIMING
     detailedTimingVectors = new TIMING_TYPE *[hookedSymbolSize];
     detailedTimingVectorSize = new TIMING_TYPE[hookedSymbolSize];
@@ -34,10 +33,6 @@ constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<sc
     }
 #endif
 
-    pthread_mutexattr_t Attr;
-    pthread_mutexattr_init(&Attr);
-    pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
-    pthread_mutex_init(rlt->threadDataSavingLock, &Attr);
     rlt->recArr->setSize(hookedSymbolSize);
     //Initialize gap to one
     for (int i = 0; i < rlt->recArr->getSize(); ++i) {
@@ -88,11 +83,11 @@ bool destructContext() {
 void __attribute__((used, noinline, optimize(3))) printRecOffset() {
 
     auto i __attribute__((used)) = (uint8_t *) curContext;
-    auto j __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr;
+    auto j __attribute__((used)) = (uint8_t * ) & curContext->recArr->internalArr;
 
-    auto k __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0];
-    auto l __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].count;
-    auto m __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].gap;
+    auto k __attribute__((used)) = (uint8_t * ) & curContext->recArr->internalArr[0];
+    auto l __attribute__((used)) = (uint8_t * ) & curContext->recArr->internalArr[0].count;
+    auto m __attribute__((used)) = (uint8_t * ) & curContext->recArr->internalArr[0].gap;
 
     printf("\nTLS offset: Check assembly\n"
            "RecArr Offset: 0x%lx\n"
@@ -218,7 +213,7 @@ inline void savePerThreadTimingData(std::stringstream &ss, HookContext *curConte
      * Record who created the thread
      */
     ThreadCreatorInfo *threadCreatorInfo = reinterpret_cast<ThreadCreatorInfo *>(fileContentInMem);
-    threadCreatorInfo->threadExecutionCycles = curContextPtr->endTImestamp - curContextPtr->startTImestamp;
+    threadCreatorInfo->threadExecutionCycles = curContextPtr->threadExecTime;
     threadCreatorInfo->threadCreatorFileId = curContextPtr->threadCreatorFileId;
     threadCreatorInfo->magicNum = 167;
     fileContentInMem += sizeof(ThreadCreatorInfo);
@@ -322,43 +317,39 @@ inline void saveDataForAllOtherThread(std::stringstream &ss, HookContext *curCon
     INFO_LOG("Save data of all existing threads");
     for (int i = 0; i < threadContextMap.getSize(); ++i) {
         HookContext *threadContext = threadContextMap[i];
-        if (!threadContext->dataSaved) {
-            pthread_mutex_lock(threadContext->threadDataSavingLock);
-            INFO_LOGS("Thread data not saved, save it %d/%zd", i, threadContextMap.getSize());
-            saveData(threadContext);
-            pthread_mutex_unlock(threadContext->threadDataSavingLock);
-        } else {
-            INFO_LOGS("Thread data already saved, skip %d/%zd", i, threadContextMap.getSize());
-        }
+        saveData(threadContext);
     }
 }
 
 
 void saveData(HookContext *curContextPtr, bool finalize) {
     bypassCHooks = SCALER_TRUE;
-    if (!curContextPtr) {
-        curContextPtr = curContext;
-    }
 
-    pthread_mutex_lock(curContextPtr->threadDataSavingLock);
-
-    if (curContextPtr->dataSaved) {
-        DBG_LOG("Data already saved for this thread");
-        pthread_mutex_unlock(curContextPtr->threadDataSavingLock);
+    /* CS: Check whether data has been saved. Make sure data is only saved once */
+    if (__atomic_test_and_set(&curContextPtr->dataSaved, __ATOMIC_ACQUIRE)) {
+        //INFO_LOGS("Thread data already saved, skip %d/%zd", i, threadContextMap.getSize());
         return;
     }
-    curContextPtr->dataSaved = true;
-
-    //Resolve real address
-    if (!curContextPtr->endTImestamp) {
-        //Not finished succesfully
-        curContextPtr->endTImestamp = getunixtimestampms();
-    }
+    /* CS: End */
 
     if (!curContext) {
         fatalError("curContext is not initialized, won't save anything");
         return;
     }
+    uint32_t threadNumPhaseOri;
+    __atomic_load(&threadNumPhase, &threadNumPhaseOri, __ATOMIC_ACQUIRE);
+    if (__atomic_sub_fetch(&threadNum, 1, __ATOMIC_ACQUIRE) == 1) {
+        INFO_LOG("ThreadNumPhase cleared to 1");
+        uint32_t tmp = 1;
+        __atomic_store(&threadNumPhase, &tmp, __ATOMIC_RELEASE);
+    }
+    uint64_t curTimestamp = getunixtimestampms();
+    curContextPtr->threadExecTime += (curTimestamp - curContextPtr->prevWallClockSnapshot) / threadNumPhaseOri;
+
+//    INFO_LOGS("AttributingThreadEndTime+= (%lu - %lu) / %u = %lu", curTimestamp, curContextPtr->prevWallClockSnapshot,
+//              threadNumPhaseOri, (curTimestamp - curContextPtr->prevWallClockSnapshot) / threadNumPhaseOri);
+    curContextPtr->prevWallClockSnapshot = curTimestamp;
+
     std::stringstream ss;
 
 #ifdef INSTR_TIMING
@@ -372,9 +363,6 @@ void saveData(HookContext *curContextPtr, bool finalize) {
         saveRealFileId(ss, curContextPtr);
         saveDataForAllOtherThread(ss, curContextPtr);
     }
-
-
-    pthread_mutex_unlock(curContextPtr->threadDataSavingLock);
 
 }
 

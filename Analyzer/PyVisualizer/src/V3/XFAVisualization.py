@@ -1,17 +1,17 @@
 import math
 import os
-import pandas as pd
-import struct
 import re
 
 from util.Analyzer.XFA import generateXFAStruct
+import pandas as pd
+import struct
 from datastructure.TimingStruct import FileRecord, RecTuple
 from util.Parser.TimeOutputPrarser import aggregatePerThreadArray, readSymbolFiles
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
 scalerDataFolder = '/tmp/tmp5_2108qs/libScalerHook-HookAutoAsm-C.so/scalerdata_454232674532264'
-scalerDataFolder = '/tmp/scalerdata_457030350800482'
+scalerDataFolder = '/tmp/scalerdata_200560233533168'
 
 recInfo = readSymbolFiles(scalerDataFolder)
 

@@ -25,6 +25,7 @@ struct dummy_thread_function_args {
 // Instrument thread beginning, call the original thread function, instrument thread end
 void *dummy_thread_function(void *data) {
     __atomic_add_fetch(&threadNum, 1, __ATOMIC_RELAXED);
+    __atomic_add_fetch(&threadNumPhase, 1, __ATOMIC_RELAXED);
 
     /**
      * Perform required actions at beginning of thread
@@ -43,6 +44,7 @@ void *dummy_thread_function(void *data) {
 
     HookContext *curContextPtr = curContext;
     assert(curContextPtr != NULL);
+    curContextPtr->prevWallClockSnapshot = getunixtimestampms();
     curContextPtr->threadCreatorFileId = curContextPtr->_this->pmParser.findExecNameByAddr(
             (void *) actualFuncPtr);
 
@@ -51,14 +53,12 @@ void *dummy_thread_function(void *data) {
      */
     threadContextMap.pushBack(curContextPtr);
 
-    curContextPtr->startTImestamp = getunixtimestampms();
     void *threadFuncRetRlt = actualFuncPtr(argData);
     /**
      * Perform required actions after each thread function completes
      */
-    curContextPtr->endTImestamp = getunixtimestampms();
+//    curContextPtr->endTImestamp = getunixtimestampms();
     saveData(curContextPtr);
-    __atomic_sub_fetch(&threadNum, 1, __ATOMIC_RELAXED);
     return threadFuncRetRlt;
 }
 
@@ -99,14 +99,15 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     args->data = arg;
     // Call the actual pthread_create
 
-    uint64_t pthreadCreateStart = getunixtimestampms();
+    curContext->prevWallClockSnapshot = getunixtimestampms();
     int retVal = pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
     uint64_t pthreadCreateEnd = getunixtimestampms();
 
     HookContext *curContextPtr = curContext;
     //Attribute time to pthread_create
     curContextPtr->recArr->internalArr[pthreadCreateSymId].totalClockCycles +=
-            pthreadCreateEnd - pthreadCreateStart;
+            (pthreadCreateEnd - curContext->prevWallClockSnapshot) / threadNum;
+
 
     return retVal;
 }

@@ -39,27 +39,31 @@ def generateXFAStruct(aggregatedTimeEntries: list,
                         i])
                 continue
 
-            # Attribute time to callee
-            curFileRecord = timingRecord[recInfo.symbolFileIdList[i]]
-            curFileRecord.fileName = recInfo.fileNameList[recInfo.symbolFileIdList[i]]
-            curFileRecord.selfClockCycles.value -= aggregatedTimeEntries[i].totalClockCyclesUnScaled
-            curFileRecord.childrenClockCycles.value += aggregatedTimeEntries[i].totalClockCycles
+            if recInfo.symbolNameList[i] == 'pthread_join':
+                curFileRecord = timingRecord[recInfo.symbolFileIdList[i]]
+                curFileRecord.selfClockCycles.value -= aggregatedTimeEntries[i].totalClockCyclesUnScaled
+            else:
+                # Attribute time to callee
+                curFileRecord = timingRecord[recInfo.symbolFileIdList[i]]
+                curFileRecord.fileName = recInfo.fileNameList[recInfo.symbolFileIdList[i]]
+                curFileRecord.selfClockCycles.value -= aggregatedTimeEntries[i].totalClockCyclesUnScaled
+                curFileRecord.childrenClockCycles.value += aggregatedTimeEntries[i].totalClockCycles
 
-            curExtFileRecord = curFileRecord.extFileTiming[recInfo.realFileIdList[i]]
-            curExtFileRecord.fileName = recInfo.fileNameList[recInfo.realFileIdList[i]]
-            curExtFileRecord.totalClockCycles.value += aggregatedTimeEntries[i].totalClockCycles
-            curExtFileRecord.counts.value += aggregatedTimeEntries[i].count
+                curExtFileRecord = curFileRecord.extFileTiming[recInfo.realFileIdList[i]]
+                curExtFileRecord.fileName = recInfo.fileNameList[recInfo.realFileIdList[i]]
+                curExtFileRecord.totalClockCycles.value += aggregatedTimeEntries[i].totalClockCycles
+                curExtFileRecord.counts.value += aggregatedTimeEntries[i].count
 
-            curExtSymRecord = curExtFileRecord.extSymTiming[recInfo.symIdInFileList[i]]
-            curExtSymRecord.symbolName = recInfo.symbolNameList[i]
-            curExtSymRecord.totalClockCycles.value = aggregatedTimeEntries[i].totalClockCycles
-            curExtSymRecord.counts.value = aggregatedTimeEntries[i].count
+                curExtSymRecord = curExtFileRecord.extSymTiming[recInfo.symIdInFileList[i]]
+                curExtSymRecord.symbolName = recInfo.symbolNameList[i]
+                curExtSymRecord.totalClockCycles.value = aggregatedTimeEntries[i].totalClockCycles
+                curExtSymRecord.counts.value = aggregatedTimeEntries[i].count
 
-            # Attribute time to caller
-            realFileRecord = timingRecord[recInfo.realFileIdList[i]]
-            # realFileRecord.fileName = fileNameList[recInfo.realFileIdList[i]]
-            realFileRecord.selfClockCycles.value += aggregatedTimeEntries[i].totalClockCyclesUnScaled
-            totalInvocationCount += aggregatedTimeEntries[i].count
+                # Attribute time to caller
+                realFileRecord = timingRecord[recInfo.realFileIdList[i]]
+                # realFileRecord.fileName = fileNameList[recInfo.realFileIdList[i]]
+                realFileRecord.selfClockCycles.value += aggregatedTimeEntries[i].totalClockCyclesUnScaled
+                totalInvocationCount += aggregatedTimeEntries[i].count
 
     timingRecord = calcPercentage(timingRecord, totalProgramRunningTIme, totalInvocationCount)
     return timingRecord
