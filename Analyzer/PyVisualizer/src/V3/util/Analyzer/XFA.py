@@ -41,12 +41,12 @@ def generateXFAStruct(aggregatedTimeEntries: list,
 
             if recInfo.symbolNameList[i] == 'pthread_join':
                 curFileRecord = timingRecord[recInfo.symbolFileIdList[i]]
-                curFileRecord.selfClockCycles.value -= aggregatedTimeEntries[i].totalClockCyclesUnScaled
+                curFileRecord.selfClockCycles.value -= aggregatedTimeEntries[i].totalClockCycles
             else:
                 # Attribute time to callee
                 curFileRecord = timingRecord[recInfo.symbolFileIdList[i]]
                 curFileRecord.fileName = recInfo.fileNameList[recInfo.symbolFileIdList[i]]
-                curFileRecord.selfClockCycles.value -= aggregatedTimeEntries[i].totalClockCyclesUnScaled
+                curFileRecord.selfClockCycles.value -= aggregatedTimeEntries[i].totalClockCycles
                 curFileRecord.childrenClockCycles.value += aggregatedTimeEntries[i].totalClockCycles
 
                 curExtFileRecord = curFileRecord.extFileTiming[recInfo.realFileIdList[i]]
@@ -62,7 +62,7 @@ def generateXFAStruct(aggregatedTimeEntries: list,
                 # Attribute time to caller
                 realFileRecord = timingRecord[recInfo.realFileIdList[i]]
                 # realFileRecord.fileName = fileNameList[recInfo.realFileIdList[i]]
-                realFileRecord.selfClockCycles.value += aggregatedTimeEntries[i].totalClockCyclesUnScaled
+                realFileRecord.selfClockCycles.value += aggregatedTimeEntries[i].totalClockCycles
                 totalInvocationCount += aggregatedTimeEntries[i].count
 
     timingRecord = calcPercentage(timingRecord, totalProgramRunningTIme, totalInvocationCount)
@@ -73,7 +73,7 @@ def calcPercentage(timingRecord, programRuntime, totalApiCallCount):
     for curFileRecord in timingRecord:
         totalApiCallCountForThisCaller = 0
         for curExtFileRecord in curFileRecord.extFileTiming.values():
-            totalApiCallCountForThisCaller+=curExtFileRecord.counts.value
+            totalApiCallCountForThisCaller += curExtFileRecord.counts.value
 
         for curExtFileRecord in curFileRecord.extFileTiming.values():
             for curExtSymRecord in curExtFileRecord.extSymTiming.values():
@@ -101,7 +101,7 @@ def calcPercentage(timingRecord, programRuntime, totalApiCallCount):
             else:
                 curExtFileRecord.counts.globalPercent = 0.0
 
-            if totalApiCallCountForThisCaller>0:
+            if totalApiCallCountForThisCaller > 0:
                 curExtFileRecord.counts.localPercent = curExtFileRecord.counts.value / totalApiCallCountForThisCaller
             else:
                 curExtFileRecord.counts.localPercent = 0.0

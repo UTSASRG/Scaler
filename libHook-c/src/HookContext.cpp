@@ -242,7 +242,7 @@ inline void savePerThreadTimingData(std::stringstream &ss, HookContext *curConte
         fatalErrorS("Cannot close file %s, because %s", ss.str().c_str(), strerror(errno));
     }
 
-    INFO_LOGS("Saving data to %s, %lu", scaler::ExtFuncCallHook::instance->folderName.c_str(), pthread_self());
+    DBG_LOGS("Saving data to %s, %lu", scaler::ExtFuncCallHook::instance->folderName.c_str(), pthread_self());
 }
 
 //inline void saveApiInvocTimeByLib(std::stringstream &ss, HookContext *curContextPtr){
@@ -314,7 +314,7 @@ inline void saveRealFileId(std::stringstream &ss, HookContext *curContextPtr) {
 }
 
 inline void saveDataForAllOtherThread(std::stringstream &ss, HookContext *curContextPtr) {
-    INFO_LOG("Save data of all existing threads");
+    DBG_LOG("Save data of all existing threads");
     for (int i = 0; i < threadContextMap.getSize(); ++i) {
         HookContext *threadContext = threadContextMap[i];
         saveData(threadContext);
@@ -339,7 +339,7 @@ void saveData(HookContext *curContextPtr, bool finalize) {
     uint32_t threadNumPhaseOri;
     __atomic_load(&threadNumPhase, &threadNumPhaseOri, __ATOMIC_ACQUIRE);
     if (__atomic_sub_fetch(&threadNum, 1, __ATOMIC_ACQUIRE) == 1) {
-        INFO_LOG("ThreadNumPhase cleared to 1");
+        DBG_LOGS("ThreadNumPhase cleared to 1");
         uint32_t tmp = 1;
         __atomic_store(&threadNumPhase, &tmp, __ATOMIC_RELEASE);
     }
@@ -360,6 +360,7 @@ void saveData(HookContext *curContextPtr, bool finalize) {
 //    saveApiInvocTimeByLib(ss, curContextPtr);
 
     if (curContextPtr->isMainThread || finalize) {
+        INFO_LOGS("Data saved to %s", scaler::ExtFuncCallHook::instance->folderName.c_str());
         saveRealFileId(ss, curContextPtr);
         saveDataForAllOtherThread(ss, curContextPtr);
     }

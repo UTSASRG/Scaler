@@ -16,6 +16,7 @@ pthread_create_origt pthread_create_orig;
 struct dummy_thread_function_args {
     void *(*actual_thread_function)(void *data);
 
+    void *pthreadCreateRetAddr;
     void *data;
 };
 
@@ -39,6 +40,7 @@ void *dummy_thread_function(void *data) {
     auto *args = static_cast<dummy_thread_function_args *>(data);
     void *argData = args->data;
     auto actualFuncPtr = args->actual_thread_function;
+    void* pthreadCreateRetAddr=args->pthreadCreateRetAddr;
     free(args);
     args = nullptr;
 
@@ -46,8 +48,9 @@ void *dummy_thread_function(void *data) {
     assert(curContextPtr != NULL);
     curContextPtr->prevWallClockSnapshot = getunixtimestampms();
     curContextPtr->threadCreatorFileId = curContextPtr->_this->pmParser.findExecNameByAddr(
-            (void *) actualFuncPtr);
-
+            pthreadCreateRetAddr);
+    DBG_LOGS("Thread is created by %ld", curContextPtr->_this->pmParser.findExecNameByAddr(
+            pthreadCreateRetAddr));
     /**
      * Register this thread with the main thread
      */
@@ -97,6 +100,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     auto args = (struct dummy_thread_function_args *) malloc(sizeof(struct dummy_thread_function_args));
     args->actual_thread_function = start;
     args->data = arg;
+    args->pthreadCreateRetAddr = __builtin_return_address(0);
     // Call the actual pthread_create
 
     curContext->prevWallClockSnapshot = getunixtimestampms();
@@ -105,8 +109,8 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
 
     HookContext *curContextPtr = curContext;
     //Attribute time to pthread_create
-    curContextPtr->recArr->internalArr[pthreadCreateSymId].totalClockCycles +=
-            (pthreadCreateEnd - curContext->prevWallClockSnapshot) / threadNum;
+//    curContextPtr->recArr->internalArr[pthreadCreateSymId].totalClockCycles +=
+//            (pthreadCreateEnd - curContext->prevWallClockSnapshot) / threadNum;
 
 
     return retVal;
