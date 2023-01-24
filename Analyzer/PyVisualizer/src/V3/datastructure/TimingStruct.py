@@ -10,7 +10,9 @@ class VLG:
     def __init__(self):
         self.value = 0
         self.localPercent = 0.0
+        self.localRank = 0
         self.globalPercent = 0.0
+        self.globalRank = 0
 
     def __str__(self):
         return 'Val:' + str(self.value) + ' Local:%.5f Global:%.5f' % (self.localPercent, self.globalPercent)
@@ -20,19 +22,11 @@ class VG:
     def __init__(self):
         self.value = 0
         self.globalPercent = 0.0
+        self.globalRank = 0
 
     def __str__(self):
         return 'Val:' + str(self.value) + ' Global:%.5f' % (self.globalPercent)
 
-
-class VLG:
-    def __init__(self):
-        self.value = 0
-        self.localPercent = 0
-        self.globalPercent = 0
-
-    def __str__(self):
-        return 'Val:' + str(self.value) + ' Local:%.5f Global:%.5f' % (self.localPercent, self.globalPercent)
 
 
 class ExtSymRecord:
@@ -42,7 +36,7 @@ class ExtSymRecord:
         self.counts = VLG()
 
     def __str__(self):
-        return 'Name: %s Count: %s Time: %s' % (self.symbolName, 'self.counts', str(self.totalClockCycles))
+        return 'Name: %s Count: %s Time: %s' % (self.symbolName, self.counts, str(self.totalClockCycles))
 
 
 class ExtFileRecord:
@@ -53,7 +47,7 @@ class ExtFileRecord:
         self.extSymTiming = defaultdict(ExtSymRecord)  # Key: fileName Val: ExtSymTimingRecord
 
     def __str__(self):
-        return 'Name: %s Count: %s Time: %s' % (self.fileName, 'self.counts', str(self.totalClockCycles))
+        return 'Name: %s Count: %s Time: %s' % (self.fileName, self.counts, str(self.totalClockCycles))
 
 
 class FileRecord:
@@ -63,6 +57,10 @@ class FileRecord:
         self.childrenClockCycles = VLG()  # Key: symbolName Val: symbolTime
         self.extFileTiming = defaultdict(ExtFileRecord)  # Key: fileName Val: ExtSymTimingRecord
 
+        self.waitClockCycles = VLG()
+        self.waitCount=VLG()
+        self.joinClockCycles=VLG()
+        self.joinCount=VLG()
     def __str__(self):
         return str(self.fileName)
 
@@ -87,6 +85,7 @@ C data structures
 
 These structs should be consistent with https://github.com/UTSASRG/Scaler/blob/feature-tuneParm/libHook-c/src/include/type/RecTuple.h
 '''
+
 
 class RecTuple(Structure):
     _fields_ = [

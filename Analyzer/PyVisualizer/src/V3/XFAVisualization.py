@@ -11,7 +11,7 @@ from util.Parser.TimeOutputPrarser import aggregatePerThreadArray, readSymbolFil
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
 scalerDataFolder = '/tmp/tmp5_2108qs/libScalerHook-HookAutoAsm-C.so/scalerdata_454232674532264'
-scalerDataFolder = '/tmp/scalerdata_1875859763022'
+scalerDataFolder = '/tmp/scalerdata_386988874877010'  # '/tmp/scalerdata_17245094620564'
 
 recInfo = readSymbolFiles(scalerDataFolder)
 
@@ -41,6 +41,16 @@ for fileId, fileRecord in enumerate(timingRecord):
               extFileRecord.totalClockCycles.globalPercent, extFileRecord.counts.value,
               extFileRecord.counts.localPercent,
               extFileRecord.counts.globalPercent, sep='\t')
+    print('Wait', fileRecord.waitClockCycles.value,
+          fileRecord.waitClockCycles.localPercent,
+          fileRecord.waitClockCycles.globalPercent, fileRecord.waitCount.value,
+          fileRecord.waitCount.localPercent,
+          fileRecord.waitCount.globalPercent, sep='\t')
+    print('Join', fileRecord.joinClockCycles.value,
+          fileRecord.joinClockCycles.localPercent,
+          fileRecord.joinClockCycles.globalPercent, fileRecord.joinCount.value,
+          fileRecord.joinCount.localPercent,
+          fileRecord.joinCount.globalPercent, sep='\t')
     print()
 
 # totalSelfTime = 0
