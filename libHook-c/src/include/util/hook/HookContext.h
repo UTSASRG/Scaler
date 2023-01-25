@@ -39,13 +39,15 @@ struct HookContext {
     uint8_t dataSaved = false;
     uint8_t isMainThread = false;
     uint8_t initialized = 0;
+    uint8_t timeAlreadyAttributed = false; //Used by preload function. If this is true, then we should not set time in afterHook
 };
 
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
 extern uint32_t threadNum;
 extern uint32_t threadNumPhase;
-
+extern uint32_t prevMaxThreadNumPhase; //The last maximum thread number before clear
+extern uint64_t prevMaxThreadNumPhaseTimestamp; //The rough timestamp that prevMaxThreadNumPhase is updated
 class DataSaver {
 public:
     char initializeMe = 0;

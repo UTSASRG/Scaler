@@ -8,6 +8,12 @@ extern "C" {
 static thread_local DataSaver saverElem;
 uint32_t threadNum = 0; //Actual thread number
 uint32_t threadNumPhase = 0; //https://github.com/UTSASRG/Scaler/issues/86#issuecomment-1399292049. Thread number for current period.
+uint32_t prevMaxThreadNumPhase=0; //The last maximum thread number before clear
+uint64_t prevMaxThreadNumPhaseTimestamp=0; //The rough timestamp that prevMaxThreadNumPhase is updated
+
+
+
+
 HookContext *
 constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<scaler::ExtSymInfo> &allExtSymbol) {
 
@@ -338,12 +344,16 @@ void saveData(HookContext *curContextPtr, bool finalize) {
     }
     uint32_t threadNumPhaseOri;
     __atomic_load(&threadNumPhase, &threadNumPhaseOri, __ATOMIC_ACQUIRE);
+    uint64_t curTimestamp = getunixtimestampms();
     if (__atomic_sub_fetch(&threadNum, 1, __ATOMIC_ACQUIRE) == 1) {
         DBG_LOGS("ThreadNumPhase cleared to 1");
+
+        __atomic_store(&prevMaxThreadNumPhaseTimestamp, &curTimestamp, __ATOMIC_RELEASE);
+        __atomic_store(&prevMaxThreadNumPhase, &threadNumPhase, __ATOMIC_RELEASE);
+
         uint32_t tmp = 1;
         __atomic_store(&threadNumPhase, &tmp, __ATOMIC_RELEASE);
     }
-    uint64_t curTimestamp = getunixtimestampms();
     curContextPtr->threadExecTime += (curTimestamp - curContextPtr->prevWallClockSnapshot) / threadNumPhaseOri;
 
 //    INFO_LOGS("AttributingThreadEndTime+= (%lu - %lu) / %u = %lu", curTimestamp, curContextPtr->prevWallClockSnapshot,

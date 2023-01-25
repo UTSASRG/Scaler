@@ -3,14 +3,15 @@
 #include <util/tool/Timer.h>
 
 extern "C" {
-typedef int (*pthread_create_origt)(pthread_t *, const pthread_attr_t *, void *(*)(void *), void *);
 
 typedef void (*pthread_exit_origt)(void *__retval);
-
+typedef int (*pthread_create_origt)(pthread_t *, const pthread_attr_t *, void *(*)(void *), void *);
 typedef int (*pthread_cancel_origt)(pthread_t __th);
+typedef int (*pthread_cancel_origt)(pthread_t __th);
+typedef int (*pthread_join_origt)(pthread_t __th, void **__thread_return);
 
 pthread_create_origt pthread_create_orig;
-
+pthread_join_origt pthread_join_orig;
 
 // Define structure to hold arguments for dummy thread function
 struct dummy_thread_function_args {
@@ -40,7 +41,7 @@ void *dummy_thread_function(void *data) {
     auto *args = static_cast<dummy_thread_function_args *>(data);
     void *argData = args->data;
     auto actualFuncPtr = args->actual_thread_function;
-    void* pthreadCreateRetAddr=args->pthreadCreateRetAddr;
+    void *pthreadCreateRetAddr = args->pthreadCreateRetAddr;
     free(args);
     args = nullptr;
 
@@ -104,14 +105,49 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     // Call the actual pthread_create
 
     curContext->prevWallClockSnapshot = getunixtimestampms();
+
     int retVal = pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
-    uint64_t pthreadCreateEnd = getunixtimestampms();
 
     HookContext *curContextPtr = curContext;
     //Attribute time to pthread_create
-//    curContextPtr->recArr->internalArr[pthreadCreateSymId].totalClockCycles +=
-//            (pthreadCreateEnd - curContext->prevWallClockSnapshot) / threadNum;
 
+    return retVal;
+}
+
+
+int pthread_join(pthread_t __th, void **__thread_return) {
+    if (pthread_join_orig == nullptr) {
+        //load plt hook address
+        pthread_join_orig = (pthread_join_origt) dlsym(RTLD_NEXT, "pthread_join");
+        if (!pthread_join_orig) {
+            fatalError("Cannot find the address of pthread_join");
+            return 0;
+        }
+    }
+
+    if (!installed) {
+        return pthread_join_orig(__th, __thread_return);
+    }
+    HookContext *curContextPtr = curContext;
+
+
+    uint64_t startTimestamp = getunixtimestampms();
+    int retVal = pthread_join_orig(__th, __thread_return);
+    uint64_t postHookClockCycles=getunixtimestampms();
+    uint64_t clockCyclesDuration = postHookClockCycles - startTimestamp;
+
+    scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
+    if (prevMaxThreadNumPhaseTimestamp > startTimestamp) {
+        curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration / prevMaxThreadNumPhase;
+        INFO_LOGS("PthreadJoin, prevMaxThreadNumPhase=%d",prevMaxThreadNumPhase);
+    } else {
+        curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration / threadNumPhase;
+        INFO_LOGS("PthreadJoin, threadNumPhase=%d",threadNumPhase);
+    }
+
+    curContextPtr->threadExecTime += (postHookClockCycles - curContextPtr->prevWallClockSnapshot) / threadNumPhase;
+
+    curContext->timeAlreadyAttributed = true; //Prevent postHook from overriding this time
 
     return retVal;
 }

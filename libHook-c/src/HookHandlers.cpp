@@ -325,6 +325,7 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
 //        curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks = curTime.tms_utime + curTime.tms_stime;
 //        printf("Clock ticks in prehook=%d\n",curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks);
 //    }
+
     curContextPtr->hookTuple[curContextPtr->indexPosi].symId = symId;
     curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = nextCallAddr;
     bypassCHooks = SCALER_FALSE;
@@ -406,17 +407,21 @@ void *afterHookHandler() {
     }
 #endif
 
-    //Attribute scaled clock cycle to API
-    curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration / threadNumPhase;
+    if (!curContextPtr->timeAlreadyAttributed) {
+        //Attribute scaled clock cycle to API
+        curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration / threadNumPhase;
+    }else{
+        curContextPtr->timeAlreadyAttributed = false;
+    }
     //curContextPtr->recArr->internalArr[symbolId].totalClockCyclesUnScaled += scaledClockCyclesDuration;
     //Attribute scaled clock cycle to Application
     curContextPtr->threadExecTime += (postHookClockCycles - curContextPtr->prevWallClockSnapshot) / threadNumPhase;
 
     DBG_LOGS("Thread=%lu AttributingAPITime (%lu - %lu) / %u=%ld", pthread_self(), postHookClockCycles, preClockCycle,
-              threadNumPhase, clockCyclesDuration / threadNumPhase);
+             threadNumPhase, clockCyclesDuration / threadNumPhase);
     DBG_LOGS("Thread=%lu AttributingThreadEndTime+=(%lu - %lu) / %u=%lu", pthread_self(), postHookClockCycles,
-              curContextPtr->prevWallClockSnapshot, threadNumPhase,
-              (postHookClockCycles - curContextPtr->prevWallClockSnapshot) / threadNumPhase);
+             curContextPtr->prevWallClockSnapshot, threadNumPhase,
+             (postHookClockCycles - curContextPtr->prevWallClockSnapshot) / threadNumPhase);
 
 
     curContextPtr->prevWallClockSnapshot = postHookClockCycles;

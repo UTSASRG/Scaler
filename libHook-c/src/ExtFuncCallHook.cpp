@@ -367,11 +367,12 @@ namespace scaler {
                 return false;
             } else if (strncmp(funcName, "__cxa_bad_cast", 14) == 0) {
                 return false;
-            } else if (strncmp(funcName, "pthread_create", 14) == 0) {
+            }
+            //else if (strncmp(funcName, "pthread_create", 14) == 0) {
                 //pthreadCreateSymId = curSymId;
                 //This is important to make sure pthread_create is recorded
-                return false;
-            }
+                //return false;
+            //}
         } else if (funcNameLen == 15) {
             if (strncmp(funcName, "____longjmp_chk", 15) == 0) {
                 return false;
@@ -657,7 +658,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2F1710(%%rip),%0\n\t"
+                "movq 0x2F1608(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :
