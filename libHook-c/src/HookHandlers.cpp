@@ -318,18 +318,17 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
     * Setup environment for afterhook
     */
     ++curContextPtr->indexPosi;
-    int64_t &c = curContextPtr->recArr->internalArr[symId].count;
-//    if (c < (1 << 10)) {
-//        struct tms curTime;
-//        times(&curTime);
-//        curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks = curTime.tms_utime + curTime.tms_stime;
-//        printf("Clock ticks in prehook=%d\n",curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks);
-//    }
 
     curContextPtr->hookTuple[curContextPtr->indexPosi].symId = symId;
     curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = nextCallAddr;
+    uint64_t curTimestamp = getunixtimestampms();
+    curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles = curTimestamp;
+
+    if (curContextPtr->indexPosi == 2) {
+        curContextPtr->threadExecTime += (curTimestamp - curContextPtr->prevWallClockSnapshot) / threadNumPhase;
+    }
+
     bypassCHooks = SCALER_FALSE;
-    curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles = getunixtimestampms();
     return *curElfSymInfo.gotEntryAddr;
 }
 
@@ -383,7 +382,6 @@ void *afterHookHandler() {
     scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
     void *callerAddr = (void *) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr;
 
-//    int64_t prevClockTick = curContextPtr->hookTuple[curContextPtr->indexPosi].clockTicks;
     uint64_t preClockCycle = curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles;
 
     int64_t &c = curContextPtr->recArr->internalArr[symbolId].count;
@@ -392,10 +390,6 @@ void *afterHookHandler() {
     assert(curContextPtr->indexPosi >= 1);
 
     scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symbolId];
-
-    //compare current timestamp with the previous timestamp
-
-    float &meanClockCycle = curContextPtr->recArr->internalArr[symbolId].meanClockTick;
 
     int64_t clockCyclesDuration = (int64_t) (postHookClockCycles - preClockCycle);
 
@@ -410,12 +404,9 @@ void *afterHookHandler() {
     if (!curContextPtr->timeAlreadyAttributed) {
         //Attribute scaled clock cycle to API
         curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration / threadNumPhase;
-    }else{
+    } else {
         curContextPtr->timeAlreadyAttributed = false;
     }
-    //curContextPtr->recArr->internalArr[symbolId].totalClockCyclesUnScaled += scaledClockCyclesDuration;
-    //Attribute scaled clock cycle to Application
-    curContextPtr->threadExecTime += (postHookClockCycles - curContextPtr->prevWallClockSnapshot) / threadNumPhase;
 
     DBG_LOGS("Thread=%lu AttributingAPITime (%lu - %lu) / %u=%ld", pthread_self(), postHookClockCycles, preClockCycle,
              threadNumPhase, clockCyclesDuration / threadNumPhase);
@@ -423,9 +414,10 @@ void *afterHookHandler() {
              curContextPtr->prevWallClockSnapshot, threadNumPhase,
              (postHookClockCycles - curContextPtr->prevWallClockSnapshot) / threadNumPhase);
 
-
-    curContextPtr->prevWallClockSnapshot = postHookClockCycles;
-
+    if (curContextPtr->indexPosi == 1) {
+        //This is the first layer, this timestamp would be the next starting time of
+        curContextPtr->prevWallClockSnapshot = postHookClockCycles;
+    }
 
     bypassCHooks = SCALER_FALSE;
     return callerAddr;

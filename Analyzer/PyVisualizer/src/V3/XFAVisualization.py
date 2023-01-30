@@ -11,7 +11,7 @@ from util.Parser.TimeOutputPrarser import aggregatePerThreadArray, readSymbolFil
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
 scalerDataFolder = '/tmp/tmp5_2108qs/libScalerHook-HookAutoAsm-C.so/scalerdata_454232674532264'
-scalerDataFolder = '/tmp/scalerdata_512840543071022'  # '/tmp/scalerdata_17245094620564'
+scalerDataFolder = '/tmp/scalerdata_1443179237257356'  # '/tmp/scalerdata_17245094620564'
 
 recInfo = readSymbolFiles(scalerDataFolder)
 
@@ -25,7 +25,8 @@ aggregatedTimeArray, aggregatedCreatorTime = aggregatePerThreadArray(scalerDataF
 timingRecord = generateXFAStruct(list(aggregatedTimeArray), aggregatedCreatorTime, recInfo)
 
 print(timingRecord)
-
+for i in timingRecord[0].extFileTiming[6].extSymTiming.values():
+    os.system('echo "%s\\t%d" | c++filt'%(i.symbolName,i.totalClockCycles.value))
 # for time in timingRecord:
 #     print(time.fileName, time.selfClockCycles.value, sep='\t')
 

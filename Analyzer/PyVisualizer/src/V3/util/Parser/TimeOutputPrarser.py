@@ -90,6 +90,7 @@ def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
         lambda: 0)  # Map fileId and starting time. Thread may be created by modules other than the main application
     # aggregatedApiUnscaledInvcTimeByLib = []
 
+    waitTimeByThread=defaultdict(lambda: 0)
     for threadId in recInfo.threadIdList:
         curThreadRecArray, threadCreatorInfo = readTimingStruct(scalerDataFolder, threadId)
         # curApiUnscaledInvcTimeByLib = readApiInvocTimeByLibStruct(scalerDataFolder, threadId)
@@ -102,6 +103,11 @@ def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
             totalCount += curRec.count
             # if curRec.count>0:
             # print('totalCount',totalCount,curRec.count)
+
+        for i, curRec in enumerate(curThreadRecArray):
+            if  recInfo.symbolNameList[i] in ['pthread_cond_wait', 'pthread_barrier_wait', 'pthread_cond_timedwait']:
+                waitTimeByThread[threadId]+=curRec.totalClockCycles
+
         if len(curThreadRecArray) != len(aggregatedTimeArray):
             # First time
             aggregatedTimeArray = curThreadRecArray.copy()
@@ -114,6 +120,9 @@ def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
             # for i, curTime in enumerate(curApiUnscaledInvcTimeByLib):
             #     aggregatedApiUnscaledInvcTimeByLib[i] += curTime
 
+    print(waitTimeByThread)
+    for key,val in waitTimeByThread.items():
+        print('Thread Wait Imbalance',key,val,sep='\t')
     return aggregatedTimeArray, aggregatedCreatorTime
 
 

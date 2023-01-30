@@ -68,7 +68,7 @@ constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<sc
 
     rlt->threadId = pthread_self();
     saverElem.initializeMe = 1; //Force initialize tls
-
+    rlt->prevWallClockSnapshot=getunixtimestampms();
     return rlt;
 }
 
@@ -121,7 +121,7 @@ bool initTLS() {
                                   scaler::ExtFuncCallHook::instance->allExtSymbol.getSize(),
                                   scaler::ExtFuncCallHook::instance->allExtSymbol);
 //#ifdef PRINT_DBG_LOG
-    printRecOffset();
+//    printRecOffset();
 //#endif
     if (!curContext) {
         fatalError("Failed to allocate memory for Context");

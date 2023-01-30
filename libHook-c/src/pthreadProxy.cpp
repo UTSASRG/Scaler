@@ -47,7 +47,6 @@ void *dummy_thread_function(void *data) {
 
     HookContext *curContextPtr = curContext;
     assert(curContextPtr != NULL);
-    curContextPtr->prevWallClockSnapshot = getunixtimestampms();
     curContextPtr->threadCreatorFileId = curContextPtr->_this->pmParser.findExecNameByAddr(
             pthreadCreateRetAddr);
     DBG_LOGS("Thread is created by %ld", curContextPtr->_this->pmParser.findExecNameByAddr(
@@ -104,8 +103,6 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     args->pthreadCreateRetAddr = __builtin_return_address(0);
     // Call the actual pthread_create
 
-    curContext->prevWallClockSnapshot = getunixtimestampms();
-
     int retVal = pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
 
     HookContext *curContextPtr = curContext;
@@ -132,6 +129,12 @@ int pthread_join(pthread_t __th, void **__thread_return) {
 
 
     uint64_t startTimestamp = getunixtimestampms();
+    if (curContextPtr->indexPosi == 2) {
+        //First layer. This is 2 because preHook has just been invoked
+        curContextPtr->threadExecTime += (startTimestamp - curContextPtr->prevWallClockSnapshot) / threadNumPhase;
+    }
+
+
     int retVal = pthread_join_orig(__th, __thread_return);
     uint64_t postHookClockCycles=getunixtimestampms();
     uint64_t clockCyclesDuration = postHookClockCycles - startTimestamp;
@@ -139,13 +142,16 @@ int pthread_join(pthread_t __th, void **__thread_return) {
     scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
     if (prevMaxThreadNumPhaseTimestamp > startTimestamp) {
         curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration / prevMaxThreadNumPhase;
-        INFO_LOGS("PthreadJoin, prevMaxThreadNumPhase=%d",prevMaxThreadNumPhase);
+//        INFO_LOGS("PthreadJoin, prevMaxThreadNumPhase=%d",prevMaxThreadNumPhase);
     } else {
         curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration / threadNumPhase;
-        INFO_LOGS("PthreadJoin, threadNumPhase=%d",threadNumPhase);
+//        INFO_LOGS("PthreadJoin, threadNumPhase=%d",threadNumPhase);
     }
 
-    curContextPtr->threadExecTime += (postHookClockCycles - curContextPtr->prevWallClockSnapshot) / threadNumPhase;
+    if (curContextPtr->indexPosi == 2) {
+        //This is the first layer, this timestamp would be the next starting time of. This is 2 because postHookHander is not invoked yet
+        curContextPtr->prevWallClockSnapshot = postHookClockCycles;
+    }
 
     curContext->timeAlreadyAttributed = true; //Prevent postHook from overriding this time
 

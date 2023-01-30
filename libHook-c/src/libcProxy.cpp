@@ -59,15 +59,12 @@ int doubletake_main(int argc, char **argv, char **envp) {
     curContextPtr->isMainThread = true;
 
 
-    curContextPtr->prevWallClockSnapshot = getunixtimestampms();
-
     /**
      * Register this thread with the main thread
      */
     threadContextMap.pushBack(curContextPtr);
 
     int ret = real_main(argc, argv, envp);
-//    curContextPtr->endTImestamp = getunixtimestampms();
     saveData(curContextPtr);
     return ret;
 }
