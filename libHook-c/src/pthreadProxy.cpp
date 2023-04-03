@@ -1,6 +1,7 @@
 #include <util/hook/proxy/pthreadProxy.h>
 #include <util/hook/HookContext.h>
 #include <util/tool/Timer.h>
+#include <util/hook/LogicalClock.h>
 
 extern "C" {
 
@@ -26,13 +27,17 @@ struct dummy_thread_function_args {
 // Entering this function means the thread has been successfully created
 // Instrument thread beginning, call the original thread function, instrument thread end
 void *dummy_thread_function(void *data) {
-    __atomic_add_fetch(&threadNum, 1, __ATOMIC_RELAXED);
-    __atomic_add_fetch(&threadNumPhase, 1, __ATOMIC_RELAXED);
 
     /**
      * Perform required actions at beginning of thread
      */
     initTLS();
+    /**
+    * Update logical clock
+    */
+    uint64_t curLogicalClock = threadCreatedRecord(curContext->cachedWallClockSnapshot);
+    curContext->threadExecTime = curLogicalClock;
+//    INFO_LOGS("Thread %ld creates at logical clock %ld", pthread_self(), curContext->threadExecTime);
 
     /**
      * Call actual thread function
@@ -49,8 +54,9 @@ void *dummy_thread_function(void *data) {
     assert(curContextPtr != NULL);
     curContextPtr->threadCreatorFileId = curContextPtr->_this->pmParser.findExecNameByAddr(
             pthreadCreateRetAddr);
-    DBG_LOGS("Thread is created by %ld", curContextPtr->_this->pmParser.findExecNameByAddr(
-            pthreadCreateRetAddr));
+//    DBG_LOGS("Thread is created by %ld", curContextPtr->_this->pmParser.findExecNameByAddr(
+//            pthreadCreateRetAddr));
+
     /**
      * Register this thread with the main thread
      */
@@ -125,33 +131,8 @@ int pthread_join(pthread_t __th, void **__thread_return) {
     if (!installed) {
         return pthread_join_orig(__th, __thread_return);
     }
-    HookContext *curContextPtr = curContext;
-
-
-    uint64_t startTimestamp = getunixtimestampms();
-    if (curContextPtr->indexPosi == 2) {
-        //First layer. This is 2 because preHook has just been invoked
-        curContextPtr->threadExecTime += (startTimestamp - curContextPtr->prevWallClockSnapshot) / threadNumPhase;
-    }
-
 
     int retVal = pthread_join_orig(__th, __thread_return);
-    uint64_t postHookClockCycles=getunixtimestampms();
-    uint64_t clockCyclesDuration = postHookClockCycles - startTimestamp;
-
-    scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
-    if (prevMaxThreadNumPhaseTimestamp > startTimestamp) {
-        curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration / prevMaxThreadNumPhase;
-//        INFO_LOGS("PthreadJoin, prevMaxThreadNumPhase=%d",prevMaxThreadNumPhase);
-    } else {
-        curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration / threadNumPhase;
-//        INFO_LOGS("PthreadJoin, threadNumPhase=%d",threadNumPhase);
-    }
-
-    if (curContextPtr->indexPosi == 2) {
-        //This is the first layer, this timestamp would be the next starting time of. This is 2 because postHookHander is not invoked yet
-        curContextPtr->prevWallClockSnapshot = postHookClockCycles;
-    }
 
     curContext->timeAlreadyAttributed = true; //Prevent postHook from overriding this time
 

@@ -5,6 +5,7 @@
 #include <util/hook/HookContext.h>
 #include <util/tool/Timer.h>
 #include <sys/times.h>
+#include <util/hook/LogicalClock.h>
 
 #define setbit(x, y) x|=(1<<y)
 #define clrbit(x, y) x&=～(1<<y)
@@ -285,10 +286,9 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
     void *retOriFuncAddr = *curElfSymInfo.gotEntryAddr;
 
     /**
-     * No counting, no measuring time (If scaler is not installed, then tls is not initialized)
-     * This may happen for external function call before the initTLS in dummy thread function
-     */
-
+    * No counting, no measuring time (If scaler is not installed, then tls is not initialized)
+    * This may happen for external function call before the initTLS in dummy thread function
+    */
     if (unlikely(bypassCHooks == SCALER_TRUE)) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
@@ -321,12 +321,9 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
 
     curContextPtr->hookTuple[curContextPtr->indexPosi].symId = symId;
     curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = nextCallAddr;
-    uint64_t curTimestamp = getunixtimestampms();
-    curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles = curTimestamp;
-
-    if (curContextPtr->indexPosi == 2) {
-        curContextPtr->threadExecTime += (curTimestamp - curContextPtr->prevWallClockSnapshot) / threadNumPhase;
-    }
+    uint64_t curWallClockSnapshot = getunixtimestampms();
+    curContextPtr->hookTuple[curContextPtr->indexPosi].logicalClockCycles =
+            calcCurrentLogicalClock(curWallClockSnapshot, curContextPtr->cachedWallClockSnapshot);
 
     bypassCHooks = SCALER_FALSE;
     return *curElfSymInfo.gotEntryAddr;
@@ -374,7 +371,7 @@ __attribute__((used)) void *dbgPreHandler(uint64_t nextCallAddr, uint64_t symId)
 }
 
 void *afterHookHandler() {
-    uint64_t postHookClockCycles = getunixtimestampms();
+    uint64_t wallClockSnapshot = getunixtimestampms();
     bypassCHooks = SCALER_TRUE;
     HookContext *curContextPtr = curContext;
     assert(curContext != nullptr);
@@ -382,7 +379,7 @@ void *afterHookHandler() {
     scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
     void *callerAddr = (void *) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr;
 
-    uint64_t preClockCycle = curContextPtr->hookTuple[curContextPtr->indexPosi].clockCycles;
+    uint64_t preLogicalClockCycle = curContextPtr->hookTuple[curContextPtr->indexPosi].logicalClockCycles;
 
     int64_t &c = curContextPtr->recArr->internalArr[symbolId].count;
 
@@ -391,33 +388,26 @@ void *afterHookHandler() {
 
     scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symbolId];
 
-    int64_t clockCyclesDuration = (int64_t) (postHookClockCycles - preClockCycle);
+    uint64_t postLogicalClockCycle =
+            calcCurrentLogicalClock(wallClockSnapshot, curContextPtr->cachedWallClockSnapshot);
 
-#ifdef INSTR_TIMING
-    TIMING_TYPE &curSize = detailedTimingVectorSize[symbolId];
-    if (curSize < TIMING_REC_COUNT) {
-        ++curSize;
-        detailedTimingVectors[symbolId][curSize] = clockCyclesDuration;
-    }
-#endif
+
+    uint64_t clockCyclesDuration = (int64_t) (postLogicalClockCycle - preLogicalClockCycle);
+//    INFO_LOGS("API duration = %lu - %lu=%lu", postLogicalClockCycle, preLogicalClockCycle, clockCyclesDuration);
 
     if (!curContextPtr->timeAlreadyAttributed) {
         //Attribute scaled clock cycle to API
-        curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration / threadNumPhase;
+        curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration;
     } else {
         curContextPtr->timeAlreadyAttributed = false;
     }
 
-    DBG_LOGS("Thread=%lu AttributingAPITime (%lu - %lu) / %u=%ld", pthread_self(), postHookClockCycles, preClockCycle,
-             threadNumPhase, clockCyclesDuration / threadNumPhase);
-    DBG_LOGS("Thread=%lu AttributingThreadEndTime+=(%lu - %lu) / %u=%lu", pthread_self(), postHookClockCycles,
-             curContextPtr->prevWallClockSnapshot, threadNumPhase,
-             (postHookClockCycles - curContextPtr->prevWallClockSnapshot) / threadNumPhase);
-
-    if (curContextPtr->indexPosi == 1) {
-        //This is the first layer, this timestamp would be the next starting time of
-        curContextPtr->prevWallClockSnapshot = postHookClockCycles;
-    }
+//    DBG_LOGS("Thread=%lu AttributingAPITime (%lu - %lu) / %u=%ld", pthread_self(), wallClockSnapshot,
+//             preLogicalClockCycle,
+//             threadNumPhase, clockCyclesDuration / threadNumPhase);
+//    DBG_LOGS("Thread=%lu AttributingThreadEndTime+=(%lu - %lu) / %u=%lu", pthread_self(), wallClockSnapshot,
+//             curContextPtr->prevWallClockSnapshot, threadNumPhase,
+//             (wallClockSnapshot - curContextPtr->prevWallClockSnapshot) / threadNumPhase);
 
     bypassCHooks = SCALER_FALSE;
     return callerAddr;

@@ -6,6 +6,7 @@
 #include <type/InvocationTree.h>
 #include <util/tool/Timer.h>
 #include <type/RecTuple.h>
+#include <atomic>
 #include "ExtFuncCallHook.h"
 
 extern "C" {
@@ -16,7 +17,7 @@ static uint64_t *testAddr = 0;
 
 struct HookTuple {
     uint64_t callerAddr; //8
-    int64_t clockCycles; //8
+    uint64_t logicalClockCycles; //8
     int64_t symId; //8
     uint32_t clockTicks; //8
 };
@@ -30,9 +31,9 @@ struct HookContext {
     int64_t threadCreatorFileId = 1; //Which library created the current thread? The default one is main thread
     scaler::ExtFuncCallHook *_this = nullptr; //8bytes
     //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
-    uint64_t prevWallClockSnapshot; //Used for application time attribution
     uint64_t threadExecTime; //Used for application time attribution
     //New cacheline
+    uint64_t cachedWallClockSnapshot;
     //Variables used to determine whether it's called by hook handler or not
     HookTuple hookTuple[MAX_CALL_DEPTH]; //8bytes aligned
     pthread_t threadId;
@@ -44,10 +45,10 @@ struct HookContext {
 
 const uint8_t SCALER_TRUE = 145;
 const uint8_t SCALER_FALSE = 167;
-extern uint32_t threadNum;
-extern uint32_t threadNumPhase;
-extern uint32_t prevMaxThreadNumPhase; //The last maximum thread number before clear
-extern uint64_t prevMaxThreadNumPhaseTimestamp; //The rough timestamp that prevMaxThreadNumPhase is updated
+extern uint32_t threadNum; //The current number of threads
+extern std::atomic<uint64_t> wallclockSnapshot; //Used as update timestamp
+extern uint64_t logicalClock;
+
 class DataSaver {
 public:
     char initializeMe = 0;
@@ -70,14 +71,6 @@ extern scaler::Vector<HookContext *> threadContextMap;
 extern pthread_mutex_t threadDataSavingLock;
 
 bool initTLS();
-
-
-//#define INSTR_TIMING
-#ifdef INSTR_TIMING
-extern const int TIMING_REC_COUNT;
-extern __thread TIMING_TYPE **detailedTimingVectors;
-extern __thread TIMING_TYPE *detailedTimingVectorSize;
-#endif
 
 
 }

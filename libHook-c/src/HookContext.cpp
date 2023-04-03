@@ -3,16 +3,18 @@
 #include <util/tool/FileTool.h>
 #include <cxxabi.h>
 #include <type/RecTuple.h>
+#include "util/tool/AtomicSpinLock.h"
+#include <util/hook/LogicalClock.h>
+
+
+uint64_t logicalClock;
+std::atomic<uint64_t> wallclockSnapshot;
+uint64_t updateSpinlock;
+AtomicSpinLock threadUpdateLock; //Lock used in LogicalClock.h to update thread counters
 
 extern "C" {
 static thread_local DataSaver saverElem;
-uint32_t threadNum = 0; //Actual thread number
-uint32_t threadNumPhase = 0; //https://github.com/UTSASRG/Scaler/issues/86#issuecomment-1399292049. Thread number for current period.
-uint32_t prevMaxThreadNumPhase=0; //The last maximum thread number before clear
-uint64_t prevMaxThreadNumPhaseTimestamp=0; //The rough timestamp that prevMaxThreadNumPhase is updated
-
-
-
+uint32_t threadNum = 0; //Actual thread number recorded
 
 HookContext *
 constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<scaler::ExtSymInfo> &allExtSymbol) {
@@ -28,16 +30,6 @@ constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<sc
     assert(rlt != nullptr);
     memset(rlt, 0, sizeof(HookContext) + sizeof(scaler::Array<RecTuple>) + sizeof(scaler::Array<RecTuple>));
     rlt->recArr = new(contextHeap + sizeof(HookContext)) scaler::Array<RecTuple>(hookedSymbolSize);
-
-#ifdef INSTR_TIMING
-    detailedTimingVectors = new TIMING_TYPE *[hookedSymbolSize];
-    detailedTimingVectorSize = new TIMING_TYPE[hookedSymbolSize];
-    memset(detailedTimingVectorSize, 0, sizeof(TIMING_TYPE) * hookedSymbolSize);
-    for (ssize_t i = 0; i < hookedSymbolSize; ++i) {
-        detailedTimingVectors[i] = new TIMING_TYPE[TIMING_REC_COUNT];
-        memset(detailedTimingVectors[i], 0, sizeof(TIMING_TYPE) * TIMING_REC_COUNT);
-    }
-#endif
 
     rlt->recArr->setSize(hookedSymbolSize);
     //Initialize gap to one
@@ -60,15 +52,17 @@ constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<sc
 
     //Push a dummy value in the stack (Especially for callAddr, because we need to avoid null problem)
     rlt->hookTuple[rlt->indexPosi].callerAddr = 0;
-    rlt->hookTuple[rlt->indexPosi].clockCycles = 0;
+    rlt->hookTuple[rlt->indexPosi].logicalClockCycles = 0;
     rlt->hookTuple[rlt->indexPosi].symId = 0;
     rlt->indexPosi = 1;
+
+    __atomic_store_n(&rlt->dataSaved, false, __ATOMIC_RELEASE);
+
     assert(scaler::ExtFuncCallHook::instance != nullptr);
     rlt->_this = scaler::ExtFuncCallHook::instance;
 
     rlt->threadId = pthread_self();
     saverElem.initializeMe = 1; //Force initialize tls
-    rlt->prevWallClockSnapshot=getunixtimestampms();
     return rlt;
 }
 
@@ -89,11 +83,11 @@ bool destructContext() {
 void __attribute__((used, noinline, optimize(3))) printRecOffset() {
 
     auto i __attribute__((used)) = (uint8_t *) curContext;
-    auto j __attribute__((used)) = (uint8_t * ) & curContext->recArr->internalArr;
+    auto j __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr;
 
-    auto k __attribute__((used)) = (uint8_t * ) & curContext->recArr->internalArr[0];
-    auto l __attribute__((used)) = (uint8_t * ) & curContext->recArr->internalArr[0].count;
-    auto m __attribute__((used)) = (uint8_t * ) & curContext->recArr->internalArr[0].gap;
+    auto k __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0];
+    auto l __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].count;
+    auto m __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].gap;
 
     printf("\nTLS offset: Check assembly\n"
            "RecArr Offset: 0x%lx\n"
@@ -120,6 +114,8 @@ bool initTLS() {
     curContext = constructContext(scaler::ExtFuncCallHook::instance->elfImgInfoMap.getSize(),
                                   scaler::ExtFuncCallHook::instance->allExtSymbol.getSize(),
                                   scaler::ExtFuncCallHook::instance->allExtSymbol);
+
+
 //#ifdef PRINT_DBG_LOG
 //    printRecOffset();
 //#endif
@@ -135,72 +131,9 @@ __thread HookContext *curContext __attribute((tls_model("initial-exec")));
 
 __thread uint8_t bypassCHooks __attribute((tls_model("initial-exec"))) = SCALER_FALSE; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
 
-#ifdef INSTR_TIMING
-const int TIMING_REC_COUNT = 20000;
-typedef int64_t TIMING_TYPE;
-__thread TIMING_TYPE **detailedTimingVectors;
-__thread TIMING_TYPE *detailedTimingVectorSize;
-#endif
-
 DataSaver::~DataSaver() {
     saveData(curContext);
 }
-
-#ifdef INSTR_TIMING
-inline void saveThreadDetailedTiming(std::stringstream &ss, HookContext *curContextPtr) {
-    ss.str("");
-    ss << scaler::ExtFuncCallHook::instance->folderName << "/threadDetailedTiming_" << curContextPtr->threadId
-       << ".bin";
-
-    //Calculate file total size
-
-    ssize_t recordedInvocationCnt = 0;
-
-    for (ssize_t i = 0; i < scaler::ExtFuncCallHook::instance->allExtSymbol.getSize(); ++i) {
-        recordedInvocationCnt += detailedTimingVectorSize[i];
-    }
-
-    int fd;
-    size_t realFileIdSizeInBytes = sizeof(ArrayDescriptor) +
-                                   sizeof(ArrayDescriptor) * scaler::ExtFuncCallHook::instance->allExtSymbol.getSize()
-                                   + recordedInvocationCnt * sizeof(TIMING_TYPE);
-
-    uint8_t *fileContentInMem = nullptr;
-    if (!scaler::fOpen4Write<uint8_t>(ss.str().c_str(), fd, realFileIdSizeInBytes, fileContentInMem)) {
-        fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
-    }
-    uint8_t *_fileContentInMem = fileContentInMem;
-
-    /*Write whole symbol info*/
-    ArrayDescriptor *arrayDescriptor = reinterpret_cast<ArrayDescriptor *>(fileContentInMem);
-    arrayDescriptor->arrayElemSize = 0;
-    arrayDescriptor->arraySize = scaler::ExtFuncCallHook::instance->allExtSymbol.getSize();
-    arrayDescriptor->magicNum = 167;
-    fileContentInMem += sizeof(ArrayDescriptor);
-
-
-    for (ssize_t i = 0; i < scaler::ExtFuncCallHook::instance->allExtSymbol.getSize(); ++i) {
-        /**
-         * Write array descriptor first
-         */
-        ArrayDescriptor *arrayDescriptor = reinterpret_cast<ArrayDescriptor *>(fileContentInMem);
-        arrayDescriptor->arrayElemSize = sizeof(TIMING_TYPE);
-        arrayDescriptor->arraySize = detailedTimingVectorSize[i];
-        arrayDescriptor->magicNum = 167;
-        fileContentInMem += sizeof(ArrayDescriptor);
-
-        /**
-         * Then write detailed timing array
-         */
-        memcpy(fileContentInMem, detailedTimingVectors[i], arrayDescriptor->arraySize * arrayDescriptor->arrayElemSize);
-        fileContentInMem += arrayDescriptor->arraySize * arrayDescriptor->arrayElemSize;
-    }
-    if (!scaler::fClose<uint8_t>(fd, realFileIdSizeInBytes, _fileContentInMem)) {
-        fatalErrorS("Cannot close file %s, because %s", ss.str().c_str(), strerror(errno));
-    }
-}
-#endif
-
 
 inline void savePerThreadTimingData(std::stringstream &ss, HookContext *curContextPtr) {
     ss.str("");
@@ -338,39 +271,26 @@ void saveData(HookContext *curContextPtr, bool finalize) {
     }
     /* CS: End */
 
+
+
     if (!curContext) {
         fatalError("curContext is not initialized, won't save anything");
         return;
     }
-    uint32_t threadNumPhaseOri;
-    __atomic_load(&threadNumPhase, &threadNumPhaseOri, __ATOMIC_ACQUIRE);
-    uint64_t curTimestamp = getunixtimestampms();
-    if (__atomic_sub_fetch(&threadNum, 1, __ATOMIC_ACQUIRE) == 1) {
-        DBG_LOGS("ThreadNumPhase cleared to 1");
 
-        __atomic_store(&prevMaxThreadNumPhaseTimestamp, &curTimestamp, __ATOMIC_RELEASE);
-        __atomic_store(&prevMaxThreadNumPhase, &threadNumPhase, __ATOMIC_RELEASE);
+    uint64_t curLogicalClock = threadTerminatedRecord();
+//    INFO_LOGS("AttributingThreadEndTime+= %lu - %lu", curLogicalClock, curContextPtr->threadExecTime);
+    curContextPtr->threadExecTime = curLogicalClock -
+                                    curContextPtr->threadExecTime; //curContextPtr->threadExecTime is set to logical clock in the beginning
 
-        uint32_t tmp = 1;
-        __atomic_store(&threadNumPhase, &tmp, __ATOMIC_RELEASE);
-    }
-    curContextPtr->threadExecTime += (curTimestamp - curContextPtr->prevWallClockSnapshot) / threadNumPhaseOri;
-
-//    INFO_LOGS("AttributingThreadEndTime+= (%lu - %lu) / %u = %lu", curTimestamp, curContextPtr->prevWallClockSnapshot,
-//              threadNumPhaseOri, (curTimestamp - curContextPtr->prevWallClockSnapshot) / threadNumPhaseOri);
-    curContextPtr->prevWallClockSnapshot = curTimestamp;
 
     std::stringstream ss;
-
-#ifdef INSTR_TIMING
-    saveThreadDetailedTiming(ss, curContextPtr);
-#endif
 
     savePerThreadTimingData(ss, curContextPtr);
 //    saveApiInvocTimeByLib(ss, curContextPtr);
 
     if (curContextPtr->isMainThread || finalize) {
-        INFO_LOGS("Data saved to %s", scaler::ExtFuncCallHook::instance->folderName.c_str());
+//        INFO_LOGS("Data saved to %s", scaler::ExtFuncCallHook::instance->folderName.c_str());
         saveRealFileId(ss, curContextPtr);
         saveDataForAllOtherThread(ss, curContextPtr);
     }

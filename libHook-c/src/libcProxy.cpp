@@ -45,10 +45,6 @@ int doubletake_main(int argc, char **argv, char **envp) {
     ss << "/" << "scalerdata_" << getunixtimestampms();
     INFO_LOGS("Folder name is %s", ss.str().c_str());
 
-    //Initialize thread number to 1
-    threadNum = 1;
-    threadNumPhase = 1;
-
     scaler::ExtFuncCallHook::getInst(ss.str())->install();
     //Calculate the main application time
     installed = true;
@@ -90,7 +86,6 @@ void exit(int __status) {
 
     if (!installed) {
         realExit(__status);
-        return;
     }
 
     saveData(curContext, true);
