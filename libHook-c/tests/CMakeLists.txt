@@ -335,3 +335,8 @@ target_include_directories(libWorkload PUBLIC src/verification/include)
 
 add_executable(ScalerHook-Verify-SingleThreadedWorkload src/verification/TestSimpleFuncCall.cpp)
 target_link_libraries(ScalerHook-Verify-SingleThreadedWorkload PUBLIC libWorkload)
+
+
+add_executable(ScalerHook-Verify-ThreadInterleave src/verification/TestThreadInterleave.cpp )
+target_link_libraries(ScalerHook-Verify-ThreadInterleave PUBLIC libWorkload pthread)
+

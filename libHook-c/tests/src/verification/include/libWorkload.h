@@ -4,6 +4,10 @@
 
 void sleep5Seconds();
 
+void sleep3Seconds();
+
+void sleep1Second();
+
 void sleep10Seconds();
 
 void sleep15Seconds();
