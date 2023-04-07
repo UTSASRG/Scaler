@@ -279,7 +279,7 @@ target_link_libraries(ScalerHook-proof-SaveDataUponExit pthread)
 add_executable(ScalerHook-proof-threadlocalasmarray src/proofconcept/TestAccessThreadLocalArrayInAsm.cpp)
 target_link_libraries(ScalerHook-proof-threadlocalasmarray pthread)
 
-add_executable(GetUserSysRealTime src/proofconcept/getUserTime.cpp)
+add_executable(GetUserSysRealTime src/proofconcept/getUserTime.cpp src/verification/TestSimpleFuncCall.cpp src/verification/libWorkload.cpp src/verification/include/libWorkload.h)
 target_link_libraries(GetUserSysRealTime)
 
 
@@ -330,4 +330,8 @@ target_link_libraries(GetUserSysRealTime)
 
 #protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ../meta/addressbook.proto)
 
+add_library(libWorkload SHARED src/verification/libWorkload.cpp)
+target_include_directories(libWorkload PUBLIC src/verification/include)
 
+add_executable(ScalerHook-Verify-SingleThreadedWorkload src/verification/TestSimpleFuncCall.cpp)
+target_link_libraries(ScalerHook-Verify-SingleThreadedWorkload PUBLIC libWorkload)
