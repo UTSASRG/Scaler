@@ -50,7 +50,8 @@ namespace scaler {
         }
 
         DBG_LOG("Initialize logical clock");
-        initLogicalClock(curContext->cachedWallClockSnapshot);
+        initLogicalClock(curContext->cachedWallClockSnapshot, curContext->cachedLogicalClock,
+                         curContext->cachedThreadNum);
 
         replacePltEntry();
 
@@ -370,8 +371,7 @@ namespace scaler {
                 return false;
             } else if (strncmp(funcName, "__cxa_bad_cast", 14) == 0) {
                 return false;
-            }
-            else if (strncmp(funcName, "pthread_create", 14) == 0) {
+            } else if (strncmp(funcName, "pthread_create", 14) == 0) {
                 //pthreadCreateSymId = curSymId;
                 //todo: Also calculate the time of pthread_create
                 //This is important to make sure pthread_create is recorded
@@ -582,7 +582,7 @@ namespace scaler {
             //push %r10
             0x41, 0x52,
             //mov    0x858(%r11),%r11
-            0x4D, 0x8B, 0x9B, 0x48, 0x08, 0x00, 0x00,
+            0x4D, 0x8B, 0x9B, 0x58, 0x08, 0x00, 0x00,
             //mov    0x00000000(%r11),%r10
             0x4D, 0x8B, 0x93, 0x00, 0x00, 0x00, 0x00,
             //add    $0x1,%r10

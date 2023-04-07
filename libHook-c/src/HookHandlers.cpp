@@ -323,7 +323,8 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
     curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = nextCallAddr;
     uint64_t curWallClockSnapshot = getunixtimestampms();
     curContextPtr->hookTuple[curContextPtr->indexPosi].logicalClockCycles =
-            calcCurrentLogicalClock(curWallClockSnapshot, curContextPtr->cachedWallClockSnapshot);
+            calcCurrentLogicalClock(curWallClockSnapshot, curContextPtr->cachedWallClockSnapshot,
+                                    curContextPtr->cachedLogicalClock, curContextPtr->cachedThreadNum);
 
     bypassCHooks = SCALER_FALSE;
     return *curElfSymInfo.gotEntryAddr;
@@ -389,7 +390,8 @@ void *afterHookHandler() {
     scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symbolId];
 
     uint64_t postLogicalClockCycle =
-            calcCurrentLogicalClock(wallClockSnapshot, curContextPtr->cachedWallClockSnapshot);
+            calcCurrentLogicalClock(wallClockSnapshot, curContextPtr->cachedWallClockSnapshot,
+                                    curContextPtr->cachedLogicalClock, curContextPtr->cachedThreadNum);
 
 
     uint64_t clockCyclesDuration = (int64_t) (postLogicalClockCycle - preLogicalClockCycle);

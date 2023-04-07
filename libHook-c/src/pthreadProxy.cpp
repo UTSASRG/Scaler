@@ -35,7 +35,8 @@ void *dummy_thread_function(void *data) {
     /**
     * Update logical clock
     */
-    uint64_t curLogicalClock = threadCreatedRecord(curContext->cachedWallClockSnapshot);
+    uint64_t curLogicalClock = threadCreatedRecord(curContext->cachedWallClockSnapshot, curContext->cachedLogicalClock,
+                                                   curContext->cachedThreadNum);
     curContext->threadExecTime = curLogicalClock;
 //    INFO_LOGS("Thread %ld creates at logical clock %ld", pthread_self(), curContext->threadExecTime);
 

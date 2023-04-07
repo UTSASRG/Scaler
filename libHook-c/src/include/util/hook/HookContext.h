@@ -34,6 +34,8 @@ struct HookContext {
     uint64_t threadExecTime; //Used for application time attribution
     //New cacheline
     uint64_t cachedWallClockSnapshot;
+    uint64_t cachedLogicalClock;
+    uint32_t cachedThreadNum;
     //Variables used to determine whether it's called by hook handler or not
     HookTuple hookTuple[MAX_CALL_DEPTH]; //8bytes aligned
     pthread_t threadId;
