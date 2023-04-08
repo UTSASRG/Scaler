@@ -10,7 +10,7 @@ from util.Parser.TimeOutputPrarser import aggregatePerThreadArray, readSymbolFil
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
-scalerDataFolder = '/tmp/scalerdata_7520968585405136'  # '/tmp/scalerdata_17245094620564'
+scalerDataFolder = '/tmp/scalerdata_7554260953844960'  # '/tmp/scalerdata_17245094620564'
 
 recInfo = readSymbolFiles(scalerDataFolder)
 
@@ -19,6 +19,8 @@ realFileId = None
 aggregatedTimeArray, aggregatedCreatorTime = aggregatePerThreadArray(scalerDataFolder, recInfo)
 # The previous timing data is filtered, and thus it is necessary to record
 
+for i,val in enumerate(aggregatedTimeArray):
+    print(i,recInfo.symbolNameList[i],val.totalClockCycles,val.count)
 
 # Generate graph
 timingRecord = generateXFAStruct(list(aggregatedTimeArray), aggregatedCreatorTime, recInfo)

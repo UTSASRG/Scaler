@@ -42,7 +42,6 @@ struct HookContext {
     uint8_t dataSaved = false;
     uint8_t isMainThread = false;
     uint8_t initialized = 0;
-    uint8_t timeAlreadyAttributed = false; //Used by preload function. If this is true, then we should not set time in afterHook
 };
 
 const uint8_t SCALER_TRUE = 145;

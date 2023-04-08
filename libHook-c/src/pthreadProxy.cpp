@@ -135,8 +135,6 @@ int pthread_join(pthread_t __th, void **__thread_return) {
 
     int retVal = pthread_join_orig(__th, __thread_return);
 
-    curContext->timeAlreadyAttributed = true; //Prevent postHook from overriding this time
-
     return retVal;
 }
 }
