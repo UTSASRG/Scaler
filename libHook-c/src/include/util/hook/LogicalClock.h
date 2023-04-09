@@ -46,17 +46,17 @@ updateLogicalClockAndThreadNum(int8_t threadNumChange, uint64_t &cachedWallClock
     uint64_t curWallClockCurSnapshot = getunixtimestampms(); //Record current time
     uint64_t prevWallClockSnapshot = wallclockSnapshot.load(std::memory_order_acquire);
     logicalClock += (curWallClockCurSnapshot - prevWallClockSnapshot) / threadNum; //Update logical clock
-    INFO_LOGS("logicalClock += (%lu - %lu) / %u= %lu", curWallClockCurSnapshot, prevWallClockSnapshot, threadNum,
-              (curWallClockCurSnapshot - prevWallClockSnapshot) / threadNum);
+//    INFO_LOGS("logicalClock += (%lu - %lu) / %u= %lu", curWallClockCurSnapshot, prevWallClockSnapshot, threadNum,
+//              (curWallClockCurSnapshot - prevWallClockSnapshot) / threadNum);
     threadNum += threadNumChange; //Change thread number
-    INFO_LOGS("threadNum += %d = %d", threadNumChange, threadNum);
+//    INFO_LOGS("threadNum += %d = %d", threadNumChange, threadNum);
     /**
      * Update cache to prevent first time locking
      */
     cachedWallClockSnapshot = curWallClockCurSnapshot;
     cachedThreadNum = threadNum;
     cachedLogicalClock = logicalClock;
-    INFO_LOGS("Update cachedWallClockSnapshot = %lu", curWallClockCurSnapshot);
+//    INFO_LOGS("Update cachedWallClockSnapshot = %lu", curWallClockCurSnapshot);
 
     //Update cached wallclocksnapshot to avoid first time lock
     wallclockSnapshot.store(curWallClockCurSnapshot, std::memory_order_release);
@@ -95,14 +95,14 @@ calcCurrentLogicalClock(uint64_t &curWallClockSnapshot, uint64_t &cachedWallCloc
         cachedThreadNum = threadNum;
         cachedLogicalClock = logicalClock;
         result = (curWallClockSnapshot - prevWallClockSnapshot) / cachedThreadNum + cachedLogicalClock;
-        INFO_LOGS("Has thread creation/termination observed. API time is (%lu-%lu)/%u=%lu", curWallClockSnapshot,
-                  prevWallClockSnapshot, threadNum, (curWallClockSnapshot - prevWallClockSnapshot) / threadNum);
+//        INFO_LOGS("Has thread creation/termination observed. API time is (%lu-%lu)/%u=%lu", curWallClockSnapshot,
+//                  prevWallClockSnapshot, threadNum, (curWallClockSnapshot - prevWallClockSnapshot) / threadNum);
 
         threadUpdateLock.unlock();
     } else {
         result = (curWallClockSnapshot - cachedWallClockSnapshot) / cachedThreadNum + cachedLogicalClock;
-        INFO_LOGS("No thread creation/termination observed. API time is (%lu-%lu)/%u=%lu", curWallClockSnapshot,
-                  prevWallClockSnapshot, threadNum, (curWallClockSnapshot - prevWallClockSnapshot) / threadNum);
+//        INFO_LOGS("No thread creation/termination observed. API time is (%lu-%lu)/%u=%lu", curWallClockSnapshot,
+//                  prevWallClockSnapshot, threadNum, (curWallClockSnapshot - prevWallClockSnapshot) / threadNum);
 
     }
     //Real time elapse + old logical clock value

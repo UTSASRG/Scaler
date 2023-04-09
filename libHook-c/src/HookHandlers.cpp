@@ -310,8 +310,8 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
 
     //DBG_LOGS("FileId=%lu, pltId=%zd prehook", fileId, pltEntryIndex);
 
-    INFO_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu\n", pthread_self(),
-             curElfSymInfo.fileId, symId, (void *) nextCallAddr, getunixtimestampms());
+//    INFO_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu\n", pthread_self(),
+//             curElfSymInfo.fileId, symId, (void *) nextCallAddr, getunixtimestampms());
     //assert(curContext != nullptr);
 
     /**
@@ -395,8 +395,8 @@ void *afterHookHandler() {
 
 
     uint64_t clockCyclesDuration = (int64_t) (postLogicalClockCycle - preLogicalClockCycle);
-    INFO_LOGS("[Post Hook] Thread:%lu CallerFileId:%ld Func:%ld Timestamp: %lu Duration: %lu\n", pthread_self(),
-              curElfSymInfo.fileId, symbolId, getunixtimestampms(),clockCyclesDuration);
+//    INFO_LOGS("[Post Hook] Thread:%lu CallerFileId:%ld Func:%ld Timestamp: %lu Duration: %lu\n", pthread_self(),
+//              curElfSymInfo.fileId, symbolId, getunixtimestampms(),clockCyclesDuration);
 
 
 //    INFO_LOGS("API duration = %lu - %lu=%lu", postLogicalClockCycle, preLogicalClockCycle, clockCyclesDuration);

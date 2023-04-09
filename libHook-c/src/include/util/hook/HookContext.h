@@ -23,21 +23,24 @@ struct HookTuple {
 };
 
 struct HookContext {
-    //todo: Initialize using maximum stack size
-    int64_t indexPosi;//8bytes
-    scaler::Array<RecTuple> *recArr; //8bytes
-    //Records which function calls which function for how long, the index is scalerid (Only contains hooked function)
-    //todo: Replace timingMatrix to a class
-    int64_t threadCreatorFileId = 1; //Which library created the current thread? The default one is main thread
-    scaler::ExtFuncCallHook *_this = nullptr; //8bytes
-    //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
-    uint64_t threadExecTime; //Used for application time attribution
-    //New cacheline
-    uint64_t cachedWallClockSnapshot;
-    uint64_t cachedLogicalClock;
-    uint32_t cachedThreadNum;
+    /**
+     * Frequently read/write variables
+     */
+    uint64_t cachedWallClockSnapshot;  //8bytes
+    uint64_t cachedLogicalClock; //8bytes
+    uint32_t indexPosi;//4bytes
+    uint32_t cachedThreadNum; //4bytes
     //Variables used to determine whether it's called by hook handler or not
     HookTuple hookTuple[MAX_CALL_DEPTH]; //8bytes aligned
+    int64_t threadCreatorFileId = 1; //Which library created the current thread? The default one is main thread
+    scaler::ExtFuncCallHook *_this = nullptr; //8bytes
+    scaler::Array<RecTuple> *recArr; //8bytes
+    //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
+
+    /**
+     * Infrequently read/write variables
+     */
+    uint64_t threadExecTime; //Used for application time attribution
     pthread_t threadId;
     uint8_t dataSaved = false;
     uint8_t isMainThread = false;
