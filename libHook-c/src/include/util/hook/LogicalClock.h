@@ -45,6 +45,9 @@ updateLogicalClockAndThreadNum(int8_t threadNumChange, uint64_t &cachedWallClock
     threadUpdateLock.lock(); //Make sure that the following non-atomic operation will not cause data race.
     uint64_t curWallClockCurSnapshot = getunixtimestampms(); //Record current time
     uint64_t prevWallClockSnapshot = wallclockSnapshot.load(std::memory_order_acquire);
+//    if(curWallClockCurSnapshot<prevWallClockSnapshot){
+//        INFO_LOG("Impossible");
+//    }
     logicalClock += (curWallClockCurSnapshot - prevWallClockSnapshot) / threadNum; //Update logical clock
 //    INFO_LOGS("logicalClock += (%lu - %lu) / %u= %lu", curWallClockCurSnapshot, prevWallClockSnapshot, threadNum,
 //              (curWallClockCurSnapshot - prevWallClockSnapshot) / threadNum);
@@ -81,7 +84,7 @@ inline uint64_t threadTerminatedRecord() {
 }
 
 inline uint64_t
-calcCurrentLogicalClock(uint64_t &curWallClockSnapshot, uint64_t &cachedWallClockSnapshot, uint64_t &cachedLogicalClock,
+calcCurrentLogicalClock(uint64_t &cachedWallClockSnapshot, uint64_t &cachedLogicalClock,
                         uint32_t &cachedThreadNum) {
     uint64_t prevWallClockSnapshot = wallclockSnapshot.load(std::memory_order_acquire);
     //Updates performed by wallclockSnapshot must have been done. (Ensured by C++11 standard)
@@ -94,12 +97,22 @@ calcCurrentLogicalClock(uint64_t &curWallClockSnapshot, uint64_t &cachedWallCloc
         cachedWallClockSnapshot = prevWallClockSnapshot;
         cachedThreadNum = threadNum;
         cachedLogicalClock = logicalClock;
+        uint64_t curWallClockSnapshot=getunixtimestampms();
+//        if(curWallClockSnapshot<prevWallClockSnapshot){
+//            INFO_LOG("Impossible");
+//        }
+
         result = (curWallClockSnapshot - prevWallClockSnapshot) / cachedThreadNum + cachedLogicalClock;
 //        INFO_LOGS("Has thread creation/termination observed. API time is (%lu-%lu)/%u=%lu", curWallClockSnapshot,
 //                  prevWallClockSnapshot, threadNum, (curWallClockSnapshot - prevWallClockSnapshot) / threadNum);
 
         threadUpdateLock.unlock();
     } else {
+        uint64_t curWallClockSnapshot=getunixtimestampms();
+
+//        if(curWallClockSnapshot<prevWallClockSnapshot){
+//            INFO_LOG("Impossible");
+//        }
         result = (curWallClockSnapshot - cachedWallClockSnapshot) / cachedThreadNum + cachedLogicalClock;
 //        INFO_LOGS("No thread creation/termination observed. API time is (%lu-%lu)/%u=%lu", curWallClockSnapshot,
 //                  prevWallClockSnapshot, threadNum, (curWallClockSnapshot - prevWallClockSnapshot) / threadNum);

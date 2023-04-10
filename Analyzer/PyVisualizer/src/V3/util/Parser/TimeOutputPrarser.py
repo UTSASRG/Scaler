@@ -94,9 +94,13 @@ def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
     for threadId in recInfo.threadIdList:
         curThreadRecArray, threadCreatorInfo = readTimingStruct(scalerDataFolder, threadId)
         # curApiUnscaledInvcTimeByLib = readApiInvocTimeByLibStruct(scalerDataFolder, threadId)
-
+        # print('threadCreatorInfo.threadExecutionCycles',threadCreatorInfo.threadExecutionCycles)
+        print(threadCreatorInfo.threadCreatorFileId)
         aggregatedCreatorTime[threadCreatorInfo.threadCreatorFileId] += threadCreatorInfo.threadExecutionCycles
         # print(curThreadRecArray[-1].totalClockCycles)
+
+        for i, curRec in enumerate(curThreadRecArray):
+            assert(curRec.totalClockCycles < threadCreatorInfo.threadExecutionCycles)
 
         for i, curRec in enumerate(curThreadRecArray):
             api += 1

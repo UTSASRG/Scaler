@@ -372,12 +372,13 @@ namespace scaler {
             } else if (strncmp(funcName, "__cxa_bad_cast", 14) == 0) {
                 return false;
             }
-//            else if (strncmp(funcName, "pthread_create", 14) == 0) {
-//                //pthreadCreateSymId = curSymId;
-//                //todo: Also calculate the time of pthread_create
-//                //This is important to make sure pthread_create is recorded
-//                return false;
-//            }
+            else if (strncmp(funcName, "pthread_create", 14) == 0) {
+                //pthreadCreateSymId = curSymId;
+                //todo: Also calculate the time of pthread_create
+                //todo: Temporary measure. Make sure pthread_create address is correctly resolved
+                //This is important to make sure pthread_create is recorded
+                return false;
+            }
         } else if (funcNameLen == 15) {
             if (strncmp(funcName, "____longjmp_chk", 15) == 0) {
                 return false;
