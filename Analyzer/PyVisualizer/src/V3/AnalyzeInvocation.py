@@ -200,26 +200,9 @@ def printPerLibInfoAndCnts(scalerDataFolder):
 
 # steven@masslabserv1:~/Downloads/DistributionAnalysis$ find . -name "scalerdata*"
 scalerDataFolders = [
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.benchmarksuite.parsec.parsec3_0.native.blackscholes_0/libScalerHook-TIMAggregation.so/scalerdata_1476252177632494',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.benchmarksuite.parsec.parsec3_0.native.bodytrack_0/libScalerHook-TIMAggregation.so/scalerdata_1476311076341842',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.benchmarksuite.parsec.parsec3_0.native.canneal_0/libScalerHook-TIMAggregation.so/scalerdata_1476400143037984',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.benchmarksuite.parsec.parsec3_0.native.dedup_0/libScalerHook-TIMAggregation.so/scalerdata_1476548406792014',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.benchmarksuite.parsec.parsec3_0.native.facesim_0/libScalerHook-TIMAggregation.so/scalerdata_1476564073889864',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.benchmarksuite.parsec.parsec3_0.native.ferret_0/libScalerHook-TIMAggregation.so/scalerdata_1476849503027388',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.benchmarksuite.parsec.parsec3_0.native.fluidanimate_0/libScalerHook-TIMAggregation.so/scalerdata_1476905980420240',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.benchmarksuite.parsec.parsec3_0.native.freqmine_0/libScalerHook-TIMAggregation.so/scalerdata_1477099387194670',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.benchmarksuite.parsec.parsec3_0.native.raytrace_0/libScalerHook-TIMAggregation.so/scalerdata_1477156540188136',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.benchmarksuite.parsec.parsec3_0.native.streamcluster_0/libScalerHook-TIMAggregation.so/scalerdata_1477631815619064',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.benchmarksuite.parsec.parsec3_0.native.swaptions_0/libScalerHook-TIMAggregation.so/scalerdata_1477743025908930',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.benchmarksuite.parsec.parsec3_0.native.vips_0/libScalerHook-TIMAggregation.so/scalerdata_1477783571280660',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.benchmarksuite.parsec.parsec3_0.native.x264_0/libScalerHook-TIMAggregation.so/scalerdata_1477800674975332',
-                    '/tmp/scalerdata_1485607667734428',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.db.memcached.memcached_1_6_17_0/libScalerHook-TIMAggregation.so/scalerdata_1475411535122070',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.db.mysql.mysql_8_0_31_0/libScalerHook-TIMAggregation.so/scalerdata_1475612969219726',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.webserver.nginx.nginx_1_23_2_0/libScalerHook-TIMAggregation.so/scalerdata_1475822792836434',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.db.redis.redis_7_0_4_0/libScalerHook-TIMAggregation.so/scalerdata_1476022085423012',
-                    '/home/steven/accuracyTest/2023-01-30_02-11-59-TIMATTRIBUTION/Application.db.sqlite.sqlite_3_39_4_0/libScalerHook-TIMAggregation.so/scalerdata_1476206719842028',
-                ]
+                    '/home/steven/Downloads/Effectiveness/dedup-malloc/scalerdata_579655075034290']
+
+
 
 
 print('Thread inovked API #')

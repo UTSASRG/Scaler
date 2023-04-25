@@ -10,7 +10,7 @@ from util.Parser.TimeOutputPrarser import aggregatePerThreadArray, readSymbolFil
 
 # scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
-scalerDataFolder = '/home/steven/Downloads/scalerdata_583876797654398_unfixed'  # '/tmp/scalerdata_17245094620564'
+scalerDataFolder = '/tmp/scalerdata_1496479927241772'  # '/tmp/scalerdata_17245094620564'
 
 recInfo = readSymbolFiles(scalerDataFolder)
 
@@ -23,13 +23,30 @@ aggregatedTimeArray, aggregatedCreatorTime = aggregatePerThreadArray(scalerDataF
 timingRecord = generateXFAStruct(list(aggregatedTimeArray), aggregatedCreatorTime, recInfo)
 
 print(timingRecord)
-for i in timingRecord[0].extFileTiming[6].extSymTiming.values():
+
+# Print for canneal
+# for i in timingRecord[0].extFileTiming[6].extSymTiming.values():
+#     os.system('echo "%s\\t%d" | c++filt'%(i.symbolName,i.totalClockCycles.value))
+
+# Print for dedup malloc
+# for i in timingRecord[0].extFileTiming[2].extSymTiming.values():
+#     os.system('echo "%s\\t%d" | c++filt'%(i.symbolName,i.totalClockCycles.value))
+
+# Print for swaptions hoard
+for i in timingRecord[7].extFileTiming[5].extSymTiming.values():
     os.system('echo "%s\\t%d" | c++filt'%(i.symbolName,i.totalClockCycles.value))
+
+
+# Print for dedup madvise
+# for i in timingRecord[7].extFileTiming[1].extSymTiming.values():
+#     os.system('echo "%s\\t%d" | c++filt'%(i.symbolName,i.totalClockCycles.value))
+
+
 # for time in timingRecord:
 #     print(time.fileName, time.selfClockCycles.value, sep='\t')
 
-print('FileName', 'Time', 'TimePercent(Self)', 'TimePercent(Global)', 'Count', 'CountPercent(Self)',
-      'CountPercent(Global)', sep='\t')
+# print('FileName', 'Time', 'TimePercent(Self)', 'TimePercent(Global)', 'Count', 'CountPercent(Self)',
+#       'CountPercent(Global)', sep='\t')
 for fileId, fileRecord in enumerate(timingRecord):
     # print(fileId, fileRecord.fileName, sep='\t')
     print(fileRecord.fileName + ' [S]', fileRecord.selfClockCycles.value, fileRecord.selfClockCycles.localPercent,

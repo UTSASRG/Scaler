@@ -4,9 +4,9 @@
 
 void sleep5Seconds();
 
-void sleep3Seconds();
+void sleep50Seconds();
 
-void sleep1Second();
+void sleep30Seconds();
 
 void sleep10Seconds();
 

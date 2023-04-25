@@ -5,8 +5,8 @@
 #include <cstring>
 #include <cstdlib>
 
-void sleep3Seconds(){
-    printf("Sleep3Seconds Start\n");
+void sleep30Seconds(){
+    printf("Sleep30Seconds Start\n");
     struct timespec rem={0,0}, req = {
             30, 0
     };
@@ -15,27 +15,27 @@ void sleep3Seconds(){
         printf("Error: %s",strerror(errno));
         exit(-1);
     }
-    printf("Sleep3Seconds End\n");
+    printf("Sleep30Seconds End\n");
 }
 
-void sleep1Second(){
-    printf("Sleep1Second Start\n");
+void sleep50Seconds(){
+    printf("Sleep50Second Start\n");
     struct timespec rem={0,0}, req = {
-            10, 0
+            50, 0
     };
     int rlt=nanosleep(&req,&rem);
     if(rlt!=0){
         printf("Error: %s",strerror(errno));
         exit(-1);
     }
-    printf("Sleep1Seconds End\n");
+    printf("Sleep50Seconds End\n");
 }
 
 
 void sleep5Seconds(){
     printf("Sleep5Seconds Start\n");
     struct timespec rem={0,0}, req = {
-            50, 0
+            5, 0
     };
     int rlt=nanosleep(&req,&rem);
     if(rlt!=0){
@@ -57,6 +57,7 @@ void sleep10Seconds(){
     }
     printf("Sleep10Seconds End\n");
 }
+
 
 void sleep15Seconds(){
     printf("Sleep15Seconds Start\n");
