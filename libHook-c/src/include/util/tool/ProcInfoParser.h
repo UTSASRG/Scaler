@@ -30,7 +30,6 @@ implied warranty.
 #include <string>
 #include <map>
 #include <vector>
-#include <type/Object.hpp>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -41,6 +40,7 @@ implied warranty.
 #include <util/datastructure/Array.h>
 #include <util/datastructure/Vector.h>
 #include <type/ExtSymInfo.h>
+#include <type/Object.hpp>
 
 namespace scaler {
 

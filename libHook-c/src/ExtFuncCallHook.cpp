@@ -16,11 +16,9 @@
 #include <type/ELFSecInfo.h>
 #include <util/hook/HookContext.h>
 #include <util/tool/StringTool.h>
-#include <util/tool/AddrFileIdMapping.h>
 #include <util/tool/Timer.h>
 #include <util/hook/LogicalClock.h>
 
-//scaler::SymID pthreadCreateSymId;
 
 namespace scaler {
 
@@ -664,7 +662,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2F1658(%%rip),%0\n\t"
+                "movq 0x2F0E38(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :

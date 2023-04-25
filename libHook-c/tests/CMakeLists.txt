@@ -53,7 +53,6 @@ add_executable(ScalerHook-unittests
         src/unittests/util/datastructure/TestHashmap.cpp
         src/unittests/util/datastructure/TestELFInfo.cpp
         src/unittests/TestStr.cpp
-        src/unittests/TestProtobuf.cpp
         ${SCALER_PROTO_SRCS})
 message("SCALER_PROTO_SRCS=1${SCLAER_GRPC_INCLUDE} 2${SCALER_PROTO_SRCS} ")
 target_link_libraries(ScalerHook-unittests PUBLIC ScalerHook-HookManualAsm-C Testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread)
@@ -160,73 +159,85 @@ target_include_directories(ScalerHook-proof-TestTLS PUBLIC)
 target_link_libraries(ScalerHook-proof-TestTLS pthread)
 target_compile_options(ScalerHook-proof-TestTLS PRIVATE ${TEST_FLAGS} -Werror)
 
-add_executable(ScalerHook-parsecapps-aget
-        src/parsecapps/aget/Aget.c
-        src/parsecapps/aget/Download.c
-        src/parsecapps/aget/Head.c
-        src/parsecapps/aget/main.c
-        src/parsecapps/aget/Misc.c
-        src/parsecapps/aget/Resume.c
-        src/parsecapps/aget/Signal.c)
-target_include_directories(ScalerHook-parsecapps-aget PUBLIC src/parsecapps/aget/include)
-target_link_libraries(ScalerHook-parsecapps-aget ScalerHook-HookAutoAsm-C dl)
-target_compile_options(ScalerHook-parsecapps-aget PRIVATE ${TEST_FLAGS})
+add_library(libWorkload SHARED src/demoapps/libWorkload.cpp)
+target_include_directories(libWorkload PUBLIC src/demoapps/include)
+
+add_executable(ScalerHook-demoapps-SingleThreadedWorkload src/demoapps/TestSimpleFuncCall.cpp)
+target_link_libraries(ScalerHook-demoapps-SingleThreadedWorkload PUBLIC libWorkload)
+
+add_executable(ScalerHook-demoapps-ThreadInterleave src/demoapps/TestThreadInterleave.cpp)
+target_link_libraries(ScalerHook-demoapps-ThreadInterleave PUBLIC libWorkload pthread)
+
+add_executable(ScalerHook-demoapps-ThreadSimultaneouslyEnd src/demoapps/TestThreadSimultaenouslyEnd.cpp)
+target_link_libraries(ScalerHook-demoapps-ThreadSimultaneouslyEnd PUBLIC libWorkload pthread)
+
+add_executable(ScalerHook-demoapps-aget
+        src/demoapps/parsecapps/aget/Aget.c
+        src/demoapps/parsecapps/aget/Download.c
+        src/demoapps/parsecapps/aget/Head.c
+        src/demoapps/parsecapps/aget/main.c
+        src/demoapps/parsecapps/aget/Misc.c
+        src/demoapps/parsecapps/aget/Resume.c
+        src/demoapps/parsecapps/aget/Signal.c)
+target_include_directories(ScalerHook-demoapps-aget PUBLIC src/demoapps/parsecapps/aget/include)
+target_link_libraries(ScalerHook-demoapps-aget ScalerHook-HookAutoAsm-C dl)
+target_compile_options(ScalerHook-demoapps-aget PRIVATE ${TEST_FLAGS})
 
 
-add_executable(ScalerHook-parsecapps-dedup
-        src/parsecapps/dedup/binheap.c
-        src/parsecapps/dedup/decoder.c
-        src/parsecapps/dedup/dedup.c
-        src/parsecapps/dedup/encoder.c
-        src/parsecapps/dedup/hashtable.c
-        src/parsecapps/dedup/queue.c
-        src/parsecapps/dedup/rabin.c
-        src/parsecapps/dedup/tree.c
-        src/parsecapps/dedup/util.c)
-target_include_directories(ScalerHook-parsecapps-dedup PUBLIC src/parsecapps/dedup/include)
-target_link_directories(ScalerHook-parsecapps-dedup PRIVATE src/parsecapps/dedup/lib)
-target_link_libraries(ScalerHook-parsecapps-dedup ScalerHook-HookAutoAsm-C pthread dl
+add_executable(ScalerHook-demoapps-dedup
+        src/demoapps/parsecapps/dedup/binheap.c
+        src/demoapps/parsecapps/dedup/decoder.c
+        src/demoapps/parsecapps/dedup/dedup.c
+        src/demoapps/parsecapps/dedup/encoder.c
+        src/demoapps/parsecapps/dedup/hashtable.c
+        src/demoapps/parsecapps/dedup/queue.c
+        src/demoapps/parsecapps/dedup/rabin.c
+        src/demoapps/parsecapps/dedup/tree.c
+        src/demoapps/parsecapps/dedup/util.c)
+target_include_directories(ScalerHook-demoapps-dedup PUBLIC src/demoapps/parsecapps/dedup/include)
+target_link_directories(ScalerHook-demoapps-dedup PRIVATE src/demoapps/parsecapps/dedup/lib)
+target_link_libraries(ScalerHook-demoapps-dedup ScalerHook-HookAutoAsm-C pthread dl
         libcrypto.a
         libssl.a
         libz.a)
-target_compile_options(ScalerHook-parsecapps-dedup PRIVATE "-DPARALLEL")
-target_compile_options(ScalerHook-parsecapps-dedup PRIVATE ${TEST_FLAGS})
+target_compile_options(ScalerHook-demoapps-dedup PRIVATE "-DPARALLEL")
+target_compile_options(ScalerHook-demoapps-dedup PRIVATE ${TEST_FLAGS})
 
 
-add_executable(ScalerHook-parsecapps-blackscholes src/parsecapps/blackscholes/blackscholes-pthread.cpp)
-target_link_libraries(ScalerHook-parsecapps-blackscholes pthread ScalerHook-HookAutoAsm-C)
-target_compile_options(ScalerHook-parsecapps-blackscholes PRIVATE ${TEST_FLAGS} "-DENABLE_THREADS" "-DPARALLEL" "-DNCO=2" "-DN=960")
+add_executable(ScalerHook-demoapps-blackscholes src/demoapps/parsecapps/blackscholes/blackscholes-pthread.cpp)
+target_link_libraries(ScalerHook-demoapps-blackscholes pthread ScalerHook-HookAutoAsm-C)
+target_compile_options(ScalerHook-demoapps-blackscholes PRIVATE ${TEST_FLAGS} "-DENABLE_THREADS" "-DPARALLEL" "-DNCO=2" "-DN=960")
 
 
-add_executable(ScalerHook-parsecapps-swaptions
-        src/parsecapps/swaptions/CumNormalInv.cpp
-        src/parsecapps/swaptions/HJM.cpp
-        src/parsecapps/swaptions/HJM_Securities.cpp
-        src/parsecapps/swaptions/HJM_SimPath_Forward_Blocking.cpp
-        src/parsecapps/swaptions/HJM_Swaption_Blocking.cpp
-        src/parsecapps/swaptions/MaxFunction.cpp
-        src/parsecapps/swaptions/nr_routines.cpp
-        src/parsecapps/swaptions/RanUnif.cpp)
-target_link_libraries(ScalerHook-parsecapps-swaptions pthread ScalerHook-HookAutoAsm-C)
-target_compile_options(ScalerHook-parsecapps-swaptions PRIVATE ${TEST_FLAGS} "-DENABLE_THREADS" "-fstrict-aliasing" "-fkeep-inline-functions")
-target_include_directories(ScalerHook-parsecapps-swaptions PRIVATE src/parsecapps/swaptions/include)
-target_compile_definitions(ScalerHook-parsecapps-swaptions PRIVATE ENABLE_THREADS)
+add_executable(ScalerHook-demoapps-swaptions
+        src/demoapps/parsecapps/swaptions/CumNormalInv.cpp
+        src/demoapps/parsecapps/swaptions/HJM.cpp
+        src/demoapps/parsecapps/swaptions/HJM_Securities.cpp
+        src/demoapps/parsecapps/swaptions/HJM_SimPath_Forward_Blocking.cpp
+        src/demoapps/parsecapps/swaptions/HJM_Swaption_Blocking.cpp
+        src/demoapps/parsecapps/swaptions/MaxFunction.cpp
+        src/demoapps/parsecapps/swaptions/nr_routines.cpp
+        src/demoapps/parsecapps/swaptions/RanUnif.cpp)
+target_link_libraries(ScalerHook-demoapps-swaptions pthread ScalerHook-HookAutoAsm-C)
+target_compile_options(ScalerHook-demoapps-swaptions PRIVATE ${TEST_FLAGS} "-DENABLE_THREADS" "-fstrict-aliasing" "-fkeep-inline-functions")
+target_include_directories(ScalerHook-demoapps-swaptions PRIVATE src/demoapps/parsecapps/swaptions/include)
+target_compile_definitions(ScalerHook-demoapps-swaptions PRIVATE ENABLE_THREADS)
 
 find_package(BZip2 REQUIRED)
-add_executable(ScalerHook-parsecapps-pbzip2
-        src/parsecapps/pbzip2/BZ2StreamScanner.cpp
-        src/parsecapps/pbzip2/ErrorContext.cpp
-        src/parsecapps/pbzip2/pbzip2.cpp)
-target_include_directories(ScalerHook-parsecapps-pbzip2 PUBLIC src/parsecapps/pbzip2/include)
-target_link_libraries(ScalerHook-parsecapps-pbzip2 ScalerHook-HookAutoAsm-C pthread BZip2::BZip2)
-target_compile_options(ScalerHook-parsecapps-pbzip2 PRIVATE ${TEST_FLAGS})
+add_executable(ScalerHook-demoapps-pbzip2
+        src/demoapps/parsecapps/pbzip2/BZ2StreamScanner.cpp
+        src/demoapps/parsecapps/pbzip2/ErrorContext.cpp
+        src/demoapps/parsecapps/pbzip2/pbzip2.cpp)
+target_include_directories(ScalerHook-demoapps-pbzip2 PUBLIC src/demoapps/parsecapps/pbzip2/include)
+target_link_libraries(ScalerHook-demoapps-pbzip2 ScalerHook-HookAutoAsm-C pthread BZip2::BZip2)
+target_compile_options(ScalerHook-demoapps-pbzip2 PRIVATE ${TEST_FLAGS})
 
 
-#add_executable(ScalerHook-parsecapps-sradv1
+#add_executable(ScalerHook-demoapps-sradv1
 #        src/parsecapps/srad_v1/main.c
 #        )
-#target_link_libraries(ScalerHook-parsecapps-sradv1  ScalerHook-HookAutoAsm-C pthread m)
-#target_link_options(ScalerHook-parsecapps-sradv1 PRIVATE "-fopenmp")
+#target_link_libraries(ScalerHook-demoapps-sradv1  ScalerHook-HookAutoAsm-C pthread m)
+#target_link_options(ScalerHook-demoapps-sradv1 PRIVATE "-fopenmp")
 
 #add_library(InstallTest SHARED libInstalltest/src/installTest.cpp)
 #target_include_directories(InstallTest PUBLIC libInstalltest/header)
@@ -279,7 +290,7 @@ target_link_libraries(ScalerHook-proof-SaveDataUponExit pthread)
 add_executable(ScalerHook-proof-threadlocalasmarray src/proofconcept/TestAccessThreadLocalArrayInAsm.cpp)
 target_link_libraries(ScalerHook-proof-threadlocalasmarray pthread)
 
-add_executable(GetUserSysRealTime src/proofconcept/getUserTime.cpp src/verification/TestSimpleFuncCall.cpp src/verification/libWorkload.cpp src/verification/include/libWorkload.h)
+add_executable(GetUserSysRealTime src/proofconcept/getUserTime.cpp src/demoapps/libWorkload.cpp src/demoapps/include/libWorkload.h)
 target_link_libraries(GetUserSysRealTime)
 
 
@@ -330,14 +341,3 @@ target_link_libraries(GetUserSysRealTime)
 
 #protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ../meta/addressbook.proto)
 
-add_library(libWorkload SHARED src/verification/libWorkload.cpp)
-target_include_directories(libWorkload PUBLIC src/verification/include)
-
-add_executable(ScalerHook-Verify-SingleThreadedWorkload src/verification/TestSimpleFuncCall.cpp)
-target_link_libraries(ScalerHook-Verify-SingleThreadedWorkload PUBLIC libWorkload)
-
-add_executable(ScalerHook-Verify-ThreadInterleave src/verification/TestThreadInterleave.cpp )
-target_link_libraries(ScalerHook-Verify-ThreadInterleave PUBLIC libWorkload pthread)
-
-add_executable(ScalerHook-Verify-ThreadSimultaneouslyEnd src/verification/TestThreadSimultaenouslyEnd.cpp )
-target_link_libraries(ScalerHook-Verify-ThreadSimultaneouslyEnd PUBLIC libWorkload pthread)

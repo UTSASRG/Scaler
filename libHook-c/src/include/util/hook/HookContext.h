@@ -3,7 +3,6 @@
 
 #include <util/datastructure/FStack.h>
 #include <cstdio>
-#include <type/InvocationTree.h>
 #include <util/tool/Timer.h>
 #include <type/RecTuple.h>
 #include <atomic>
@@ -11,8 +10,6 @@
 
 extern "C" {
 
-static uint64_t testA = 0;
-static uint64_t *testAddr = 0;
 #define MAX_CALL_DEPTH 64 //N+1 because of dummy variable
 
 struct HookTuple {
@@ -67,8 +64,6 @@ void saveData(HookContext *context, bool finalize = false);
 extern __thread HookContext *curContext;
 
 extern __thread uint8_t bypassCHooks; //Anything that is not SCALER_FALSE should be treated as SCALER_FALSE
-
-//extern scaler::SymID pthreadCreateSymId;
 
 extern scaler::Vector<HookContext *> threadContextMap;
 

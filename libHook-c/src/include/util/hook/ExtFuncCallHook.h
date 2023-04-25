@@ -14,7 +14,6 @@
 #include <type/ExtSymInfo.h>
 #include <type/ELFImgInfo.h>
 #include <type/ELFSecInfo.h>
-#include <util/tool/AddrFileIdMapping.h>
 
 namespace scaler {
 
