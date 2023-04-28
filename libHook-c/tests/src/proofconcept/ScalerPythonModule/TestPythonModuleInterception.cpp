@@ -13,14 +13,14 @@ static PyInterpreterState* inter() {
 }
 
 PyObject* frameInterceptor(PyThreadState* ts, PyFrameObject* f, int throwflag) {
-
+    printf("Frame intercepted\n");
     return _PyEval_EvalFrameDefault(ts, f, throwflag);
 }
 
 
 static PyObject *hello(PyObject *self, PyObject *args) {
     printf("Hello this is Scaler python module\n");
-    return NULL;
+    return Py_None;
 }
 
 
@@ -53,18 +53,9 @@ static PyModuleDef scalerModuleDef = {
 static PyObject *scalerException;
 PyMODINIT_FUNC PyInit_scaler() {
 //    printf("Here1\n");
-    PyObject *module;
-    module = PyModule_Create(&scalerModuleDef);
+    PyObject *module= PyModule_Create(&scalerModuleDef);
     if (module == NULL) {
         return NULL;
     }
-
-    printf("Here2\n");
-
-    scalerException = PyErr_NewException("Exception", NULL, NULL);
-    Py_INCREF(scalerException);
-    printf("Here3\n");
-
-    PyModule_AddObject(module, "Error", scalerException);
     return module;
 }
