@@ -18,6 +18,7 @@
 #include <util/tool/StringTool.h>
 #include <util/tool/Timer.h>
 #include <util/hook/LogicalClock.h>
+#include "util/hook/proxy/DLProxy.h"
 
 
 namespace scaler {
@@ -150,6 +151,7 @@ namespace scaler {
         //DBG_LOGS("First sym index=%ld", curImgInfo.firstSymIndex);
 
         adjustMemPerm(pltSection.startAddr, pltSection.startAddr + pltSection.size, PROT_READ | PROT_WRITE | PROT_EXEC);
+        adjustMemPerm(gotSec.startAddr, gotSec.startAddr + gotSec.size, PROT_READ | PROT_WRITE);
 
         if (pltSecureSection.startAddr) {
 //            DBG_LOGS("Adjusting mem permission from:%p to:%p", pltSecureSection.startAddr,
@@ -170,7 +172,9 @@ namespace scaler {
             Elf64_Word bind;
             parser.getExtSymbolInfo(i, funcName, bind, type);
             ssize_t initialGap = 0;
-            if (!shouldHookThisSymbol(funcName, bind, type, allExtSymbol.getSize(), initialGap)) {
+
+            void *addressOverride = nullptr;
+            if (!shouldHookThisSymbol(funcName, bind, type, allExtSymbol.getSize(), initialGap, addressOverride)) {
                 continue;
             }
             //Get function id from plt entry
@@ -199,6 +203,10 @@ namespace scaler {
             newSym->pltSecEntryAddr = pltSecEntry;
             newSym->pltStubId = pltStubId;
             newSym->initialGap = initialGap;
+            if(addressOverride){
+                INFO_LOGS("%p",gotAddr);
+                *newSym->gotEntryAddr= reinterpret_cast<uint8_t *>(addressOverride);
+            }
             fprintf(symInfoFile, "%s,%ld,%ld\n", funcName, newSym->fileId, newSym->symIdInFile);
 
             DBG_LOGS(
@@ -216,8 +224,8 @@ namespace scaler {
     const int SAMPLING_GAP = 0b0;
 
     bool ExtFuncCallHook::shouldHookThisSymbol(const char *funcName, Elf64_Word &bind, Elf64_Word &type, SymID curSymId,
-                                               ssize_t &initialGap) {
-
+                                               ssize_t &initialGap, void *&addressOverride) {
+        addressOverride = nullptr;
         initialGap = 0;
         if (bind != STB_GLOBAL || type != STT_FUNC) {
             return false;
@@ -286,15 +294,17 @@ namespace scaler {
             } else if (strncmp(funcName, "verrx", 5) == 0) {
                 return false;
             } else if (strncmp(funcName, "dlsym", 5) == 0) {
-                INFO_LOG("dlsym unhooked");
-                return false;
+                INFO_LOG("dlsym overrided");
+                addressOverride = (void *) dlsym_proxy;
+                return true;
             }
         } else if (funcNameLen == 6) {
             if (strncmp(funcName, "_ZdlPv", 6) == 0) {
                 return false;
-            }else if (strncmp(funcName, "dlopen", 6) == 0) {
-                INFO_LOG("dlopen unhooked");
-                return false;
+            } else if (strncmp(funcName, "dlopen", 6) == 0) {
+                INFO_LOG("dlopen address overrided");
+                addressOverride = (void *) dlopen_proxy;
+                return true;
             }
         } else if (funcNameLen == 7) {
             if (strncmp(funcName, "_dl_sym", 7) == 0) {
@@ -373,8 +383,7 @@ namespace scaler {
                 return false;
             } else if (strncmp(funcName, "__cxa_bad_cast", 14) == 0) {
                 return false;
-            }
-            else if (strncmp(funcName, "pthread_create", 14) == 0) {
+            } else if (strncmp(funcName, "pthread_create", 14) == 0) {
                 //pthreadCreateSymId = curSymId;
                 //todo: Also calculate the time of pthread_create
                 //todo: Temporary measure. Make sure pthread_create address is correctly resolved
@@ -666,7 +675,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2F0E38(%%rip),%0\n\t"
+                "movq 0x2F0CE8(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :

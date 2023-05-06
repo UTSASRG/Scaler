@@ -63,7 +63,8 @@ namespace scaler {
 
 
     protected:
-        inline bool shouldHookThisSymbol(const char *funcName, Elf64_Word &bind, Elf64_Word &type, SymID curSymId, ssize_t& initialGap);
+        inline bool shouldHookThisSymbol(const char *funcName, Elf64_Word &bind, Elf64_Word &type, SymID curSymId,
+                                         ssize_t &initialGap, void *&addressOverride);
 
 
         inline bool
