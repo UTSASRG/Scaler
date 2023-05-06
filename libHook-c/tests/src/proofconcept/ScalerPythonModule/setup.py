@@ -1,9 +1,8 @@
-from setuptools import Extension
-from setuptools import setup
+from skbuild import setup  # This line replaces 'from setuptools import setup'
 
-
-module = Extension("scaler", sources=["TestPythonModuleInterception.cpp"], extra_compile_args=["-Wall"])
-
+# Dependencies
+# conda install -c anaconda cython
+# conda install -c conda-forge pybind11 scikit-build pybind11
 setup(
     name="scaler",
     version="1.0.0",
@@ -11,10 +10,10 @@ setup(
     url="https://github.com/UTSASRG/Scaler.git",
     author="Steven Tang",
     author_email="jtang@umass.edu",
-    license="MIT",
+    license="GPL",
     classifiers=[
         "Programming Language :: Python :: 3",
     ],
-    ext_modules=[module],
-    # test_suite="tests",
+    packages=['scaler'],
+    python_requires=">=3.7",
 )

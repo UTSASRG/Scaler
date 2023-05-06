@@ -8,16 +8,28 @@
 #include <frameobject.h>
 
 
+
 static PyInterpreterState* inter() {
     return PyInterpreterState_Main();
 }
 
-PyObject* frameInterceptor(PyThreadState* ts, PyFrameObject* f, int throwflag) {
+//PyObject* frameInterceptor(PyThreadState* ts, PyFrameObject* f, int throwflag) {
+//    printf("Frame intercepted\n");
+//    return _PyEval_EvalFrameDefault(ts, f, throwflag);
+//}
+
+#ifndef SCALER_PYTHON_ABI_COMPATIBILITY
+# error "SCALER_PYTHON_ABI_COMPATIBILITY is undefined. Please build using the provided cmake build system."
+#endif
+
+#if SCALER_PYTHON_ABI_COMPATIBILITY == 311
+PyObject* frameInterceptor(PyThreadState* ts, _PyInterpreterFrame* f, int throwflag) {
     printf("Frame intercepted\n");
     return _PyEval_EvalFrameDefault(ts, f, throwflag);
 }
-
-
+#else
+# error "Python interpreter mismatch. Please check compatibility list"
+#endif
 static PyObject *hello(PyObject *self, PyObject *args) {
     printf("Hello this is Scaler python module\n");
     return Py_None;

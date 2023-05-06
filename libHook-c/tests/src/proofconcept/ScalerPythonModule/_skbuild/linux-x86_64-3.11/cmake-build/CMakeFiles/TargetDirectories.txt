@@ -1,0 +1,7 @@
+/home/steven/Projects/Scaler/libHook-c/tests/src/proofconcept/ScalerPythonModule/_skbuild/linux-x86_64-3.11/cmake-build/CMakeFiles/ScalerHook-proof-PythonModuleInterception.dir
+/home/steven/Projects/Scaler/libHook-c/tests/src/proofconcept/ScalerPythonModule/_skbuild/linux-x86_64-3.11/cmake-build/CMakeFiles/edit_cache.dir
+/home/steven/Projects/Scaler/libHook-c/tests/src/proofconcept/ScalerPythonModule/_skbuild/linux-x86_64-3.11/cmake-build/CMakeFiles/rebuild_cache.dir
+/home/steven/Projects/Scaler/libHook-c/tests/src/proofconcept/ScalerPythonModule/_skbuild/linux-x86_64-3.11/cmake-build/CMakeFiles/list_install_components.dir
+/home/steven/Projects/Scaler/libHook-c/tests/src/proofconcept/ScalerPythonModule/_skbuild/linux-x86_64-3.11/cmake-build/CMakeFiles/install.dir
+/home/steven/Projects/Scaler/libHook-c/tests/src/proofconcept/ScalerPythonModule/_skbuild/linux-x86_64-3.11/cmake-build/CMakeFiles/install/local.dir
+/home/steven/Projects/Scaler/libHook-c/tests/src/proofconcept/ScalerPythonModule/_skbuild/linux-x86_64-3.11/cmake-build/CMakeFiles/install/strip.dir

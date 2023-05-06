@@ -291,14 +291,15 @@ add_executable(ScalerHook-proof-threadlocalasmarray src/proofconcept/TestAccessT
 target_link_libraries(ScalerHook-proof-threadlocalasmarray pthread)
 
 
-find_package(Python3 COMPONENTS Development.Module REQUIRED)
-
-add_executable(ScalerHook-proof-PythonModuleInterception src/proofconcept/ScalerPythonModule/TestPythonModuleInterception.cpp)
-target_link_libraries(ScalerHook-proof-PythonModuleInterception PUBLIC pthread Python3::Module)
-
 add_executable(GetUserSysRealTime src/proofconcept/getUserTime.cpp src/demoapps/libWorkload.cpp src/demoapps/include/libWorkload.h)
 target_link_libraries(GetUserSysRealTime)
 
+add_library(TestSymbolTypesLib SHARED src/proofconcept/TestDifferentTypesOfSymbolLib.cpp)
+add_executable(TestSymbolTypes src/proofconcept/TestDifferentTypesOfSymbol.cpp)
+target_link_libraries(TestSymbolTypes PUBLIC TestSymbolTypesLib)
+
+add_subdirectory(src/proofconcept/ScalerPythonModule)
+add_subdirectory(src/proofconcept)
 
 #add_executable(ScalerHook-demoapps src/proofconcept/testprog.cpp)
 #target_link_libraries(DemoProg libTest PltHookLib dl)

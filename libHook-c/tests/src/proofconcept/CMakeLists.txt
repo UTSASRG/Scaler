@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -ldl --verbose -znow -fno-omit-frame-pointer -O3 -std=c++11")
 set(CMAKE_VERBOSE_MAKEFILE on)
@@ -11,7 +11,7 @@ include_directories(includes)
 project(PltHook)
 
 # Compile PltHookLib
-add_library(PltHookLib SHARED library/plthook_elf.cpp)
+#add_library(PltHookLib SHARED library/plthook_elf.cpp)
 
 # Compile libtest
 add_library(libTest SHARED libtest.cpp)
@@ -60,12 +60,23 @@ add_executable(TestFindSection testFindSection.cpp)
 add_executable(TestPLTInterception testPLTInterception.cpp)
 target_link_options(TestPLTInterception PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/mylinker.ld")
 
-
 #add_executable(TestLocatingPLT test/testLocatingPLT.cpp)
 #target_link_libraries(TestLocatingPLT libTest PltHookLib libPMParser dl)
 #target_link_options(TestLocatingPLT PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/mylinker.ld")
 
-
 add_executable(TestFindRdebug testFindRdebug.cpp)
 target_link_libraries(TestFindRdebug libTest dl)
+
+# This example will not work
+
+add_library(DLInterceptor SHARED DLInterceptor.cpp)
+target_link_libraries(DLInterceptor PRIVATE dl)
+
+add_library(DlGrabber SHARED DlGrabber.cpp)
+target_link_libraries(DlGrabber PRIVATE dl)
+
+add_executable(TestDL TestDL.cpp)
+target_link_libraries(TestDL DlGrabber DLInterceptor dl)
+target_include_directories(TestDL PUBLIC /home/steven/Projects/Scaler/libHook-c/tests/lib/FunctionCall/include)
+
 
