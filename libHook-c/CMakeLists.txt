@@ -18,6 +18,7 @@ set(HookSrc
         src/ExtSymInfo.cpp
         src/ELFImgInfo.cpp
         src/HookHandlers.cpp
+        src/DLProxy.cpp
         )
 
 # Scaler hook library itself. Users need to manually install scalerhook through library functions.

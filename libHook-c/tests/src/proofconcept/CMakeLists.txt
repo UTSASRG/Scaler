@@ -76,7 +76,7 @@ add_library(DlGrabber SHARED DlGrabber.cpp)
 target_link_libraries(DlGrabber PRIVATE dl)
 
 add_executable(TestDL TestDL.cpp)
-target_link_libraries(TestDL DlGrabber DLInterceptor dl)
+target_link_libraries(TestDL ScalerHook-HookAutoAsm-C dl)
 target_include_directories(TestDL PUBLIC /home/steven/Projects/Scaler/libHook-c/tests/lib/FunctionCall/include)
 
 

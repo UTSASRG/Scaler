@@ -286,10 +286,14 @@ namespace scaler {
             } else if (strncmp(funcName, "verrx", 5) == 0) {
                 return false;
             } else if (strncmp(funcName, "dlsym", 5) == 0) {
+                INFO_LOG("dlsym unhooked");
                 return false;
             }
         } else if (funcNameLen == 6) {
             if (strncmp(funcName, "_ZdlPv", 6) == 0) {
+                return false;
+            }else if (strncmp(funcName, "dlopen", 6) == 0) {
+                INFO_LOG("dlopen unhooked");
                 return false;
             }
         } else if (funcNameLen == 7) {
