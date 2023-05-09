@@ -20,6 +20,11 @@ extern "C" {
 scaler::Vector<HookContext *> threadContextMap;
 #ifndef MANUAL_INSTALL
 
+int __libc_start_main(main_fn_t, int, char **, void (*)(), void (*)(), void (*)(), void *)
+__attribute__((weak, alias("doubletake_libc_start_main")));
+
+
+typedef int (*exit_origt)(int __status) ;
 
 int doubletake_main(int argc, char **argv, char **envp) {
 
