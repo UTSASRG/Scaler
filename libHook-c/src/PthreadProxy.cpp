@@ -118,23 +118,4 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     return retVal;
 }
 
-
-int pthread_join(pthread_t __th, void **__thread_return) {
-    if (pthread_join_orig == nullptr) {
-        //load plt hook address
-        pthread_join_orig = (pthread_join_origt) dlsym(RTLD_NEXT, "pthread_join");
-        if (!pthread_join_orig) {
-            fatalError("Cannot find the address of pthread_join");
-            return 0;
-        }
-    }
-
-    if (!installed) {
-        return pthread_join_orig(__th, __thread_return);
-    }
-
-    int retVal = pthread_join_orig(__th, __thread_return);
-
-    return retVal;
-}
 }
