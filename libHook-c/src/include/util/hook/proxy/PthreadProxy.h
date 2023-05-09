@@ -2,11 +2,9 @@
 #define SCALER_PTHREADPROXY_H
 
 #include<pthread.h>
+extern "C" {
 
-int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)(void *), void *arg);
-//void pthread_exit(void *__retval);
+int pthread_create_proxy(pthread_t *thread, const pthread_attr_t *attr, void *(*start)(void *), void *arg);
 
-int pthread_join (pthread_t __th, void **__thread_return);
-
-
+}
 #endif //SCALER_PTHREADPROXY_H

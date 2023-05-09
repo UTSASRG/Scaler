@@ -19,6 +19,9 @@
 #include <util/tool/Timer.h>
 #include <util/hook/LogicalClock.h>
 #include "util/hook/proxy/DLProxy.h"
+#include "util/hook/proxy/PthreadProxy.h"
+#include "util/hook/proxy/SystemProxy.h"
+#include "util/hook/proxy/LibcProxy.h"
 
 
 namespace scaler {
@@ -174,7 +177,7 @@ namespace scaler {
             ssize_t initialGap = 0;
 
             void *addressOverride = nullptr;
-            if (!shouldHookThisSymbol(funcName, bind, type, allExtSymbol.getSize(), initialGap, addressOverride)) {
+            if (!shouldHookThisSymbol(funcName, bind, type, allExtSymbol.getSize(), addressOverride)) {
                 continue;
             }
             //Get function id from plt entry
@@ -203,9 +206,8 @@ namespace scaler {
             newSym->pltSecEntryAddr = pltSecEntry;
             newSym->pltStubId = pltStubId;
             newSym->initialGap = initialGap;
-            if(addressOverride){
-                INFO_LOGS("%p",gotAddr);
-                *newSym->gotEntryAddr= reinterpret_cast<uint8_t *>(addressOverride);
+            if (addressOverride) {
+                *newSym->gotEntryAddr = reinterpret_cast<uint8_t *>(addressOverride);
             }
             fprintf(symInfoFile, "%s,%ld,%ld\n", funcName, newSym->fileId, newSym->symIdInFile);
 
@@ -221,12 +223,9 @@ namespace scaler {
     }
 
 
-    const int SAMPLING_GAP = 0b0;
-
     bool ExtFuncCallHook::shouldHookThisSymbol(const char *funcName, Elf64_Word &bind, Elf64_Word &type, SymID curSymId,
-                                               ssize_t &initialGap, void *&addressOverride) {
+                                               void *&addressOverride) {
         addressOverride = nullptr;
-        initialGap = 0;
         if (bind != STB_GLOBAL || type != STT_FUNC) {
             return false;
         }
@@ -234,7 +233,7 @@ namespace scaler {
         ssize_t funcNameLen = strlen(funcName);
         if (funcNameLen == 0) {
             return false;
-//            fatalError("Function has no name?!");
+            //fatalError("Function has no name?!");
         }
 
 
@@ -243,36 +242,20 @@ namespace scaler {
         }
 
         if (funcNameLen == 3) {
-            if (strncmp(funcName, "cos", 3) == 0) {
-                initialGap = SAMPLING_GAP;
-            } else if (strncmp(funcName, "exp", 3) == 0) {
-                initialGap = SAMPLING_GAP;
-            } else if (strncmp(funcName, "log", 3) == 0) {
-                initialGap = SAMPLING_GAP;
-            } else if (strncmp(funcName, "sin", 3) == 0) {
-                initialGap = SAMPLING_GAP;
-            } else if (strncmp(funcName, "oom", 3) == 0) {
+            if (strncmp(funcName, "oom", 3) == 0) {
                 return false;
             } else if (strncmp(funcName, "err", 3) == 0) {
                 return false;
             }
         } else if (funcNameLen == 4) {
-            if (strncmp(funcName, "cosf", 4) == 0) {
-                initialGap = SAMPLING_GAP;
-            } else if (strncmp(funcName, "expf", 4) == 0) {
-                initialGap = SAMPLING_GAP;
-            } else if (strncmp(funcName, "logf", 4) == 0) {
-                initialGap = SAMPLING_GAP;
-            } else if (strncmp(funcName, "powf", 4) == 0) {
-                initialGap = SAMPLING_GAP;
-            } else if (strncmp(funcName, "sinf", 4) == 0) {
-                initialGap = SAMPLING_GAP;
-            } else if (strncmp(funcName, "sqrtf", 4) == 0) {
-                initialGap = SAMPLING_GAP;
-            } else if (strncmp(funcName, "jump", 4) == 0) {
+            if (strncmp(funcName, "jump", 4) == 0) {
                 return false;
+            } else if (strncmp(funcName, "fork", 4) == 0) {
+                addressOverride = (void *) fork_proxy;
+                return true;
             } else if (strncmp(funcName, "exit", 4) == 0) {
-                return false;
+                addressOverride = (void *) exit_proxy;
+                return true;
             } else if (strncmp(funcName, "fail", 4) == 0) {
                 return false;
             } else if (strncmp(funcName, "verr", 4) == 0) {
@@ -281,11 +264,7 @@ namespace scaler {
                 return false;
             }
         } else if (funcNameLen == 5) {
-            if (strncmp(funcName, "atan2", 5) == 0) {
-                initialGap = SAMPLING_GAP;
-            } else if (strncmp(funcName, "sqrtf", 5) == 0) {
-                initialGap = SAMPLING_GAP;
-            } else if (strncmp(funcName, "_exit", 5) == 0) {
+            if (strncmp(funcName, "_exit", 5) == 0) {
                 return false;
             } else if (strncmp(funcName, "abort", 5) == 0) {
                 return false;
@@ -294,28 +273,35 @@ namespace scaler {
             } else if (strncmp(funcName, "verrx", 5) == 0) {
                 return false;
             } else if (strncmp(funcName, "dlsym", 5) == 0) {
-                INFO_LOG("dlsym overrided");
+                DBG_LOG("dlsym overrided");
                 addressOverride = (void *) dlsym_proxy;
                 return true;
             }
         } else if (funcNameLen == 6) {
             if (strncmp(funcName, "_ZdlPv", 6) == 0) {
                 return false;
+            } else if (strncmp(funcName, "_ZdlPv", 6) == 0) {
+                return false;
             } else if (strncmp(funcName, "dlopen", 6) == 0) {
-                INFO_LOG("dlopen address overrided");
+                DBG_LOG("dlopen address overrided");
                 addressOverride = (void *) dlopen_proxy;
+                return true;
+            } else if (strncmp(funcName, "dlvsym", 6) == 0) {
+                DBG_LOG("dlvsym address overrided");
+                addressOverride = (void *) dlvsym_proxy;
                 return true;
             }
         } else if (funcNameLen == 7) {
             if (strncmp(funcName, "_dl_sym", 7) == 0) {
                 return false;
+            } else if (strncmp(funcName, "dlmopen", 7) == 0) {
+                addressOverride = (void *) dlmopen_proxy;
+                return true;
             } else if (strncmp(funcName, "longjmp", 7) == 0) {
                 return false;
             } else if (strncmp(funcName, "_setjmp", 7) == 0) {
                 return false;
             }
-
-
         } else if (funcNameLen == 8) {
             if (strncmp(funcName, "_longjmp", 8) == 0) {
                 return false;
@@ -384,11 +370,8 @@ namespace scaler {
             } else if (strncmp(funcName, "__cxa_bad_cast", 14) == 0) {
                 return false;
             } else if (strncmp(funcName, "pthread_create", 14) == 0) {
-                //pthreadCreateSymId = curSymId;
-                //todo: Also calculate the time of pthread_create
-                //todo: Temporary measure. Make sure pthread_create address is correctly resolved
-                //This is important to make sure pthread_create is recorded
-                return false;
+                addressOverride = (void *) pthread_create_proxy;
+                return true;
             }
         } else if (funcNameLen == 15) {
             if (strncmp(funcName, "____longjmp_chk", 15) == 0) {
@@ -675,7 +658,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2F0CE8(%%rip),%0\n\t"
+                "movq 0x2F0C78(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :

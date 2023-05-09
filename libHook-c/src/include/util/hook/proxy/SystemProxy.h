@@ -1,10 +1,8 @@
-#ifndef SCALER_LIBCPROXY_H
-#define SCALER_LIBCPROXY_H
+#ifndef SCALER_SYSTEMPROXY_H
+#define SCALER_SYSTEMPROXY_H
 
-#include <ctype.h>
+#include <cctype>
 
-typedef __pid_t (*fork_origt)(void);
-
-__pid_t fork(void);
+__pid_t fork_proxy(void);
 
 #endif //SCALER_LIBCPROXY_H

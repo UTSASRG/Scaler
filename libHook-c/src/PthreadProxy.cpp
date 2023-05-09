@@ -3,21 +3,12 @@
 #include <util/tool/Timer.h>
 #include <util/hook/LogicalClock.h>
 
-extern "C" {
 
-typedef void (*pthread_exit_origt)(void *__retval);
-typedef int (*pthread_create_origt)(pthread_t *, const pthread_attr_t *, void *(*)(void *), void *);
-typedef int (*pthread_cancel_origt)(pthread_t __th);
-typedef int (*pthread_cancel_origt)(pthread_t __th);
-typedef int (*pthread_join_origt)(pthread_t __th, void **__thread_return);
 
-pthread_create_origt pthread_create_orig;
-pthread_join_origt pthread_join_orig;
 
 // Define structure to hold arguments for dummy thread function
 struct dummy_thread_function_args {
     void *(*actual_thread_function)(void *data);
-
     void *pthreadCreateRetAddr;
     void *data;
 };
@@ -75,30 +66,9 @@ void *dummy_thread_function(void *data) {
 extern bool installed;
 
 // Main Pthread wrapper functions.
-int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)(void *), void *arg) {
-    //register uint64_t rbp asm ("rbp");
-    //register uint64_t rsp asm ("rsp");c
-    //void **callerAddr1 = reinterpret_cast<void **>(rbp+8);
-    //void *callerAddrPtr = *reinterpret_cast<void **>(rsp + 0x8 + 0x40);
-    //uint8_t callOpCode = *reinterpret_cast<uint8_t *>((uint64_t) callerAddrPtr - 0x5);
-    //if (callOpCode != 0xE8 && callOpCode != 0xFF && callOpCode != 0x9A) {
-    //    fatalError("Failed to parse the caller address for pthread_create")
-    //    exit(-1);
-    //}
-//    INFO_LOG("Pthread create");
-
-
-    if (pthread_create_orig == nullptr) {
-        //load plt hook address
-        pthread_create_orig = (pthread_create_origt) dlsym(RTLD_NEXT, "pthread_create");
-        if (!pthread_create_orig) {
-            fatalError("Cannot find the address of pthread_create");
-            return false;
-        }
-    }
-
+int pthread_create_proxy(pthread_t *thread, const pthread_attr_t *attr, void *(*start)(void *), void *arg) {
     if (!installed) {
-        return pthread_create_orig(thread, attr, start, (void *) arg);
+        return pthread_create(thread, attr, start, (void *) arg);
     }
 
     auto threadID = pthread_self();
@@ -110,7 +80,7 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
     args->pthreadCreateRetAddr = __builtin_return_address(0);
     // Call the actual pthread_create
 
-    int retVal = pthread_create_orig(thread, attr, dummy_thread_function, (void *) args);
+    int retVal = pthread_create(thread, attr, dummy_thread_function, (void *) args);
 
     HookContext *curContextPtr = curContext;
     //Attribute time to pthread_create
@@ -119,22 +89,13 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start)
 }
 
 
-int pthread_join(pthread_t __th, void **__thread_return) {
-    if (pthread_join_orig == nullptr) {
-        //load plt hook address
-        pthread_join_orig = (pthread_join_origt) dlsym(RTLD_NEXT, "pthread_join");
-        if (!pthread_join_orig) {
-            fatalError("Cannot find the address of pthread_join");
-            return 0;
-        }
-    }
+int pthread_join_proxy(pthread_t __th, void **__thread_return) {
 
     if (!installed) {
-        return pthread_join_orig(__th, __thread_return);
+        return pthread_join(__th, __thread_return);
     }
 
-    int retVal = pthread_join_orig(__th, __thread_return);
+    int retVal = pthread_join(__th, __thread_return);
 
     return retVal;
-}
 }

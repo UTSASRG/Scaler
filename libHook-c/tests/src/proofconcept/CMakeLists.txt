@@ -14,7 +14,6 @@ project(PltHook)
 #add_library(PltHookLib SHARED library/plthook_elf.cpp)
 
 # Compile libtest
-add_library(libTest SHARED libtest.cpp)
 
 # Compile PmParser
 #add_library(libPMParser SHARED library/pmparser.cpp)

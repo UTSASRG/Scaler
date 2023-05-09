@@ -4,21 +4,26 @@
 #include <util/tool/FileTool.h>
 #include <exceptions/ScalerException.h>
 #include <util/tool/Timer.h>
-#include <util/tool/FileTool.h>
 #include <util/hook/proxy/LibcProxy.h>
 #include <util/hook/ExtFuncCallHook.h>
 #include <util/hook/HookContext.h>
-#include <util/hook/ExtFuncCallHook.h>
-#include <cxxabi.h>
 
+
+scaler::Vector<HookContext *> threadContextMap;
+extern "C" {
+
+
+#ifndef MANUAL_INSTALL
+bool installed = false;
+
+typedef int (*main_fn_t)(int, char **, char **);
 main_fn_t real_main;
 
 
-bool installed = false;
+int doubletake_libc_start_main(main_fn_t main_fn, int argc, char **argv, void (*init)(), void (*fini)(),
+                               void (*rtld_fini)(), void *stack_end);
 
-extern "C" {
-scaler::Vector<HookContext *> threadContextMap;
-#ifndef MANUAL_INSTALL
+int __libc_start_main(main_fn_t, int, char **, void (*)(), void (*)(), void (*)(), void *) __attribute__((weak, alias("doubletake_libc_start_main")));
 
 
 int doubletake_main(int argc, char **argv, char **envp) {
@@ -80,15 +85,13 @@ int doubletake_libc_start_main(main_fn_t main_fn, int argc, char **argv, void (*
     return real_libc_start_main(doubletake_main, argc, argv, init, fini, rtld_fini, stack_end);
 }
 
-void exit(int __status) {
-    auto realExit = (exit_origt) dlsym(RTLD_NEXT, "exit");
+void exit_proxy(int __status) {
 
     if (!installed) {
-        realExit(__status);
+        exit(__status);
     }
-
     saveData(curContext, true);
-    realExit(__status);
+    exit(__status);
 }
 
 
