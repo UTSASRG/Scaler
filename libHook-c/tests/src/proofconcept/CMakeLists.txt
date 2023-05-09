@@ -9,13 +9,6 @@ include_directories(includes)
 # set the project name
 project(PltHook)
 
-# Compile PltHookLib
-#add_library(PltHookLib SHARED library/plthook_elf.cpp)
-
-
-# Compile PmParser
-#add_library(libPMParser SHARED library/pmparser.cpp)
-
 
 # Compile libOneMilionFunc
 add_library(libOneMilionFunc SHARED milionFuncLibrary.cpp)

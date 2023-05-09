@@ -46,9 +46,9 @@ add_executable(ScalerHook-unittests
         src/unittests/TestLog.cpp
         src/unittests/TestConfig.cpp
         src/unittests/TestTimer.cpp
-        src/unittests/TestInvocationTree.cpp
         src/unittests/util/datastructure/TestList.cpp
         src/unittests/util/datastructure/TestStack.cpp
+        src/unittests/util/datastructure/TestFStack.cpp
         src/unittests/util/datastructure/TestVector.cpp
         src/unittests/util/datastructure/TestHashmap.cpp
         src/unittests/util/datastructure/TestELFInfo.cpp
