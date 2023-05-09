@@ -1,4 +1,4 @@
-#include "libtest.h"
+#include <FuncWithDiffParms.h>
 
 int main() {
     funcA();

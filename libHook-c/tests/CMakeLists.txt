@@ -314,8 +314,6 @@ add_subdirectory(src/proofconcept)
 #add_executable(TestExtFunctionInvocation test/testExtFuncInvocation.cpp)
 #target_link_libraries(TestExtFunctionInvocation libTest dl)
 #
-#add_executable(TestJMPHandler test/testJmpHandler.cpp)
-#target_link_libraries(TestJMPHandler libTest PltHookLib dl)
 #
 #add_executable(TestJMPHandlerInlineHook test/testJmpHandlerInlineHook.cpp)
 #target_link_libraries(TestJMPHandlerInlineHook libTest PltHookLib dl)
