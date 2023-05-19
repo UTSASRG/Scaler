@@ -10,8 +10,8 @@ using namespace scaler;
 //TEST(PMParser, openPMMap) {
 //    PmParser_Linux pmp;
 //}
-//
-//
+
+
 //TEST(PMParser, parsePMMap) {
 //
 //    //Use PMParser to extract /proc/self/map
@@ -100,18 +100,152 @@ using namespace scaler;
 //
 //}
 
+TEST(PMParser, DynamicPmParser) {
+    std::stringstream ss;
+    ss << PROJECT_SOURCE_DIR << "/src/unittests/testinputs/PmParser/test1-TestDL-beforedlopen.txt";
+    PmParser parser("/tmp", ss.str());
+
+    Array<int> newlyLoadedFileId(5);
+    Array<int> newlyLoadedPmEntry(5);
+    parser.parsePMMap(0);
+    ASSERT_EQ(parser.fileEntryArray.getSize(), 9);
+    ASSERT_EQ(parser.pmEntryArray.getSize(), 21);
+
+
+    uint8_t *pmEntryStartingAddrs[] = {(uint8_t *) 0x555555554000, (uint8_t *) 0x555555754000,
+                                       (uint8_t *) 0x555555755000, (uint8_t *) 0x7ffff77de000,
+                                       (uint8_t *) 0x7ffff79c5000, (uint8_t *) 0x7ffff7bc5000,
+                                       (uint8_t *) 0x7ffff7bc9000, (uint8_t *) 0x7ffff7bcb000,
+                                       (uint8_t *) 0x7ffff7bcf000, (uint8_t *) 0x7ffff7bd2000,
+                                       (uint8_t *) 0x7ffff7dd1000, (uint8_t *) 0x7ffff7dd2000,
+                                       (uint8_t *) 0x7ffff7dd3000, (uint8_t *) 0x7ffff7fd6000,
+                                       (uint8_t *) 0x7ffff7ff7000, (uint8_t *) 0x7ffff7ffa000,
+                                       (uint8_t *) 0x7ffff7ffc000, (uint8_t *) 0x7ffff7ffd000,
+                                       (uint8_t *) 0x7ffff7ffe000, (uint8_t *) 0x7ffffffde000,
+                                       (uint8_t *) 0xffffffffff600000};
+    uint8_t *pmEntryEndAddrs[] = {(uint8_t *) 0x555555555000, (uint8_t *) 0x555555755000, (uint8_t *) 0x555555756000,
+                                  (uint8_t *) 0x7ffff79c5000, (uint8_t *) 0x7ffff7bc5000, (uint8_t *) 0x7ffff7bc9000,
+                                  (uint8_t *) 0x7ffff7bcb000, (uint8_t *) 0x7ffff7bcf000, (uint8_t *) 0x7ffff7bd2000,
+                                  (uint8_t *) 0x7ffff7dd1000, (uint8_t *) 0x7ffff7dd2000, (uint8_t *) 0x7ffff7dd3000,
+                                  (uint8_t *) 0x7ffff7dfc000, (uint8_t *) 0x7ffff7fdb000, (uint8_t *) 0x7ffff7ffa000,
+                                  (uint8_t *) 0x7ffff7ffc000, (uint8_t *) 0x7ffff7ffd000, (uint8_t *) 0x7ffff7ffe000,
+                                  (uint8_t *) 0x7ffff7fff000, (uint8_t *) 0x7ffffffff000, (uint8_t *) 0xffffffffff601000
+    };
+    unsigned char permBits[] = {0b1011, 0b1001, 0b1101, 0b1011, 0b0001, 0b1001, 0b1101, 0b1101, 0b1011, 0b0001, 0b1001,
+                                0b1101, 0b1011, 0b1101, 0b1001, 0b1011, 0b1001, 0b1101, 0b1101, 0b1101, 0b1011};
+    int fileIds[] = {0, 0, 0, 1, 1, 1, 1, 2, 3, 3, 3, 3, 4, 2, 5, 6, 4, 4, 2, 7, 8};
+    int pmEntryNumbers[] = {3, 4, 3, 4, 3, 1, 1, 1, 1};
+    std::string strList[] = {
+            "/home/steven/Projects/Scaler/cmake-build-debug/libHook-c/tests/src/proofconcept/TestDL",
+            "/lib/x86_64-linux-gnu/libc-2.27.so",
+            "",
+            "/lib/x86_64-linux-gnu/libdl-2.27.so",
+            "/lib/x86_64-linux-gnu/ld-2.27.so",
+            "[vvar]",
+            "[vdso]",
+            "[stack]",
+            "[vsyscall]"
+    };
+
+    for (int i = 0; i < parser.fileEntryArray.getSize(); ++i) {
+        FileEntry &curFileEntry = parser.fileEntryArray[i];
+        ASSERT_EQ(parser.stringTable.substr(curFileEntry.pathNameStartIndex, curFileEntry.getPathNameLength()),
+                  strList[i]);
+        ASSERT_EQ(curFileEntry.pmEntryNumbers, pmEntryNumbers[i]);
+        ASSERT_EQ(curFileEntry.loadingId, 0);
+    }
+
+    for (int i = 0; i < parser.pmEntryArray.getSize(); ++i) {
+        PMEntry &curPmEntry = parser.pmEntryArray[i];
+        ASSERT_EQ(curPmEntry.addrStart, pmEntryStartingAddrs[i]);
+        ASSERT_EQ(curPmEntry.addrEnd, pmEntryEndAddrs[i]);
+        ASSERT_EQ(curPmEntry.permBits, permBits[i]);
+        ASSERT_EQ(curPmEntry.fileId, fileIds[i]);
+        ASSERT_EQ(curPmEntry.loadingId, 0);
+    }
+
+    newlyLoadedFileId.clear();
+    newlyLoadedPmEntry.clear();
+    INFO_LOG("Second pmParser");
+    ss.str("");
+    ss << PROJECT_SOURCE_DIR << "/src/unittests/testinputs/PmParser/test1-TestDL-afterdlopen.txt";
+    parser.customProcFileName = ss.str();
+    //Test on the reuslt after dlopen
+    parser.parsePMMap(1);
+
+    uint8_t *pmEntryStartingAddrs1[] = {(uint8_t *) 0x555555554000, (uint8_t *) 0x555555754000,
+                                        (uint8_t *) 0x555555755000, (uint8_t *) 0x555555756000,
+                                        (uint8_t *) 0x7ffff7448000, (uint8_t *) 0x7ffff75dc000,
+                                        (uint8_t *) 0x7ffff77dc000, (uint8_t *) 0x7ffff77dd000,
+                                        (uint8_t *) 0x7ffff77de000, (uint8_t *) 0x7ffff79c5000,
+                                        (uint8_t *) 0x7ffff7bc5000, (uint8_t *) 0x7ffff7bc9000,
+                                        (uint8_t *) 0x7ffff7bcb000, (uint8_t *) 0x7ffff7bcf000,
+                                        (uint8_t *) 0x7ffff7bd2000, (uint8_t *) 0x7ffff7dd1000,
+                                        (uint8_t *) 0x7ffff7dd2000, (uint8_t *) 0x7ffff7dd3000,
+                                        (uint8_t *) 0x7ffff7fd6000, (uint8_t *) 0x7ffff7ff7000,
+                                        (uint8_t *) 0x7ffff7ffa000, (uint8_t *) 0x7ffff7ffc000,
+                                        (uint8_t *) 0x7ffff7ffd000, (uint8_t *) 0x7ffff7ffe000,
+                                        (uint8_t *) 0x7ffffffde000, (uint8_t *) 0xffffffffff600000
+    };
+    uint8_t *pmEntryEndAddrs1[] = {(uint8_t *) 0x555555555000, (uint8_t *) 0x555555755000, (uint8_t *) 0x555555756000,
+                                   (uint8_t *) 0x555555777000, (uint8_t *) 0x7ffff75dc000, (uint8_t *) 0x7ffff77dc000,
+                                   (uint8_t *) 0x7ffff77dd000, (uint8_t *) 0x7ffff77de000, (uint8_t *) 0x7ffff79c5000,
+                                   (uint8_t *) 0x7ffff7bc5000, (uint8_t *) 0x7ffff7bc9000, (uint8_t *) 0x7ffff7bcb000,
+                                   (uint8_t *) 0x7ffff7bcf000, (uint8_t *) 0x7ffff7bd2000, (uint8_t *) 0x7ffff7dd1000,
+                                   (uint8_t *) 0x7ffff7dd2000, (uint8_t *) 0x7ffff7dd3000, (uint8_t *) 0x7ffff7dfc000,
+                                   (uint8_t *) 0x7ffff7fdb000, (uint8_t *) 0x7ffff7ffa000, (uint8_t *) 0x7ffff7ffc000,
+                                   (uint8_t *) 0x7ffff7ffd000, (uint8_t *) 0x7ffff7ffe000, (uint8_t *) 0x7ffff7fff000,
+                                   (uint8_t *) 0x7ffffffff000, (uint8_t *) 0xffffffffff601000};
+
+    unsigned char permBits1[] = {0b1011, 0b1001, 0b1101, 0b1101, 0b1011, 0b0001, 0b1001, 0b1101, 0b1011, 0b0001, 0b1001,
+                                 0b1101, 0b1101, 0b1011, 0b0001, 0b1001, 0b1101, 0b1011, 0b1101, 0b1001, 0b1011, 0b1001,
+                                 0b1101, 0b1101, 0b1101, 0b1011};
+    int fileIds1[] = {0, 0, 0, 9, 10, 10, 10, 10, 1,1, 1, 1, 2, 3, 3, 3, 3, 4, 2, 5, 6, 4,4, 2, 7, 8};
+    int pmEntryNumbers1[] = {3, 4, 3, 4, 3, 1, 1, 1, 1,1,4};
+    std::string strList1[] = {
+            "/home/steven/Projects/Scaler/cmake-build-debug/libHook-c/tests/src/proofconcept/TestDL",
+            "/lib/x86_64-linux-gnu/libc-2.27.so",
+            "",
+            "/lib/x86_64-linux-gnu/libdl-2.27.so",
+            "/lib/x86_64-linux-gnu/ld-2.27.so",
+            "[vvar]",
+            "[vdso]",
+            "[stack]",
+            "[vsyscall]",
+            "[heap]",
+            "/home/steven/Projects/Scaler/cmake-build-release/libHook-c/tests/libTestlib-FuncCall.so"
+    };
+
+    for (int i = 0; i < parser.fileEntryArray.getSize(); ++i) {
+        FileEntry &curFileEntry = parser.fileEntryArray[i];
+        ASSERT_EQ(parser.stringTable.substr(curFileEntry.pathNameStartIndex, curFileEntry.getPathNameLength()),
+                  strList1[i]);
+        ASSERT_EQ(curFileEntry.pmEntryNumbers, pmEntryNumbers1[i]);
+        ASSERT_EQ(curFileEntry.loadingId, 1);
+    }
+
+    for (int i = 0; i < parser.pmEntryArray.getSize(); ++i) {
+        PMEntry &curPmEntry = parser.pmEntryArray[i];
+        ASSERT_EQ(curPmEntry.addrStart, pmEntryStartingAddrs1[i]);
+        ASSERT_EQ(curPmEntry.addrEnd, pmEntryEndAddrs1[i]);
+        ASSERT_EQ(curPmEntry.permBits, permBits1[i]);
+        ASSERT_EQ(curPmEntry.fileId, fileIds1[i]);
+        ASSERT_EQ(curPmEntry.loadingId, 1);
+    }
+}
+
 
 TEST(PMParser, findExecNameByAddr) {
     //Get current executable file name
 //    PmParser parser;
 //
 //    void *funcPtr = (void *) printf;
-//    size_t fileId = parser.findExecNameByAddr(funcPtr);
+//    size_t fileId = parser.findFileIdByAddr(funcPtr);
 //    auto execName = parser.idFileMap[fileId];
 //    EXPECT_TRUE(execName.find("libc") != std::string::npos);
 //
 //    //Try C
-//    fileId = parserC.findExecNameByAddr(funcPtr);
+//    fileId = parserC.findFileIdByAddr(funcPtr);
 //    execName = parserC.idFileMap[fileId];
 //    EXPECT_TRUE(execName.find("libc") != std::string::npos);
 

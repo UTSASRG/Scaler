@@ -18,14 +18,14 @@ namespace scaler {
      * Won't call any external function for read-only operation
      * @tparam T Value type
      */
-    template<typename T>
+    template<typename T, typename... Args>
     class Array {
     public:
 
         //todo: Check initialized
         explicit Array(const ssize_t &initialSize = 1) : internalArrSize(initialSize), size(0) {
             if (initialSize > 0) {
-                internalArr = (T *) malloc( internalArrSize * sizeof(T));
+                internalArr = (T *) malloc(internalArrSize * sizeof(T));
 //                INFO_LOGS("Internal array %d bytes",internalArrSize * sizeof(T));
                 assert(internalArr != nullptr);
                 memset(internalArr, 0, internalArrSize * sizeof(T));
@@ -46,7 +46,7 @@ namespace scaler {
                 if (internalArr)
                     free(internalArr);
 
-                internalArr = (T *) malloc( rho.internalArrSize * sizeof(T));
+                internalArr = (T *) malloc(rho.internalArrSize * sizeof(T));
                 size = rho.size;
                 internalArrSize = rho.internalArrSize;
                 memcpy(internalArr, rho.internalArr, rho.internalArrSize * sizeof(T));
@@ -73,17 +73,21 @@ namespace scaler {
         virtual inline void erase(const ssize_t &index) {
             assert(0 <= index && index < size);
             size -= 1;
-            memmove(internalArr + index, internalArr + index + 1, size - index);
+            memmove(internalArr + index, internalArr + index + 1, (size - index)*sizeof(T));
         }
 
-        virtual T *insertAt(ssize_t index) {
+
+        virtual T *insertAt(ssize_t index, Args... restOfArgs) {
             assert(0 <= index && index <= size);
-            if (size == internalArrSize)
+            if (size == internalArrSize){
+                INFO_LOG("Array expanded");
                 expand(size + 1);
+            }
             if (index < size) {
-                memmove(internalArr + index + 1, internalArr + index, size - index);
+                memmove(internalArr + index + 1, internalArr + index, (size - index)*sizeof(T));
             }
             size += 1;
+            new (internalArr + index) T(restOfArgs...);  //Construct object
             return internalArr + index;
         }
 
@@ -148,7 +152,7 @@ namespace scaler {
 
             ssize_t newSize = max<ssize_t>(minimumSize, internalArrSize * 2);
 
-            internalArr = (T *) malloc( newSize * sizeof(T));
+            internalArr = (T *) malloc(newSize * sizeof(T));
             memset(internalArr, 0, newSize * sizeof(T));
 
             memcpy(internalArr, oldInternalArr, internalArrSize * sizeof(T));

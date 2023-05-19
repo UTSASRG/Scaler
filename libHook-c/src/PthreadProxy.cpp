@@ -53,9 +53,9 @@ void *dummy_thread_function(void *data) {
 
     HookContext *curContextPtr = curContext;
     assert(curContextPtr != NULL);
-    curContextPtr->threadCreatorFileId = curContextPtr->_this->pmParser.findExecNameByAddr(
+    curContextPtr->threadCreatorFileId = curContextPtr->_this->pmParser.findFileIdByAddr(
             pthreadCreateRetAddr);
-//    DBG_LOGS("Thread is created by %ld", curContextPtr->_this->pmParser.findExecNameByAddr(
+//    DBG_LOGS("Thread is created by %ld", curContextPtr->_this->pmParser.findFileIdByAddr(
 //            pthreadCreateRetAddr));
 
     /**

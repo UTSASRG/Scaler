@@ -243,7 +243,7 @@ inline void saveRealFileId(std::stringstream &ss, HookContext *curContextPtr) {
 
     uint64_t *realFileIdMem = reinterpret_cast<uint64_t *>(fileContentInMem);
     for (int i = 0; i < curContextPtr->_this->allExtSymbol.getSize(); ++i) {
-        realFileIdMem[i] = curContextPtr->_this->pmParser.findExecNameByAddr(
+        realFileIdMem[i] = curContextPtr->_this->pmParser.findFileIdByAddr(
                 *(curContextPtr->_this->allExtSymbol[i].gotEntryAddr));
     }
 

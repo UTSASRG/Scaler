@@ -36,7 +36,7 @@ target_include_directories(ScalerHook-HookAutoAsm-C PUBLIC src/include lib/inire
 target_link_libraries(ScalerHook-HookAutoAsm-C PUBLIC pthread dl)
 target_link_options(ScalerHook-HookAutoAsm-C PRIVATE -static-libgcc -static-libstdc++) #Todo; Statically link libc is not advised. Change to re-compile in o
 target_compile_options(ScalerHook-HookAutoAsm-C PRIVATE ${SCALER_HOOK_COMPILATION_FLAGS})
-target_compile_definitions(ScalerHook-HookAutoAsm-C PUBLIC CMAKE_SCALERRUN_VERSION="${PROJECT_VERSION}" NDEBUG) #NDEBUG
+target_compile_definitions(ScalerHook-HookAutoAsm-C PUBLIC CMAKE_SCALERRUN_VERSION="${PROJECT_VERSION}") #NDEBUG
 
 #Add tests
 add_subdirectory(tests)

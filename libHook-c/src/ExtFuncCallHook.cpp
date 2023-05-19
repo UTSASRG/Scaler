@@ -36,9 +36,10 @@ namespace scaler {
         fprintf(symInfoFile, "%s,%s,%s\n", "funcName", "fileId", "symIdInFile");
         fclose(symInfoFile);
 
-
+        Array<int> newlyLoadedFileId(5);
+        Array<int> newlyLoadedPmEntry(5);
         //Parse filenames
-        pmParser.parsePMMap();
+        pmParser.parsePMMap(0);
         //Get pltBaseAddr
 
         parseRequiredInfo();
@@ -189,7 +190,7 @@ namespace scaler {
             }
             uint8_t *pltEntry = curImgInfo.pltStartAddr + pltSection.entrySize * (i + 1);
 
-
+            DBG_LOGS("curImgInfo.pltStartAddr = %p\n",curImgInfo.pltStartAddr );
             uint32_t pltStubId = parsePltStubId(pltEntry); //Note that the first entry is not valid
 
             //Make sure space is enough, if space is enough, array won't allocate
@@ -209,8 +210,8 @@ namespace scaler {
             }
             fprintf(symInfoFile, "%s,%ld,%ld\n", funcName, newSym->fileId, newSym->symIdInFile);
 
-            DBG_LOGS(
-                    "id:%ld funcName:%s gotAddr:%p *gotAddr:%p fileId:%zd symIdInFile:%zd pltEntryAddr:%p pltSecEntryAddr:%p pltStubId:%lu",
+            printf(
+                    "id:%ld funcName:%s gotAddr:%p *gotAddr:%p fileId:%zd symIdInFile:%zd pltEntryAddr:%p pltSecEntryAddr:%p pltStubId:%lu\n",
                     allExtSymbol.getSize() - 1, funcName, gotAddr, *gotAddr,
                     fileId,
                     newSym->symIdInFile, newSym->pltEntryAddr, newSym->pltSecEntryAddr, newSym->pltStubId);
@@ -295,16 +296,16 @@ namespace scaler {
                 return false;
             } else if (strncmp(funcName, "dlsym", 5) == 0) {
                 INFO_LOG("dlsym overrided");
-                addressOverride = (void *) dlsym_proxy;
-                return true;
+//                addressOverride = (void *) dlsym_proxy;
+                return false;
             }
         } else if (funcNameLen == 6) {
             if (strncmp(funcName, "_ZdlPv", 6) == 0) {
                 return false;
             } else if (strncmp(funcName, "dlopen", 6) == 0) {
                 INFO_LOG("dlopen address overrided");
-                addressOverride = (void *) dlopen_proxy;
-                return true;
+//                addressOverride = (void *) dlopen_proxy;
+                return false;
             }
         } else if (funcNameLen == 7) {
             if (strncmp(funcName, "_dl_sym", 7) == 0) {
@@ -745,8 +746,8 @@ namespace scaler {
                     curElfImgInfo->pltSecStartAddr = pltSecInfo.startAddr;
                     curElfImgInfo->gotStartAddr = gotInfo.startAddr;
 
-                    //ERR_LOGS("%zd:%s %p pltStartAddr=%p", prevFileId, pmParser.fileNameArr[prevFileId].c_str(),
-                    //         prevFileBaseAddr, pltInfo.startAddr);
+                    ERR_LOGS("%zd:%s %p pltStartAddr=%p", prevFileId, pmParser.fileNameArr[prevFileId].c_str(),
+                             prevFileBaseAddr, pltInfo.startAddr);
 
                     //Install hook on this file
                     if (!parseSymbolInfo(elfParser, prevFileId, prevFileBaseAddr, pltInfo, pltSecInfo,

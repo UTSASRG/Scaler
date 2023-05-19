@@ -44,35 +44,42 @@ implied warranty.
 
 namespace scaler {
 
-//The following class is declared and defined only under linux.
+    //The following class is declared and defined only under linux.
 
     /**
      * Represent a line in /prof/{pid}/map
      */
-    struct PMEntry {
+    class PMEntry {
+    public:
         enum PERM {
-            EXEC = 0,
-            WRITE = 1,
-            READ = 2,
-            PRIVATE = 3
+            READ = 3,
+            WRITE = 2,
+            EXEC = 1,
+            PRIVATE = 0
         };
+        // end address
+        ssize_t fileId=-1;
+        unsigned char permBits=0; // Is readable
 
-        uint8_t *addrStart;        // start address of the segment
-        uint8_t *addrEnd;          // end address
-        unsigned char permBits; // Is readable
-        short fileId;
 
-        inline bool isE() const {
-            return permBits & (1 << PERM::EXEC);
+
+        inline bool isR() const {
+            return permBits & (1 << PERM::READ);
         }
 
         inline bool isW() const {
             return permBits & (1 << PERM::WRITE);
         }
 
+        inline bool isE() const {
+            return permBits & (1 << PERM::EXEC);
+        }
+
         inline bool isP() const {
             return permBits & (1 << PERM::PRIVATE);
         }
+
+
 
         inline void setE() {
             permBits |= 1 << PERM::EXEC;
@@ -89,14 +96,47 @@ namespace scaler {
         inline void setR() {
             permBits |= 1 << PERM::READ;
         }
+
+        inline bool operator==(PMEntry& rho){
+            return addrStart==rho.addrStart && addrEnd==rho.addrEnd && permBits==rho.permBits;
+        }
+
+        inline void setPermBits(char* permStr){
+            //Parse permission
+            permBits=0;
+            if (permStr[0] == 'r') {
+                setR();
+            }
+            if (permStr[1] == 'w') {
+                setW();
+            }
+            if (permStr[2] == 'x') {
+                setE();
+            }
+            if (permStr[3] == 'p') {
+                setP();
+            }
+        }
+        ssize_t loadingId=-1; //Marks the version of this entry, used to detect entry deletion
+        uint8_t *addrStart=nullptr;
+        // start address of the segment
+        uint8_t *addrEnd=nullptr;
     };
+
 
     /**
      * Group entry by its executable
      */
-    class ExecEntryGroup {
-        ssize_t pmEntryStartIndex;
-        ssize_t pmEntryEndIndex;
+    class FileEntry {
+    public:
+        ssize_t pathNameStartIndex=-1;
+        ssize_t pathNameEndIndex=-1;
+        ssize_t pmEntryNumbers;
+        bool valid=false;
+        ssize_t loadingId=-1; //Marks the version of this entry, used to detect entry deletion
+        ssize_t getPathNameLength(){
+            return pathNameEndIndex-pathNameStartIndex;
+        }
     };
 
     typedef void (*FileNameCallBack)(const char *pathName, const ssize_t length, const ssize_t fileId);
@@ -107,7 +147,7 @@ namespace scaler {
      */
     class PmParser : public Object {
     public:
-        PmParser(std::string folderName);
+        explicit PmParser(std::string saveFolderName,std::string customProcFileName="");
 
         /**
         * Determine whether current elf file use relative address or absolute address
@@ -116,32 +156,44 @@ namespace scaler {
         * @param targetAddr
         * @return
         */
-        uint8_t *autoAddBaseAddr(uint8_t *curBaseAddr, FileID curFileiD, ElfW(Addr) targetAddr);
+        virtual uint8_t *autoAddBaseAddr(uint8_t *curBaseAddr, FileID curFileiD, ElfW(Addr) targetAddr);
 
 
         /**
          * A convenient way to print /proc/{pid}/maps
          */
-        void printPM();
+        virtual void printPM();
 
         /**
          * Return addr is located in which file
          * @param fileId in fileIDMap
          */
-        virtual ssize_t findExecNameByAddr(void *addr);
+        virtual ssize_t findFileIdByAddr(void *addr);
+
+        virtual void findPmEntryIdByAddr(void *addr,ssize_t& lo,bool& found);
 
         ~PmParser() override;
 
 
         /**
          * Parse /proc/{pid}/maps into procMap
+         * Multiple invocation will keep the internal pmmap
          */
-        virtual bool parsePMMap();
+        virtual bool parsePMMap(ssize_t loadingId);
 
         Array<PMEntry> pmEntryArray;
+        Array<FileEntry> fileEntryArray;
+
         std::vector<std::string> fileNameArr;
         std::string folderName;
+    protected:
+        pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
+        std::string stringTable;
+        std::string customProcFileName;
+        ssize_t previousLoaidngId=-1;
+
     };
+
 
 };
 

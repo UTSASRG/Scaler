@@ -53,10 +53,13 @@ add_executable(ScalerHook-unittests
         src/unittests/util/datastructure/TestHashmap.cpp
         src/unittests/util/datastructure/TestELFInfo.cpp
         src/unittests/TestStr.cpp
+        src/unittests/util/datastructure/TestArray.cpp
         ${SCALER_PROTO_SRCS})
-message("SCALER_PROTO_SRCS=1${SCLAER_GRPC_INCLUDE} 2${SCALER_PROTO_SRCS} ")
+message("SCALER_PROTO_SRCS=1${SCLAER_GRPC_INCLUDE} ${SCALER_PROTO_SRCS} ")
 target_link_libraries(ScalerHook-unittests PUBLIC ScalerHook-HookManualAsm-C Testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread)
 target_compile_options(ScalerHook-unittests PRIVATE "-fno-access-control" ${TEST_FLAGS} -Werror)
+target_compile_definitions(ScalerHook-unittests PUBLIC PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+#target_compile_definitions(ScalerHook-unittests PRIVATE PROJECT_SOURCE_DIR ${PROJECT_SOURCE_DIR})
 target_include_directories(ScalerHook-unittests PRIVATE ${SCLAER_GRPC_INCLUDE})
 message("include is ${SCLAER_GRPC++_LIBRARY}")
 

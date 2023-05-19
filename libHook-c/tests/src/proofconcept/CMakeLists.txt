@@ -6,9 +6,6 @@ set(CMAKE_VERBOSE_MAKEFILE on)
 
 include_directories(includes)
 
-# set the project name
-project(PltHook)
-
 
 # Compile libOneMilionFunc
 add_library(libOneMilionFunc SHARED milionFuncLibrary.cpp)
@@ -41,7 +38,7 @@ add_library(DlGrabber SHARED DlGrabber.cpp)
 target_link_libraries(DlGrabber PRIVATE dl)
 
 add_executable(TestDL TestDL.cpp)
-target_link_libraries(TestDL ScalerHook-HookAutoAsm-C dl)
+target_link_libraries(TestDL dl) #ScalerHook-HookAutoAsm-Cls
 target_include_directories(TestDL PUBLIC /home/steven/Projects/Scaler/libHook-c/tests/lib/FunctionCall/include)
 
 

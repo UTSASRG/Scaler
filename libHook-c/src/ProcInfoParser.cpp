@@ -18,38 +18,50 @@
 namespace scaler {
 
 
-    PmParser::PmParser(std::string fileName) : folderName(std::move(fileName)), pmEntryArray(70) {
+    PmParser::PmParser(std::string saveFolderName, std::string customProcFileName) : folderName(saveFolderName),
+                                                                                     customProcFileName(
+                                                                                             customProcFileName),
+                                                                                     pmEntryArray(70) {
     }
 
-    bool PmParser::parsePMMap() {
-        pmEntryArray.clear();
 
-
-        const char *procIdStr = "/proc/self/maps";
-        FILE *procFile = fopen(procIdStr, "rb");
-        if (!procFile) {
-            ERR_LOGS("Cannot open %s because: %s", procIdStr, strerror(errno));
-            return false;
+    bool PmParser::parsePMMap(ssize_t loadingId) {
+        if(previousLoaidngId!=loadingId-1){
+            fatalErrorS("loaidngID should be always incremental Previous:%zd Current:%zd",previousLoaidngId,loadingId);
         }
+        previousLoaidngId=loadingId;
 
-        FILE *execNameFile = fopen("/tmp/fileName.txt", "w");
-        if (!execNameFile) {
-            ERR_LOGS("Cannot open %s because: %s", "fileName.txt", strerror(errno));
-            return false;
+
+        FILE *procFile = nullptr;
+        if (customProcFileName.empty()) {
+            const char *procIdStr = "/proc/self/maps";
+            //Using test file rather than real proc filesystem
+            procFile = fopen(procIdStr, "rb");
+            if (!procFile) {
+                ERR_LOGS("Cannot open /proc/self/maps because: %s", strerror(errno));
+                return false;
+            }
+        } else {
+            procFile = fopen(customProcFileName.c_str(), "rb");
+            if (!procFile) {
+                ERR_LOGS("Cannot open %s because: %s", customProcFileName.c_str(), strerror(errno));
+                return false;
+            }
         }
 
         std::string addr1, addr2, perm, offset;
 
+
+        //Save the filename of this loading
         char procMapLine[512];
-        char prevPathname[PATH_MAX];
-        ssize_t prevPathNameLen = -1;
-        char pathName[PATH_MAX];
-        char permStr[8];
-        ssize_t fileId = -1;
+        char permStr[9];
+        uint8_t *addrStart;
+        uint8_t *addrEnd;
         std::stringstream ss;
-        ss << folderName << "/fileName.txt";
+        ss << folderName << "/" << loadingId << "fileName.txt";
         FILE *fileNameStrTbl = fopen(ss.str().c_str(), "w");
-        if (!fileNameStrTbl) { fatalErrorS("Cannot open %s", ss.str().c_str());
+        if (!fileNameStrTbl) {
+            fatalErrorS("Cannot open %s", ss.str().c_str());
         }
 
         fprintf(fileNameStrTbl, "%s,%s\n", "fileId", "pathName");
@@ -58,101 +70,138 @@ namespace scaler {
 #ifndef NDEBUG
             //Make sure the buffer is enough
             size_t len = strnlen(procMapLine, sizeof(procMapLine));
-            if (len != 0 && procMapLine[len - 1] != '\n') {
-                fatalErrorS("Line in /proc/{pid}/map exceeded buffer size %lu. Please adjust procMapLine size",
-                            sizeof(procMapLine));
+            if (len != 0 && procMapLine[len] != '\0') {
+                fatalErrorS("Line %s in /proc/{pid}/map exceeded buffer size %lu. Please adjust procMapLine size",
+                            procMapLine, sizeof(procMapLine));
                 return false;
             }
 #endif
-            PMEntry *newEntry = pmEntryArray.pushBack();
+            //INFO_LOGS("New line: %s",procMapLine);
 
-            int scanfReadNum = sscanf(procMapLine, "%p-%p %8s %*s %*s %*s %s", &newEntry->addrStart, &newEntry->addrEnd,
-                                      permStr, pathName);
+            char pathName[PATH_MAX] = "";
+            //Read pmEntry line
+            int scanfReadNum = sscanf(procMapLine, "%p-%p %8s %*s %*s %*s %s", &addrStart, &addrEnd, permStr, pathName);
 
+//            std::string dirName;
+//            std::string fileName;
+//            extractFileName(pathName, dirName, fileName);
+            ssize_t pathNameLen = strlen(pathName);
+//            INFO_LOGS("CurLine %s",procMapLine);
+
+            //Find if there is a match based on address search
+            ssize_t lo;
+            bool found = false;
+            findPmEntryIdByAddr(addrStart, lo, found);
+
+
+            PMEntry *newPmEntry = nullptr;
+            if (found) {
+                PMEntry &pmEntry = pmEntryArray[lo];
+                FileEntry &fileEntry = fileEntryArray[pmEntry.fileId];
+                fileEntry.loadingId = loadingId;
+                if (pmEntry.addrEnd == addrEnd &&
+                    strncmp(stringTable.c_str() + fileEntry.pathNameStartIndex, pathName,
+                            fileEntry.getPathNameLength()) == 0) {
+                    //Exactly the same entry (Ignore permission and other attrs). Replace permission fields just in case.
+                    //Update loading id
+                    pmEntry.loadingId = loadingId;
+                    pmEntry.setPermBits(permStr);
+                    //INFO_LOG("Exactly the same entry (Ignore permission and other attrs). Replace permission fields just in case. Update loading id");
+                    continue;
+                } else {
+                    //Same starting address, but different end address/fileName. Replace entry, and remove linkage to the original fileEntry
+                    //INFO_LOG("Same starting address, but different end address/fileName. Replace entry, and remove linkage to the original fileEntry");
+                    newPmEntry = &pmEntry;
+                    assert(fileEntry.pmEntryNumbers > 0);
+                    fileEntry.pmEntryNumbers -= 1; //Remove linkage to the previous file entry
+                }
+            } else {
+                //Not found, create a new PmEntry
+                newPmEntry = pmEntryArray.insertAt(lo);
+            }
+            newPmEntry->loadingId = loadingId;//Update the loading id
+            newPmEntry->addrStart = addrStart;
+            newPmEntry->addrEnd = addrEnd;
+            newPmEntry->fileId = -1;//Allocate and set later
+            newPmEntry->setPermBits(permStr);
+
+            //Check if we need to allocate a new fileId or not by comparing with previous pmEntry's fileName.
+            //Linearly search for the same file
+            bool hasPreviousFileNameMatch = false;
+            for (int i = lo - 1; i >= 0; --i) {
+                if (loadingId - fileEntryArray[pmEntryArray[i].fileId].loadingId <= 1
+                    && fileEntryArray[pmEntryArray[i].fileId].getPathNameLength() == pathNameLen
+                    && strncmp(stringTable.c_str() + fileEntryArray[pmEntryArray[i].fileId].pathNameStartIndex,
+                               pathName, pathNameLen) == 0) {
+                    //Previous filename matches with current file name, no need to create file entry
+                    newPmEntry->fileId = pmEntryArray[i].fileId;
+                    newPmEntry->loadingId = loadingId;
+                    fileEntryArray[pmEntryArray[i].fileId].loadingId = loadingId;
+                    fileEntryArray[pmEntryArray[i].fileId].pmEntryNumbers += 1;
+                    hasPreviousFileNameMatch = true;
+                    //INFO_LOGS("Previous filename (%s) matches with current file name, no need to create file entry",
+                    //          stringTable.substr( fileEntryArray[pmEntryArray[i].fileId].pathNameStartIndex,
+                    //                              fileEntryArray[pmEntryArray[i].fileId].getPathNameLength()).c_str());
+                    break;
+                }
+            }
+            if (hasPreviousFileNameMatch) {
+                continue;
+            }
+
+            //DBG_LOG("Create a new FileEntry");
+
+            ssize_t newFileId = fileEntryArray.getSize();
+            FileEntry *newFileEntry = fileEntryArray.pushBack(); //We should not use insertAt because fileId is hard-coded into dynamically generated assembly instructions.
+            newPmEntry->fileId = newFileId;
+            newFileEntry->loadingId = loadingId;
+            newFileEntry->pmEntryNumbers += 1;
+            newFileEntry->pathNameStartIndex = stringTable.size();
+            stringTable.append(pathName);
+            newFileEntry->pathNameEndIndex = stringTable.size();
+            newFileEntry->valid = false;//Decide later
+
+            //Check the validity of fileEntry
             std::string dirName;
             std::string fileName;
             extractFileName(pathName, dirName, fileName);
 
-            //todo: debug
-//            if(strncmp(fileName.c_str(),"ScalerHook-demoapps-FuncCall",fileName.size())!=0){
-//                pmEntryArray.popBack();
-//                continue;
-//            }
-
+            //Delete deleted pmEntries
+            for(int i=pmEntryArray.getSize()-1;i>=0;-i){
+                //Remove all non-updated PLT entries (which means entries no longer exists)
+                assert(abs(loadingId-pmEntryArray[i].loadingId)<=1);
+                if(pmEntryArray[i].loadingId<loadingId){
+                    pmEntryArray.erase(i);
+                }
+            }
 
             //Check scanf succeeded or not
             if (scanfReadNum == 3) {
-                //DBG_LOGS("No file name, ignore line: %s", procMapLine);
-                pmEntryArray.popBack();
-                continue;
+                DBG_LOGS("No file name, do not create file entry: %s", procMapLine);
+                newFileEntry->valid = false;
             } else if (pathName[0] == '[') {
-                //DBG_LOGS("Illegal filename, ignore line:%s", procMapLine);
-                pmEntryArray.popBack();
+                DBG_LOGS("Illegal filename, do not create file entry:%s", procMapLine);
+                newFileEntry->valid = false;
+            } else if (scanfReadNum != 4) {
+                newFileEntry->valid = false;
+                fatalErrorS("Parsing line %s failed, if this line looks normal, check limits.", procMapLine);
                 continue;
-            } else if (scanfReadNum != 4) { fatalErrorS(
-                        "Parsing line %s failed, if this line looks normal check limits?", procMapLine);
+            } else if (strStartsWith(fileName, "libScalerHook")) {
+                DBG_LOG("Do not create file entry for Scaler library");
+                newFileEntry->valid = false;
+            } else if (strStartsWith(fileName, "ld-")) {
+                DBG_LOG("Do not hook ld.so library");
+                newFileEntry->valid = false;
             }
-
-            if (strStartsWith(fileName, "libScalerHook")) {
-                //DBG_LOGS("Scaler library skip");
-                pmEntryArray.popBack();
-                continue;
-            }
-            if (strStartsWith(fileName, "ld-")) {
-                //DBG_LOGS("Scaler library skip");
-                pmEntryArray.popBack();
-                continue;
-            }
-
-            //Parse permission
-            if (permStr[0] == 'r') {
-                newEntry->setR();
-            }
-            if (permStr[1] == 'w') {
-                newEntry->setW();
-            }
-            if (permStr[2] == 'x') {
-                newEntry->setE();
-            }
-            if (permStr[3] == 'p') {
-                newEntry->setP();
-            }
-
-
-            //Check whether this is a new file
-            ssize_t pathNameLen = strnlen(pathName, sizeof(pathName));
-            if (pathNameLen != prevPathNameLen || strncmp(prevPathname, pathName, pathNameLen) != 0) {
-                //Discovered a new file
-                prevPathNameLen = pathNameLen;
-                memcpy(prevPathname, pathName, pathNameLen + 1);
-                //Write filename to disk
-
-                //Update filepathname
-
-                fileNameArr.emplace_back(pathName);
-                ++fileId;
-
-                //fileNameStrTbl
-                fprintf(fileNameStrTbl, "%zd,%s\n", fileId, pathName);
-                //DBG_LOGS("%s\n", pathName);
-#ifndef NDEBUG
-                //Check fileId overflow
-                if (fileId > SHRT_MAX) {
-                    fatalError("File id is larger than short maximum.")
-                    exit(-1);
-                }
-#endif
-
-            }
-            newEntry->fileId = fileId;
-
         }
+
+
         fclose(fileNameStrTbl);
         fclose(procFile);
-        fclose(execNameFile);
 
 #ifndef NDEBUG
         void *curAddr = nullptr;
+
         for (int i = 0; i < pmEntryArray.getSize(); ++i) {
             if (pmEntryArray[i].addrStart < curAddr) {
                 fatalError("/proc/{pid}/maps address is assumed to be always increasing.")
@@ -177,32 +226,44 @@ namespace scaler {
             std::cout << ifs.rdbuf() << std::endl;
     }
 
-    ssize_t PmParser::findExecNameByAddr(void *addr) {
+    ssize_t PmParser::findFileIdByAddr(void *addr) {
+        bool found = false;
+        ssize_t pmEntryId;
+        findPmEntryIdByAddr(addr, pmEntryId, found);
+        //Since we only search PLT, it is impossible to hit the memory segment boundary.
+        assert(found == false && 0 <= pmEntryId - 1 && pmEntryId - 1 < pmEntryArray.getSize());
+        return pmEntryArray[pmEntryId].fileId;
+    }
+
+    void PmParser::findPmEntryIdByAddr(void *addr, ssize_t &lo, bool &found) {
         //Since sortedSegments are sorted by starting address and all address range are not overlapping.
         //We could use binary search to lookup addr in this array.
 
         //Binary search impl segAddrFileMap
-        ssize_t lo = 0, md = 0, hi = pmEntryArray.getSize() - 1;
-        while (lo < hi) {
+        lo = 0;
+        ssize_t md = 0, hi = pmEntryArray.getSize() - 1;
+        found = true;
+        while (lo <= hi) {
             md = lo + (hi - lo) / 2;
             if (pmEntryArray[md].addrStart < addr) {
                 //printf("hi(%d) = md(%d) - 1=(%d)\n", hi, md, md - 1);
                 lo = md + 1;
             } else if (pmEntryArray[md].addrStart > addr) {
                 //printf("lo(%d) = md(%d) + 1=(%d)\n", lo, md, md + 1);
-                hi = md;
+                hi = md - 1;
             } else {
                 //Find left bound, although this should be impossible in this case
-                hi = md;
+                hi = md - 1;
             }
         }
-        return pmEntryArray[lo - 1].fileId;
+        if (lo >= pmEntryArray.getSize() || pmEntryArray[lo].addrStart != addr) {
+            found = false;
+        }
     }
 
-
     uint8_t *PmParser::autoAddBaseAddr(uint8_t *curBaseAddr, FileID curFileiD, ElfW(Addr) targetAddr) {
-        ssize_t idWithBaseAddr = findExecNameByAddr(curBaseAddr + targetAddr);
-        ssize_t idWithoutBaseAddr = findExecNameByAddr((void *) targetAddr);
+        ssize_t idWithBaseAddr = findFileIdByAddr(curBaseAddr + targetAddr);
+        ssize_t idWithoutBaseAddr = findFileIdByAddr((void *) targetAddr);
 
         DBG_LOGS("idWithBaseAddr=%zd, idWithoutBaseAddr=%zd %p", idWithBaseAddr, idWithoutBaseAddr, curBaseAddr);
 
@@ -217,6 +278,7 @@ namespace scaler {
             return nullptr;
         }
     }
+
 
 }
 
