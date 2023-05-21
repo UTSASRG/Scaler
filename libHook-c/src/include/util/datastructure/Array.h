@@ -80,8 +80,7 @@ namespace scaler {
         virtual T *insertAt(ssize_t index, Args... restOfArgs) {
             assert(0 <= index && index <= size);
             if (size == internalArrSize){
-                INFO_LOG("Array expanded");
-                expand(size + 1);
+                expand(size * 2);
             }
             if (index < size) {
                 memmove(internalArr + index + 1, internalArr + index, (size - index)*sizeof(T));
