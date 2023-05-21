@@ -25,14 +25,14 @@ namespace scaler {
     }
 
 
-    bool PmParser::parsePMMap(ssize_t loadingId) {
+    bool PmParser::parsePMMapUnSafe(ssize_t loadingId) {
         if (previousLoaidngId != loadingId - 1) {
             fatalErrorS("loaidngID should be always incremental Previous:%zd Current:%zd", previousLoaidngId,
                         loadingId);
         }
         previousLoaidngId = loadingId;
 
-        FILE *procFile = openProcFile();
+        FILE *procFile = openProcFileUnSafe();
         if (!procFile)
             return false;
 
@@ -111,12 +111,12 @@ namespace scaler {
             //Check if we need to allocate a new fileId or not by comparing with previous pmEntry's fileName.
             //Linearly search for the same file
 
-            if (matchWithPreviousFileId(lo, loadingId, pathName, pathNameLen, newPmEntry)) {
+            if (matchWithPreviousFileIdUnSafe(lo, loadingId, pathName, pathNameLen, newPmEntry)) {
                 //New
                 continue;
             }
 
-            createFileEntry(newPmEntry, loadingId, pathName, scanfReadNum);
+            createFileEntryUnSafe(newPmEntry, loadingId, pathName, scanfReadNum);
 
         }
 
@@ -150,8 +150,18 @@ namespace scaler {
         return true;
     }
 
+    bool PmParser::parsePMMap(ssize_t loadingId) {
+        pthread_rwlock_wrlock(&rwlock);
+        bool rlt= parsePMMapUnSafe(loadingId);
+        pthread_rwlock_unlock(&rwlock);
+        return rlt;
+    }
+
 
     PmParser::~PmParser() {
+        if (pthread_rwlock_destroy(&rwlock) != 0) {
+            fatalErrorS("Cannot destory pthread rwlock because: %s", strerror(errno));
+        }
     }
 
     void PmParser::printPM() {
@@ -163,16 +173,24 @@ namespace scaler {
             std::cout << ifs.rdbuf() << std::endl;
     }
 
-    ssize_t PmParser::findFileIdByAddr(void *addr) {
+    ssize_t PmParser::findFileIdByAddrUnSafe(void *addr) {
         bool found = false;
         ssize_t pmEntryId;
         findPmEntryIdByAddr(addr, pmEntryId, found);
         //Since we only search PLT, it is impossible to hit the memory segment boundary.
         assert(found == false && 0 <= pmEntryId - 1 && pmEntryId - 1 < pmEntryArray.getSize());
-        return pmEntryArray[pmEntryId].fileId;
+        ssize_t rlt = pmEntryArray[pmEntryId].fileId;
+        return rlt;
     }
 
-    void PmParser::findPmEntryIdByAddr(void *addr, ssize_t &lo, bool &found) {
+    ssize_t PmParser::findFileIdByAddr(void *addr) {
+        pthread_rwlock_rdlock(&rwlock);
+        ssize_t rlt = findFileIdByAddrUnSafe(addr);
+        pthread_rwlock_unlock(&rwlock);
+        return rlt;
+    }
+
+    void PmParser::findPmEntryIdByAddrUnSafe(void *addr, ssize_t &lo, bool &found) {
         //Since sortedSegments are sorted by starting address and all address range are not overlapping.
         //We could use binary search to lookup addr in this array.
 
@@ -198,7 +216,13 @@ namespace scaler {
         }
     }
 
-    uint8_t *PmParser::autoAddBaseAddr(uint8_t *curBaseAddr, FileID curFileiD, ElfW(Addr) targetAddr) {
+    void PmParser::findPmEntryIdByAddr(void *addr, ssize_t &lo, bool &found){
+        pthread_rwlock_rdlock(&rwlock);
+        findPmEntryIdByAddrUnSafe(addr,lo,found);
+        pthread_rwlock_unlock(&rwlock);
+    }
+
+    uint8_t *PmParser::autoAddBaseAddrUnSafe(uint8_t *curBaseAddr, FileID curFileiD, ElfW(Addr) targetAddr) {
         ssize_t idWithBaseAddr = findFileIdByAddr(curBaseAddr + targetAddr);
         ssize_t idWithoutBaseAddr = findFileIdByAddr((void *) targetAddr);
 
@@ -216,7 +240,14 @@ namespace scaler {
         }
     }
 
-    FILE *PmParser::openProcFile() {
+    uint8_t *PmParser::autoAddBaseAddr(uint8_t *curBaseAddr, FileID curFileID, ElfW(Addr) targetAddr) {
+        pthread_rwlock_rdlock(&rwlock);
+        uint8_t * rlt= autoAddBaseAddrUnSafe(curBaseAddr, curFileID, targetAddr);
+        pthread_rwlock_unlock(&rwlock);
+        return rlt;
+    }
+
+    FILE *PmParser::openProcFileUnSafe() {
         FILE *procFile = nullptr;
         if (customProcFileName.empty()) {
             const char *procIdStr = "/proc/self/maps";
@@ -236,8 +267,9 @@ namespace scaler {
         return procFile;
     }
 
-    bool PmParser::matchWithPreviousFileId(ssize_t startingId, ssize_t curLoadingId, char *pathName,
-                                           ssize_t pathNameLen, PMEntry *newPmEntry) {
+
+    bool PmParser::matchWithPreviousFileIdUnSafe(ssize_t startingId, ssize_t curLoadingId, char *pathName,
+                                                 ssize_t pathNameLen, PMEntry *newPmEntry) {
         bool hasPreviousFileNameMatch = false;
         for (int i = startingId - 1; i >= 0; --i) {
             if (curLoadingId - fileEntryArray[pmEntryArray[i].fileId].loadingId <= 1
@@ -255,7 +287,7 @@ namespace scaler {
         return hasPreviousFileNameMatch;
     }
 
-    void PmParser::createFileEntry(PMEntry *newPmEntry, ssize_t loadingId, char *pathName, ssize_t scanfReadNum) {
+    void PmParser::createFileEntryUnSafe(PMEntry *newPmEntry, ssize_t loadingId, char *pathName, ssize_t scanfReadNum) {
         ssize_t newFileId = fileEntryArray.getSize();
         FileEntry *newFileEntry = fileEntryArray.pushBack(); //We should not use insertAt because fileId is hard-coded into dynamically generated assembly instructions.
         newPmEntry->fileId = newFileId;

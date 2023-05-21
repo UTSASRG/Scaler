@@ -26,6 +26,7 @@ implied warranty.
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <pthread.h>
 #include <linux/limits.h>
 #include <string>
 #include <map>
@@ -61,8 +62,6 @@ namespace scaler {
         ssize_t fileId=-1;
         unsigned char permBits=0; // Is readable
 
-
-
         inline bool isR() const {
             return permBits & (1 << PERM::READ);
         }
@@ -78,8 +77,6 @@ namespace scaler {
         inline bool isP() const {
             return permBits & (1 << PERM::PRIVATE);
         }
-
-
 
         inline void setE() {
             permBits |= 1 << PERM::EXEC;
@@ -150,14 +147,16 @@ namespace scaler {
     public:
         explicit PmParser(std::string saveFolderName,std::string customProcFileName="");
 
+        virtual uint8_t *autoAddBaseAddrUnSafe(uint8_t *curBaseAddr, FileID curFileiD, ElfW(Addr) targetAddr);
+
         /**
         * Determine whether current elf file use relative address or absolute address
         * @param curBaseAddr
-        * @param curFileiD
+        * @param curFileID
         * @param targetAddr
         * @return
         */
-        virtual uint8_t *autoAddBaseAddr(uint8_t *curBaseAddr, FileID curFileiD, ElfW(Addr) targetAddr);
+        virtual uint8_t *autoAddBaseAddr(uint8_t *curBaseAddr, FileID curFileID, ElfW(Addr) targetAddr);
 
 
         /**
@@ -165,41 +164,45 @@ namespace scaler {
          */
         virtual void printPM();
 
+        virtual ssize_t findFileIdByAddrUnSafe(void *addr);
+
         /**
          * Return addr is located in which file
          * @param fileId in fileIDMap
          */
         virtual ssize_t findFileIdByAddr(void *addr);
 
+        virtual void findPmEntryIdByAddrUnSafe(void *addr,ssize_t& lo,bool& found);
+
         virtual void findPmEntryIdByAddr(void *addr,ssize_t& lo,bool& found);
 
-        ~PmParser() override;
 
+
+        ~PmParser() override;
 
         /**
          * Parse /proc/{pid}/maps into procMap
          * Multiple invocation will keep the internal pmmap
          */
+        virtual bool parsePMMapUnSafe(ssize_t loadingId);
+
         virtual bool parsePMMap(ssize_t loadingId);
 
-        Array<PMEntry> pmEntryArray;
-        Array<FileEntry> fileEntryArray;
-
-        std::vector<std::string> fileNameArr;
-        std::string folderName;
     protected:
         pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
         std::string stringTable;
         std::string customProcFileName;
         ssize_t previousLoaidngId=-1;
+        Array<PMEntry> pmEntryArray;
+        Array<FileEntry> fileEntryArray;
+        std::string folderName;
 
-        FILE* openProcFile();
+        FILE* openProcFileUnSafe();
 
-        bool matchWithPreviousFileId(ssize_t startingId, ssize_t curLoadingId, char* pathName,
-                                     ssize_t pathNameLen, PMEntry* newPmEntry);
+        bool matchWithPreviousFileIdUnSafe(ssize_t startingId, ssize_t curLoadingId, char* pathName,
+                                           ssize_t pathNameLen, PMEntry* newPmEntry);
 
-        void createFileEntry(PMEntry* newPmEntry, ssize_t loadingId, char* pathName, ssize_t scanfReadNum);
-
+        void createFileEntryUnSafe(PMEntry* newPmEntry, ssize_t loadingId, char* pathName, ssize_t scanfReadNum);
     };
 
 
