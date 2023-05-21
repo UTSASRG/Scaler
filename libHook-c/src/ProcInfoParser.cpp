@@ -26,31 +26,17 @@ namespace scaler {
 
 
     bool PmParser::parsePMMap(ssize_t loadingId) {
-        if(previousLoaidngId!=loadingId-1){
-            fatalErrorS("loaidngID should be always incremental Previous:%zd Current:%zd",previousLoaidngId,loadingId);
+        if (previousLoaidngId != loadingId - 1) {
+            fatalErrorS("loaidngID should be always incremental Previous:%zd Current:%zd", previousLoaidngId,
+                        loadingId);
         }
-        previousLoaidngId=loadingId;
+        previousLoaidngId = loadingId;
 
-
-        FILE *procFile = nullptr;
-        if (customProcFileName.empty()) {
-            const char *procIdStr = "/proc/self/maps";
-            //Using test file rather than real proc filesystem
-            procFile = fopen(procIdStr, "rb");
-            if (!procFile) {
-                ERR_LOGS("Cannot open /proc/self/maps because: %s", strerror(errno));
-                return false;
-            }
-        } else {
-            procFile = fopen(customProcFileName.c_str(), "rb");
-            if (!procFile) {
-                ERR_LOGS("Cannot open %s because: %s", customProcFileName.c_str(), strerror(errno));
-                return false;
-            }
-        }
+        FILE *procFile = openProcFile();
+        if (!procFile)
+            return false;
 
         std::string addr1, addr2, perm, offset;
-
 
         //Save the filename of this loading
         char procMapLine[512];
@@ -82,16 +68,12 @@ namespace scaler {
             //Read pmEntry line
             int scanfReadNum = sscanf(procMapLine, "%p-%p %8s %*s %*s %*s %s", &addrStart, &addrEnd, permStr, pathName);
 
-//            std::string dirName;
-//            std::string fileName;
-//            extractFileName(pathName, dirName, fileName);
             ssize_t pathNameLen = strlen(pathName);
 
             //Find if there is a match based on address search
             ssize_t lo;
             bool found = false;
             findPmEntryIdByAddr(addrStart, lo, found);
-
 
             PMEntry *newPmEntry = nullptr;
             if (found) {
@@ -128,70 +110,24 @@ namespace scaler {
 
             //Check if we need to allocate a new fileId or not by comparing with previous pmEntry's fileName.
             //Linearly search for the same file
-            bool hasPreviousFileNameMatch = false;
-            for (int i = lo - 1; i >= 0; --i) {
-                if(loadingId - fileEntryArray[pmEntryArray[i].fileId].loadingId <= 1
-                    && fileEntryArray[pmEntryArray[i].fileId].getPathNameLength() == pathNameLen
-                    && strncmp(stringTable.c_str() + fileEntryArray[pmEntryArray[i].fileId].pathNameStartIndex,
-                               pathName, pathNameLen) == 0) {
-                    //Previous filename matches with current file name, no need to create file entry
-                    newPmEntry->fileId = pmEntryArray[i].fileId;
-                    fileEntryArray[pmEntryArray[i].fileId].loadingId = loadingId;
-                    fileEntryArray[pmEntryArray[i].fileId].pmEntryNumbers += 1;
-                    hasPreviousFileNameMatch = true;
 
-                    break;
-                }
-            }
-            if (hasPreviousFileNameMatch) {
+            if (matchWithPreviousFileId(lo, loadingId, pathName, pathNameLen, newPmEntry)) {
+                //New
                 continue;
             }
 
+            createFileEntry(newPmEntry, loadingId, pathName, scanfReadNum);
 
-            ssize_t newFileId = fileEntryArray.getSize();
-            FileEntry *newFileEntry = fileEntryArray.pushBack(); //We should not use insertAt because fileId is hard-coded into dynamically generated assembly instructions.
-            newPmEntry->fileId = newFileId;
-            newFileEntry->loadingId = loadingId;
-            newFileEntry->creationLoadingId=loadingId;
-            newFileEntry->pmEntryNumbers += 1;
-            newFileEntry->pathNameStartIndex = stringTable.size();
-            stringTable.append(pathName);
-            newFileEntry->pathNameEndIndex = stringTable.size();
-            newFileEntry->valid = false;//Decide later
-
-            //Check the validity of fileEntry
-            std::string dirName;
-            std::string fileName;
-            extractFileName(pathName, dirName, fileName);
-
-            //Check scanf succeeded or not
-            if (scanfReadNum == 3) {
-                //DBG_LOGS("No file name, do not create file entry: %s", procMapLine);
-                newFileEntry->valid = false;
-            } else if (pathName[0] == '[') {
-                //DBG_LOGS("Illegal filename, do not create file entry:%s", procMapLine);
-                newFileEntry->valid = false;
-            } else if (scanfReadNum != 4) {
-                newFileEntry->valid = false;
-                fatalErrorS("Parsing line %s failed, if this line looks normal, check limits.", procMapLine);
-                continue;
-            } else if (strStartsWith(fileName, "libScalerHook")) {
-                //DBG_LOG("Do not create file entry for Scaler library");
-                newFileEntry->valid = false;
-            } else if (strStartsWith(fileName, "ld-")) {
-                //DBG_LOG("Do not hook ld.so library");
-                newFileEntry->valid = false;
-            }
         }
 
         //Delete deleted pmEntries
-        for(int i=pmEntryArray.getSize()-1;i>=0;--i){
+        for (int i = pmEntryArray.getSize() - 1; i >= 0; --i) {
             //Remove all non-updated PLT entries (which means entries no longer exists)
-            assert(abs(loadingId-pmEntryArray[i].loadingId)<=1);
+            assert(abs(loadingId - pmEntryArray[i].loadingId) <= 1);
 
-            if(pmEntryArray[i].loadingId<loadingId){
+            if (pmEntryArray[i].loadingId < loadingId) {
                 //Currently we do not need to return this
-                fileEntryArray[pmEntryArray[i].fileId].pmEntryNumbers-=1;//Unlink pmEntry
+                fileEntryArray[pmEntryArray[i].fileId].pmEntryNumbers -= 1;//Unlink pmEntry
                 pmEntryArray.erase(i);
             }
         }
@@ -277,6 +213,81 @@ namespace scaler {
         } else {
             ERR_LOGS("Not found, id1=%zu, id2=%zu, curFileID=%zd\n", idWithBaseAddr, idWithoutBaseAddr, curFileiD);
             return nullptr;
+        }
+    }
+
+    FILE *PmParser::openProcFile() {
+        FILE *procFile = nullptr;
+        if (customProcFileName.empty()) {
+            const char *procIdStr = "/proc/self/maps";
+            //Using test file rather than real proc filesystem
+            procFile = fopen(procIdStr, "rb");
+            if (!procFile) {
+                ERR_LOGS("Cannot open /proc/self/maps because: %s", strerror(errno));
+                return nullptr;
+            }
+        } else {
+            procFile = fopen(customProcFileName.c_str(), "rb");
+            if (!procFile) {
+                ERR_LOGS("Cannot open %s because: %s", customProcFileName.c_str(), strerror(errno));
+                return nullptr;
+            }
+        }
+        return procFile;
+    }
+
+    bool PmParser::matchWithPreviousFileId(ssize_t startingId, ssize_t curLoadingId, char *pathName,
+                                           ssize_t pathNameLen, PMEntry *newPmEntry) {
+        bool hasPreviousFileNameMatch = false;
+        for (int i = startingId - 1; i >= 0; --i) {
+            if (curLoadingId - fileEntryArray[pmEntryArray[i].fileId].loadingId <= 1
+                && fileEntryArray[pmEntryArray[i].fileId].getPathNameLength() == pathNameLen
+                && strncmp(stringTable.c_str() + fileEntryArray[pmEntryArray[i].fileId].pathNameStartIndex,
+                           pathName, pathNameLen) == 0) {
+                //Previous filename matches with current file name, no need to create file entry
+                newPmEntry->fileId = pmEntryArray[i].fileId;
+                fileEntryArray[pmEntryArray[i].fileId].loadingId = curLoadingId;
+                fileEntryArray[pmEntryArray[i].fileId].pmEntryNumbers += 1;
+                hasPreviousFileNameMatch = true;
+                break;
+            }
+        }
+        return hasPreviousFileNameMatch;
+    }
+
+    void PmParser::createFileEntry(PMEntry *newPmEntry, ssize_t loadingId, char *pathName, ssize_t scanfReadNum) {
+        ssize_t newFileId = fileEntryArray.getSize();
+        FileEntry *newFileEntry = fileEntryArray.pushBack(); //We should not use insertAt because fileId is hard-coded into dynamically generated assembly instructions.
+        newPmEntry->fileId = newFileId;
+        newFileEntry->loadingId = loadingId;
+        newFileEntry->creationLoadingId = loadingId;
+        newFileEntry->pmEntryNumbers += 1;
+        newFileEntry->pathNameStartIndex = stringTable.size();
+        stringTable.append(pathName);
+        newFileEntry->pathNameEndIndex = stringTable.size();
+        newFileEntry->valid = false;//Decide later
+
+        //Check the validity of fileEntry
+        std::string dirName;
+        std::string fileName;
+        extractFileName(pathName, dirName, fileName);
+
+        //Check scanf succeeded or not
+        if (scanfReadNum == 3) {
+            //DBG_LOGS("No file name, do not create file entry: %s", procMapLine);
+            newFileEntry->valid = false;
+        } else if (pathName[0] == '[') {
+            //DBG_LOGS("Illegal filename, do not create file entry:%s", procMapLine);
+            newFileEntry->valid = false;
+        } else if (scanfReadNum != 4) {
+            newFileEntry->valid = false;
+            fatalError("Parsing line failed, if this line looks normal, check limits.");
+        } else if (strStartsWith(fileName, "libScalerHook")) {
+            //DBG_LOG("Do not create file entry for Scaler library");
+            newFileEntry->valid = false;
+        } else if (strStartsWith(fileName, "ld-")) {
+            //DBG_LOG("Do not hook ld.so library");
+            newFileEntry->valid = false;
         }
     }
 

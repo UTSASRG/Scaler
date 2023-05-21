@@ -193,6 +193,13 @@ namespace scaler {
         std::string customProcFileName;
         ssize_t previousLoaidngId=-1;
 
+        FILE* openProcFile();
+
+        bool matchWithPreviousFileId(ssize_t startingId, ssize_t curLoadingId, char* pathName,
+                                     ssize_t pathNameLen, PMEntry* newPmEntry);
+
+        void createFileEntry(PMEntry* newPmEntry, ssize_t loadingId, char* pathName, ssize_t scanfReadNum);
+
     };
 
 
