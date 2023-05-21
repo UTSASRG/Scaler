@@ -152,6 +152,7 @@ namespace scaler {
             FileEntry *newFileEntry = fileEntryArray.pushBack(); //We should not use insertAt because fileId is hard-coded into dynamically generated assembly instructions.
             newPmEntry->fileId = newFileId;
             newFileEntry->loadingId = loadingId;
+            newFileEntry->creationLoadingId=loadingId;
             newFileEntry->pmEntryNumbers += 1;
             newFileEntry->pathNameStartIndex = stringTable.size();
             stringTable.append(pathName);

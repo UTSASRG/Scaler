@@ -134,6 +134,7 @@ namespace scaler {
         ssize_t pmEntryNumbers;
         bool valid=false;
         ssize_t loadingId=-1; //Marks the version of this entry, used to detect entry deletion
+        ssize_t creationLoadingId=-1;//Marks the creation loadingId of this entry. This combined with previous field can be used to detect new file addition.
         ssize_t getPathNameLength(){
             return pathNameEndIndex-pathNameStartIndex;
         }

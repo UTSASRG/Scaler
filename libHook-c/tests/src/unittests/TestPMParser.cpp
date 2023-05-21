@@ -164,6 +164,15 @@ TEST(PMParser, ParseAfterDLOpen) {
         ASSERT_EQ(curPmEntry.loadingId, 0);
     }
 
+    ssize_t newFileSize = 0;
+    for (int i = 0; i < parser.fileEntryArray.getSize(); ++i) {
+        ASSERT_EQ(parser.fileEntryArray[i].pmEntryNumbers, pmEntryNumbers[i]);
+        if(parser.fileEntryArray[i].creationLoadingId==0){
+            newFileSize+=1;
+        }
+    }
+    ASSERT_EQ(newFileSize,9);
+
     newlyLoadedFileId.clear();
     newlyLoadedPmEntry.clear();
     ss.str("");
@@ -231,6 +240,14 @@ TEST(PMParser, ParseAfterDLOpen) {
         ASSERT_EQ(curPmEntry.fileId, fileIds1[i]);
         ASSERT_EQ(curPmEntry.loadingId, 1);
     }
+
+    newFileSize = 0;
+    for (int i = 0; i < parser.fileEntryArray.getSize(); ++i) {
+        if(parser.fileEntryArray[i].creationLoadingId==1){
+            newFileSize+=1;
+        }
+    }
+    ASSERT_EQ(newFileSize,2); //Heap and the new testDL
 }
 
 
@@ -255,10 +272,14 @@ TEST(PMParser, ParseAfterPmEntryDeletion) {
     int pmEntryNumbers2[] = {3, 3, 3, 4, 2, 1, 0, 1, 1, 1, 4};
 
     ssize_t validFileSize = 0;
+    ssize_t newFileSize=0;
     for (int i = 0; i < parser.fileEntryArray.getSize(); ++i) {
         ASSERT_EQ(parser.fileEntryArray[i].pmEntryNumbers, pmEntryNumbers2[i]);
         //INFO_LOGS("%s", parser.stringTable.substr(parser.fileEntryArray[i].pathNameStartIndex,
         //                                          parser.fileEntryArray[i].getPathNameLength()).c_str());
+        if(parser.fileEntryArray[i].creationLoadingId==2){
+            newFileSize+=1;
+        }
         if (parser.fileEntryArray[i].loadingId == 2) {
             validFileSize += 1;
         } else {
@@ -270,6 +291,7 @@ TEST(PMParser, ParseAfterPmEntryDeletion) {
     ASSERT_EQ(parser.fileEntryArray.getSize(), 11); //FileArray should contain all the files loaded before
     ASSERT_EQ(validFileSize, 10);//<vdso> should be already deleted, so there is one tiem less
     ASSERT_EQ(parser.pmEntryArray.getSize(), 23); //PmEntryArray should reflect the actual number of pmEntry
+    ASSERT_EQ(newFileSize,0);
 
 }
 
@@ -300,21 +322,17 @@ TEST(PMParser, LibraryReplaced) {
 
     int pmEntryNumbers[] = {3, 1, 3, 4, 2, 1, 0, 1, 1, 1, 4,2};
 
-    ssize_t validFileSize = 0;
+    ssize_t newFileSize = 0;
     for (int i = 0; i < parser.fileEntryArray.getSize(); ++i) {
         ASSERT_EQ(parser.fileEntryArray[i].pmEntryNumbers, pmEntryNumbers[i]);
+        if(parser.fileEntryArray[i].creationLoadingId==3){
+            newFileSize+=1;
+        }
 
-        //        if (parser.fileEntryArray[i].loadingId == 2) {
-//            validFileSize += 1;
-//        } else {
-//            ASSERT_EQ(strcmp(parser.stringTable.substr(parser.fileEntryArray[i].pathNameStartIndex,
-//                                                       parser.fileEntryArray[i].getPathNameLength()).c_str(), "[vdso]"),
-//                      0);
-//        }
     }
-//    ASSERT_EQ(parser.fileEntryArray.getSize(), 11); //FileArray should contain all the files loaded before
-//    ASSERT_EQ(validFileSize, 10);//<vdso> should be already deleted, so there is one tiem less
-//    ASSERT_EQ(parser.pmEntryArray.getSize(), 23); //PmEntryArray should reflect the actual number of pmEntry
+    ASSERT_EQ(parser.fileEntryArray.getSize(), 12); //FileArray should contain all the files loaded before
+    ASSERT_EQ(newFileSize, 1);//<vdso> should be already deleted, so there is one tiem less
+    ASSERT_EQ(parser.pmEntryArray.getSize(), 23); //PmEntryArray should reflect the actual number of pmEntry
 
 }
 
