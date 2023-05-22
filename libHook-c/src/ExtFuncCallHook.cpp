@@ -184,7 +184,7 @@ namespace scaler {
             }
             uint8_t *pltEntry = curImgInfo.pltStartAddr + pltSection.entrySize * (i + 1);
 
-            DBG_LOGS("curImgInfo.pltStartAddr = %p\n", curImgInfo.pltStartAddr);
+            //DBG_LOGS("curImgInfo.pltStartAddr = %p\n", curImgInfo.pltStartAddr);
             uint32_t pltStubId = parsePltStubId(pltEntry); //Note that the first entry is not valid
 
             //Make sure space is enough, if space is enough, array won't allocate
@@ -204,11 +204,11 @@ namespace scaler {
             }
             fprintf(symInfoFile, "%s,%ld,%ld\n", funcName, newSym->fileId, newSym->symIdInFile);
 
-            printf(
-                    "id:%ld funcName:%s gotAddr:%p *gotAddr:%p fileId:%zd symIdInFile:%zd pltEntryAddr:%p pltSecEntryAddr:%p pltStubId:%lu\n",
-                    allExtSymbol.getSize() - 1, funcName, gotAddr, *gotAddr,
-                    fileId,
-                    newSym->symIdInFile, newSym->pltEntryAddr, newSym->pltSecEntryAddr, newSym->pltStubId);
+//            printf(
+//                    "id:%ld funcName:%s gotAddr:%p *gotAddr:%p fileId:%zd symIdInFile:%zd pltEntryAddr:%p pltSecEntryAddr:%p pltStubId:%lu\n",
+//                    allExtSymbol.getSize() - 1, funcName, gotAddr, *gotAddr,
+//                    fileId,
+//                    newSym->symIdInFile, newSym->pltEntryAddr, newSym->pltSecEntryAddr, newSym->pltStubId);
         }
 
         fclose(symInfoFile);
@@ -670,7 +670,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2F4500(%%rip),%0\n\t"
+                "movq 0x2F4520(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :
@@ -704,6 +704,7 @@ namespace scaler {
 
 
     void ExtFuncCallHook::parseRequiredInfo(ssize_t loadingId) {
+        INFO_LOG("parseRequiredInfo");
         ELFParser elfParser;
         if (!pmParser.parsePMMap(loadingId)) {
             fatalErrorS("Cannot parsePmMap in loding %zd", loadingId);
@@ -714,7 +715,8 @@ namespace scaler {
         pmParser.getNewFileEntryIdsUnsafe(loadingId, newFileEntryId,true);
 
         //elfImgInfoMap is always incremental, allocate room for newly allocated files
-        for (int i = 0; i < pmParser.getFileEntryArraySize() - elfImgInfoMap.getSize(); ++i) {
+        ssize_t elemDifference=pmParser.getFileEntryArraySize() - elfImgInfoMap.getSize();
+        for (int i = 0; i <elemDifference;  ++i) {
             ELFImgInfo *curElfImgInfo = elfImgInfoMap.pushBack();
             curElfImgInfo->valid = false; //Set them to invalid by default
         }
@@ -742,8 +744,8 @@ namespace scaler {
                 curElfImgInfo.pltSecStartAddr = pltSecInfo.startAddr;
                 curElfImgInfo.gotStartAddr = gotInfo.startAddr;
 
-                ERR_LOGS("%zd:%s %p pltStartAddr=%p", fileId, pmParser.getStrUnsafe(curFileEntry.pathNameStartIndex),
-                         curFileEntry.baseStartAddr, pltInfo.startAddr);
+                //ERR_LOGS("%zd:%s %p pltStartAddr=%p", fileId, pmParser.getStrUnsafe(curFileEntry.pathNameStartIndex),
+                //         curFileEntry.baseStartAddr, pltInfo.startAddr);
 
                 //Install hook on this file
                 if (!parseSymbolInfo(elfParser, fileId, curFileEntry.baseStartAddr, pltInfo, pltSecInfo,
