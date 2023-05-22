@@ -87,7 +87,7 @@ namespace scaler {
                                       uint32_t countOffset, uint32_t gapOffset, uint8_t *idSaverEntry);
 
 
-        void parseRequiredInfo();
+        void parseRequiredInfo(ssize_t loadingId);
 
         /**
          * Actual entry

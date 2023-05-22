@@ -69,7 +69,7 @@ namespace scaler {
 
         bool readSecContentWoMemReuse(Elf64_Shdr &curSecHdr, void *&rltAddr, const ssize_t &oriSecSize);
 
-//        void *parseSecLoc(Elf64_Shdr &curHeader, uint8_t *baseAddr,uint8_t *possibleStartAddr,
+//        void *parseSecLoc(Elf64_Shdr &curHeader, uint8_t *baseStartAddr,uint8_t *possibleStartAddr,
 //                          uint8_t *possibleEndAddr);
 
 

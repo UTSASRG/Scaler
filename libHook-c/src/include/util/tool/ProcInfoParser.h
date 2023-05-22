@@ -59,8 +59,8 @@ namespace scaler {
             PRIVATE = 0
         };
         // end address
-        ssize_t fileId=-1;
-        unsigned char permBits=0; // Is readable
+        ssize_t fileId = -1;
+        unsigned char permBits = 0; // Is readable
 
         inline bool isR() const {
             return permBits & (1 << PERM::READ);
@@ -94,13 +94,13 @@ namespace scaler {
             permBits |= 1 << PERM::READ;
         }
 
-        inline bool operator==(PMEntry& rho){
-            return addrStart==rho.addrStart && addrEnd==rho.addrEnd && permBits==rho.permBits;
+        inline bool operator==(PMEntry &rho) {
+            return addrStart == rho.addrStart && addrEnd == rho.addrEnd && permBits == rho.permBits;
         }
 
-        inline void setPermBits(char* permStr){
+        inline void setPermBits(char *permStr) {
             //Parse permission
-            permBits=0;
+            permBits = 0;
             if (permStr[0] == 'r') {
                 setR();
             }
@@ -114,10 +114,12 @@ namespace scaler {
                 setP();
             }
         }
-        ssize_t loadingId=-1; //Marks the version of this entry, used to detect entry deletion
-        uint8_t *addrStart=nullptr;
+
+        ssize_t loadingId = -1; //Marks the version of this entry, used to detect entry deletion
+        uint8_t *addrStart = nullptr;
         // start address of the segment
-        uint8_t *addrEnd=nullptr;
+        uint8_t *addrEnd = nullptr;
+        ssize_t creationLoadingId = -1;//Marks the creation loadingId of this entry. This combined with previous field can be used to detect new file addition.
     };
 
 
@@ -126,14 +128,17 @@ namespace scaler {
      */
     class FileEntry {
     public:
-        ssize_t pathNameStartIndex=-1;
-        ssize_t pathNameEndIndex=-1;
+        ssize_t pathNameStartIndex = -1;
+        ssize_t pathNameEndIndex = -1;
         ssize_t pmEntryNumbers;
-        bool valid=false;
-        ssize_t loadingId=-1; //Marks the version of this entry, used to detect entry deletion
-        ssize_t creationLoadingId=-1;//Marks the creation loadingId of this entry. This combined with previous field can be used to detect new file addition.
-        ssize_t getPathNameLength(){
-            return pathNameEndIndex-pathNameStartIndex;
+        bool valid = false;
+        ssize_t loadingId = -1; //Marks the version of this entry, used to detect entry deletion
+        ssize_t creationLoadingId = -1;//Marks the creation loadingId of this entry. This combined with previous field can be used to detect new file addition.
+        uint8_t *baseStartAddr = nullptr;
+        uint8_t *baseEndAddr = nullptr;
+
+        ssize_t getPathNameLength() {
+            return pathNameEndIndex - pathNameStartIndex - 1;
         }
     };
 
@@ -145,7 +150,7 @@ namespace scaler {
      */
     class PmParser : public Object {
     public:
-        explicit PmParser(std::string saveFolderName,std::string customProcFileName="");
+        explicit PmParser(std::string saveFolderName, std::string customProcFileName = "");
 
         virtual uint8_t *autoAddBaseAddrUnSafe(uint8_t *curBaseAddr, FileID curFileiD, ElfW(Addr) targetAddr);
 
@@ -172,10 +177,9 @@ namespace scaler {
          */
         virtual ssize_t findFileIdByAddr(void *addr);
 
-        virtual void findPmEntryIdByAddrUnSafe(void *addr,ssize_t& lo,bool& found);
+        virtual void findPmEntryIdByAddrUnSafe(void *addr, ssize_t &lo, bool &found);
 
-        virtual void findPmEntryIdByAddr(void *addr,ssize_t& lo,bool& found);
-
+        virtual void findPmEntryIdByAddr(void *addr, ssize_t &lo, bool &found);
 
 
         ~PmParser() override;
@@ -188,21 +192,74 @@ namespace scaler {
 
         virtual bool parsePMMap(ssize_t loadingId);
 
+        virtual inline void
+        getNewFileEntryIdsUnsafe(ssize_t curLoadingId, Array<ssize_t> &rltArray, bool mustBeValid=false) {
+            for (ssize_t i = 0; i < fileEntryArray.getSize(); ++i) {
+                if (curLoadingId == fileEntryArray[i].creationLoadingId && (fileEntryArray[i].valid || !mustBeValid)) {
+                    *rltArray.pushBack() = i;
+                }
+            }
+        }
+
+        virtual inline void getNewFileEntryIds(ssize_t curLoadingId, Array<ssize_t> &rltArray, bool mustBeValid=true) {
+            pthread_rwlock_rdlock(&rwlock);
+            getNewFileEntryIdsUnsafe(curLoadingId, rltArray, mustBeValid);
+            pthread_rwlock_unlock(&rwlock);
+        }
+
+        virtual inline PMEntry &getPmEntryUnSafe(ssize_t i) {
+            PMEntry *rlt = &pmEntryArray.get(i);
+            return *rlt;
+        }
+
+        virtual inline PMEntry &getPmEntry(ssize_t i) {
+            pthread_rwlock_rdlock(&rwlock);
+            PMEntry *rlt = &getPmEntryUnSafe(i);
+            pthread_rwlock_unlock(&rwlock);
+            return *rlt;
+        }
+
+        virtual inline FileEntry &getFileEntryUnSafe(ssize_t i) {
+            FileEntry *rlt = &fileEntryArray.get(i);
+            return *rlt;
+        }
+
+        virtual inline FileEntry &getFileEntry(ssize_t i) {
+            pthread_rwlock_rdlock(&rwlock);
+            FileEntry *rlt = &getFileEntryUnSafe(i);
+            pthread_rwlock_unlock(&rwlock);
+            return *rlt;
+        }
+
+        void acruieReadLock();
+
+        void releaseReadLock();
+
+
+        const char *getStrUnsafe(ssize_t strStart);
+
+        ssize_t getFileEntryArraySize();
+
     protected:
-        pthread_rwlock_t rwlock = PTHREAD_RWLOCK_INITIALIZER;
-        std::string stringTable;
+        pthread_rwlock_t rwlock;
+        Array<char> stringTable;
         std::string customProcFileName;
-        ssize_t previousLoaidngId=-1;
+        ssize_t previousLoaidngId = -1;
         Array<PMEntry> pmEntryArray;
         Array<FileEntry> fileEntryArray;
         std::string folderName;
 
-        FILE* openProcFileUnSafe();
+        FILE *openProcFileUnSafe();
 
-        bool matchWithPreviousFileIdUnSafe(ssize_t startingId, ssize_t curLoadingId, char* pathName,
-                                           ssize_t pathNameLen, PMEntry* newPmEntry);
+        bool matchWithPreviousFileIdUnSafe(ssize_t startingId, ssize_t curLoadingId, char *pathName,
+                                           ssize_t pathNameLen, PMEntry *newPmEntry);
 
-        void createFileEntryUnSafe(PMEntry* newPmEntry, ssize_t loadingId, char* pathName, ssize_t scanfReadNum);
+        void createFileEntryUnSafe(PMEntry *newPmEntry, ssize_t loadingId, char *pathName, ssize_t pathNameLen,
+                                   ssize_t scanfReadNum);
+
+        void rmDeletedPmEntriesUnsafe(ssize_t loadingId);
+
+        void updateFileBaseAddrUnsafe();
     };
 
 

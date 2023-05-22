@@ -73,20 +73,20 @@ namespace scaler {
         virtual inline void erase(const ssize_t &index) {
             assert(0 <= index && index < size);
             size -= 1;
-            memmove(internalArr + index, internalArr + index + 1, (size - index)*sizeof(T));
+            memmove(internalArr + index, internalArr + index + 1, (size - index) * sizeof(T));
         }
 
 
         virtual T *insertAt(ssize_t index, Args... restOfArgs) {
             assert(0 <= index && index <= size);
-            if (size == internalArrSize){
-                expand(size * 2);
+            if (size+1 > internalArrSize) {
+                expand((size+1) * 2);
             }
             if (index < size) {
-                memmove(internalArr + index + 1, internalArr + index, (size - index)*sizeof(T));
+                memmove(internalArr + index + 1, internalArr + index, (size - index) * sizeof(T));
             }
             size += 1;
-            new (internalArr + index) T(restOfArgs...);  //Construct object
+            new(internalArr + index) T(restOfArgs...);  //Construct object
             return internalArr + index;
         }
 
@@ -94,11 +94,13 @@ namespace scaler {
          * Allocate a bunch of memory. If the memory is already available, only expand size.
          * This can be used to guarantee enough memory
          */
-        virtual bool allocate(ssize_t amount) {
-            if (size + amount >= internalArrSize)
-                expand(size + amount);
+        virtual T* allocate(ssize_t amount) {
+            ssize_t requiredSize = size + amount;
+            if (requiredSize > internalArrSize)
+                expand(requiredSize * 2);
+            T* rlt=internalArr + size;
             size += amount;
-            return true;
+            return rlt;
         }
 
         virtual inline T *pushBack() {
@@ -146,17 +148,21 @@ namespace scaler {
         ssize_t internalArrSize = 0;
         ssize_t size = 0;
 
-        virtual void expand(ssize_t minimumSize) {
+        virtual bool expand(ssize_t newSize) {
             T *oldInternalArr = internalArr;
 
-            ssize_t newSize = max<ssize_t>(minimumSize, internalArrSize * 2);
-
             internalArr = (T *) malloc(newSize * sizeof(T));
+            if(!internalArr){
+                fatalError("Cannot allocate memory");
+                return false;
+            }
+
             memset(internalArr, 0, newSize * sizeof(T));
 
             memcpy(internalArr, oldInternalArr, internalArrSize * sizeof(T));
             free(oldInternalArr);
             internalArrSize = newSize;
+            return true;
         }
     };
 

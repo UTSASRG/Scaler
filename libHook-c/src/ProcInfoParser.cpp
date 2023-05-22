@@ -22,6 +22,7 @@ namespace scaler {
                                                                                      customProcFileName(
                                                                                              customProcFileName),
                                                                                      pmEntryArray(70) {
+        pthread_rwlock_init(&rwlock, NULL);
     }
 
 
@@ -73,7 +74,7 @@ namespace scaler {
             //Find if there is a match based on address search
             ssize_t lo;
             bool found = false;
-            findPmEntryIdByAddr(addrStart, lo, found);
+            findPmEntryIdByAddrUnSafe(addrStart, lo, found);
 
             PMEntry *newPmEntry = nullptr;
             if (found) {
@@ -82,7 +83,7 @@ namespace scaler {
                 fileEntry.loadingId = loadingId;
 
                 if (pmEntry.addrEnd == addrEnd &&
-                    strncmp(stringTable.c_str() + fileEntry.pathNameStartIndex, pathName,
+                    strncmp(&stringTable.get(fileEntry.pathNameStartIndex), pathName,
                             fileEntry.getPathNameLength()) == 0) {
                     //Exactly the same entry (Ignore permission and other attrs). Replace permission fields just in case.
                     //Update loading id
@@ -93,15 +94,14 @@ namespace scaler {
                     //Same starting address, but different end address/fileName. Replace entry, and remove linkage to the original fileEntry
                     //INFO_LOG("Same starting address, but different end address/fileName. Replace entry, and remove linkage to the original fileEntry");
                     newPmEntry = &pmEntry;
-//                    newPmEntry->loadingId=loadingId;//Update the loading id
                     assert(fileEntry.pmEntryNumbers > 0);
                     fileEntry.pmEntryNumbers -= 1; //Remove linkage to the previous file entry
                 }
             } else {
                 //Not found, create a new PmEntry
                 newPmEntry = pmEntryArray.insertAt(lo);
-//                newPmEntry->loadingId = loadingId;//Update the loading id
             }
+            newPmEntry->creationLoadingId = loadingId;
             newPmEntry->loadingId = loadingId;//Update the loading id
             newPmEntry->addrStart = addrStart;
             newPmEntry->addrEnd = addrEnd;
@@ -116,22 +116,15 @@ namespace scaler {
                 continue;
             }
 
-            createFileEntryUnSafe(newPmEntry, loadingId, pathName, scanfReadNum);
+            createFileEntryUnSafe(newPmEntry, loadingId, pathName, pathNameLen, scanfReadNum);
 
         }
 
         //Delete deleted pmEntries
-        for (int i = pmEntryArray.getSize() - 1; i >= 0; --i) {
-            //Remove all non-updated PLT entries (which means entries no longer exists)
-            assert(abs(loadingId - pmEntryArray[i].loadingId) <= 1);
+        rmDeletedPmEntriesUnsafe(loadingId);
 
-            if (pmEntryArray[i].loadingId < loadingId) {
-                //Currently we do not need to return this
-                fileEntryArray[pmEntryArray[i].fileId].pmEntryNumbers -= 1;//Unlink pmEntry
-                pmEntryArray.erase(i);
-            }
-        }
-
+        //Clear baseStartAddr
+        updateFileBaseAddrUnsafe();
 
         fclose(fileNameStrTbl);
         fclose(procFile);
@@ -150,9 +143,36 @@ namespace scaler {
         return true;
     }
 
+    void PmParser::updateFileBaseAddrUnsafe() {
+        for (int i = 0; i < fileEntryArray.getSize(); ++i) {
+            fileEntryArray[i].baseStartAddr = reinterpret_cast<uint8_t *>(UINTPTR_MAX);
+            fileEntryArray[i].baseEndAddr = 0;
+        }
+
+        //Update baseStartAddr
+        for (int i = 0; i < pmEntryArray.getSize(); ++i) {
+            FileEntry &curFileEntry = fileEntryArray[pmEntryArray[i].fileId];
+            curFileEntry.baseStartAddr = min(curFileEntry.baseStartAddr, pmEntryArray[i].addrStart);
+            curFileEntry.baseEndAddr = max(curFileEntry.baseEndAddr, pmEntryArray[i].addrEnd);
+        }
+    }
+
+    void PmParser::rmDeletedPmEntriesUnsafe(ssize_t loadingId) {
+        for (int i = pmEntryArray.getSize() - 1; i >= 0; --i) {
+            //Remove all non-updated PLT entries (which means entries no longer exists)
+            assert(abs(loadingId - pmEntryArray[i].loadingId) <= 1);
+
+            if (pmEntryArray[i].loadingId < loadingId) {
+                //Currently we do not need to return this
+                fileEntryArray[pmEntryArray[i].fileId].pmEntryNumbers -= 1;//Unlink pmEntry
+                pmEntryArray.erase(i);
+            }
+        }
+    }
+
     bool PmParser::parsePMMap(ssize_t loadingId) {
         pthread_rwlock_wrlock(&rwlock);
-        bool rlt= parsePMMapUnSafe(loadingId);
+        bool rlt = parsePMMapUnSafe(loadingId);
         pthread_rwlock_unlock(&rwlock);
         return rlt;
     }
@@ -216,9 +236,9 @@ namespace scaler {
         }
     }
 
-    void PmParser::findPmEntryIdByAddr(void *addr, ssize_t &lo, bool &found){
+    void PmParser::findPmEntryIdByAddr(void *addr, ssize_t &lo, bool &found) {
         pthread_rwlock_rdlock(&rwlock);
-        findPmEntryIdByAddrUnSafe(addr,lo,found);
+        findPmEntryIdByAddrUnSafe(addr, lo, found);
         pthread_rwlock_unlock(&rwlock);
     }
 
@@ -242,7 +262,7 @@ namespace scaler {
 
     uint8_t *PmParser::autoAddBaseAddr(uint8_t *curBaseAddr, FileID curFileID, ElfW(Addr) targetAddr) {
         pthread_rwlock_rdlock(&rwlock);
-        uint8_t * rlt= autoAddBaseAddrUnSafe(curBaseAddr, curFileID, targetAddr);
+        uint8_t *rlt = autoAddBaseAddrUnSafe(curBaseAddr, curFileID, targetAddr);
         pthread_rwlock_unlock(&rwlock);
         return rlt;
     }
@@ -272,9 +292,10 @@ namespace scaler {
                                                  ssize_t pathNameLen, PMEntry *newPmEntry) {
         bool hasPreviousFileNameMatch = false;
         for (int i = startingId - 1; i >= 0; --i) {
+
             if (curLoadingId - fileEntryArray[pmEntryArray[i].fileId].loadingId <= 1
                 && fileEntryArray[pmEntryArray[i].fileId].getPathNameLength() == pathNameLen
-                && strncmp(stringTable.c_str() + fileEntryArray[pmEntryArray[i].fileId].pathNameStartIndex,
+                && strncmp(&stringTable.get(fileEntryArray[pmEntryArray[i].fileId].pathNameStartIndex),
                            pathName, pathNameLen) == 0) {
                 //Previous filename matches with current file name, no need to create file entry
                 newPmEntry->fileId = pmEntryArray[i].fileId;
@@ -287,17 +308,19 @@ namespace scaler {
         return hasPreviousFileNameMatch;
     }
 
-    void PmParser::createFileEntryUnSafe(PMEntry *newPmEntry, ssize_t loadingId, char *pathName, ssize_t scanfReadNum) {
+    void PmParser::createFileEntryUnSafe(PMEntry *newPmEntry, ssize_t loadingId, char *pathName, ssize_t pathNameLen,
+                                         ssize_t scanfReadNum) {
         ssize_t newFileId = fileEntryArray.getSize();
         FileEntry *newFileEntry = fileEntryArray.pushBack(); //We should not use insertAt because fileId is hard-coded into dynamically generated assembly instructions.
         newPmEntry->fileId = newFileId;
         newFileEntry->loadingId = loadingId;
         newFileEntry->creationLoadingId = loadingId;
         newFileEntry->pmEntryNumbers += 1;
-        newFileEntry->pathNameStartIndex = stringTable.size();
-        stringTable.append(pathName);
-        newFileEntry->pathNameEndIndex = stringTable.size();
-        newFileEntry->valid = false;//Decide later
+        newFileEntry->pathNameStartIndex = stringTable.getSize();
+        char *rlt = stringTable.allocate(pathNameLen + 1);
+        memcpy(rlt, pathName, pathNameLen + 1);//+1 because of '\0'
+        newFileEntry->pathNameEndIndex = stringTable.getSize();
+        newFileEntry->valid = true;//Decide later
 
         //Check the validity of fileEntry
         std::string dirName;
@@ -321,6 +344,22 @@ namespace scaler {
             //DBG_LOG("Do not hook ld.so library");
             newFileEntry->valid = false;
         }
+    }
+
+    void PmParser::acruieReadLock() {
+        pthread_rwlock_rdlock(&rwlock);
+    }
+
+    void PmParser::releaseReadLock() {
+        pthread_rwlock_unlock(&rwlock);
+    }
+
+    const char *PmParser::getStrUnsafe(ssize_t strStart) {
+        return &stringTable.get(strStart);
+    }
+
+    ssize_t PmParser::getFileEntryArraySize() {
+        return fileEntryArray.getSize();
     }
 
 

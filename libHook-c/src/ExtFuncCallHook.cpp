@@ -36,13 +36,7 @@ namespace scaler {
         fprintf(symInfoFile, "%s,%s,%s\n", "funcName", "fileId", "symIdInFile");
         fclose(symInfoFile);
 
-        Array<int> newlyLoadedFileId(5);
-        Array<int> newlyLoadedPmEntry(5);
-        //Parse filenames
-        pmParser.parsePMMap(0);
-        //Get pltBaseAddr
-
-        parseRequiredInfo();
+        parseRequiredInfo(0);
 
         if (!initTLS()) {
             ERR_LOG("Failed to initialize TLS");
@@ -190,7 +184,7 @@ namespace scaler {
             }
             uint8_t *pltEntry = curImgInfo.pltStartAddr + pltSection.entrySize * (i + 1);
 
-            DBG_LOGS("curImgInfo.pltStartAddr = %p\n",curImgInfo.pltStartAddr );
+            DBG_LOGS("curImgInfo.pltStartAddr = %p\n", curImgInfo.pltStartAddr);
             uint32_t pltStubId = parsePltStubId(pltEntry); //Note that the first entry is not valid
 
             //Make sure space is enough, if space is enough, array won't allocate
@@ -204,9 +198,9 @@ namespace scaler {
             newSym->pltSecEntryAddr = pltSecEntry;
             newSym->pltStubId = pltStubId;
             newSym->initialGap = initialGap;
-            if(addressOverride){
-                INFO_LOGS("%p",gotAddr);
-                *newSym->gotEntryAddr= reinterpret_cast<uint8_t *>(addressOverride);
+            if (addressOverride) {
+                INFO_LOGS("%p", gotAddr);
+                *newSym->gotEntryAddr = reinterpret_cast<uint8_t *>(addressOverride);
             }
             fprintf(symInfoFile, "%s,%ld,%ld\n", funcName, newSym->fileId, newSym->symIdInFile);
 
@@ -676,7 +670,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2F0D20(%%rip),%0\n\t"
+                "movq 0x2F4500(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :
@@ -709,70 +703,60 @@ namespace scaler {
     }
 
 
-    void ExtFuncCallHook::parseRequiredInfo() {
+    void ExtFuncCallHook::parseRequiredInfo(ssize_t loadingId) {
         ELFParser elfParser;
+        if (!pmParser.parsePMMap(loadingId)) {
+            fatalErrorS("Cannot parsePmMap in loding %zd", loadingId);
+        }
+        pmParser.acruieReadLock();
+        //Find new file from exising PMMaps
+        Array<FileID> newFileEntryId;
+        pmParser.getNewFileEntryIdsUnsafe(loadingId, newFileEntryId,true);
 
-        //Push a guard entry in this case we don't need to specifically handle the last element
-        pmParser.pmEntryArray.pushBack()->fileId = -1;
-
-        ssize_t prevFileId = -1;
-        uint8_t *prevFileBaseAddr = pmParser.pmEntryArray[0].addrStart;
-        std::string curFileName;
+        //elfImgInfoMap is always incremental, allocate room for newly allocated files
+        for (int i = 0; i < pmParser.getFileEntryArraySize() - elfImgInfoMap.getSize(); ++i) {
+            ELFImgInfo *curElfImgInfo = elfImgInfoMap.pushBack();
+            curElfImgInfo->valid = false; //Set them to invalid by default
+        }
 
         //Get segment info from /proc/self/maps
-        for (int i = 0; i < pmParser.pmEntryArray.getSize(); ++i) {
-            PMEntry &curPmEntry = pmParser.pmEntryArray[i];
+        for (ssize_t i = 0; i < newFileEntryId.getSize(); ++i) {
+            FileID fileId=newFileEntryId[i];
+            FileEntry &curFileEntry = pmParser.getFileEntryUnSafe(0);
+            const char *curFilePathName = pmParser.getStrUnsafe(curFileEntry.pathNameStartIndex);
+            //ERR_LOGS("%s %p", curFilePathName.c_str(), prevFileBaseAddr);
+            ELFImgInfo& curElfImgInfo = elfImgInfoMap.get(fileId);
+            if (elfParser.parse(curFilePathName)) {
+                //Find the entry size of plt and got
+                ELFSecInfo pltInfo{};
+                ELFSecInfo pltSecInfo{};
+                ELFSecInfo gotInfo{};
 
-            if (prevFileId != -1 && prevFileId != curPmEntry.fileId) {
-                //A new file discovered
-                curFileName = pmParser.fileNameArr[prevFileId];
-                //ERR_LOGS("%s %p", curFileName.c_str(), prevFileBaseAddr);
-                ELFImgInfo *curElfImgInfo = elfImgInfoMap.pushBack();
-                curElfImgInfo->valid = false;
-                if (elfParser.parse(curFileName.c_str())) {
-                    //Find the entry size of plt and got
-                    ELFSecInfo pltInfo;
-                    ELFSecInfo pltSecInfo;
-                    ELFSecInfo gotInfo;
-
-                    //todo: We assume plt and got entry size is the same.
-                    if (!parseSecInfos(elfParser, pltInfo, pltSecInfo, gotInfo, prevFileBaseAddr, prevFileBaseAddr,
-                                       pmParser.pmEntryArray[i - 1].addrEnd)) {
-                        fatalError(
-                                "Failed to parse plt related sections.");
-                        exit(-1);
-                    }
-                    curElfImgInfo->pltStartAddr = pltInfo.startAddr;
-                    curElfImgInfo->pltSecStartAddr = pltSecInfo.startAddr;
-                    curElfImgInfo->gotStartAddr = gotInfo.startAddr;
-
-                    ERR_LOGS("%zd:%s %p pltStartAddr=%p", prevFileId, pmParser.fileNameArr[prevFileId].c_str(),
-                             prevFileBaseAddr, pltInfo.startAddr);
-
-                    //Install hook on this file
-                    if (!parseSymbolInfo(elfParser, prevFileId, prevFileBaseAddr, pltInfo, pltSecInfo,
-                                         gotInfo, prevFileBaseAddr,
-                                         pmParser.pmEntryArray[i - 1].addrEnd)) {
-                        fatalErrorS(
-                                "installation for file %s failed.", curFileName.c_str());
-                        exit(-1);
-                    }
-                    curElfImgInfo->valid = true;
-
+                //todo: We assume plt and got entry size is the same.
+                if (!parseSecInfos(elfParser, pltInfo, pltSecInfo, gotInfo, curFileEntry.baseStartAddr,
+                                   curFileEntry.baseStartAddr, curFileEntry.baseEndAddr)) {
+                    fatalError("Failed to parse plt related sections.");
+                    exit(-1);
                 }
-                prevFileBaseAddr = curPmEntry.addrStart;
-            }
+                curElfImgInfo.pltStartAddr = pltInfo.startAddr;
+                curElfImgInfo.pltSecStartAddr = pltSecInfo.startAddr;
+                curElfImgInfo.gotStartAddr = gotInfo.startAddr;
 
-            //Move on to the next entry
-            if (curPmEntry.fileId != -1) {
-                prevFileId = curPmEntry.fileId;
-            } else {
-                //This is the guard entry, break
-                break;
+                ERR_LOGS("%zd:%s %p pltStartAddr=%p", fileId, pmParser.getStrUnsafe(curFileEntry.pathNameStartIndex),
+                         curFileEntry.baseStartAddr, pltInfo.startAddr);
+
+                //Install hook on this file
+                if (!parseSymbolInfo(elfParser, fileId, curFileEntry.baseStartAddr, pltInfo, pltSecInfo,
+                                     gotInfo, curFileEntry.baseStartAddr,
+                                     curFileEntry.baseEndAddr)) {
+                    fatalErrorS( "installation for file %s failed.", curFilePathName);
+                    exit(-1);
+                }
+                curElfImgInfo.valid = true;
+
             }
         }
-        //Remove guard
-        pmParser.pmEntryArray.popBack();
+        pmParser.releaseReadLock();
     }
 
     bool ExtFuncCallHook::replacePltEntry() {

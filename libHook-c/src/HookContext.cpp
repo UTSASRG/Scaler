@@ -117,7 +117,7 @@ bool initTLS() {
 
 
 //#ifdef PRINT_DBG_LOG
-//    printRecOffset();
+    printRecOffset();
 //#endif
     if (!curContext) {
         fatalError("Failed to allocate memory for Context");

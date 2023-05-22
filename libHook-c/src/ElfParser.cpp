@@ -293,12 +293,12 @@ namespace scaler {
         return relaSection[relaSymId].r_offset;
     }
 
-//    void *ELFParser::parseSecLoc(Elf64_Shdr &curHeader, uint8_t *baseAddr, uint8_t *possibleStartAddr,
+//    void *ELFParser::parseSecLoc(Elf64_Shdr &curHeader, uint8_t *baseStartAddr, uint8_t *possibleStartAddr,
 //                                 uint8_t *possibleEndAddr) {
 //        assert(possibleStartAddr != nullptr);
 //        assert(possibleEndAddr != nullptr);
 
-//        void *rlt = autoAddBaseAddr((uint8_t*)curHeader.sh_addr,baseAddr,possibleStartAddr,possibleEndAddr);
+//        void *rlt = autoAddBaseAddr((uint8_t*)curHeader.sh_addr,baseStartAddr,possibleStartAddr,possibleEndAddr);
 
 
 #ifndef NDEBUG
