@@ -215,8 +215,8 @@ void __attribute__((naked)) asmTimingHandler() {
              * Getting PLT entry address and caller address from stack
              */
             "movq " SAVE_BYTES_PRE_plus16 "(%rsp),%rdi\n\t" //First parameter, return addr
-            "movq " SAVE_BYTES_PRE_plus8 "(%rsp),%rdx\n\t" //First parameter, return addr
-            "movq " SAVE_BYTES_PRE "(%rsp),%rsi\n\t" //Second parameter, symbolId (Pushed to stack by idsaver)
+            "movq " SAVE_BYTES_PRE_plus8 "(%rsp),%rsi\n\t" //Second parameter, loadingId (Pushed to stack by idsaver)
+            "movq " SAVE_BYTES_PRE "(%rsp),%rdx\n\t" //Third parameter, symbolId (Pushed to stack by idsaver)
 
             /**
              * Pre-Hook

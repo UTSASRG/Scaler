@@ -78,16 +78,10 @@ public:
 };
 
 int main() {
-//    funcA();
-//    funcA();
-//    callFuncA();
-    printf("Calling funcA\n");
-    printf("Calling funcB\n");
-    printf("Calling funcC\n");
-    printf("Calling funcD\n");
-    printf("Calling funcE\n");
-    printf("Calling funcF\n");
-    printf("Calling funcG\n");
+    funcA();
+    funcA();
+    callFuncA();
+
 
     //
 //
