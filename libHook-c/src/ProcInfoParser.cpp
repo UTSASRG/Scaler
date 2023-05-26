@@ -64,6 +64,7 @@ namespace scaler {
             }
 #endif
             //INFO_LOGS("New line: %s",procMapLine);
+            //INFO_LOGS("Array Size: %s",procMapLine);
 
             char pathName[PATH_MAX] = "";
             //Read pmEntry line
@@ -213,11 +214,11 @@ namespace scaler {
     void PmParser::findPmEntryIdByAddrUnSafe(void *addr, ssize_t &lo, bool &found) {
         //Since sortedSegments are sorted by starting address and all address range are not overlapping.
         //We could use binary search to lookup addr in this array.
-
         //Binary search impl segAddrFileMap
         lo = 0;
         ssize_t md = 0, hi = pmEntryArray.getSize() - 1;
         found = true;
+        //INFO_LOGS("pmEntryArray.getSize()=%zd\n",pmEntryArray.getSize());
         while (lo <= hi) {
             md = lo + (hi - lo) / 2;
             if (pmEntryArray[md].addrStart < addr) {
@@ -292,7 +293,7 @@ namespace scaler {
                                                  ssize_t pathNameLen, PMEntry *newPmEntry) {
         bool hasPreviousFileNameMatch = false;
         for (int i = startingId - 1; i >= 0; --i) {
-
+            //INFO_LOGS("StartingId:%zd",startingId);
             if (curLoadingId - fileEntryArray[pmEntryArray[i].fileId].loadingId <= 1
                 && fileEntryArray[pmEntryArray[i].fileId].getPathNameLength() == pathNameLen
                 && strncmp(&stringTable.get(fileEntryArray[pmEntryArray[i].fileId].pathNameStartIndex),

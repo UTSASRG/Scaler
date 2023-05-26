@@ -48,5 +48,7 @@ TEST(Array, delete) {
     ASSERT_EQ(myArray[0],0);
     ASSERT_EQ(myArray[1],3);
 
+    Array<Array<int>> myArray1(30);
+
 }
 

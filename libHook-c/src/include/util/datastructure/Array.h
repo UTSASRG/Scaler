@@ -14,17 +14,29 @@
 namespace scaler {
 
     /**
-     * Auto expansion array. Won't call
-     * Won't call any external function for read-only operation
-     * @tparam T Value type
-     */
-    template<typename T, typename... Args>
+  * Auto expansion array. Won't call
+  * Won't call any external function for read-only operation
+  * @tparam T Value type
+  */
+    /**
+  * Auto expansion array. Won't call
+  * Won't call any external function for read-only operation
+  * @tparam T Value type
+  */
+    template<typename T,typename... Args>
     class Array {
     public:
 
         //todo: Check initialized
-        explicit Array(const ssize_t &initialSize = 1) : internalArrSize(initialSize), size(0) {
-            if (initialSize > 0) {
+        explicit Array() : internalArr(nullptr),internalArrSize(0), size(0) {
+            //INFO_LOGS("Check initialized %zd\n",getSize());
+
+        }
+
+        explicit Array(const ssize_t &initialSize,Args... restOfArgs) : internalArr(nullptr),internalArrSize(initialSize), size(0) {
+            //INFO_LOGS("Check initialized1 %zd\n",getSize());
+
+            if(initialSize>0){
                 internalArr = (T *) malloc(internalArrSize * sizeof(T));
 //                INFO_LOGS("Internal array %d bytes",internalArrSize * sizeof(T));
                 assert(internalArr != nullptr);
@@ -77,7 +89,7 @@ namespace scaler {
         }
 
 
-        virtual T *insertAt(ssize_t index, Args... restOfArgs) {
+        virtual T *insertAt(ssize_t index,Args... constructorArgs) {
             assert(0 <= index && index <= size);
             if (size+1 > internalArrSize) {
                 expand((size+1) * 2);
@@ -86,25 +98,31 @@ namespace scaler {
                 memmove(internalArr + index + 1, internalArr + index, (size - index) * sizeof(T));
             }
             size += 1;
-            new(internalArr + index) T(restOfArgs...);  //Construct object
+            new(internalArr + index) T(constructorArgs...);  //Construct object
             return internalArr + index;
         }
 
         /**
          * Allocate a bunch of memory. If the memory is already available, only expand size.
          * This can be used to guarantee enough memory
+         * The constructor will not be called
          */
-        virtual T* allocate(ssize_t amount) {
+        virtual T* allocate(ssize_t amount,Args... constructorArgs) {
             ssize_t requiredSize = size + amount;
             if (requiredSize > internalArrSize)
                 expand(requiredSize * 2);
+
+            for(int i=size;i<requiredSize;++i){
+                new(internalArr + i) T(constructorArgs...);
+            }
+
             T* rlt=internalArr + size;
             size += amount;
             return rlt;
         }
 
-        virtual inline T *pushBack() {
-            return insertAt(size);
+        virtual inline T *pushBack(Args... constructorArgs) {
+            return insertAt(size,constructorArgs...);
         }
 
         virtual inline void popBack() {
@@ -128,18 +146,8 @@ namespace scaler {
             size = 0;
         }
 
-        virtual inline void setSize(ssize_t newSize) {
-            size = newSize;
-        }
-
         T *data() const {
             return internalArr;
-        }
-
-        bool release() {
-            free(internalArr);
-            internalArr = nullptr;
-            return true;
         }
 
         T *internalArr = nullptr;
@@ -153,34 +161,33 @@ namespace scaler {
 
             internalArr = (T *) malloc(newSize * sizeof(T));
             if(!internalArr){
-                fatalError("Cannot allocate memory");
+                fprintf(stderr,"Cannot allocate memory");
+                exit(-1);
                 return false;
             }
 
-            memset(internalArr, 0, newSize * sizeof(T));
-
-            memcpy(internalArr, oldInternalArr, internalArrSize * sizeof(T));
+            if(oldInternalArr){
+                memset(internalArr, 0, newSize * sizeof(T));
+                memcpy(internalArr, oldInternalArr, internalArrSize * sizeof(T));
+            }
             free(oldInternalArr);
             internalArrSize = newSize;
             return true;
         }
     };
 
-    template<typename T>
-    class FixedArray : public Array<T> {
+    template<typename T, typename... Args>
+    class FixedArray : public Array<T,Args...> {
     public:
 
         //todo: Check initialized
-        explicit FixedArray(const ssize_t &initialSize = 4096) : Array<T>(initialSize) {
-        }
-
-        FixedArray(const FixedArray &rho) : FixedArray() {
-            operator=(rho);
+        explicit FixedArray(const ssize_t &initialSize,Args...) : Array<T,Args...>(initialSize) {
         }
 
     protected:
-        inline void expand() override {
-            fatalError("Array is expanding, try to use a larger initial size or switch to array?");
+        bool expand(ssize_t newSize) override {
+            fatalErrorS("FixedArray of size %zd cannot expand to %zd. Assign a larger initial size.",this->size,newSize);
+            return false;
         }
     };
 

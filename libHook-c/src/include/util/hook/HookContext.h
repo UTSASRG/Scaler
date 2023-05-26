@@ -16,7 +16,7 @@ struct HookTuple {
     uint64_t callerAddr; //8
     uint64_t logicalClockCycles; //8
     int64_t symId; //8
-    uint32_t clockTicks; //8
+    int64_t curLoadingId; //8
 };
 
 struct HookContext {
@@ -31,7 +31,7 @@ struct HookContext {
     HookTuple hookTuple[MAX_CALL_DEPTH]; //8bytes aligned
     int64_t threadCreatorFileId = 1; //Which library created the current thread? The default one is main thread
     scaler::ExtFuncCallHook *_this = nullptr; //8bytes
-    scaler::Array<RecTuple> *recArr; //8bytes
+    scaler::Array<scaler::Array<RecTuple>> *recArr; //8bytes
     //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
 
     /**

@@ -38,18 +38,23 @@ namespace scaler {
 
         PmParser pmParser;
 
-        Array<ELFImgInfo> elfImgInfoMap;//Mapping fileID to ELFImgInfo
-        Array<ExtSymInfo> allExtSymbol;//All external symbols in ELF image
-
+        FixedArray<Array<ELFImgInfo>> elfImgInfoMap;//Mapping fileID to ELFImgInfo.
+        FixedArray<Array<ExtSymInfo>> allExtSymbol;//All external symbols in ELF image
+        //Protect possible contention in thread context initialization. All context initialization/dynamic loading should acquire this lock.
+        //But hook handler does not need to acquire this lock to save overhead.
+        //Because there is no expansion possibility for elfImgInfoMap and allExtSymbol. Already initialized fields stays initialized and dynamic loading will not impact them.
+        //Dynamically loaded fields will only be invoked by the loading thread or other thread after the loading completes.
+        //Python has GIL, so there is no real simultaenous access. Besides, python modules are seperated with others by using different loading id.
+        pthread_mutex_t dynamicLoadingLock;
         std::string folderName;
 
         /**
          * Private constructor
          */
 
-        inline bool isSymbolAddrResolved(ExtSymInfo &symInfo) {
+        inline bool isSymbolAddrResolved(ssize_t loadingId, ExtSymInfo &symInfo) {
             //Check whether its value has 6 bytes offset as its plt entry start address
-            ELFImgInfo &curImg = elfImgInfoMap[symInfo.fileId];
+            ELFImgInfo &curImg = elfImgInfoMap[loadingId][symInfo.fileId];
             int64_t myPltStartAddr = (int64_t) curImg.pltStartAddr;
             int64_t curGotAddr = (int64_t) symInfo.gotEntryAddr;
             int64_t offset = curGotAddr - myPltStartAddr;
@@ -57,6 +62,8 @@ namespace scaler {
         }
 
         static ExtFuncCallHook *getInst(std::string folderName);
+
+        static ExtFuncCallHook *getInst();
 
         static ExtFuncCallHook *instance;
 
@@ -71,7 +78,7 @@ namespace scaler {
                       uint8_t *baseAddr, uint8_t *startAddr, uint8_t *endAddr);
 
         bool
-        parseSymbolInfo(ELFParser &parser, ssize_t fileId, uint8_t *baseAddr, ELFSecInfo &pltSection,
+        parseSymbolInfo(ssize_t loadingId, ELFParser &parser, ssize_t fileId, uint8_t *baseAddr, ELFSecInfo &pltSection,
                         ELFSecInfo &pltSecureSection,
                         ELFSecInfo &gotSec, uint8_t *startAddr, uint8_t *endAddr);
 
@@ -82,8 +89,8 @@ namespace scaler {
 
         bool fillAddr2pltEntry(uint8_t *funcAddr, uint8_t *retPltEntry);
 
-        bool fillAddrAndSymId2IdSaver(uint8_t **gotAddr, uint8_t *firstPltEntry, uint32_t sumId,
-                                      uint32_t pltStubId,
+        bool fillAddrAndSymId2IdSaver(uint8_t **gotAddr, uint8_t *firstPltEntry, uint32_t symId,
+                                      uint32_t pltStubId,uint32_t dLArrayOffset, uint32_t loadingId,
                                       uint32_t countOffset, uint32_t gapOffset, uint8_t *idSaverEntry);
 
 
@@ -93,9 +100,10 @@ namespace scaler {
          * Actual entry
          * @return
          */
-        bool replacePltEntry();
+        bool replacePltEntry(ssize_t loadingId);
 
-        void createRecordingFolder();
+        void createRecordingFolder() const;
+
     };
 
 }

@@ -18,12 +18,8 @@ void __attribute__((naked)) asmTimingHandler();
 * @param oriRBPLoc The rsp location before saving all registers
 * @return Original function pointer
 */
-__attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t fileId);
+__attribute__((used)) void *preHookHandler(uint64_t nextCallAddr,ssize_t loadingId, int64_t fileId);
 
-/**
- * A super naughty handler that randomize all registers. It is used to test the implementation of full register saving mode
- */
-__attribute__((used)) void *dbgPreHandler(uint64_t nextCallAddr, uint64_t fileId);
 
 __attribute__((used)) void *afterHookHandler();
 

@@ -47,10 +47,8 @@ namespace scaler {
         initLogicalClock(curContext->cachedWallClockSnapshot, curContext->cachedLogicalClock,
                          curContext->cachedThreadNum);
 
-        replacePltEntry();
-
-
-        DBG_LOG("Finished installation");
+        DBG_LOG("Replace PLT entry");
+        replacePltEntry(0);
 
         return true;
     }
@@ -106,7 +104,7 @@ namespace scaler {
 
     ExtFuncCallHook *ExtFuncCallHook::getInst(std::string folderName) {
         if (!instance) {
-            instance = new ExtFuncCallHook(folderName);
+            instance = new ExtFuncCallHook(std::move(folderName));
             if (!instance) {
                 fatalError("Cannot allocate memory for ExtFuncCallHookAsm");
                 return nullptr;
@@ -115,14 +113,29 @@ namespace scaler {
         return instance;
     }
 
+    ExtFuncCallHook *ExtFuncCallHook::getInst() {
+        if (!instance) {
+            fatalError(
+                    "Cannot create object using  this function. Users can use getInst(std::string folderName) first and then call this function");
+            return nullptr;
+        }
+        return instance;
+    }
 
     ExtFuncCallHook::~ExtFuncCallHook() {
         //todo: release oriPltCode oriPltSecCode
         uninstall();
+        pthread_mutex_destroy(&dynamicLoadingLock);
     }
 
-    ExtFuncCallHook::ExtFuncCallHook(std::string folderName) : folderName(folderName), pmParser(folderName) {
-
+    ExtFuncCallHook::ExtFuncCallHook(std::string folderName) : folderName(folderName), pmParser(folderName),
+                                                               elfImgInfoMap(1024), allExtSymbol(1024) {
+        pthread_mutex_t mutex;
+        pthread_mutexattr_t attr;
+        pthread_mutexattr_init(&attr);
+        pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+        pthread_mutex_init(&mutex, &attr);
+        pthread_mutexattr_destroy(&attr);
     }
 
     bool ExtFuncCallHook::makeGOTWritable(ELFSecInfo &gotSec, bool writable) {
@@ -133,15 +146,16 @@ namespace scaler {
         }
     }
 
-    bool ExtFuncCallHook::parseSymbolInfo(ELFParser &parser, ssize_t fileId, uint8_t *baseAddr, ELFSecInfo &pltSection,
+    bool ExtFuncCallHook::parseSymbolInfo(ssize_t loadingId, ELFParser &parser, ssize_t fileId, uint8_t *baseAddr,
+                                          ELFSecInfo &pltSection,
                                           ELFSecInfo &pltSecureSection, ELFSecInfo &gotSec, uint8_t *startAddr,
                                           uint8_t *endAddr) {
 
         //assert(sizeof(ExtSymInfo) % 32 == 0); //Force memory allignment
         //INFO_LOGS("sizeof(ExtSymInfo)=%d", a);
 
-        ELFImgInfo &curImgInfo = elfImgInfoMap[fileId];
-        curImgInfo.firstSymIndex = allExtSymbol.getSize();
+        ELFImgInfo &curImgInfo = elfImgInfoMap[loadingId][fileId];
+        curImgInfo.firstSymIndex = allExtSymbol[loadingId].getSize();
         //Allocate space for all rela entries in this file
         //DBG_LOGS("First sym index=%ld", curImgInfo.firstSymIndex);
 
@@ -169,7 +183,7 @@ namespace scaler {
             ssize_t initialGap = 0;
 
             void *addressOverride = nullptr;
-            if (!shouldHookThisSymbol(funcName, bind, type, allExtSymbol.getSize(), initialGap, addressOverride)) {
+            if (!shouldHookThisSymbol(funcName, bind, type, allExtSymbol[loadingId].getSize(), initialGap, addressOverride)) {
                 continue;
             }
             //Get function id from plt entry
@@ -188,7 +202,7 @@ namespace scaler {
             uint32_t pltStubId = parsePltStubId(pltEntry); //Note that the first entry is not valid
 
             //Make sure space is enough, if space is enough, array won't allocate
-            ExtSymInfo *newSym = allExtSymbol.pushBack();
+            ExtSymInfo *newSym = allExtSymbol[loadingId].pushBack();
 
 //            newSym->addrResolved = abs(curGotDest - pltSection.startAddr) > pltSection.size;
             newSym->fileId = fileId;
@@ -204,12 +218,12 @@ namespace scaler {
             }
             fprintf(symInfoFile, "%s,%ld,%ld\n", funcName, newSym->fileId, newSym->symIdInFile);
 
-//            printf(
-//                    "id:%ld funcName:%s gotAddr:%p *gotAddr:%p fileId:%zd symIdInFile:%zd pltEntryAddr:%p pltSecEntryAddr:%p pltStubId:%lu\n",
-//                    allExtSymbol.getSize() - 1, funcName, gotAddr, *gotAddr,
-//                    fileId,
-//                    newSym->symIdInFile, newSym->pltEntryAddr, newSym->pltSecEntryAddr, newSym->pltStubId);
-        }
+            DBG_LOGS(
+                    "id:%ld funcName:%s gotAddr:%p *gotAddr:%p fileId:%zd symIdInFile:%zd pltEntryAddr:%p pltSecEntryAddr:%p pltStubId:%lu\n",
+                    allExtSymbol[loadingId].getSize() - 1, funcName, gotAddr, *gotAddr,
+                    fileId,
+                    newSym->symIdInFile, newSym->pltEntryAddr, newSym->pltSecEntryAddr, newSym->pltStubId);
+            }
 
         fclose(symInfoFile);
         return true;
@@ -554,11 +568,12 @@ namespace scaler {
     const int COUNT_TLS_ARR_ADDR = READ_TLS_PART_START + 2;
 
     const int COUNTING_PART_START = READ_TLS_PART_START + 20;
-    const int COUNT_OFFSET1 = COUNTING_PART_START + 12, COUNT_OFFSET1_SIZE = 32;
-    const int COUNT_OFFSET2 = COUNTING_PART_START + 23, COUNT_OFFSET2_SIZE = 32;
-    const int GAP_OFFSET = COUNTING_PART_START + 30, GAP_OFFSET_SIZE = 32;
+    const int DL_ARRAY_OFFSET1 = COUNTING_PART_START + 12, DYMAIC_LOADING_OFFSET1_SIZE = 32;
+    const int COUNT_OFFSET1 = COUNTING_PART_START + 19, COUNT_OFFSET1_SIZE = 32;
+    const int COUNT_OFFSET2 = COUNTING_PART_START + 30, COUNT_OFFSET2_SIZE = 32;
+    const int GAP_OFFSET = COUNTING_PART_START + 37, GAP_OFFSET_SIZE = 32;
 
-    const int SKIP_PART_START = COUNTING_PART_START + 45;
+    const int SKIP_PART_START = COUNTING_PART_START + 52;
     const int GOT_ADDR = SKIP_PART_START + 2, GOT_ADDR_SIZE = 64;
     const int CALL_LD_INST = SKIP_PART_START + 13;
     const int PLT_STUB_ID = SKIP_PART_START + 14, PLT_STUB_ID_SIZE = 32;
@@ -568,70 +583,75 @@ namespace scaler {
     const int GAP_OFFSET_IN_RECARR = 0x18;
 
     const int TIMING_PART_START = SKIP_PART_START + 31;
-    const int SYM_ID = TIMING_PART_START + 1, FUNC_ID_SIZE = 32;
-    const int ASM_HOOK_HANDLER_ADDR = TIMING_PART_START + 7, ASM_HOOK_HANDLER_ADDR_SIZE = 64;
+    const int LOADING_ID = TIMING_PART_START + 1, LOADING_ID_SIZE = 32;
+    const int SYM_ID = TIMING_PART_START + 6, FUNC_ID_SIZE = 32;
+    const int ASM_HOOK_HANDLER_ADDR = TIMING_PART_START + 12, ASM_HOOK_HANDLER_ADDR_SIZE = 64;
 
     uint8_t idSaverBin[] = {
             /**
              * Read TLS part
              */
-            //mov $0x1122334455667788,%r11
+            //mov $0x1122334455667788,%r11 | move TLS offset to r11
             0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            //mov %fs:(%r11),%r11
+            //mov %fs:(%r11),%r11 | move TLS address to r11
             0x64, 0x4D, 0x8B, 0x1B,
-            //cmpq $0,%r11
+            //cmpq $0,%r11 | Check TLS is initialized or not
             0x49, 0x83, 0xFB, 0x00,
-            //je SKIP
+            //je SKIP | If TLS initialized, do not invoke any hook
             0x74, 0x2D,
 
             /**
              * Counting part
              */
-            //push %r10
+            //push %r10 | Save register r10
             0x41, 0x52,
-            //mov    0x850(%r11),%r11
+            //mov    0x850(%r11),%r11 | mov the address of Scaler's context to  r11
             0x4D, 0x8B, 0x9B, 0x50, 0x08, 0x00, 0x00,
-            //mov    0x00000000(%r11),%r10
-            0x4D, 0x8B, 0x93, 0x00, 0x00, 0x00, 0x00,
-            //add    $0x1,%r10
-            0x49, 0x83, 0xC2, 0x01,
-            //mov    %r10,0x11223344(%r11)
-            0x4D, 0x89, 0x93, 0x00, 0x00, 0x00, 0x00,
-            //mov    0x11223344(%r11),%r11
+            //mov    0x00000000(%r11),%r11 | move recArr.internalArr[loadingId].internalArr address to r11
             0x4D, 0x8B, 0x9B, 0x00, 0x00, 0x00, 0x00,
-            //and    %r11,%r10
+            //mov    0x00000000(%r11),%r10 | move the value of current API's invocation counter to r10
+            0x4D, 0x8B, 0x93, 0x00, 0x00, 0x00, 0x00,
+            //add    $0x1,%r10 | Increase counter by 1
+            0x49, 0x83, 0xC2, 0x01,
+            //mov    %r10,0x11223344(%r11) | Store updated counter back
+            0x4D, 0x89, 0x93, 0x00, 0x00, 0x00, 0x00,
+            //mov    0x11223344(%r11),%r11 | move the value of current API's gap to r10
+            0x4D, 0x8B, 0x9B, 0x00, 0x00, 0x00, 0x00,
+            //and    %r11,%r10 | counter % gap
             0x4D, 0x21, 0xDA,
-            //cmpq   $0x0,%r10
+            //cmpq   $0x0,%r10 | Check the following if
             0x49, 0x83, 0xFA, 0x00,
-            //pop    %r10
+            //pop    %r10 | Restore the value of r10
             0x41, 0x5A,
-            //jz TIMING_JUMPER
+            //jz TIMING_JUMPER | If counter % gap == 0 skip, otherwise jump to TIMING part
             0x74, 0x1F,
 
             /**
              * SKIP part
              */
             //SKIP:
-            //movq $0x1122334455667788,%r11
+            //movq $0x1122334455667788,%r11 | Move current API's GOT address to Scaler's context
             0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            //jmpq (%r11)
+            //jmpq (%r11) | Jump to the address of API's GOT entry
             0x41, 0xFF, 0x23,
 
-            //pushq $0x11223344
+            //pushq $0x11223344 | Save the ld.so id of this API to the stack. This value will be picked up by ld.so.
             0x68, 0x00, 0x00, 0x00, 0x00,
-            //movq $0x1122334455667788,%r11
+            //movq $0x1122334455667788,%r11 | move the address of PLT[0] to r11
             0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            //jmpq *%r11
+            //jmpq *%r11 | Jump to PLT[0]
             0x41, 0xFF, 0xE3,
 
             /**
              * TIMING part
              */
-            //pushq $0x11223344
+            //pushq $0x11223344 | Save the loading id of this API to the stack. This value will be picked up by asmHookHandler
             0x68, 0x00, 0x00, 0x00, 0x00,
-            //movq $0x1122334455667788,%r11
+            //pushq $0x11223344 | Save the scaler id of this API to the stack.  This value will be picked up by asmHookHandler
+            0x68, 0x00, 0x00, 0x00, 0x00,
+            //movq $0x1122334455667788,%r11 | Move the address of asmHookHandler to r11
             0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            //jmpq *%r11
+            //jmpq *%r11 | Jump to asmHookHandler
             0x41, 0xFF, 0xE3
     };
 
@@ -660,7 +680,7 @@ namespace scaler {
     }
 
     bool ExtFuncCallHook::fillAddrAndSymId2IdSaver(uint8_t **gotAddr, uint8_t *firstPltEntry, uint32_t symId,
-                                                   uint32_t pltStubId,
+                                                   uint32_t pltStubId,uint32_t dLArrayOffset, uint32_t loadingId,
                                                    uint32_t countOffset, uint32_t gapOffset, uint8_t *idSaverEntry) {
 
         //Copy code
@@ -670,7 +690,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2F4520(%%rip),%0\n\t"
+                "movq 0x2F72D3(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :
@@ -679,7 +699,7 @@ namespace scaler {
         memcpy(idSaverEntry + COUNT_TLS_ARR_ADDR, &tlsOffset, sizeof(void *));
 
         //Fill TLS offset (Address filled directly inside)
-
+        memcpy(idSaverEntry + DL_ARRAY_OFFSET1, &dLArrayOffset, sizeof(uint32_t));
         memcpy(idSaverEntry + COUNT_OFFSET1, &countOffset, sizeof(uint32_t));
         memcpy(idSaverEntry + COUNT_OFFSET2, &countOffset, sizeof(uint32_t));
 
@@ -692,8 +712,11 @@ namespace scaler {
         //Fill first plt address
         memcpy(idSaverEntry + PLT_START_ADDR, &firstPltEntry, sizeof(uint8_t *));
 
+        //Fill loadingId
+        memcpy(idSaverEntry + LOADING_ID, &loadingId, sizeof(uint32_t));
         //Fill symId
         memcpy(idSaverEntry + SYM_ID, &symId, sizeof(uint32_t));
+
 
         uint8_t *asmHookPtr = (uint8_t *) &asmTimingHandler;
         //Fill asmTimingHandler
@@ -704,7 +727,9 @@ namespace scaler {
 
 
     void ExtFuncCallHook::parseRequiredInfo(ssize_t loadingId) {
-        INFO_LOG("parseRequiredInfo");
+        pthread_mutex_lock(&dynamicLoadingLock);
+        //Initialize existing loading id
+
         ELFParser elfParser;
         if (!pmParser.parsePMMap(loadingId)) {
             fatalErrorS("Cannot parsePmMap in loding %zd", loadingId);
@@ -712,22 +737,26 @@ namespace scaler {
         pmParser.acruieReadLock();
         //Find new file from exising PMMaps
         Array<FileID> newFileEntryId;
-        pmParser.getNewFileEntryIdsUnsafe(loadingId, newFileEntryId,true);
+        pmParser.getNewFileEntryIdsUnsafe(loadingId, newFileEntryId, true);
+
+        elfImgInfoMap.pushBack();
+        allExtSymbol.pushBack();
+        assert(elfImgInfoMap.getSize()-1==loadingId);
+        assert(allExtSymbol.getSize()-1==loadingId);
 
         //elfImgInfoMap is always incremental, allocate room for newly allocated files
-        ssize_t elemDifference=pmParser.getFileEntryArraySize() - elfImgInfoMap.getSize();
-        for (int i = 0; i <elemDifference;  ++i) {
-            ELFImgInfo *curElfImgInfo = elfImgInfoMap.pushBack();
+        ssize_t elemDifference = pmParser.getFileEntryArraySize() - elfImgInfoMap[loadingId].getSize();
+        for (int i = 0; i < elemDifference; ++i) {
+            ELFImgInfo *curElfImgInfo = elfImgInfoMap[loadingId].pushBack();
             curElfImgInfo->valid = false; //Set them to invalid by default
         }
-
         //Get segment info from /proc/self/maps
         for (ssize_t i = 0; i < newFileEntryId.getSize(); ++i) {
-            FileID fileId=newFileEntryId[i];
+            FileID fileId = newFileEntryId[i];
             FileEntry &curFileEntry = pmParser.getFileEntryUnSafe(0);
             const char *curFilePathName = pmParser.getStrUnsafe(curFileEntry.pathNameStartIndex);
             //ERR_LOGS("%s %p", curFilePathName.c_str(), prevFileBaseAddr);
-            ELFImgInfo& curElfImgInfo = elfImgInfoMap.get(fileId);
+            ELFImgInfo &curElfImgInfo = elfImgInfoMap[loadingId][fileId];
             if (elfParser.parse(curFilePathName)) {
                 //Find the entry size of plt and got
                 ELFSecInfo pltInfo{};
@@ -748,88 +777,66 @@ namespace scaler {
                 //         curFileEntry.baseStartAddr, pltInfo.startAddr);
 
                 //Install hook on this file
-                if (!parseSymbolInfo(elfParser, fileId, curFileEntry.baseStartAddr, pltInfo, pltSecInfo,
+                if (!parseSymbolInfo(loadingId, elfParser, fileId, curFileEntry.baseStartAddr, pltInfo, pltSecInfo,
                                      gotInfo, curFileEntry.baseStartAddr,
                                      curFileEntry.baseEndAddr)) {
-                    fatalErrorS( "installation for file %s failed.", curFilePathName);
+                    fatalErrorS("installation for file %s failed.", curFilePathName);
                     exit(-1);
                 }
                 curElfImgInfo.valid = true;
-
             }
         }
         pmParser.releaseReadLock();
+        pthread_mutex_unlock(&dynamicLoadingLock);
     }
 
-    bool ExtFuncCallHook::replacePltEntry() {
+    bool ExtFuncCallHook::replacePltEntry(ssize_t loadingId) {
         //Allocate callIdSaver
         //todo: memory leak
-        callIdSavers = static_cast<uint8_t *>(mmap(NULL, allExtSymbol.getSize() * sizeof(idSaverBin),
+        callIdSavers = static_cast<uint8_t *>(mmap(NULL, allExtSymbol[loadingId].getSize() * sizeof(idSaverBin),
                                                    PROT_READ | PROT_WRITE,
                                                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
 
         /**
          * Prepare callIdSaver
          */
-        adjustMemPerm(callIdSavers, callIdSavers + allExtSymbol.getSize() * sizeof(idSaverBin),
+        adjustMemPerm(callIdSavers, callIdSavers + allExtSymbol[loadingId].getSize() * sizeof(idSaverBin),
                       PROT_READ | PROT_WRITE | PROT_EXEC);
         uint8_t *curCallIdSaver = callIdSavers;
         //Fill address and ids in callIdSaver
-        for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
-            ExtSymInfo &curSymInfo = allExtSymbol[curSymId];
-            ELFImgInfo &curImgInfo = elfImgInfoMap[allExtSymbol[curSymId].fileId];
-
+        for (int curSymId = 0; curSymId < allExtSymbol[loadingId].getSize(); ++curSymId) {
+            ExtSymInfo &curSymInfo = allExtSymbol[loadingId][curSymId];
+            ELFImgInfo &curImgInfo = elfImgInfoMap[loadingId][curSymInfo.fileId];
 
             if (!fillAddrAndSymId2IdSaver(curSymInfo.gotEntryAddr, curImgInfo.pltStartAddr, curSymId,
                                           curSymInfo.pltStubId,
+                                          loadingId * sizeof(scaler::Array<RecTuple>),
+                                          loadingId,
                                           curSymId * sizeof(RecTuple) + COUNT_OFFSET_IN_RECARR,
                                           curSymId * sizeof(RecTuple) + GAP_OFFSET_IN_RECARR,
                                           curCallIdSaver)) {
-                fatalError(
-                        "fillAddrAndSymId2IdSaver failed, this should not happen");
+                fatalError("fillAddrAndSymId2IdSaver failed, this should not happen");
             }
             curCallIdSaver += sizeof(idSaverBin);
         }
-
-
-        /**
-         * Prepare ldcaller
-         */
-//        adjustMemPerm(ldCallers, ldCallers + allExtSymbol.getSize() * sizeof(ldJumperBin),
-//                      PROT_READ | PROT_WRITE | PROT_EXEC);
-//
-//        uint8_t *curLdCaller = ldCallers;
-//        //Fill address and ids in callIdSaver
-//        for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
-//            ELFImgInfo &curImgInfo = elfImgInfoMap[allExtSymbol[curSymId].fileId];
-//            if (!fillAddrAndSymId2LdJumper((uint8_t *) curImgInfo.pltStartAddr, allExtSymbol[curSymId].pltStubId,
-//                                           curLdCaller)) {
-//                fatalError(
-//                        "fillAddrAndSymId2IdSaver failed, this should not happen");
-//            }
-//            curLdCaller += sizeof(ldJumperBin);
-//            assert(sizeof(ldJumperBin) == 32);
-//        }
 
         /**
          * Replace plt entry or replace .plt (Or directly replace .plt.sec)
          */
         curCallIdSaver = callIdSavers;
-        for (int curSymId = 0; curSymId < allExtSymbol.getSize(); ++curSymId) {
-            ExtSymInfo &curSym = allExtSymbol[curSymId];
-            ELFImgInfo &curImgInfo = elfImgInfoMap[curSym.fileId];
+        for (int curSymId = 0; curSymId < allExtSymbol[loadingId].getSize(); ++curSymId) {
+            ExtSymInfo &curSym = allExtSymbol[loadingId][curSymId];
+            ELFImgInfo &curImgInfo = elfImgInfoMap[loadingId][curSym.fileId];
 
             if (curSym.pltSecEntryAddr) {
                 //Replace .plt.sec
                 if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltSecEntryAddr)) {
-                    fatalError(
-                            "pltSecAddr installation failed, this should not happen");
+                    fatalError("pltSecAddr installation failed, this should not happen");
                 }
             } else {
                 //Replace .plt
                 if (!fillAddr2pltEntry(curCallIdSaver, curSym.pltEntryAddr)) {
-                    fatalError(
-                            "pltEntry installation failed, this should not happen");
+                    fatalError("pltEntry installation failed, this should not happen");
                 }
             }
             //Replace got entry, 16 is the size of a plt entry
@@ -845,7 +852,7 @@ namespace scaler {
         return true;
     }
 
-    void ExtFuncCallHook::createRecordingFolder() {
+    void ExtFuncCallHook::createRecordingFolder() const {
         //sprintf(folderName, "scalerdata_%lu", getunixtimestampms());
         if (mkdir(folderName.c_str(), 0755) == -1) {
             fatalErrorS("Cannot mkdir ./%s because: %s", folderName.c_str(),

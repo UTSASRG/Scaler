@@ -16,38 +16,25 @@ extern "C" {
 static thread_local DataSaver saverElem;
 uint32_t threadNum = 0; //Actual thread number recorded
 
-HookContext *
-constructContext(ssize_t libFileSize, ssize_t hookedSymbolSize, scaler::Array<scaler::ExtSymInfo> &allExtSymbol) {
-
-    uint8_t *contextHeap = static_cast<uint8_t *>(mmap(NULL, sizeof(HookContext) +
-                                                             sizeof(scaler::Array<uint64_t>) +
-                                                             sizeof(pthread_mutex_t), PROT_READ | PROT_WRITE,
-                                                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
-//    INFO_LOGS("Context size=%lu %p", sizeof(HookContext) +
-//                                     sizeof(scaler::Array<uint64_t>) +
-//                                     sizeof(pthread_mutex_t), &testA);
-    HookContext *rlt = reinterpret_cast<HookContext *>(contextHeap);
-    assert(rlt != nullptr);
-    memset(rlt, 0, sizeof(HookContext) + sizeof(scaler::Array<RecTuple>) + sizeof(scaler::Array<RecTuple>));
-    rlt->recArr = new(contextHeap + sizeof(HookContext)) scaler::Array<RecTuple>(hookedSymbolSize);
-
-    rlt->recArr->setSize(hookedSymbolSize);
-    //Initialize gap to one
-    for (int i = 0; i < rlt->recArr->getSize(); ++i) {
-        //number mod 2^n is equivalent to stripping off all but the n lowest-order
-        rlt->recArr->internalArr[i].gap = allExtSymbol[i].initialGap; //0b11 if %4, because 4=2^2 Initially time everything
-        rlt->recArr->internalArr[i].count = 0;
+HookContext* constructContext(scaler::ExtFuncCallHook& inst) {
+    HookContext* rlt=new HookContext();
+    if(!rlt){
+        fatalError("Cannot allocate memory for HookContext")
     }
-//    memArrayHeap(1), timingArr(hookedSymbolSize),
-//            indexPosi(0)
-
-    //    //Initialize root node
-//    rootNode = memArrayHeap.allocArr(1);
-//    //Initialize root node child size. id=0 is always the main application
-//    rootNode->childrenSize = scaler_extFuncCallHookAsm_thiz->elfImgInfoMap[0].hookedSymbolSize;
-//    //Initialize children
-//    rootNode->children = memArrayHeap.allocArr(rootNode->childrenSize);
-//    rootNode->scalerId = -1; //Indiacate root node
+    rlt->recArr = new scaler::FixedArray<scaler::Array<RecTuple>>(1024);//A maximum of 1024 dynamic loaded libraries
+    rlt->recArr->allocate(inst.allExtSymbol.getSize());
+    assert(inst.elfImgInfoMap.getSize()==inst.allExtSymbol.getSize());
+    //No contention because parent function will acquire a lock
+    //Allocate recArray
+    for(ssize_t loadingId=0;loadingId<rlt->recArr->getSize();++loadingId){
+        rlt->recArr[0][loadingId].allocate(inst.allExtSymbol[loadingId].getSize());//I wrote [0] rather than * to deference pointer so the format is cleaner
+        //Initialize gap to one
+        for (ssize_t symId = 0; symId < inst.allExtSymbol[loadingId].getSize(); ++symId) {
+            //number mod 2^n is equivalent to stripping off all but the n lowest-order
+            rlt->recArr[0][loadingId][symId].gap=inst.allExtSymbol[loadingId][symId].initialGap;//0b11 if %4, because 4=2^2 Initially time everything
+            rlt->recArr[0][loadingId][symId].count = 0;
+        }
+    }
     rlt->initialized = SCALER_TRUE;
 
     //Push a dummy value in the stack (Especially for callAddr, because we need to avoid null problem)
@@ -76,21 +63,17 @@ bool destructContext() {
 }
 
 
-/**
- * This code should be put into plt entry, but plt entry have no more space.
- * 32bytes aligned
- */
 void __attribute__((used, noinline, optimize(3))) printRecOffset() {
 
     auto i __attribute__((used)) = (uint8_t *) curContext;
     auto j __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr;
 
-    auto k __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0];
-    auto l __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].count;
-    auto m __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr[0].gap;
+    auto k __attribute__((used)) = (uint8_t *) &curContext->recArr[0][0].internalArr[0];
+    auto l __attribute__((used)) = (uint8_t *) &curContext->recArr[0][0].internalArr[0].count;
+    auto m __attribute__((used)) = (uint8_t *) &curContext->recArr[0][0].internalArr[0].gap;
 
     printf("\nTLS offset: Check assembly\n"
-           "RecArr Offset: 0x%lx\n"
+           "DLArray Offset: 0x%lx\n"
            "Counting Entry Offset: 0x%lx\n"
            "Gap Entry Offset: 0x%lx\n", j - i, l - k, m - k);
 }
@@ -107,23 +90,23 @@ void __attribute__((used, noinline, optimize(3))) accessTLS1() {
 
 bool initTLS() {
     assert(scaler::ExtFuncCallHook::instance != nullptr);
+    scaler::ExtFuncCallHook& inst=*scaler::ExtFuncCallHook::getInst();
+    pthread_mutex_lock(&(inst.dynamicLoadingLock));
 
     //Put a dummy variable to avoid null checking
     //Initialize saving data structure
-
-    curContext = constructContext(scaler::ExtFuncCallHook::instance->elfImgInfoMap.getSize(),
-                                  scaler::ExtFuncCallHook::instance->allExtSymbol.getSize(),
-                                  scaler::ExtFuncCallHook::instance->allExtSymbol);
-
+    curContext = constructContext(inst);
 
 //#ifdef PRINT_DBG_LOG
-//    printRecOffset();
+    printRecOffset();
 //#endif
+
     if (!curContext) {
         fatalError("Failed to allocate memory for Context");
         return false;
     }
-    //RuntimeInfo newInfo;
+    pthread_mutex_unlock(&inst.dynamicLoadingLock);
+
     return true;
 }
 
@@ -218,37 +201,39 @@ inline void savePerThreadTimingData(std::stringstream &ss, HookContext *curConte
 //}
 
 inline void saveRealFileId(std::stringstream &ss, HookContext *curContextPtr) {
-    ss.str("");
-    ss << scaler::ExtFuncCallHook::instance->folderName << "/realFileId.bin";
-    //The real id of each function is resolved in after hook, so I can only save it in datasaver
+    for (ssize_t curLoadingId = 0; curLoadingId < curContextPtr->_this->allExtSymbol.getSize(); ++curLoadingId) {
+        ss.str("");
+        ss << scaler::ExtFuncCallHook::instance->folderName <<"/"<<curLoadingId << "_realFileId.bin";
+        //The real id of each function is resolved in after hook, so I can only save it in datasaver
 
-    int fd;
-    ssize_t realFileIdSizeInBytes = sizeof(ArrayDescriptor) +
-                                    (curContextPtr->_this->allExtSymbol.getSize()) * sizeof(uint64_t);
-    uint8_t *fileContentInMem = nullptr;
-    if (!scaler::fOpen4Write<uint8_t>(ss.str().c_str(), fd, realFileIdSizeInBytes, fileContentInMem)) {
-        fatalErrorS(
-                "Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
-    }
-    uint8_t *_fileContentInMem = fileContentInMem;
+        int fd;
+        ssize_t realFileIdSizeInBytes = sizeof(ArrayDescriptor) +
+                                        (curContextPtr->_this->allExtSymbol[curLoadingId].getSize()) * sizeof(uint64_t);
+        uint8_t *fileContentInMem = nullptr;
+        if (!scaler::fOpen4Write<uint8_t>(ss.str().c_str(), fd, realFileIdSizeInBytes, fileContentInMem)) {
+            fatalErrorS(
+                    "Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
+        }
+        uint8_t *_fileContentInMem = fileContentInMem;
 
-    /**
-     * Write array descriptor first
-     */
-    ArrayDescriptor *arrayDescriptor = reinterpret_cast<ArrayDescriptor *>(fileContentInMem);
-    arrayDescriptor->arrayElemSize = sizeof(uint64_t);
-    arrayDescriptor->arraySize = curContextPtr->_this->allExtSymbol.getSize();
-    arrayDescriptor->magicNum = 167;
-    fileContentInMem += sizeof(ArrayDescriptor);
+        /**
+         * Write array descriptor first
+         */
+        ArrayDescriptor *arrayDescriptor = reinterpret_cast<ArrayDescriptor *>(fileContentInMem);
+        arrayDescriptor->arrayElemSize = sizeof(uint64_t);
+        arrayDescriptor->arraySize = curContextPtr->_this->allExtSymbol[curLoadingId].getSize();
+        arrayDescriptor->magicNum = 167;
+        fileContentInMem += sizeof(ArrayDescriptor);
 
-    uint64_t *realFileIdMem = reinterpret_cast<uint64_t *>(fileContentInMem);
-    for (int i = 0; i < curContextPtr->_this->allExtSymbol.getSize(); ++i) {
-        realFileIdMem[i] = curContextPtr->_this->pmParser.findFileIdByAddr(
-                *(curContextPtr->_this->allExtSymbol[i].gotEntryAddr));
-    }
+        uint64_t *realFileIdMem = reinterpret_cast<uint64_t *>(fileContentInMem);
+        for (int i = 0; i < curContextPtr->_this->allExtSymbol[curLoadingId].getSize(); ++i) {
+            realFileIdMem[i] = curContextPtr->_this->pmParser.findFileIdByAddr(
+                    *(curContextPtr->_this->allExtSymbol[curLoadingId][i].gotEntryAddr));
+        }
 
-    if (!scaler::fClose<uint8_t>(fd, realFileIdSizeInBytes, _fileContentInMem)) {
-        fatalErrorS("Cannot close file %s, because %s", ss.str().c_str(), strerror(errno));
+        if (!scaler::fClose<uint8_t>(fd, realFileIdSizeInBytes, _fileContentInMem)) {
+            fatalErrorS("Cannot close file %s, because %s", ss.str().c_str(), strerror(errno));
+        }
     }
 }
 
