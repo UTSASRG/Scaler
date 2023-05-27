@@ -251,7 +251,7 @@ namespace scaler {
 
         FILE *openProcFileUnSafe();
 
-        bool matchWithPreviousFileIdUnSafe(ssize_t startingId, ssize_t curLoadingId, char *pathName,
+        bool matchWithPreviousFileIdUnSafe(ssize_t curLoadingId, char *pathName,
                                            ssize_t pathNameLen, PMEntry *newPmEntry);
 
         void createFileEntryUnSafe(PMEntry *newPmEntry, ssize_t loadingId, char *pathName, ssize_t pathNameLen,

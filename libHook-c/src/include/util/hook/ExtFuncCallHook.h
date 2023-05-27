@@ -14,6 +14,7 @@
 #include <type/ExtSymInfo.h>
 #include <type/ELFImgInfo.h>
 #include <type/ELFSecInfo.h>
+#include <atomic>
 
 namespace scaler {
 
@@ -32,6 +33,9 @@ namespace scaler {
 
         virtual bool install();
 
+        virtual bool installAutoLoadingId();
+
+
         virtual bool uninstall();
 
         virtual ~ExtFuncCallHook();
@@ -47,6 +51,7 @@ namespace scaler {
         //Python has GIL, so there is no real simultaenous access. Besides, python modules are seperated with others by using different loading id.
         pthread_mutex_t dynamicLoadingLock;
         std::string folderName;
+        std::atomic<ssize_t> curLoadingId;
 
         /**
          * Private constructor
@@ -69,6 +74,8 @@ namespace scaler {
 
 
     protected:
+        virtual bool install(ssize_t loadingId);
+
         inline bool shouldHookThisSymbol(const char *funcName, Elf64_Word &bind, Elf64_Word &type, SymID curSymId,
                                          ssize_t &initialGap, void *&addressOverride);
 
@@ -104,6 +111,7 @@ namespace scaler {
 
         void createRecordingFolder() const;
 
+        void populateRecordingArray(ssize_t id);
     };
 
 }

@@ -360,6 +360,7 @@ void *afterHookHandler() {
 //    INFO_LOGS("[Post Hook] Thread:%lu CallerFileId:%ld Func:%ld Timestamp: %lu Duration: %lu\n", pthread_self(),
 //              curElfSymInfo.fileId, symbolId, getunixtimestampms(),clockCyclesDuration);
 
+//    INFO_LOGS("curLoadingId==%zd curContextPtr->ldArr->getSize()==%zd",curLoadingId,curContextPtr->ldArr->getSize());
 
 //    INFO_LOGS("API duration = %lu - %lu=%lu", postLogicalClockCycle, preLogicalClockCycle, clockCyclesDuration);
 

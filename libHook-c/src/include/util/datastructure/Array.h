@@ -71,6 +71,9 @@ namespace scaler {
         }
 
         inline T &operator[](const ssize_t &index) {
+            if(!(0 <= index && index < size)){
+                INFO_LOGS("%zd,%zd",index,size);
+            }
             assert(0 <= index && index < size);
             assert(internalArr != nullptr);
             return internalArr[index];

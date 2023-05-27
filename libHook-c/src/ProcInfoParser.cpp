@@ -53,6 +53,7 @@ namespace scaler {
 
         fprintf(fileNameStrTbl, "%s,%s\n", "fileId", "pathName");
 
+
         while (fgets(procMapLine, sizeof(procMapLine), procFile)) {
 #ifndef NDEBUG
             //Make sure the buffer is enough
@@ -63,9 +64,6 @@ namespace scaler {
                 return false;
             }
 #endif
-            //INFO_LOGS("New line: %s",procMapLine);
-            //INFO_LOGS("Array Size: %s",procMapLine);
-
             char pathName[PATH_MAX] = "";
             //Read pmEntry line
             int scanfReadNum = sscanf(procMapLine, "%p-%p %8s %*s %*s %*s %s", &addrStart, &addrEnd, permStr, pathName);
@@ -76,47 +74,62 @@ namespace scaler {
             ssize_t lo;
             bool found = false;
             findPmEntryIdByAddrUnSafe(addrStart, lo, found);
-
             PMEntry *newPmEntry = nullptr;
+            ssize_t fileIdSearchStartingPoint=0;
             if (found) {
                 PMEntry &pmEntry = pmEntryArray[lo];
                 FileEntry &fileEntry = fileEntryArray[pmEntry.fileId];
                 fileEntry.loadingId = loadingId;
+                fileIdSearchStartingPoint=pmEntry.fileId;
+                bool endAddressIsTheSame = (pmEntry.addrEnd == addrEnd);
+                bool fileNameIsTheSame = (strncmp(&stringTable.get(fileEntry.pathNameStartIndex), pathName,
+                                                  fileEntry.getPathNameLength()) == 0);
 
-                if (pmEntry.addrEnd == addrEnd &&
-                    strncmp(&stringTable.get(fileEntry.pathNameStartIndex), pathName,
-                            fileEntry.getPathNameLength()) == 0) {
+                if (endAddressIsTheSame && fileNameIsTheSame) {
                     //Exactly the same entry (Ignore permission and other attrs). Replace permission fields just in case.
                     //Update loading id
+                    //INFO_LOG("Exactly the same entry");
                     pmEntry.loadingId = loadingId;
                     pmEntry.setPermBits(permStr);
                     continue;
+                } else if (!endAddressIsTheSame && fileNameIsTheSame) {
+                    //Only end address change, replace it and do not create file entry
+                    pmEntry.addrEnd = addrEnd;
+                    continue;
                 } else {
-                    //Same starting address, but different end address/fileName. Replace entry, and remove linkage to the original fileEntry
+                    //FileName is not the same, endAddress may or may not be the same.
+                    //Replace end address, and remove linkage to the original fileEntry
                     //INFO_LOG("Same starting address, but different end address/fileName. Replace entry, and remove linkage to the original fileEntry");
                     newPmEntry = &pmEntry;
                     assert(fileEntry.pmEntryNumbers > 0);
                     fileEntry.pmEntryNumbers -= 1; //Remove linkage to the previous file entry
+                    //INFO_LOG("Same starting address, but different end address/fileName.");
+                    //INFO_LOGS("%p %p %s %s", pmEntry.addrEnd, addrEnd, &stringTable.get(fileEntry.pathNameStartIndex),
+                    //          pathName);
                 }
             } else {
+                fileIdSearchStartingPoint=fileEntryArray.getSize()-1;
                 //Not found, create a new PmEntry
+                //INFO_LOG("Not found, create a new PmEntry");
                 newPmEntry = pmEntryArray.insertAt(lo);
             }
             newPmEntry->creationLoadingId = loadingId;
             newPmEntry->loadingId = loadingId;//Update the loading id
             newPmEntry->addrStart = addrStart;
-            newPmEntry->addrEnd = addrEnd;
+            newPmEntry->addrEnd = addrEnd;//Update end address
             newPmEntry->fileId = -1;//Allocate and set later
             newPmEntry->setPermBits(permStr);
 
             //Check if we need to allocate a new fileId or not by comparing with previous pmEntry's fileName.
             //Linearly search for the same file
-
-            if (matchWithPreviousFileIdUnSafe(lo, loadingId, pathName, pathNameLen, newPmEntry)) {
+            //INFO_LOGS("Try to match line: %s", procMapLine);
+            if (matchWithPreviousFileIdUnSafe(loadingId, pathName, pathNameLen,
+                                              newPmEntry)) {
                 //New
                 continue;
             }
-
+            //INFO_LOGS("Create new file entry line: %s", procMapLine);
+            //INFO_LOGS("Array Size: %s", procMapLine);
             createFileEntryUnSafe(newPmEntry, loadingId, pathName, pathNameLen, scanfReadNum);
 
         }
@@ -219,21 +232,29 @@ namespace scaler {
         ssize_t md = 0, hi = pmEntryArray.getSize() - 1;
         found = true;
         //INFO_LOGS("pmEntryArray.getSize()=%zd\n",pmEntryArray.getSize());
+
         while (lo <= hi) {
             md = lo + (hi - lo) / 2;
+            assert(lo <= hi);
+            //DBG_LOGS("lo=%zd, md=%zd,hi=%zd",lo,md,hi);
+            //DBG_LOGS("pmEntryArray[%zd]",md);
             if (pmEntryArray[md].addrStart < addr) {
-                //printf("hi(%d) = md(%d) - 1=(%d)\n", hi, md, md - 1);
+                //printf("hi(%zd) = md(%zd) - 1=(%zd)\n", hi, md, md - 1);
                 lo = md + 1;
             } else if (pmEntryArray[md].addrStart > addr) {
-                //printf("lo(%d) = md(%d) + 1=(%d)\n", lo, md, md + 1);
+                //printf("lo(%zd) = md(%zd) + 1=(%zd)\n", lo, md, md + 1);
                 hi = md - 1;
             } else {
                 //Find left bound, although this should be impossible in this case
                 hi = md - 1;
             }
         }
-        if (lo >= pmEntryArray.getSize() || pmEntryArray[lo].addrStart != addr) {
+
+        if (pmEntryArray.getSize() == 0) {
             found = false;
+        } else if (lo >= pmEntryArray.getSize() || pmEntryArray[lo].addrStart != addr) {
+            found = false;
+            //INFO_LOGS("Not Found %zd %zd %p %p",lo,pmEntryArray.getSize(),pmEntryArray[lo].addrStart,addr);
         }
     }
 
@@ -289,23 +310,28 @@ namespace scaler {
     }
 
 
-    bool PmParser::matchWithPreviousFileIdUnSafe(ssize_t startingId, ssize_t curLoadingId, char *pathName,
+    bool PmParser::matchWithPreviousFileIdUnSafe(ssize_t curLoadingId, char *pathName,
                                                  ssize_t pathNameLen, PMEntry *newPmEntry) {
         bool hasPreviousFileNameMatch = false;
-        for (int i = startingId - 1; i >= 0; --i) {
-            //INFO_LOGS("StartingId:%zd",startingId);
-            if (curLoadingId - fileEntryArray[pmEntryArray[i].fileId].loadingId <= 1
-                && fileEntryArray[pmEntryArray[i].fileId].getPathNameLength() == pathNameLen
-                && strncmp(&stringTable.get(fileEntryArray[pmEntryArray[i].fileId].pathNameStartIndex),
+        //Search forward
+        for (ssize_t i = 0; i < this->fileEntryArray.getSize(); ++i) {
+//            INFO_LOGS("Compare %s(%zd) with %s(%zd)", pathName, pathNameLen,
+//                      &stringTable.get(fileEntryArray[pmEntryArray[i].fileId].pathNameStartIndex),
+//                      fileEntryArray[pmEntryArray[i].fileId].getPathNameLength());
+            if (curLoadingId - fileEntryArray[i].loadingId <= 1
+                && fileEntryArray[i].pmEntryNumbers>0
+                && fileEntryArray[i].getPathNameLength() == pathNameLen
+                && strncmp(&stringTable.get(fileEntryArray[i].pathNameStartIndex),
                            pathName, pathNameLen) == 0) {
                 //Previous filename matches with current file name, no need to create file entry
-                newPmEntry->fileId = pmEntryArray[i].fileId;
-                fileEntryArray[pmEntryArray[i].fileId].loadingId = curLoadingId;
-                fileEntryArray[pmEntryArray[i].fileId].pmEntryNumbers += 1;
+                newPmEntry->fileId = i;
+                fileEntryArray[i].loadingId = curLoadingId;
+                fileEntryArray[i].pmEntryNumbers += 1;
                 hasPreviousFileNameMatch = true;
                 break;
             }
         }
+
         return hasPreviousFileNameMatch;
     }
 

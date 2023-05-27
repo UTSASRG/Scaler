@@ -1,13 +1,29 @@
 #include <util/hook/proxy/DLProxy.h>
 #include <cstdlib>
 #include "util/tool/Logging.h"
+#include <util/hook/ExtFuncCallHook.h>
 
 void *dlopen_proxy(const char *__file, int __mode) __THROWNL {
-    INFO_LOG("Dlopen Interception Start");
-    INFO_LOGS("Trying to open %s",__file);
     void *rlt = dlopen(__file, __mode);
-    INFO_LOG("Dlopen Interception End");
-    return rlt;
+
+    if(rlt){
+        //Successfully opened the library
+        DBG_LOGS("Installing on to open %s",__file);
+        scaler::ExtFuncCallHook* inst=scaler::ExtFuncCallHook::getInst();
+        if(!inst){
+            ERR_LOG("Scaler hook failed because Scaler is not initialized yet.");
+            return rlt;
+        }
+
+        inst->installAutoLoadingId();
+
+        return rlt;
+    }else{
+        DBG_LOGS("dlopen for %s failed. Scaler will not install on this file.",__file);
+        return rlt;
+    }
+
+
 }
 
 /* Find the run-time address in the shared object HANDLE refers to

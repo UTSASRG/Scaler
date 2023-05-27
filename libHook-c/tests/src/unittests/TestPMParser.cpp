@@ -299,11 +299,21 @@ TEST(PMParser, LibraryReplaced) {
     PmParser parser("/tmp", ss.str());
     parser.parsePMMap(0);
 
+    //for(ssize_t i=0;i<parser.fileEntryArray.getSize();++i){
+    //    DBG_LOGS("FileId:%zd PathName:%s",i,parser.getStrUnsafe(parser.getFileEntry(i).pathNameStartIndex));
+    //}
+
+
     ss.str("");
     ss << PROJECT_SOURCE_DIR << "/src/unittests/testinputs/PmParser/test1-TestDL-step2-afterdlopen.txt";
     parser.customProcFileName = ss.str();
     //Test on the reuslt after dlopen
     parser.parsePMMap(1);
+
+//    for(ssize_t i=0;i<parser.fileEntryArray.getSize();++i){
+//        DBG_LOGS("FileId:%zd PathName:%s",i,parser.getStrUnsafe(parser.getFileEntry(i).pathNameStartIndex));
+//    }
+
 
     ss.str("");
     ss << PROJECT_SOURCE_DIR << "/src/unittests/testinputs/PmParser/test1-TestDL-step3-afterdeletingPmEntry.txt";
@@ -311,11 +321,20 @@ TEST(PMParser, LibraryReplaced) {
     //Test on the reuslt after dlopen
     parser.parsePMMap(2);
 
+//    for(ssize_t i=0;i<parser.fileEntryArray.getSize();++i){
+//        DBG_LOGS("FileId:%zd PathName:%s",i,parser.getStrUnsafe(parser.getFileEntry(i).pathNameStartIndex));
+//    }
+
     ss.str("");
     ss << PROJECT_SOURCE_DIR << "/src/unittests/testinputs/PmParser/test1-TestDL-step4-LibraryReplaced.txt";
     parser.customProcFileName = ss.str();
     //Test on the reuslt after dlopen
     parser.parsePMMap(3);
+
+//    for(ssize_t i=0;i<parser.fileEntryArray.getSize();++i){
+//        DBG_LOGS("FileId:%zd PathName:%s",i,parser.getStrUnsafe(parser.getFileEntry(i).pathNameStartIndex));
+//    }
+
 
     int pmEntryNumbers[] = {3, 1, 3, 4, 2, 1, 0, 1, 1, 1, 4, 2};
 

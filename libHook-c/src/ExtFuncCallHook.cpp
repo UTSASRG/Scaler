@@ -27,8 +27,25 @@ namespace scaler {
     bool ExtFuncCallHook::install() {
         createRecordingFolder();
 
+        if (!initTLS()) {
+            ERR_LOG("Failed to initialize TLS");
+            //This is the main thread
+            return false;
+        }
+
+        DBG_LOG("Initialize logical clock");
+        initLogicalClock(curContext->cachedWallClockSnapshot, curContext->cachedLogicalClock,
+                         curContext->cachedThreadNum);
+        assert(curLoadingId.load( std::memory_order_acquire)==0);
+        return install(0);
+    }
+
+
+    bool ExtFuncCallHook::install(ssize_t loadingId) {
+
+        DBG_LOGS("Install with loadingId=%zd",loadingId);
         std::stringstream ss;
-        ss << scaler::ExtFuncCallHook::instance->folderName << "/symbolInfo.txt";
+        ss << scaler::ExtFuncCallHook::instance->folderName << "/" << loadingId << "_symbolInfo.txt";
         FILE *symInfoFile = fopen(ss.str().c_str(), "a");
         if (!symInfoFile) {
             fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
@@ -36,22 +53,13 @@ namespace scaler {
         fprintf(symInfoFile, "%s,%s,%s\n", "funcName", "fileId", "symIdInFile");
         fclose(symInfoFile);
 
-        parseRequiredInfo(0);
+        parseRequiredInfo(loadingId);
 
-        if (!initTLS()) {
-            ERR_LOG("Failed to initialize TLS");
-            //This is the main thread
-        }
-
-        DBG_LOG("Initialize logical clock");
-        initLogicalClock(curContext->cachedWallClockSnapshot, curContext->cachedLogicalClock,
-                         curContext->cachedThreadNum);
-
+        populateRecordingArray(loadingId);
         DBG_LOG("Replace PLT entry");
-        replacePltEntry(0);
-
-        return true;
+        //return replacePltEntry(loadingId);
     }
+
 
     bool ExtFuncCallHook::uninstall() {
 //        //todo: release oriPltCode oriPltSecCode
@@ -130,12 +138,7 @@ namespace scaler {
 
     ExtFuncCallHook::ExtFuncCallHook(std::string folderName) : folderName(folderName), pmParser(folderName),
                                                                elfImgInfoMap(1024), allExtSymbol(1024) {
-        pthread_mutex_t mutex;
-        pthread_mutexattr_t attr;
-        pthread_mutexattr_init(&attr);
-        pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-        pthread_mutex_init(&mutex, &attr);
-        pthread_mutexattr_destroy(&attr);
+        curLoadingId.store(0, std::memory_order_release);
     }
 
     bool ExtFuncCallHook::makeGOTWritable(ELFSecInfo &gotSec, bool writable) {
@@ -692,7 +695,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2F72CB(%%rip),%0\n\t"
+                "movq 0x2FDCF3(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :
@@ -754,10 +757,10 @@ namespace scaler {
         //Get segment info from /proc/self/maps
         for (ssize_t i = 0; i < newFileEntryId.getSize(); ++i) {
             FileID fileId = newFileEntryId[i];
-            INFO_LOGS("fileId=%zd", fileId);
+            //INFO_LOGS("fileId=%zd", fileId);
             FileEntry &curFileEntry = pmParser.getFileEntryUnSafe(fileId);
             const char *curFilePathName = pmParser.getStrUnsafe(curFileEntry.pathNameStartIndex);
-            INFO_LOGS("%s", curFilePathName);
+            DBG_LOGS("Install newly discovered file:%s", curFilePathName);
             ELFImgInfo &curElfImgInfo = elfImgInfoMap[loadingId][fileId];
             if (elfParser.parse(curFilePathName)) {
                 //Find the entry size of plt and got
@@ -861,6 +864,27 @@ namespace scaler {
                         strerror(errno));
         }
 
+    }
+
+    bool ExtFuncCallHook::installAutoLoadingId() {
+        return install(++curLoadingId);
+    }
+
+    void ExtFuncCallHook::populateRecordingArray(ssize_t loadingId) {
+        //No contention because parent function will acquire a lock
+        //Allocate recArray
+        HookContext* curContextPtr=curContext;
+        assert(curContextPtr->ldArr->getSize()==loadingId);
+        curContextPtr->ldArr[0].pushBack();
+        curContextPtr->ldArr[0][loadingId].allocate(allExtSymbol[loadingId].getSize());
+
+        //Initialize gap to one
+        for (ssize_t symId = 0; symId < allExtSymbol[loadingId].getSize(); ++symId) {
+            //number mod 2^n is equivalent to stripping off all but the n lowest-order
+            curContextPtr->ldArr[0][loadingId][symId].gap = allExtSymbol[loadingId][symId].initialGap;//0b11 if %4, because 4=2^2 Initially time everything
+            curContextPtr->ldArr[0][loadingId][symId].count = 0;
+        }
+        curContextPtr->initialized = SCALER_TRUE;
     }
 
 

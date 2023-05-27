@@ -22,21 +22,8 @@ HookContext *constructContext(scaler::ExtFuncCallHook &inst) {
         fatalError("Cannot allocate memory for HookContext")
     }
     rlt->ldArr = new scaler::FixedArray<scaler::Array<RecTuple>>(1024);//A maximum of 1024 dynamic loaded libraries
-    rlt->ldArr->allocate(inst.allExtSymbol.getSize());
+    INFO_LOGS("inst.curLoadingId.load(std::memory_order_acquire)+1=%zd",inst.curLoadingId.load(std::memory_order_acquire)+1);
     assert(inst.elfImgInfoMap.getSize() == inst.allExtSymbol.getSize());
-    //No contention because parent function will acquire a lock
-    //Allocate recArray
-    for (ssize_t loadingId = 0; loadingId < rlt->ldArr->getSize(); ++loadingId) {
-        rlt->ldArr[0][loadingId].allocate(
-                inst.allExtSymbol[loadingId].getSize());//I wrote [0] rather than * to deference pointer so the format is cleaner
-        //Initialize gap to one
-        for (ssize_t symId = 0; symId < inst.allExtSymbol[loadingId].getSize(); ++symId) {
-            //number mod 2^n is equivalent to stripping off all but the n lowest-order
-            rlt->ldArr[0][loadingId][symId].gap = inst.allExtSymbol[loadingId][symId].initialGap;//0b11 if %4, because 4=2^2 Initially time everything
-            rlt->ldArr[0][loadingId][symId].count = 0;
-        }
-    }
-    rlt->initialized = SCALER_TRUE;
 
     //Push a dummy value in the stack (Especially for callAddr, because we need to avoid null problem)
     rlt->hookTuple[rlt->indexPosi].callerAddr = 0;
@@ -72,9 +59,13 @@ void __attribute__((used, noinline, optimize(3))) printRecOffset() {
     auto n __attribute__((used)) = (uint8_t *) curContext->ldArr;
     auto o __attribute__((used)) = (uint8_t *) &(curContext->ldArr->internalArr);
 
+    curContext->ldArr->pushBack();
+    curContext->ldArr[0][0].pushBack();
     auto k __attribute__((used)) = (uint8_t *) &curContext->ldArr[0][0].internalArr[0];
     auto l __attribute__((used)) = (uint8_t *) &curContext->ldArr[0][0].internalArr[0].count;
     auto m __attribute__((used)) = (uint8_t *) &curContext->ldArr[0][0].internalArr[0].gap;
+    curContext->ldArr[0][0].popBack();
+    curContext->ldArr->popBack();
 
     printf("\nTLS offset: Check assembly\n"
            "Context.ldArr Offset: 0x%lx\n"
@@ -103,7 +94,7 @@ bool initTLS() {
     curContext = constructContext(inst);
 
 //#ifdef PRINT_DBG_LOG
-    printRecOffset();
+    //printRecOffset();
 //#endif
 
     if (!curContext) {
