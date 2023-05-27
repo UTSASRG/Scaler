@@ -183,7 +183,8 @@ namespace scaler {
             ssize_t initialGap = 0;
 
             void *addressOverride = nullptr;
-            if (!shouldHookThisSymbol(funcName, bind, type, allExtSymbol[loadingId].getSize(), initialGap, addressOverride)) {
+            if (!shouldHookThisSymbol(funcName, bind, type, allExtSymbol[loadingId].getSize(), initialGap,
+                                      addressOverride)) {
                 continue;
             }
             //Get function id from plt entry
@@ -223,7 +224,7 @@ namespace scaler {
                     allExtSymbol[loadingId].getSize() - 1, funcName, gotAddr, *gotAddr,
                     fileId,
                     newSym->symIdInFile, newSym->pltEntryAddr, newSym->pltSecEntryAddr, newSym->pltStubId);
-            }
+        }
 
         fclose(symInfoFile);
         return true;
@@ -568,7 +569,7 @@ namespace scaler {
     const int COUNT_TLS_ARR_ADDR = READ_TLS_PART_START + 2;
 
     const int COUNTING_PART_START = READ_TLS_PART_START + 20;
-    const int DL_ARRAY_OFFSET1 = COUNTING_PART_START + 12, DYMAIC_LOADING_OFFSET1_SIZE = 32;
+    const int LD_ARRAY_OFFSET1 = COUNTING_PART_START + 12, DYMAIC_LOADING_OFFSET1_SIZE = 32;
     const int COUNT_OFFSET1 = COUNTING_PART_START + 19, COUNT_OFFSET1_SIZE = 32;
     const int COUNT_OFFSET2 = COUNTING_PART_START + 30, COUNT_OFFSET2_SIZE = 32;
     const int GAP_OFFSET = COUNTING_PART_START + 37, GAP_OFFSET_SIZE = 32;
@@ -579,6 +580,7 @@ namespace scaler {
     const int PLT_STUB_ID = SKIP_PART_START + 14, PLT_STUB_ID_SIZE = 32;
     const int PLT_START_ADDR = SKIP_PART_START + 20, PLT_START_ADDR_SIZE = 64;
 
+    const int INTERNALARR_OFFSET_IN_ARR = 0x8;
     const int COUNT_OFFSET_IN_RECARR = 0x10;
     const int GAP_OFFSET_IN_RECARR = 0x18;
 
@@ -605,9 +607,9 @@ namespace scaler {
              */
             //push %r10 | Save register r10
             0x41, 0x52,
-            //mov    0x850(%r11),%r11 | mov the address of Scaler's context to  r11
-            0x4D, 0x8B, 0x9B, 0x50, 0x08, 0x00, 0x00,
-            //mov    0x00000000(%r11),%r11 | move recArr.internalArr[loadingId].internalArr address to r11
+            //mov    0x828(%funcr11),%r11 | mov the value of Context.ldArr to  r11
+            0x4D, 0x8B, 0x9B, 0x28, 0x08, 0x00, 0x00,
+            //mov    0x00000000(%r11),%r11 | move ldArr.internalArr[loadingId].internalArr address to r11
             0x4D, 0x8B, 0x9B, 0x00, 0x00, 0x00, 0x00,
             //mov    0x00000000(%r11),%r10 | move the value of current API's invocation counter to r10
             0x4D, 0x8B, 0x93, 0x00, 0x00, 0x00, 0x00,
@@ -680,7 +682,7 @@ namespace scaler {
     }
 
     bool ExtFuncCallHook::fillAddrAndSymId2IdSaver(uint8_t **gotAddr, uint8_t *firstPltEntry, uint32_t symId,
-                                                   uint32_t pltStubId,uint32_t dLArrayOffset, uint32_t loadingId,
+                                                   uint32_t pltStubId, uint32_t ldArrayOffset, uint32_t loadingId,
                                                    uint32_t countOffset, uint32_t gapOffset, uint8_t *idSaverEntry) {
 
         //Copy code
@@ -690,7 +692,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2F72D3(%%rip),%0\n\t"
+                "movq 0x2FAC7B(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :
@@ -699,7 +701,7 @@ namespace scaler {
         memcpy(idSaverEntry + COUNT_TLS_ARR_ADDR, &tlsOffset, sizeof(void *));
 
         //Fill TLS offset (Address filled directly inside)
-        memcpy(idSaverEntry + DL_ARRAY_OFFSET1, &dLArrayOffset, sizeof(uint32_t));
+        memcpy(idSaverEntry + LD_ARRAY_OFFSET1, &ldArrayOffset, sizeof(uint32_t));
         memcpy(idSaverEntry + COUNT_OFFSET1, &countOffset, sizeof(uint32_t));
         memcpy(idSaverEntry + COUNT_OFFSET2, &countOffset, sizeof(uint32_t));
 
@@ -738,11 +740,10 @@ namespace scaler {
         //Find new file from exising PMMaps
         Array<FileID> newFileEntryId;
         pmParser.getNewFileEntryIdsUnsafe(loadingId, newFileEntryId, true);
-
         elfImgInfoMap.pushBack();
         allExtSymbol.pushBack();
-        assert(elfImgInfoMap.getSize()-1==loadingId);
-        assert(allExtSymbol.getSize()-1==loadingId);
+        assert(elfImgInfoMap.getSize() - 1 == loadingId);
+        assert(allExtSymbol.getSize() - 1 == loadingId);
 
         //elfImgInfoMap is always incremental, allocate room for newly allocated files
         ssize_t elemDifference = pmParser.getFileEntryArraySize() - elfImgInfoMap[loadingId].getSize();
@@ -753,9 +754,10 @@ namespace scaler {
         //Get segment info from /proc/self/maps
         for (ssize_t i = 0; i < newFileEntryId.getSize(); ++i) {
             FileID fileId = newFileEntryId[i];
-            FileEntry &curFileEntry = pmParser.getFileEntryUnSafe(0);
+            INFO_LOGS("fileId=%zd", fileId);
+            FileEntry &curFileEntry = pmParser.getFileEntryUnSafe(fileId);
             const char *curFilePathName = pmParser.getStrUnsafe(curFileEntry.pathNameStartIndex);
-            //ERR_LOGS("%s %p", curFilePathName.c_str(), prevFileBaseAddr);
+            INFO_LOGS("%s", curFilePathName);
             ELFImgInfo &curElfImgInfo = elfImgInfoMap[loadingId][fileId];
             if (elfParser.parse(curFilePathName)) {
                 //Find the entry size of plt and got
@@ -810,7 +812,7 @@ namespace scaler {
 
             if (!fillAddrAndSymId2IdSaver(curSymInfo.gotEntryAddr, curImgInfo.pltStartAddr, curSymId,
                                           curSymInfo.pltStubId,
-                                          loadingId * sizeof(scaler::Array<RecTuple>),
+                                          loadingId * sizeof(scaler::Array<RecTuple>) + INTERNALARR_OFFSET_IN_ARR,
                                           loadingId,
                                           curSymId * sizeof(RecTuple) + COUNT_OFFSET_IN_RECARR,
                                           curSymId * sizeof(RecTuple) + GAP_OFFSET_IN_RECARR,

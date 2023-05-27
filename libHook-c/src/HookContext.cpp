@@ -16,23 +16,24 @@ extern "C" {
 static thread_local DataSaver saverElem;
 uint32_t threadNum = 0; //Actual thread number recorded
 
-HookContext* constructContext(scaler::ExtFuncCallHook& inst) {
-    HookContext* rlt=new HookContext();
-    if(!rlt){
+HookContext *constructContext(scaler::ExtFuncCallHook &inst) {
+    HookContext *rlt = new HookContext();
+    if (!rlt) {
         fatalError("Cannot allocate memory for HookContext")
     }
-    rlt->recArr = new scaler::FixedArray<scaler::Array<RecTuple>>(1024);//A maximum of 1024 dynamic loaded libraries
-    rlt->recArr->allocate(inst.allExtSymbol.getSize());
-    assert(inst.elfImgInfoMap.getSize()==inst.allExtSymbol.getSize());
+    rlt->ldArr = new scaler::FixedArray<scaler::Array<RecTuple>>(1024);//A maximum of 1024 dynamic loaded libraries
+    rlt->ldArr->allocate(inst.allExtSymbol.getSize());
+    assert(inst.elfImgInfoMap.getSize() == inst.allExtSymbol.getSize());
     //No contention because parent function will acquire a lock
     //Allocate recArray
-    for(ssize_t loadingId=0;loadingId<rlt->recArr->getSize();++loadingId){
-        rlt->recArr[0][loadingId].allocate(inst.allExtSymbol[loadingId].getSize());//I wrote [0] rather than * to deference pointer so the format is cleaner
+    for (ssize_t loadingId = 0; loadingId < rlt->ldArr->getSize(); ++loadingId) {
+        rlt->ldArr[0][loadingId].allocate(
+                inst.allExtSymbol[loadingId].getSize());//I wrote [0] rather than * to deference pointer so the format is cleaner
         //Initialize gap to one
         for (ssize_t symId = 0; symId < inst.allExtSymbol[loadingId].getSize(); ++symId) {
             //number mod 2^n is equivalent to stripping off all but the n lowest-order
-            rlt->recArr[0][loadingId][symId].gap=inst.allExtSymbol[loadingId][symId].initialGap;//0b11 if %4, because 4=2^2 Initially time everything
-            rlt->recArr[0][loadingId][symId].count = 0;
+            rlt->ldArr[0][loadingId][symId].gap = inst.allExtSymbol[loadingId][symId].initialGap;//0b11 if %4, because 4=2^2 Initially time everything
+            rlt->ldArr[0][loadingId][symId].count = 0;
         }
     }
     rlt->initialized = SCALER_TRUE;
@@ -55,7 +56,7 @@ HookContext* constructContext(scaler::ExtFuncCallHook& inst) {
 
 bool destructContext() {
     HookContext *curContextPtr = curContext;
-    delete curContextPtr->recArr;
+    delete curContextPtr->ldArr;
     munmap(curContextPtr, sizeof(HookContext) +
                           sizeof(scaler::Array<uint64_t>) +
                           sizeof(pthread_mutex_t));
@@ -66,23 +67,27 @@ bool destructContext() {
 void __attribute__((used, noinline, optimize(3))) printRecOffset() {
 
     auto i __attribute__((used)) = (uint8_t *) curContext;
-    auto j __attribute__((used)) = (uint8_t *) &curContext->recArr->internalArr;
+    auto j __attribute__((used)) = (uint8_t *) &curContext->ldArr;
 
-    auto k __attribute__((used)) = (uint8_t *) &curContext->recArr[0][0].internalArr[0];
-    auto l __attribute__((used)) = (uint8_t *) &curContext->recArr[0][0].internalArr[0].count;
-    auto m __attribute__((used)) = (uint8_t *) &curContext->recArr[0][0].internalArr[0].gap;
+    auto n __attribute__((used)) = (uint8_t *) curContext->ldArr;
+    auto o __attribute__((used)) = (uint8_t *) &(curContext->ldArr->internalArr);
+
+    auto k __attribute__((used)) = (uint8_t *) &curContext->ldArr[0][0].internalArr[0];
+    auto l __attribute__((used)) = (uint8_t *) &curContext->ldArr[0][0].internalArr[0].count;
+    auto m __attribute__((used)) = (uint8_t *) &curContext->ldArr[0][0].internalArr[0].gap;
 
     printf("\nTLS offset: Check assembly\n"
-           "DLArray Offset: 0x%lx\n"
+           "Context.ldArr Offset: 0x%lx\n"
+           "Array<...>->internalArr Offset: 0x%lx\n"
            "Counting Entry Offset: 0x%lx\n"
-           "Gap Entry Offset: 0x%lx\n", j - i, l - k, m - k);
+           "Gap Entry Offset: 0x%lx\n", j - i, o-n, l - k, m - k);
 }
 
 
 void __attribute__((used, noinline, optimize(3))) accessTLS1() {
     HookContext *contextPtr __attribute__((used)) = curContext;
-    auto &j __attribute__((used)) = contextPtr->recArr;
-    auto &k __attribute__((used)) = contextPtr->recArr->internalArr;
+    auto &j __attribute__((used)) = contextPtr->ldArr;
+    auto &k __attribute__((used)) = contextPtr->ldArr->internalArr;
     printf("%p.%p,%p", contextPtr, j, k);
 
 
@@ -90,7 +95,7 @@ void __attribute__((used, noinline, optimize(3))) accessTLS1() {
 
 bool initTLS() {
     assert(scaler::ExtFuncCallHook::instance != nullptr);
-    scaler::ExtFuncCallHook& inst=*scaler::ExtFuncCallHook::getInst();
+    scaler::ExtFuncCallHook &inst = *scaler::ExtFuncCallHook::getInst();
     pthread_mutex_lock(&(inst.dynamicLoadingLock));
 
     //Put a dummy variable to avoid null checking
@@ -125,7 +130,7 @@ inline void savePerThreadTimingData(std::stringstream &ss, HookContext *curConte
 
     int fd;
     size_t realFileIdSizeInBytes =
-            sizeof(ThreadCreatorInfo) + sizeof(ArrayDescriptor) + curContextPtr->recArr->getSize() * sizeof(RecTuple);
+            sizeof(ThreadCreatorInfo) + sizeof(ArrayDescriptor) + curContextPtr->ldArr->getSize() * sizeof(RecTuple);
     uint8_t *fileContentInMem = nullptr;
     if (!scaler::fOpen4Write<uint8_t>(ss.str().c_str(), fd, realFileIdSizeInBytes, fileContentInMem)) {
         fatalErrorS("Cannot fopen %s because:%s", ss.str().c_str(), strerror(errno));
@@ -145,20 +150,20 @@ inline void savePerThreadTimingData(std::stringstream &ss, HookContext *curConte
      */
     ArrayDescriptor *arrayDescriptor = reinterpret_cast<ArrayDescriptor *>(fileContentInMem);
     arrayDescriptor->arrayElemSize = sizeof(RecTuple);
-    arrayDescriptor->arraySize = curContextPtr->recArr->getSize();
+    arrayDescriptor->arraySize = curContextPtr->ldArr->getSize();
     arrayDescriptor->magicNum = 167;
     fileContentInMem += sizeof(ArrayDescriptor);
 
-//    for(int i=0;i<curContextPtr->recArr->getSize();++i){
-//        if(curContextPtr->recArr->internalArr[i].count>0){
-//            printf("%ld\n",curContextPtr->recArr->internalArr[i].count);
+//    for(int i=0;i<curContextPtr->ldArr->getSize();++i){
+//        if(curContextPtr->ldArr->internalArr[i].count>0){
+//            printf("%ld\n",curContextPtr->ldArr->internalArr[i].count);
 //        }
 //    }
     /**
      * Write recording tuple onto the disk
      */
-    memcpy(fileContentInMem, curContextPtr->recArr->data(),
-           curContextPtr->recArr->getTypeSizeInBytes() * curContextPtr->recArr->getSize());
+    memcpy(fileContentInMem, curContextPtr->ldArr->data(),
+           curContextPtr->ldArr->getTypeSizeInBytes() * curContextPtr->ldArr->getSize());
 
     if (!scaler::fClose<uint8_t>(fd, realFileIdSizeInBytes, _fileContentInMem)) {
         fatalErrorS("Cannot close file %s, because %s", ss.str().c_str(), strerror(errno));
@@ -203,7 +208,7 @@ inline void savePerThreadTimingData(std::stringstream &ss, HookContext *curConte
 inline void saveRealFileId(std::stringstream &ss, HookContext *curContextPtr) {
     for (ssize_t curLoadingId = 0; curLoadingId < curContextPtr->_this->allExtSymbol.getSize(); ++curLoadingId) {
         ss.str("");
-        ss << scaler::ExtFuncCallHook::instance->folderName <<"/"<<curLoadingId << "_realFileId.bin";
+        ss << scaler::ExtFuncCallHook::instance->folderName << "/" << curLoadingId << "_realFileId.bin";
         //The real id of each function is resolved in after hook, so I can only save it in datasaver
 
         int fd;

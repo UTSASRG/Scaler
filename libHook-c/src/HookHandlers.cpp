@@ -344,7 +344,7 @@ void *afterHookHandler() {
 
     uint64_t preLogicalClockCycle = curContextPtr->hookTuple[curContextPtr->indexPosi].logicalClockCycles;
 
-    int64_t &c = curContextPtr->recArr->internalArr[curLoadingId].internalArr[symbolId].count;
+    int64_t &c = curContextPtr->ldArr->internalArr[curLoadingId].internalArr[symbolId].count;
 
     --curContextPtr->indexPosi;
     assert(curContextPtr->indexPosi >= 1);
@@ -364,7 +364,7 @@ void *afterHookHandler() {
 //    INFO_LOGS("API duration = %lu - %lu=%lu", postLogicalClockCycle, preLogicalClockCycle, clockCyclesDuration);
 
     //Attribute scaled clock cycle to API
-    curContextPtr->recArr->internalArr[curLoadingId].internalArr[symbolId].totalClockCycles += clockCyclesDuration;
+    curContextPtr->ldArr->internalArr[curLoadingId].internalArr[symbolId].totalClockCycles += clockCyclesDuration;
 
 //    DBG_LOGS("Thread=%lu AttributingAPITime (%lu - %lu) / %u=%ld", pthread_self(), wallClockSnapshot,
 //             preLogicalClockCycle,
@@ -398,13 +398,13 @@ void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
 
             "pushq %r10\n\t"
 
-            "movq 0x650(%r11),%r11\n\t" //Fetch recArr.internalArr address -> r11
-            "movq 0x11223344(%r11),%r11\n\t" //Fetch recArr.internalArr[loadingId].internalArr address  -> r11
-            "movq 0x11223344(%r11),%r10\n\t" //Fetch recArr.internalArr[loadingId].internalArr[symId].count in Heap to -> r10
+            "movq 0x650(%r11),%r11\n\t" //Fetch ldArr.internalArr address -> r11
+            "movq 0x11223344(%r11),%r11\n\t" //Fetch ldArr.internalArr[loadingId].internalArr address  -> r11
+            "movq 0x11223344(%r11),%r10\n\t" //Fetch ldArr.internalArr[loadingId].internalArr[symId].count in Heap to -> r10
             "addq $1,%r10\n\t" //count + 1
             "movq %r10,0x11223344(%r11)\n\t" //Store count
 
-            "movq 0x11223344(%r11),%r11\n\t" //Fetch recArr.internalArr[symId].gap in Heap to -> r11
+            "movq 0x11223344(%r11),%r11\n\t" //Fetch ldArr.internalArr[symId].gap in Heap to -> r11
             "andq %r11,%r10\n\t" //count value (r10) % gap (r11) -> r11, gap value must be a power of 2
             "cmpq $0,%r10\n\t" //If count % gap == 0. Use timing
             "pop %r10\n\t"
