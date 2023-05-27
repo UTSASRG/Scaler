@@ -313,8 +313,8 @@ namespace scaler {
                 return false;
             } else if (strncmp(funcName, "dlopen", 6) == 0) {
                 INFO_LOG("dlopen address overrided");
-//                addressOverride = (void *) dlopen_proxy;
-                return false;
+                addressOverride = (void *) dlopen_proxy;
+                return true;
             }
         } else if (funcNameLen == 7) {
             if (strncmp(funcName, "_dl_sym", 7) == 0) {
@@ -692,7 +692,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2FAC7B(%%rip),%0\n\t"
+                "movq 0x2F72CB(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :

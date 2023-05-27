@@ -1,8 +1,10 @@
 #include <util/hook/proxy/DLProxy.h>
+#include <cstdlib>
 #include "util/tool/Logging.h"
 
 void *dlopen_proxy(const char *__file, int __mode) __THROWNL {
     INFO_LOG("Dlopen Interception Start");
+    INFO_LOGS("Trying to open %s",__file);
     void *rlt = dlopen(__file, __mode);
     INFO_LOG("Dlopen Interception End");
     return rlt;
