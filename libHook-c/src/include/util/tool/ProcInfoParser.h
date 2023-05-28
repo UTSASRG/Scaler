@@ -59,7 +59,8 @@ namespace scaler {
             PRIVATE = 0
         };
         // end address
-        ssize_t fileId = -1;
+        ssize_t globalFileId = -1;
+        ssize_t curLoadingFileId=-1;
         unsigned char permBits = 0; // Is readable
 
         inline bool isR() const {

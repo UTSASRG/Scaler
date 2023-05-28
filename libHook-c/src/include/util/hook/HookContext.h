@@ -11,6 +11,7 @@
 extern "C" {
 
 #define MAX_CALL_DEPTH 64 //N+1 because of dummy variable
+#define MAX_DLOPEN_NUMBER 4096 //N+1 because of dummy variable
 
 struct HookTuple {
     uint64_t callerAddr; //8
@@ -28,10 +29,10 @@ struct HookContext {
     uint32_t indexPosi;//4bytes
     uint32_t cachedThreadNum; //4bytes
     //Variables used to determine whether it's called by hook handler or not
-    HookTuple hookTuple[MAX_CALL_DEPTH]; //8bytes aligned
     int64_t threadCreatorFileId = 1; //Which library created the current thread? The default one is main thread
     scaler::ExtFuncCallHook *_this = nullptr; //8bytes
-    scaler::Array<scaler::Array<RecTuple>> *ldArr; //8bytes
+    HookTuple hookTuple[MAX_CALL_DEPTH]; //8bytes aligned
+    scaler::Array<RecTuple> ldArr[MAX_DLOPEN_NUMBER]; //8bytes
     //Records which symbol is called for how many times, the index is scalerid (Only contains hooked function)
 
     /**
@@ -70,6 +71,8 @@ extern scaler::Vector<HookContext *> threadContextMap;
 extern pthread_mutex_t threadDataSavingLock;
 
 bool initTLS();
+
+void populateRecordingArray(ssize_t loadingId, scaler::ExtFuncCallHook& inst);
 
 
 }

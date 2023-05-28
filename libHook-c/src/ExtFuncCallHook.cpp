@@ -42,7 +42,6 @@ namespace scaler {
 
 
     bool ExtFuncCallHook::install(ssize_t loadingId) {
-
         DBG_LOGS("Install with loadingId=%zd",loadingId);
         std::stringstream ss;
         ss << scaler::ExtFuncCallHook::instance->folderName << "/" << loadingId << "_symbolInfo.txt";
@@ -50,14 +49,22 @@ namespace scaler {
         if (!symInfoFile) {
             fatalErrorS("Cannot open %s because:%s", ss.str().c_str(), strerror(errno))
         }
-        fprintf(symInfoFile, "%s,%s,%s\n", "funcName", "fileId", "symIdInFile");
+        fprintf(symInfoFile, "%s,%s,%s\n", "funcName", "globalFileId", "symIdInFile");
         fclose(symInfoFile);
 
         parseRequiredInfo(loadingId);
 
-        populateRecordingArray(loadingId);
+        populateRecordingArray(loadingId,*this); //Invoke this again because new loadingID is loaded
         DBG_LOG("Replace PLT entry");
-        //return replacePltEntry(loadingId);
+
+        HookContext* curContextPtr=curContext;
+        //DBG_LOGS("ContextPtr=%p",curContextPtr);
+        //DBG_LOGS("&ContextPtr.ldArr=%p",&curContextPtr->ldArr[0].internalArr);
+        //DBG_LOGS("ContextPtr.ldArr=%p",&curContextPtr->ldArr[0].internalArr[2].count);
+
+        return replacePltEntry(loadingId);
+
+
     }
 
 
@@ -223,7 +230,7 @@ namespace scaler {
             fprintf(symInfoFile, "%s,%ld,%ld\n", funcName, newSym->fileId, newSym->symIdInFile);
 
             DBG_LOGS(
-                    "id:%ld funcName:%s gotAddr:%p *gotAddr:%p fileId:%zd symIdInFile:%zd pltEntryAddr:%p pltSecEntryAddr:%p pltStubId:%lu\n",
+                    "id:%ld funcName:%s gotAddr:%p *gotAddr:%p globalFileId:%zd symIdInFile:%zd pltEntryAddr:%p pltSecEntryAddr:%p pltStubId:%lu\n",
                     allExtSymbol[loadingId].getSize() - 1, funcName, gotAddr, *gotAddr,
                     fileId,
                     newSym->symIdInFile, newSym->pltEntryAddr, newSym->pltSecEntryAddr, newSym->pltStubId);
@@ -572,18 +579,19 @@ namespace scaler {
     const int COUNT_TLS_ARR_ADDR = READ_TLS_PART_START + 2;
 
     const int COUNTING_PART_START = READ_TLS_PART_START + 20;
-    const int LD_ARRAY_OFFSET1 = COUNTING_PART_START + 12, DYMAIC_LOADING_OFFSET1_SIZE = 32;
-    const int COUNT_OFFSET1 = COUNTING_PART_START + 19, COUNT_OFFSET1_SIZE = 32;
-    const int COUNT_OFFSET2 = COUNTING_PART_START + 30, COUNT_OFFSET2_SIZE = 32;
-    const int GAP_OFFSET = COUNTING_PART_START + 37, GAP_OFFSET_SIZE = 32;
+    const int REC_ARRAY_OFFSET1 = COUNTING_PART_START + 5, DYMAIC_LOADING_OFFSET1_SIZE = 32;
+    const int COUNT_OFFSET1 = COUNTING_PART_START + 12, COUNT_OFFSET1_SIZE = 32;
+    const int COUNT_OFFSET2 = COUNTING_PART_START + 23, COUNT_OFFSET2_SIZE = 32;
+    const int GAP_OFFSET = COUNTING_PART_START + 30, GAP_OFFSET_SIZE = 32;
 
-    const int SKIP_PART_START = COUNTING_PART_START + 52;
+    const int SKIP_PART_START = COUNTING_PART_START + 45;
     const int GOT_ADDR = SKIP_PART_START + 2, GOT_ADDR_SIZE = 64;
     const int CALL_LD_INST = SKIP_PART_START + 13;
     const int PLT_STUB_ID = SKIP_PART_START + 14, PLT_STUB_ID_SIZE = 32;
     const int PLT_START_ADDR = SKIP_PART_START + 20, PLT_START_ADDR_SIZE = 64;
 
-    const int INTERNALARR_OFFSET_IN_ARR = 0x8;
+    const int LDARR_OFFSET_IN_CONTEXT = 0x828;
+    const int INTERNALARR_OFFSET_IN_LDARR = 0x8;
     const int COUNT_OFFSET_IN_RECARR = 0x10;
     const int GAP_OFFSET_IN_RECARR = 0x18;
 
@@ -610,11 +618,9 @@ namespace scaler {
              */
             //push %r10 | Save register r10
             0x41, 0x52,
-            //mov    0x828(%funcr11),%r11 | mov the value of Context.ldArr to  r11
-            0x4D, 0x8B, 0x9B, 0x28, 0x08, 0x00, 0x00,
-            //mov    0x00000000(%r11),%r11 | move ldArr.internalArr[loadingId].internalArr address to r11
+            //mov    0x00000000(%r11),%r11 | mov the address to Context.ldArr[loadingId].internalArr to r11
             0x4D, 0x8B, 0x9B, 0x00, 0x00, 0x00, 0x00,
-            //mov    0x00000000(%r11),%r10 | move the value of current API's invocation counter to r10
+            //mov    0x00000000(%r11),%r10 | mov the value of current API's invocation counter to r10
             0x4D, 0x8B, 0x93, 0x00, 0x00, 0x00, 0x00,
             //add    $0x1,%r10 | Increase counter by 1
             0x49, 0x83, 0xC2, 0x01,
@@ -685,7 +691,7 @@ namespace scaler {
     }
 
     bool ExtFuncCallHook::fillAddrAndSymId2IdSaver(uint8_t **gotAddr, uint8_t *firstPltEntry, uint32_t symId,
-                                                   uint32_t pltStubId, uint32_t ldArrayOffset, uint32_t loadingId,
+                                                   uint32_t pltStubId, uint32_t recArrayOffset, uint32_t loadingId,
                                                    uint32_t countOffset, uint32_t gapOffset, uint8_t *idSaverEntry) {
 
         //Copy code
@@ -695,7 +701,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2FDCF3(%%rip),%0\n\t"
+                "movq 0x2FB869(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :
@@ -704,7 +710,7 @@ namespace scaler {
         memcpy(idSaverEntry + COUNT_TLS_ARR_ADDR, &tlsOffset, sizeof(void *));
 
         //Fill TLS offset (Address filled directly inside)
-        memcpy(idSaverEntry + LD_ARRAY_OFFSET1, &ldArrayOffset, sizeof(uint32_t));
+        memcpy(idSaverEntry + REC_ARRAY_OFFSET1, &recArrayOffset, sizeof(uint32_t));
         memcpy(idSaverEntry + COUNT_OFFSET1, &countOffset, sizeof(uint32_t));
         memcpy(idSaverEntry + COUNT_OFFSET2, &countOffset, sizeof(uint32_t));
 
@@ -757,7 +763,7 @@ namespace scaler {
         //Get segment info from /proc/self/maps
         for (ssize_t i = 0; i < newFileEntryId.getSize(); ++i) {
             FileID fileId = newFileEntryId[i];
-            //INFO_LOGS("fileId=%zd", fileId);
+            //INFO_LOGS("globalFileId=%zd", globalFileId);
             FileEntry &curFileEntry = pmParser.getFileEntryUnSafe(fileId);
             const char *curFilePathName = pmParser.getStrUnsafe(curFileEntry.pathNameStartIndex);
             DBG_LOGS("Install newly discovered file:%s", curFilePathName);
@@ -778,7 +784,7 @@ namespace scaler {
                 curElfImgInfo.pltSecStartAddr = pltSecInfo.startAddr;
                 curElfImgInfo.gotStartAddr = gotInfo.startAddr;
 
-                //ERR_LOGS("%zd:%s %p pltStartAddr=%p", fileId, pmParser.getStrUnsafe(curFileEntry.pathNameStartIndex),
+                //ERR_LOGS("%zd:%s %p pltStartAddr=%p", globalFileId, pmParser.getStrUnsafe(curFileEntry.pathNameStartIndex),
                 //         curFileEntry.baseStartAddr, pltInfo.startAddr);
 
                 //Install hook on this file
@@ -801,7 +807,6 @@ namespace scaler {
         callIdSavers = static_cast<uint8_t *>(mmap(NULL, allExtSymbol[loadingId].getSize() * sizeof(idSaverBin),
                                                    PROT_READ | PROT_WRITE,
                                                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
-
         /**
          * Prepare callIdSaver
          */
@@ -813,9 +818,11 @@ namespace scaler {
             ExtSymInfo &curSymInfo = allExtSymbol[loadingId][curSymId];
             ELFImgInfo &curImgInfo = elfImgInfoMap[loadingId][curSymInfo.fileId];
 
-            if (!fillAddrAndSymId2IdSaver(curSymInfo.gotEntryAddr, curImgInfo.pltStartAddr, curSymId,
+            if (!fillAddrAndSymId2IdSaver(curSymInfo.gotEntryAddr,
+                                          curImgInfo.pltStartAddr,
+                                          curSymId,
                                           curSymInfo.pltStubId,
-                                          loadingId * sizeof(scaler::Array<RecTuple>) + INTERNALARR_OFFSET_IN_ARR,
+                                          LDARR_OFFSET_IN_CONTEXT+ loadingId * sizeof(scaler::Array<RecTuple>) + INTERNALARR_OFFSET_IN_LDARR,
                                           loadingId,
                                           curSymId * sizeof(RecTuple) + COUNT_OFFSET_IN_RECARR,
                                           curSymId * sizeof(RecTuple) + GAP_OFFSET_IN_RECARR,
@@ -870,22 +877,6 @@ namespace scaler {
         return install(++curLoadingId);
     }
 
-    void ExtFuncCallHook::populateRecordingArray(ssize_t loadingId) {
-        //No contention because parent function will acquire a lock
-        //Allocate recArray
-        HookContext* curContextPtr=curContext;
-        assert(curContextPtr->ldArr->getSize()==loadingId);
-        curContextPtr->ldArr[0].pushBack();
-        curContextPtr->ldArr[0][loadingId].allocate(allExtSymbol[loadingId].getSize());
-
-        //Initialize gap to one
-        for (ssize_t symId = 0; symId < allExtSymbol[loadingId].getSize(); ++symId) {
-            //number mod 2^n is equivalent to stripping off all but the n lowest-order
-            curContextPtr->ldArr[0][loadingId][symId].gap = allExtSymbol[loadingId][symId].initialGap;//0b11 if %4, because 4=2^2 Initially time everything
-            curContextPtr->ldArr[0][loadingId][symId].count = 0;
-        }
-        curContextPtr->initialized = SCALER_TRUE;
-    }
 
 
 }

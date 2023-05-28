@@ -159,7 +159,7 @@ TEST(PMParser, ParseAfterDLOpen) {
         ASSERT_EQ(curPmEntry.addrStart, pmEntryStartingAddrs[i]);
         ASSERT_EQ(curPmEntry.addrEnd, pmEntryEndAddrs[i]);
         ASSERT_EQ(curPmEntry.permBits, permBits[i]);
-        ASSERT_EQ(curPmEntry.fileId, fileIds[i]);
+        ASSERT_EQ(curPmEntry.globalFileId, fileIds[i]);
         ASSERT_EQ(curPmEntry.loadingId, 0);
     }
 
@@ -235,7 +235,7 @@ TEST(PMParser, ParseAfterDLOpen) {
         ASSERT_EQ(curPmEntry.addrStart, pmEntryStartingAddrs1[i]);
         ASSERT_EQ(curPmEntry.addrEnd, pmEntryEndAddrs1[i]);
         ASSERT_EQ(curPmEntry.permBits, permBits1[i]);
-        ASSERT_EQ(curPmEntry.fileId, fileIds1[i]);
+        ASSERT_EQ(curPmEntry.globalFileId, fileIds1[i]);
         ASSERT_EQ(curPmEntry.loadingId, 1);
     }
 
@@ -354,13 +354,13 @@ TEST(PMParser, findExecNameByAddr) {
 //    PmParser parser;
 //
 //    void *funcPtr = (void *) printf;
-//    size_t fileId = parser.findFileIdByAddr(funcPtr);
-//    auto execName = parser.idFileMap[fileId];
+//    size_t globalFileId = parser.findFileIdByAddr(funcPtr);
+//    auto execName = parser.idFileMap[globalFileId];
 //    EXPECT_TRUE(execName.find("libc") != std::string::npos);
 //
 //    //Try C
-//    fileId = parserC.findFileIdByAddr(funcPtr);
-//    execName = parserC.idFileMap[fileId];
+//    globalFileId = parserC.findFileIdByAddr(funcPtr);
+//    execName = parserC.idFileMap[globalFileId];
 //    EXPECT_TRUE(execName.find("libc") != std::string::npos);
 
 }

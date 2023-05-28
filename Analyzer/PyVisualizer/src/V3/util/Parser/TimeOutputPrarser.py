@@ -32,7 +32,7 @@ def readSymbolFiles(scalerDataFolder):
         assert (f.read() == b'')  # Make sure this is the end
     df = pd.read_csv(os.path.join(scalerDataFolder, 'symbolInfo.txt'))
     rlt.symbolNameList = df['funcName'].to_list()
-    rlt.symbolFileIdList = df['fileId'].to_list()
+    rlt.symbolFileIdList = df['globalFileId'].to_list()
     rlt.symIdInFileList = df['symIdInFile'].to_list()
     return rlt
 
@@ -87,7 +87,7 @@ def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
 
     aggregatedTimeArray = []
     aggregatedCreatorTime = defaultdict(
-        lambda: 0)  # Map fileId and starting time. Thread may be created by modules other than the main application
+        lambda: 0)  # Map globalFileId and starting time. Thread may be created by modules other than the main application
     # aggregatedApiUnscaledInvcTimeByLib = []
 
     waitTimeByThread=defaultdict(lambda: 0)

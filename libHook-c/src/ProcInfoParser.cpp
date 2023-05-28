@@ -51,7 +51,7 @@ namespace scaler {
             fatalErrorS("Cannot open %s", ss.str().c_str());
         }
 
-        fprintf(fileNameStrTbl, "%s,%s\n", "fileId", "pathName");
+        fprintf(fileNameStrTbl, "%s,%s\n", "globalFileId", "pathName");
 
 
         while (fgets(procMapLine, sizeof(procMapLine), procFile)) {
@@ -78,9 +78,9 @@ namespace scaler {
             ssize_t fileIdSearchStartingPoint=0;
             if (found) {
                 PMEntry &pmEntry = pmEntryArray[lo];
-                FileEntry &fileEntry = fileEntryArray[pmEntry.fileId];
+                FileEntry &fileEntry = fileEntryArray[pmEntry.globalFileId];
                 fileEntry.loadingId = loadingId;
-                fileIdSearchStartingPoint=pmEntry.fileId;
+                fileIdSearchStartingPoint=pmEntry.globalFileId;
                 bool endAddressIsTheSame = (pmEntry.addrEnd == addrEnd);
                 bool fileNameIsTheSame = (strncmp(&stringTable.get(fileEntry.pathNameStartIndex), pathName,
                                                   fileEntry.getPathNameLength()) == 0);
@@ -117,10 +117,10 @@ namespace scaler {
             newPmEntry->loadingId = loadingId;//Update the loading id
             newPmEntry->addrStart = addrStart;
             newPmEntry->addrEnd = addrEnd;//Update end address
-            newPmEntry->fileId = -1;//Allocate and set later
+            newPmEntry->globalFileId = -1;//Allocate and set later
             newPmEntry->setPermBits(permStr);
 
-            //Check if we need to allocate a new fileId or not by comparing with previous pmEntry's fileName.
+            //Check if we need to allocate a new globalFileId or not by comparing with previous pmEntry's fileName.
             //Linearly search for the same file
             //INFO_LOGS("Try to match line: %s", procMapLine);
             if (matchWithPreviousFileIdUnSafe(loadingId, pathName, pathNameLen,
@@ -165,7 +165,7 @@ namespace scaler {
 
         //Update baseStartAddr
         for (int i = 0; i < pmEntryArray.getSize(); ++i) {
-            FileEntry &curFileEntry = fileEntryArray[pmEntryArray[i].fileId];
+            FileEntry &curFileEntry = fileEntryArray[pmEntryArray[i].globalFileId];
             curFileEntry.baseStartAddr = min(curFileEntry.baseStartAddr, pmEntryArray[i].addrStart);
             curFileEntry.baseEndAddr = max(curFileEntry.baseEndAddr, pmEntryArray[i].addrEnd);
         }
@@ -178,7 +178,7 @@ namespace scaler {
 
             if (pmEntryArray[i].loadingId < loadingId) {
                 //Currently we do not need to return this
-                fileEntryArray[pmEntryArray[i].fileId].pmEntryNumbers -= 1;//Unlink pmEntry
+                fileEntryArray[pmEntryArray[i].globalFileId].pmEntryNumbers -= 1;//Unlink pmEntry
                 pmEntryArray.erase(i);
             }
         }
@@ -213,7 +213,7 @@ namespace scaler {
         findPmEntryIdByAddr(addr, pmEntryId, found);
         //Since we only search PLT, it is impossible to hit the memory segment boundary.
         assert(found == false && 0 <= pmEntryId - 1 && pmEntryId - 1 < pmEntryArray.getSize());
-        ssize_t rlt = pmEntryArray[pmEntryId].fileId;
+        ssize_t rlt = pmEntryArray[pmEntryId].globalFileId;
         return rlt;
     }
 
@@ -316,15 +316,15 @@ namespace scaler {
         //Search forward
         for (ssize_t i = 0; i < this->fileEntryArray.getSize(); ++i) {
 //            INFO_LOGS("Compare %s(%zd) with %s(%zd)", pathName, pathNameLen,
-//                      &stringTable.get(fileEntryArray[pmEntryArray[i].fileId].pathNameStartIndex),
-//                      fileEntryArray[pmEntryArray[i].fileId].getPathNameLength());
+//                      &stringTable.get(fileEntryArray[pmEntryArray[i].globalFileId].pathNameStartIndex),
+//                      fileEntryArray[pmEntryArray[i].globalFileId].getPathNameLength());
             if (curLoadingId - fileEntryArray[i].loadingId <= 1
                 && fileEntryArray[i].pmEntryNumbers>0
                 && fileEntryArray[i].getPathNameLength() == pathNameLen
                 && strncmp(&stringTable.get(fileEntryArray[i].pathNameStartIndex),
                            pathName, pathNameLen) == 0) {
                 //Previous filename matches with current file name, no need to create file entry
-                newPmEntry->fileId = i;
+                newPmEntry->globalFileId = i;
                 fileEntryArray[i].loadingId = curLoadingId;
                 fileEntryArray[i].pmEntryNumbers += 1;
                 hasPreviousFileNameMatch = true;
@@ -338,8 +338,8 @@ namespace scaler {
     void PmParser::createFileEntryUnSafe(PMEntry *newPmEntry, ssize_t loadingId, char *pathName, ssize_t pathNameLen,
                                          ssize_t scanfReadNum) {
         ssize_t newFileId = fileEntryArray.getSize();
-        FileEntry *newFileEntry = fileEntryArray.pushBack(); //We should not use insertAt because fileId is hard-coded into dynamically generated assembly instructions.
-        newPmEntry->fileId = newFileId;
+        FileEntry *newFileEntry = fileEntryArray.pushBack(); //We should not use insertAt because globalFileId is hard-coded into dynamically generated assembly instructions.
+        newPmEntry->globalFileId = newFileId;
         newFileEntry->loadingId = loadingId;
         newFileEntry->creationLoadingId = loadingId;
         newFileEntry->pmEntryNumbers += 1;

@@ -48,7 +48,7 @@ for i in timingRecord[7].extFileTiming[5].extSymTiming.values():
 # print('FileName', 'Time', 'TimePercent(Self)', 'TimePercent(Global)', 'Count', 'CountPercent(Self)',
 #       'CountPercent(Global)', sep='\t')
 for fileId, fileRecord in enumerate(timingRecord):
-    # print(fileId, fileRecord.fileName, sep='\t')
+    # print(globalFileId, fileRecord.fileName, sep='\t')
     print(fileRecord.fileName + ' [S]', fileRecord.selfClockCycles.value, fileRecord.selfClockCycles.localPercent,
           fileRecord.selfClockCycles.globalPercent, '-', '-', '-', sep='\t')
     for extFileId, extFileRecord in fileRecord.extFileTiming.items():

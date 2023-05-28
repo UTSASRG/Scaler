@@ -25,8 +25,8 @@ def generateXFAStruct(aggregatedTimeEntries: list,
 
     print()
     # Attribute the total thread running time
-    # for fileId, totalClockCycles in aggregatedCreatorTime.items():
-    #     timingRecord[fileId].selfClockCycles.value = totalClockCycles
+    # for globalFileId, totalClockCycles in aggregatedCreatorTime.items():
+    #     timingRecord[globalFileId].selfClockCycles.value = totalClockCycles
     #     totalProgramRunningTime += totalClockCycles
 
     # Loop through all timing entries and attribute time

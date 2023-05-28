@@ -72,7 +72,6 @@ namespace scaler {
 
         static ExtFuncCallHook *instance;
 
-
     protected:
         virtual bool install(ssize_t loadingId);
 
@@ -97,7 +96,7 @@ namespace scaler {
         bool fillAddr2pltEntry(uint8_t *funcAddr, uint8_t *retPltEntry);
 
         bool fillAddrAndSymId2IdSaver(uint8_t **gotAddr, uint8_t *firstPltEntry, uint32_t symId,
-                                      uint32_t pltStubId, uint32_t ldArrayOffset, uint32_t loadingId,
+                                      uint32_t pltStubId, uint32_t recArrayOffset, uint32_t loadingId,
                                       uint32_t countOffset, uint32_t gapOffset, uint8_t *idSaverEntry);
 
 
@@ -111,7 +110,6 @@ namespace scaler {
 
         void createRecordingFolder() const;
 
-        void populateRecordingArray(ssize_t id);
     };
 
 }

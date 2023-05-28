@@ -21,7 +21,6 @@ HookContext *constructContext(scaler::ExtFuncCallHook &inst) {
     if (!rlt) {
         fatalError("Cannot allocate memory for HookContext")
     }
-    rlt->ldArr = new scaler::FixedArray<scaler::Array<RecTuple>>(1024);//A maximum of 1024 dynamic loaded libraries
     INFO_LOGS("inst.curLoadingId.load(std::memory_order_acquire)+1=%zd",inst.curLoadingId.load(std::memory_order_acquire)+1);
     assert(inst.elfImgInfoMap.getSize() == inst.allExtSymbol.getSize());
 
@@ -43,7 +42,6 @@ HookContext *constructContext(scaler::ExtFuncCallHook &inst) {
 
 bool destructContext() {
     HookContext *curContextPtr = curContext;
-    delete curContextPtr->ldArr;
     munmap(curContextPtr, sizeof(HookContext) +
                           sizeof(scaler::Array<uint64_t>) +
                           sizeof(pthread_mutex_t));
@@ -54,24 +52,19 @@ bool destructContext() {
 void __attribute__((used, noinline, optimize(3))) printRecOffset() {
 
     auto i __attribute__((used)) = (uint8_t *) curContext;
-    auto j __attribute__((used)) = (uint8_t *) &curContext->ldArr;
-
-    auto n __attribute__((used)) = (uint8_t *) curContext->ldArr;
-    auto o __attribute__((used)) = (uint8_t *) &(curContext->ldArr->internalArr);
-
-    curContext->ldArr->pushBack();
-    curContext->ldArr[0][0].pushBack();
-    auto k __attribute__((used)) = (uint8_t *) &curContext->ldArr[0][0].internalArr[0];
-    auto l __attribute__((used)) = (uint8_t *) &curContext->ldArr[0][0].internalArr[0].count;
-    auto m __attribute__((used)) = (uint8_t *) &curContext->ldArr[0][0].internalArr[0].gap;
-    curContext->ldArr[0][0].popBack();
-    curContext->ldArr->popBack();
+    auto j __attribute__((used)) = (uint8_t *) curContext->ldArr;
+    auto k __attribute__((used)) = (uint8_t *) &curContext->ldArr[0].internalArr;
+    auto l __attribute__((used)) = (uint8_t *) &curContext->ldArr[0].internalArr[0];
+    auto m __attribute__((used)) = (uint8_t *) &curContext->ldArr[0].internalArr[0].count;
+    auto n __attribute__((used)) = (uint8_t *) &curContext->ldArr[0].internalArr[0].gap;
 
     printf("\nTLS offset: Check assembly\n"
-           "Context.ldArr Offset: 0x%lx\n"
-           "Array<...>->internalArr Offset: 0x%lx\n"
-           "Counting Entry Offset: 0x%lx\n"
-           "Gap Entry Offset: 0x%lx\n", j - i, o-n, l - k, m - k);
+           "LDARR_OFFSET_IN_CONTEXT: 0x%lx\n"
+           "INTERNALARR_OFFSEjT_IN_LDARR Offset: 0x%lx\n"
+           "COUNT_OFFSET_IN_RECARR: 0x%lx\n"
+           "GAP_OFFSET_IN_RECARR: 0x%lx\n", j - i, k - j, m - l, n - l);
+
+
 }
 
 
@@ -94,17 +87,39 @@ bool initTLS() {
     curContext = constructContext(inst);
 
 //#ifdef PRINT_DBG_LOG
-    //printRecOffset();
+    printRecOffset();
 //#endif
 
     if (!curContext) {
         fatalError("Failed to allocate memory for Context");
         return false;
     }
-    pthread_mutex_unlock(&inst.dynamicLoadingLock);
+    //Populate the recording array of existing loading ids
 
+    for(ssize_t loadingId=0;loadingId<inst.allExtSymbol.getSize();++loadingId){
+        populateRecordingArray(loadingId, inst);
+    }
+    curContext->initialized = SCALER_TRUE;
+
+    pthread_mutex_unlock(&inst.dynamicLoadingLock);
     return true;
 }
+
+void populateRecordingArray(ssize_t loadingId, scaler::ExtFuncCallHook& inst) {
+    //No contention because parent function will acquire a lock
+    //Allocate recArray
+    HookContext* curContextPtr=curContext;
+    curContextPtr->ldArr[loadingId].allocate(inst.allExtSymbol[loadingId].getSize());
+
+    //Initialize gap to one
+    for (ssize_t symId = 0; symId < inst.allExtSymbol[loadingId].getSize(); ++symId) {
+        //number mod 2^n is equivalent to stripping off all but the n lowest-order
+        curContextPtr->ldArr[loadingId][symId].gap = inst.allExtSymbol[loadingId][symId].initialGap;//0b11 if %4, because 4=2^2 Initially time everything
+        curContextPtr->ldArr[loadingId][symId].count = 0;
+    }
+
+}
+
 
 __thread HookContext *curContext __attribute((tls_model("initial-exec")));
 
