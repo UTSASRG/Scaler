@@ -60,7 +60,6 @@ namespace scaler {
         };
         // end address
         ssize_t globalFileId = -1;
-        ssize_t curLoadingFileId=-1;
         unsigned char permBits = 0; // Is readable
 
         inline bool isR() const {
@@ -137,6 +136,7 @@ namespace scaler {
         ssize_t creationLoadingId = -1;//Marks the creation loadingId of this entry. This combined with previous field can be used to detect new file addition.
         uint8_t *baseStartAddr = nullptr;
         uint8_t *baseEndAddr = nullptr;
+        ssize_t recArrFileId=-1;//This corresponds to the loading 
 
         ssize_t getPathNameLength() {
             return pathNameEndIndex - pathNameStartIndex - 1;

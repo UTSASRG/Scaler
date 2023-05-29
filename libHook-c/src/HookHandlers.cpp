@@ -285,6 +285,7 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr,ssize_t loading
 
     //Assumes _this->allExtSymbol won't change
     scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[loadingId].internalArr[symId];
+
     void *retOriFuncAddr = *curElfSymInfo.gotEntryAddr;
 
     /**
@@ -312,8 +313,8 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr,ssize_t loading
 
     //DBG_LOGS("FileId=%lu, pltId=%zd prehook", globalFileId, pltEntryIndex);
 
-//    INFO_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu\n", pthread_self(),
-//             curElfSymInfo.globalFileId, symId, (void *) nextCallAddr, getunixtimestampms());
+    INFO_LOGS("[Pre Hook] Thread:%lu LoadingId:%ld CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu\n", pthread_self(),loadingId,
+             curElfSymInfo.fileId, symId, (void *) nextCallAddr, getunixtimestampms());
     //assert(curContext != nullptr);
 
     /**

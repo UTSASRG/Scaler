@@ -701,7 +701,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2FB869(%%rip),%0\n\t"
+                "movq 0x2FB8C1(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :
@@ -754,20 +754,14 @@ namespace scaler {
         assert(elfImgInfoMap.getSize() - 1 == loadingId);
         assert(allExtSymbol.getSize() - 1 == loadingId);
 
-        //elfImgInfoMap is always incremental, allocate room for newly allocated files
-        ssize_t elemDifference = pmParser.getFileEntryArraySize() - elfImgInfoMap[loadingId].getSize();
-        for (int i = 0; i < elemDifference; ++i) {
-            ELFImgInfo *curElfImgInfo = elfImgInfoMap[loadingId].pushBack();
-            curElfImgInfo->valid = false; //Set them to invalid by default
-        }
         //Get segment info from /proc/self/maps
-        for (ssize_t i = 0; i < newFileEntryId.getSize(); ++i) {
-            FileID fileId = newFileEntryId[i];
+        for (ssize_t fileId = 0; fileId < newFileEntryId.getSize(); ++fileId) {
+            FileID globalFileId = newFileEntryId[fileId];
             //INFO_LOGS("globalFileId=%zd", globalFileId);
-            FileEntry &curFileEntry = pmParser.getFileEntryUnSafe(fileId);
+            FileEntry &curFileEntry = pmParser.getFileEntryUnSafe(globalFileId);
             const char *curFilePathName = pmParser.getStrUnsafe(curFileEntry.pathNameStartIndex);
             DBG_LOGS("Install newly discovered file:%s", curFilePathName);
-            ELFImgInfo &curElfImgInfo = elfImgInfoMap[loadingId][fileId];
+            ELFImgInfo* curElfImgInfo = elfImgInfoMap[loadingId].pushBack();
             if (elfParser.parse(curFilePathName)) {
                 //Find the entry size of plt and got
                 ELFSecInfo pltInfo{};
@@ -780,9 +774,9 @@ namespace scaler {
                     fatalError("Failed to parse plt related sections.");
                     exit(-1);
                 }
-                curElfImgInfo.pltStartAddr = pltInfo.startAddr;
-                curElfImgInfo.pltSecStartAddr = pltSecInfo.startAddr;
-                curElfImgInfo.gotStartAddr = gotInfo.startAddr;
+                curElfImgInfo->pltStartAddr = pltInfo.startAddr;
+                curElfImgInfo->pltSecStartAddr = pltSecInfo.startAddr;
+                curElfImgInfo->gotStartAddr = gotInfo.startAddr;
 
                 //ERR_LOGS("%zd:%s %p pltStartAddr=%p", globalFileId, pmParser.getStrUnsafe(curFileEntry.pathNameStartIndex),
                 //         curFileEntry.baseStartAddr, pltInfo.startAddr);
@@ -794,7 +788,7 @@ namespace scaler {
                     fatalErrorS("installation for file %s failed.", curFilePathName);
                     exit(-1);
                 }
-                curElfImgInfo.valid = true;
+                curElfImgInfo->valid = true;
             }
         }
         pmParser.releaseReadLock();
