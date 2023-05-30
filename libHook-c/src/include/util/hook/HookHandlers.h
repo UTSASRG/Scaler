@@ -18,7 +18,7 @@ void __attribute__((naked)) asmTimingHandler();
 * @param oriRBPLoc The rsp location before saving all registers
 * @return Original function pointer
 */
-__attribute__((used)) void *preHookHandler(uint64_t nextCallAddr,ssize_t loadingId, int64_t fileId);
+__attribute__((used)) void *preHookHandler(uint64_t nextCallAddr,ssize_t loadingId, int64_t symId,void** gotEntryAddr);
 
 
 __attribute__((used)) void *afterHookHandler();

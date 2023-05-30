@@ -262,6 +262,8 @@ namespace scaler {
             return false;
         }
 
+//
+
         if (funcNameLen == 3) {
             if (strncmp(funcName, "cos", 3) == 0) {
                 initialGap = SAMPLING_GAP;
@@ -315,8 +317,9 @@ namespace scaler {
                 return false;
             } else if (strncmp(funcName, "dlsym", 5) == 0) {
                 INFO_LOG("dlsym overrided");
-//                addressOverride = (void *) dlsym_proxy;
-                return false;
+                addressOverride = (void *) dlsym_proxy;
+                return true;
+//                return false;
             }
         } else if (funcNameLen == 6) {
             if (strncmp(funcName, "_ZdlPv", 6) == 0) {
@@ -596,9 +599,11 @@ namespace scaler {
     const int GAP_OFFSET_IN_RECARR = 0x18;
 
     const int TIMING_PART_START = SKIP_PART_START + 31;
-    const int LOADING_ID = TIMING_PART_START + 1, LOADING_ID_SIZE = 32;
-    const int SYM_ID = TIMING_PART_START + 6, FUNC_ID_SIZE = 32;
-    const int ASM_HOOK_HANDLER_ADDR = TIMING_PART_START + 12, ASM_HOOK_HANDLER_ADDR_SIZE = 64;
+    const int LOW_BITS_GOTENTRYADDR = TIMING_PART_START + 4;
+    const int HIGH_BITS_GOTENTRYADDR = TIMING_PART_START + 12;
+    const int SYM_ID = TIMING_PART_START + 21, FUNC_ID_SIZE = 32;
+    const int LOADING_ID = TIMING_PART_START + 30, LOADING_ID_SIZE = 32;
+    const int ASM_HOOK_HANDLER_ADDR = TIMING_PART_START + 36, ASM_HOOK_HANDLER_ADDR_SIZE = 64;
 
     uint8_t idSaverBin[] = {
             /**
@@ -656,10 +661,15 @@ namespace scaler {
             /**
              * TIMING part
              */
-            //pushq $0x11223344 | Save the loading id of this API to the stack. This value will be picked up by asmHookHandler
-            0x68, 0x00, 0x00, 0x00, 0x00,
-            //pushq $0x11223344 | Save the scaler id of this API to the stack.  This value will be picked up by asmHookHandler
-            0x68, 0x00, 0x00, 0x00, 0x00,
+
+            //movl $0x44332211,0x28(%rsp) | Save low bits of gotEntrtAddress
+            0xC7, 0x44, 0x24, 0xE8, 0x00, 0x00, 0x00, 0x00,
+            //movl $0x44332211,0x10(%rsp) | Save hi bits of gotEntrtAddress
+            0xC7, 0x44, 0x24, 0xEC, 0x00, 0x00, 0x00, 0x00,
+            //movl $0x44332211,0x08(%rsp) | Save loadingId to stack
+            0x48, 0xC7, 0x44, 0x24, 0xF0, 0x00, 0x00, 0x00, 0x00,
+            //movl $0x44332211,0x0(%rsp) | Save funcId to stack
+            0x48, 0xC7, 0x44,0x24, 0xF8, 0x00, 0x00, 0x00, 0x00,
             //movq $0x1122334455667788,%r11 | Move the address of asmHookHandler to r11
             0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             //jmpq *%r11 | Jump to asmHookHandler
@@ -701,7 +711,7 @@ namespace scaler {
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2FB8C1(%%rip),%0\n\t"
+                "movq 0x2FB668(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :
@@ -723,15 +733,34 @@ namespace scaler {
         //Fill first plt address
         memcpy(idSaverEntry + PLT_START_ADDR, &firstPltEntry, sizeof(uint8_t *));
 
-        //Fill loadingId
-        memcpy(idSaverEntry + LOADING_ID, &loadingId, sizeof(uint32_t));
+        INFO_LOG("Here");
+
+        uint32_t gotAddrHi=((uint64_t)gotAddr) >> 32;
+        uint32_t gotAddrLo=((uint64_t)gotAddr) & 0xffffffff;
+        INFO_LOGS("GOT_ADDR=%p",gotAddr);
+        INFO_LOGS("GOT_HI=0x%x GOT_LOW",gotAddrHi);
+        INFO_LOGS("GOT_LO=0x%x GOT_LOW",gotAddrLo);
+
+        memcpy(idSaverEntry+LOW_BITS_GOTENTRYADDR,&gotAddrLo,sizeof(uint32_t));
+        memcpy(idSaverEntry+HIGH_BITS_GOTENTRYADDR,&gotAddrHi,sizeof(uint32_t));
+
+        INFO_LOG("Fill Symbol Id");
+
         //Fill symId
         memcpy(idSaverEntry + SYM_ID, &symId, sizeof(uint32_t));
 
+        INFO_LOG("Fill Loading Id");
+
+        //Fill loadingId
+        memcpy(idSaverEntry + LOADING_ID, &loadingId, sizeof(uint32_t));
+
+
+        INFO_LOG("Fill asmTimingHandler");
 
         uint8_t *asmHookPtr = (uint8_t *) &asmTimingHandler;
         //Fill asmTimingHandler
         memcpy(idSaverEntry + ASM_HOOK_HANDLER_ADDR, (void *) &asmHookPtr, sizeof(void *));
+        INFO_LOG("Here");
 
         return true;
     }

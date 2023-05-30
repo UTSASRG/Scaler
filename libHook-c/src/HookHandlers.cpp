@@ -136,10 +136,11 @@
     "movq %r9,0x38(%rsp)\n\t"  /*8 bytes*/\
     "movq %r10,0x40(%rsp)\n\t" /*8 bytes*/\
 
-#define SAVE_BYTES_PRE "0x48" //0x40+8
-#define SAVE_BYTES_PRE_plus8 "0x50" //0x48+0x8
-#define SAVE_BYTES_PRE_plus16 "0x58" //0x48+0x10
-#define SAVE_BYTES_PRE_plus24 "0x60" //0x48+0x18
+#define SAVE_BYTES_PRE_plus8 "0x68" //Return address
+#define SAVE_BYTES_PRE "0x60" //0x40+0x18+0x8 (Funcid)
+#define SAVE_BYTES_PRE_minus8 "0x58" //0x50+0x8 (GotAddr)
+#define SAVE_BYTES_PRE_minus16 "0x50" //0x50+0x10 (LoadingId)
+#define SAVE_BYTES_PRE_minus24 "0x48" //0x50+0x18 (funcId)
 
 //Do not write restore by yourself, copy previous code and reverse operand order
 #define RESTORE_PRE  \
@@ -214,9 +215,10 @@ void __attribute__((naked)) asmTimingHandler() {
             /**
              * Getting PLT entry address and caller address from stack
              */
-            "movq " SAVE_BYTES_PRE_plus16 "(%rsp),%rdi\n\t" //First parameter, return addr
-            "movq " SAVE_BYTES_PRE_plus8 "(%rsp),%rsi\n\t" //Second parameter, loadingId (Pushed to stack by idsaver)
-            "movq " SAVE_BYTES_PRE "(%rsp),%rdx\n\t" //Third parameter, symbolId (Pushed to stack by idsaver)
+            "movq " SAVE_BYTES_PRE"(%rsp),%rdi\n\t" //First parameter, return addr
+            "movq " SAVE_BYTES_PRE_minus8 "(%rsp),%rsi\n\t" //Second parameter, loadingId (Pushed to stack by idsaver)
+            "movq " SAVE_BYTES_PRE_minus16 "(%rsp),%rdx\n\t" //Third parameter, symbolId (Pushed to stack by idsaver)
+            "movq " SAVE_BYTES_PRE_minus24 "(%rsp),%rcx\n\t" //Fourth parameter, GOTAddr (Pushed to stack by idsaver)
 
             /**
              * Pre-Hook
@@ -234,7 +236,7 @@ void __attribute__((naked)) asmTimingHandler() {
              * Call actual function
              */
             RESTORE_PRE
-            "addq $" SAVE_BYTES_PRE_plus24 ",%rsp\n\t" //Plus 16 is because there was two push instructions to save 16 bytes of funcId. Another plus 8 is to override call addr
+            "addq $" SAVE_BYTES_PRE_plus8 ",%rsp\n\t" //Plus 8 to override call addr
             "callq *%r11\n\t"
 
             /**
@@ -266,7 +268,7 @@ void __attribute__((naked)) asmTimingHandler() {
             "RET_PREHOOK_ONLY:\n\t"
             RESTORE_PRE
             //Restore rsp to original value (Uncomment the following to only enable prehook)
-            "addq $" SAVE_BYTES_PRE_plus16 ",%rsp\n\t" //Plus 16 is because there are two push to save id
+            "addq $" SAVE_BYTES_PRE ",%rsp\n\t" //Plus 16 is because there are two push to save id
             "jmpq *%r11\n\t"
 
             );
@@ -280,13 +282,11 @@ uint8_t *ldCallers = nullptr;
 //Return magic number definition:
 //1234: address resolved, pre-hook only (Fastest)
 //else pre+afterhook. Check hook installation in afterhook
-__attribute__((used)) void *preHookHandler(uint64_t nextCallAddr,ssize_t loadingId, int64_t symId) {
+__attribute__((used)) void *preHookHandler(uint64_t nextCallAddr,ssize_t loadingId, int64_t symId,void** gotEntryAddr) {
     HookContext *curContextPtr = curContext;
 
     //Assumes _this->allExtSymbol won't change
-    scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[loadingId].internalArr[symId];
-
-    void *retOriFuncAddr = *curElfSymInfo.gotEntryAddr;
+    //scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[loadingId].internalArr[symId];
 
     /**
     * No counting, no measuring time (If scaler is not installed, then tls is not initialized)
@@ -296,25 +296,25 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr,ssize_t loading
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
                 :/* No inputs. */:"rdi");
-        return retOriFuncAddr;
+        return *gotEntryAddr;
     } else if (unlikely(curContextPtr->indexPosi >= MAX_CALL_DEPTH)) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
                 :/* No inputs. */:"rdi");
-        return retOriFuncAddr;
+        return *gotEntryAddr;
     } else if (unlikely((uint64_t) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr == nextCallAddr)) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
                 :/* No inputs. */:"rdi");
-        return retOriFuncAddr;
+        return *gotEntryAddr;
     }
 
     bypassCHooks = SCALER_TRUE;
 
     //DBG_LOGS("FileId=%lu, pltId=%zd prehook", globalFileId, pltEntryIndex);
 
-    INFO_LOGS("[Pre Hook] Thread:%lu LoadingId:%ld CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu\n", pthread_self(),loadingId,
-             curElfSymInfo.fileId, symId, (void *) nextCallAddr, getunixtimestampms());
+    //INFO_LOGS("[Pre Hook] Thread:%lu LoadingId:%ld CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu\n", pthread_self(),loadingId,
+    //         curElfSymInfo.fileId, symId, (void *) nextCallAddr, getunixtimestampms());
     //assert(curContext != nullptr);
 
     /**
@@ -330,7 +330,7 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr,ssize_t loading
                                     curContextPtr->cachedLogicalClock, curContextPtr->cachedThreadNum);
 
     bypassCHooks = SCALER_FALSE;
-    return *curElfSymInfo.gotEntryAddr;
+    return *gotEntryAddr;
 }
 
 
@@ -350,7 +350,7 @@ void *afterHookHandler() {
     --curContextPtr->indexPosi;
     assert(curContextPtr->indexPosi >= 1);
 
-    scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[curLoadingId].internalArr[symbolId];
+//    scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[curLoadingId].internalArr[symbolId];
 
     uint64_t postLogicalClockCycle =
             calcCurrentLogicalClock( curContextPtr->cachedWallClockSnapshot,
@@ -426,8 +426,10 @@ void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
              */
             //Perform timing
             "TIMING_JUMPER:"
-            "pushq $0x11223344\n\t" //Save loadingId to stack
-            "pushq $0x11223344\n\t" //Save funcId to stack
+            "movl $0x44332211,-0x18(%rsp)\n\t" //Save low bits of gotEntrtAddress
+            "movl $0x44332211,-0x14(%rsp)\n\t" //Save hi bits of gotEntrtAddress
+            "movq $0x44332211,-0x10(%rsp)\n\t" //Save funcId to stack
+            "movq $0x44332211,-0x8(%rsp)\n\t" //Save loadingId to stack
             "movq $0x1122334455667788,%r11\n\t"
             "jmpq *%r11\n\t"
             );
