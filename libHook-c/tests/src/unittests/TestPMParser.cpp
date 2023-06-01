@@ -42,8 +42,8 @@ using namespace scaler;
 //        //Find corresponding entry
 //        void *curStartAddr = nullptr;
 //        void *curEndAddr = nullptr;
-//        std::string startAddr = line.substr(0, begAddrEnd);
-//        sscanf(startAddr.c_str(), "%p-%p", &curStartAddr, &curEndAddr);
+//        std::string internalArr = line.substr(0, begAddrEnd);
+//        sscanf(internalArr.c_str(), "%p-%p", &curStartAddr, &curEndAddr);
 //
 //        auto &curSegEntry = entryByAddrMap[curStartAddr];
 //

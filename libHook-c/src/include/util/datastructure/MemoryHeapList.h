@@ -10,15 +10,15 @@
 #include <cassert>
 
 namespace scaler {
-    template<class OBJTYPE>
-    class MemoryHeapList : public MemoryHeap<OBJTYPE> {
+    template<class T>
+    class MemoryHeapList : public MemoryHeap<T> {
 
         /**
          * Actual storage format
          */
         union InternalObjType {
             InternalObjType *addr;
-            OBJTYPE obj;
+            T obj;
         };
 
         /**
@@ -28,48 +28,40 @@ namespace scaler {
 
         public:
             //The starting address of memory segment
-            InternalObjType *startAddr;
+            InternalObjType *internalArr;
             //Point to the next chunk. (Only used to free all chunks)
             Chunk *nextChunk;
             //The number of objects in this chunk
-            ssize_t totalSlots;
+            ssize_t internalArrSize;
             //Slots tracked by free list
-            ssize_t managedSlots;
+            ssize_t size;
             size_t objSize;
 
-            Chunk(ssize_t objNum) : nextChunk(nullptr), totalSlots(objNum), managedSlots(0) {
-                startAddr = (InternalObjType *) mmap(NULL, totalSlots * sizeof(InternalObjType), PROT_READ | PROT_WRITE,
+            Chunk(ssize_t objNum) : nextChunk(nullptr), internalArrSize(objNum), size(0) {
+                internalArr = (InternalObjType *) mmap(NULL, internalArrSize * sizeof(InternalObjType), PROT_READ | PROT_WRITE,
                                                      MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-                if (startAddr == MAP_FAILED) {
-                    fatalErrorS("Failed to allocate memory for MemoryHeap::Chunk at %p because: %s", startAddr,
+                if (internalArr == MAP_FAILED) {
+                    fatalErrorS("Failed to allocate memory for MemoryHeap::Chunk at %p because: %s", internalArr,
                                 strerror(errno));
                     exit(-1);
                 }
             }
 
-            inline InternalObjType *getNextUnmanagedSlot() {
-                if (managedSlots == totalSlots) {
-                    return nullptr;
-                }
-                InternalObjType *slotAddr = startAddr + managedSlots;
-                managedSlots += 1;
-                slotAddr->addr = 0;
-                return slotAddr;
-            }
+            
 
             inline bool isFull() {
-                return managedSlots == totalSlots;
+                return size == internalArrSize;
             }
 
             ~Chunk() {
-                if (munmap(startAddr, totalSlots * sizeof(InternalObjType)) == -1) {
-                    fatalErrorS("Failed to deallocate memory for MemoryHeap::Chunk at %p because: %s", startAddr,
+                if (munmap(internalArr, internalArrSize * sizeof(InternalObjType)) == -1) {
+                    fatalErrorS("Failed to deallocate memory for MemoryHeap::Chunk at %p because: %s", internalArr,
                                 strerror(errno));
                     exit(-1);
                 }
-                startAddr = nullptr;
+                internalArr = nullptr;
                 nextChunk = nullptr;
-                totalSlots = 0;
+                internalArrSize = 0;
             }
         };
 
@@ -89,8 +81,8 @@ namespace scaler {
         }
 
 
-        void free(OBJTYPE *&obj) {
-            //Point free list to the chunkHead of this object
+        void free(T *&obj) {
+            //Add this object back to freelist
             ((InternalObjType *) (obj))->addr = freelists;
             freelists = (InternalObjType *) obj;
 #ifndef NDEBUG
@@ -98,20 +90,26 @@ namespace scaler {
 #endif
         }
 
-        OBJTYPE *malloc() {
+        T *malloc() {
             if (!freelists) {
+                //If there are freed slots, use unallocated entry
                 if (chunkHead->isFull()) {
+                    //No free entries in the current slot either.
                     largestChunkSize *= 2;
+                    //Allocate a chunk that is larger
                     expand(largestChunkSize);
                 }
                 //Use the next free slot in this chunk
-                freelists = chunkHead->getNextUnmanagedSlot();
+                InternalObjType *slotAddr = chunkHead->internalArr + chunkHead->size;
+                chunkHead->size += 1;
+                return (T*) (slotAddr);
+            }else{
+                //If there are freed slots, use free slots
+                InternalObjType *obj = freelists;
+                freelists = freelists->addr; //Return the first slot from the freeList. Move freelist to the next slot.
+                return (T *) obj;
             }
-
-            InternalObjType *obj = freelists;
-            freelists = freelists->addr;
-
-            return (OBJTYPE *) obj;
+           
         }
 
     protected:

@@ -15,6 +15,7 @@
 #include <type/ELFImgInfo.h>
 #include <type/ELFSecInfo.h>
 #include <atomic>
+#include "util/datastructure/MemoryHeapList.h"
 
 namespace scaler {
 
@@ -22,6 +23,81 @@ namespace scaler {
     * Determine whether a symbol should be hooked
     */
     typedef bool SYMBOL_FILTER(std::string fileName, std::string funcName);
+
+    const int ID_SAVER_BIN_SIZE=143;
+    struct IdSaverBinWrapper {
+        uint8_t idSaverBin[ID_SAVER_BIN_SIZE] = {
+                /**
+                 * Read TLS part
+                 */
+                //mov $0x1122334455667788,%r11 | move TLS offset to r11
+                0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                //mov %fs:(%r11),%r11 | move TLS address to r11
+                0x64, 0x4D, 0x8B, 0x1B,
+                //cmpq $0,%r11 | Check TLS is initialized or not
+                0x49, 0x83, 0xFB, 0x00,
+                //je SKIP | If TLS initialized, do not invoke any hook
+                0x74, 0x2D,
+
+                /**
+                 * Counting part
+                 */
+                //push %r10 | Save register r10
+                0x41, 0x52,
+                //mov    0x00000000(%r11),%r11 | mov the address to Context.ldArr[loadingId].internalArr to r11
+                0x4D, 0x8B, 0x9B, 0x00, 0x00, 0x00, 0x00,
+                //mov    0x00000000(%r11),%r10 | mov the value of current API's invocation counter to r10
+                0x4D, 0x8B, 0x93, 0x00, 0x00, 0x00, 0x00,
+                //add    $0x1,%r10 | Increase counter by 1
+                0x49, 0x83, 0xC2, 0x01,
+                //mov    %r10,0x11223344(%r11) | Store updated counter back
+                0x4D, 0x89, 0x93, 0x00, 0x00, 0x00, 0x00,
+                //mov    0x11223344(%r11),%r11 | move the value of current API's gap to r10
+                0x4D, 0x8B, 0x9B, 0x00, 0x00, 0x00, 0x00,
+                //and    %r11,%r10 | counter % gap
+                0x4D, 0x21, 0xDA,
+                //cmpq   $0x0,%r10 | Check the following if
+                0x49, 0x83, 0xFA, 0x00,
+                //pop    %r10 | Restore the value of r10
+                0x41, 0x5A,
+                //jz TIMING_JUMPER | If counter % gap == 0 skip, otherwise jump to TIMING part
+                0x74, 0x1F,
+
+                /**
+                 * SKIP part
+                 */
+                //SKIP:
+                //movq $0x1122334455667788,%r11 | Move current API's GOT address to Scaler's context
+                0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                //jmpq (%r11) | Jump to the address of API's GOT entry
+                0x41, 0xFF, 0x23,
+
+                //pushq $0x11223344 | Save the ld.so id of this API to the stack. This value will be picked up by ld.so.
+                0x68, 0x00, 0x00, 0x00, 0x00,
+                //movq $0x1122334455667788,%r11 | move the address of PLT[0] to r11
+                0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                //jmpq *%r11 | Jump to PLT[0]
+                0x41, 0xFF, 0xE3,
+
+                /**
+                 * TIMING part
+                 */
+
+                //movl $0x44332211,0x28(%rsp) | Save low bits of gotEntrtAddress
+                0xC7, 0x44, 0x24, 0xE8, 0x00, 0x00, 0x00, 0x00,
+                //movl $0x44332211,0x10(%rsp) | Save hi bits of gotEntrtAddress
+                0xC7, 0x44, 0x24, 0xEC, 0x00, 0x00, 0x00, 0x00,
+                //movl $0x44332211,0x08(%rsp) | Save loadingId to stack
+                0x48, 0xC7, 0x44, 0x24, 0xF0, 0x00, 0x00, 0x00, 0x00,
+                //movl $0x44332211,0x0(%rsp) | Save funcId to stack
+                0x48, 0xC7, 0x44, 0x24, 0xF8, 0x00, 0x00, 0x00, 0x00,
+                //movq $0x1122334455667788,%r11 | Move the address of asmHookHandler to r11
+                0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                //jmpq *%r11 | Jump to asmHookHandler
+                0x41, 0xFF, 0xE3
+        };
+        void* realFuncAddr;
+    };
 
     class ExtFuncCallHook {
     public:
@@ -33,8 +109,9 @@ namespace scaler {
 
         virtual bool install();
 
-        virtual bool installAutoLoadingId();
+        virtual bool installDlOpen();
 
+        virtual bool installDlSym(void *realFuncAddr,void*& retAddr);
 
         virtual bool uninstall();
 
@@ -52,6 +129,9 @@ namespace scaler {
         pthread_mutex_t dynamicLoadingLock;
         std::string folderName;
         std::atomic<ssize_t> curLoadingId;
+
+        std::map<void*,uint8_t*> dlsymRealAddrGOTEntryMap; //Convert dynamically loaded symbol address to slots in memoryHeapList
+        MemoryHeapList<IdSaverBinWrapper> memoryHeapList; //Holds idsaver of individual symbols
 
         /**
          * Private constructor
@@ -113,6 +193,7 @@ namespace scaler {
     };
 
 }
+
 
 extern "C" {
 

@@ -36,13 +36,13 @@ namespace scaler {
         DBG_LOG("Initialize logical clock");
         initLogicalClock(curContext->cachedWallClockSnapshot, curContext->cachedLogicalClock,
                          curContext->cachedThreadNum);
-        assert(curLoadingId.load( std::memory_order_acquire)==0);
+        assert(curLoadingId.load(std::memory_order_acquire) == 0);
         return install(0);
     }
 
 
     bool ExtFuncCallHook::install(ssize_t loadingId) {
-        DBG_LOGS("Install with loadingId=%zd",loadingId);
+        DBG_LOGS("Install with loadingId=%zd", loadingId);
         std::stringstream ss;
         ss << scaler::ExtFuncCallHook::instance->folderName << "/" << loadingId << "_symbolInfo.txt";
         FILE *symInfoFile = fopen(ss.str().c_str(), "a");
@@ -54,10 +54,10 @@ namespace scaler {
 
         parseRequiredInfo(loadingId);
 
-        populateRecordingArray(loadingId,*this); //Invoke this again because new loadingID is loaded
+        populateRecordingArray(loadingId, *this); //Invoke this again because new loadingID is loaded
         DBG_LOG("Replace PLT entry");
 
-        HookContext* curContextPtr=curContext;
+        HookContext *curContextPtr = curContext;
         //DBG_LOGS("ContextPtr=%p",curContextPtr);
         //DBG_LOGS("&ContextPtr.ldArr=%p",&curContextPtr->ldArr[0].internalArr);
         //DBG_LOGS("ContextPtr.ldArr=%p",&curContextPtr->ldArr[0].internalArr[2].count);
@@ -173,8 +173,8 @@ namespace scaler {
         adjustMemPerm(gotSec.startAddr, gotSec.startAddr + gotSec.size, PROT_READ | PROT_WRITE);
 
         if (pltSecureSection.startAddr) {
-//            DBG_LOGS("Adjusting mem permission from:%p to:%p", pltSecureSection.startAddr,
-//                     pltSecureSection.startAddr + pltSecureSection.size);
+//            DBG_LOGS("Adjusting mem permission from:%p to:%p", pltSecureSection.internalArr,
+//                     pltSecureSection.internalArr + pltSecureSection.size);
             adjustMemPerm(pltSecureSection.startAddr, pltSecureSection.startAddr + pltSecureSection.size,
                           PROT_READ | PROT_WRITE | PROT_EXEC);
         }
@@ -215,7 +215,7 @@ namespace scaler {
             //Make sure space is enough, if space is enough, array won't allocate
             ExtSymInfo *newSym = allExtSymbol[loadingId].pushBack();
 
-//            newSym->addrResolved = abs(curGotDest - pltSection.startAddr) > pltSection.size;
+//            newSym->addrResolved = abs(curGotDest - pltSection.internalArr) > pltSection.size;
             newSym->fileId = fileId;
             newSym->symIdInFile = i;
             newSym->gotEntryAddr = gotAddr;
@@ -605,76 +605,7 @@ namespace scaler {
     const int LOADING_ID = TIMING_PART_START + 30, LOADING_ID_SIZE = 32;
     const int ASM_HOOK_HANDLER_ADDR = TIMING_PART_START + 36, ASM_HOOK_HANDLER_ADDR_SIZE = 64;
 
-    uint8_t idSaverBin[] = {
-            /**
-             * Read TLS part
-             */
-            //mov $0x1122334455667788,%r11 | move TLS offset to r11
-            0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            //mov %fs:(%r11),%r11 | move TLS address to r11
-            0x64, 0x4D, 0x8B, 0x1B,
-            //cmpq $0,%r11 | Check TLS is initialized or not
-            0x49, 0x83, 0xFB, 0x00,
-            //je SKIP | If TLS initialized, do not invoke any hook
-            0x74, 0x2D,
 
-            /**
-             * Counting part
-             */
-            //push %r10 | Save register r10
-            0x41, 0x52,
-            //mov    0x00000000(%r11),%r11 | mov the address to Context.ldArr[loadingId].internalArr to r11
-            0x4D, 0x8B, 0x9B, 0x00, 0x00, 0x00, 0x00,
-            //mov    0x00000000(%r11),%r10 | mov the value of current API's invocation counter to r10
-            0x4D, 0x8B, 0x93, 0x00, 0x00, 0x00, 0x00,
-            //add    $0x1,%r10 | Increase counter by 1
-            0x49, 0x83, 0xC2, 0x01,
-            //mov    %r10,0x11223344(%r11) | Store updated counter back
-            0x4D, 0x89, 0x93, 0x00, 0x00, 0x00, 0x00,
-            //mov    0x11223344(%r11),%r11 | move the value of current API's gap to r10
-            0x4D, 0x8B, 0x9B, 0x00, 0x00, 0x00, 0x00,
-            //and    %r11,%r10 | counter % gap
-            0x4D, 0x21, 0xDA,
-            //cmpq   $0x0,%r10 | Check the following if
-            0x49, 0x83, 0xFA, 0x00,
-            //pop    %r10 | Restore the value of r10
-            0x41, 0x5A,
-            //jz TIMING_JUMPER | If counter % gap == 0 skip, otherwise jump to TIMING part
-            0x74, 0x1F,
-
-            /**
-             * SKIP part
-             */
-            //SKIP:
-            //movq $0x1122334455667788,%r11 | Move current API's GOT address to Scaler's context
-            0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            //jmpq (%r11) | Jump to the address of API's GOT entry
-            0x41, 0xFF, 0x23,
-
-            //pushq $0x11223344 | Save the ld.so id of this API to the stack. This value will be picked up by ld.so.
-            0x68, 0x00, 0x00, 0x00, 0x00,
-            //movq $0x1122334455667788,%r11 | move the address of PLT[0] to r11
-            0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            //jmpq *%r11 | Jump to PLT[0]
-            0x41, 0xFF, 0xE3,
-
-            /**
-             * TIMING part
-             */
-
-            //movl $0x44332211,0x28(%rsp) | Save low bits of gotEntrtAddress
-            0xC7, 0x44, 0x24, 0xE8, 0x00, 0x00, 0x00, 0x00,
-            //movl $0x44332211,0x10(%rsp) | Save hi bits of gotEntrtAddress
-            0xC7, 0x44, 0x24, 0xEC, 0x00, 0x00, 0x00, 0x00,
-            //movl $0x44332211,0x08(%rsp) | Save loadingId to stack
-            0x48, 0xC7, 0x44, 0x24, 0xF0, 0x00, 0x00, 0x00, 0x00,
-            //movl $0x44332211,0x0(%rsp) | Save funcId to stack
-            0x48, 0xC7, 0x44,0x24, 0xF8, 0x00, 0x00, 0x00, 0x00,
-            //movq $0x1122334455667788,%r11 | Move the address of asmHookHandler to r11
-            0x49, 0xBB, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            //jmpq *%r11 | Jump to asmHookHandler
-            0x41, 0xFF, 0xE3
-    };
 
     uint32_t ExtFuncCallHook::parsePltStubId(uint8_t *dest) {
         int pushOffset = -1;
@@ -704,14 +635,13 @@ namespace scaler {
                                                    uint32_t pltStubId, uint32_t recArrayOffset, uint32_t loadingId,
                                                    uint32_t countOffset, uint32_t gapOffset, uint8_t *idSaverEntry) {
 
-        //Copy code
-        memcpy(idSaverEntry, idSaverBin, sizeof(idSaverBin));
+
 
         assert(sizeof(uint8_t **) == 8);
 
         uint8_t *tlsOffset = nullptr;
         __asm__ __volatile__ (
-                "movq 0x2FB668(%%rip),%0\n\t"
+                "movq 0x2FDDFA(%%rip),%0\n\t"
                 :"=r" (tlsOffset)
                 :
                 :
@@ -735,14 +665,14 @@ namespace scaler {
 
         INFO_LOG("Here");
 
-        uint32_t gotAddrHi=((uint64_t)gotAddr) >> 32;
-        uint32_t gotAddrLo=((uint64_t)gotAddr) & 0xffffffff;
-        INFO_LOGS("GOT_ADDR=%p",gotAddr);
-        INFO_LOGS("GOT_HI=0x%x GOT_LOW",gotAddrHi);
-        INFO_LOGS("GOT_LO=0x%x GOT_LOW",gotAddrLo);
+        uint32_t gotAddrHi = ((uint64_t) gotAddr) >> 32;
+        uint32_t gotAddrLo = ((uint64_t) gotAddr) & 0xffffffff;
+        INFO_LOGS("GOT_ADDR=%p", gotAddr);
+        INFO_LOGS("GOT_HI=0x%x GOT_LOW", gotAddrHi);
+        INFO_LOGS("GOT_LO=0x%x GOT_LOW", gotAddrLo);
 
-        memcpy(idSaverEntry+LOW_BITS_GOTENTRYADDR,&gotAddrLo,sizeof(uint32_t));
-        memcpy(idSaverEntry+HIGH_BITS_GOTENTRYADDR,&gotAddrHi,sizeof(uint32_t));
+        memcpy(idSaverEntry + LOW_BITS_GOTENTRYADDR, &gotAddrLo, sizeof(uint32_t));
+        memcpy(idSaverEntry + HIGH_BITS_GOTENTRYADDR, &gotAddrHi, sizeof(uint32_t));
 
         INFO_LOG("Fill Symbol Id");
 
@@ -790,7 +720,7 @@ namespace scaler {
             FileEntry &curFileEntry = pmParser.getFileEntryUnSafe(globalFileId);
             const char *curFilePathName = pmParser.getStrUnsafe(curFileEntry.pathNameStartIndex);
             DBG_LOGS("Install newly discovered file:%s", curFilePathName);
-            ELFImgInfo* curElfImgInfo = elfImgInfoMap[loadingId].pushBack();
+            ELFImgInfo *curElfImgInfo = elfImgInfoMap[loadingId].pushBack();
             if (elfParser.parse(curFilePathName)) {
                 //Find the entry size of plt and got
                 ELFSecInfo pltInfo{};
@@ -808,7 +738,7 @@ namespace scaler {
                 curElfImgInfo->gotStartAddr = gotInfo.startAddr;
 
                 //ERR_LOGS("%zd:%s %p pltStartAddr=%p", globalFileId, pmParser.getStrUnsafe(curFileEntry.pathNameStartIndex),
-                //         curFileEntry.baseStartAddr, pltInfo.startAddr);
+                //         curFileEntry.baseStartAddr, pltInfo.internalArr);
 
                 //Install hook on this file
                 if (!parseSymbolInfo(loadingId, elfParser, fileId, curFileEntry.baseStartAddr, pltInfo, pltSecInfo,
@@ -827,32 +757,36 @@ namespace scaler {
     bool ExtFuncCallHook::replacePltEntry(ssize_t loadingId) {
         //Allocate callIdSaver
         //todo: memory leak
-        callIdSavers = static_cast<uint8_t *>(mmap(NULL, allExtSymbol[loadingId].getSize() * sizeof(idSaverBin),
+        callIdSavers = static_cast<uint8_t *>(mmap(NULL, allExtSymbol[loadingId].getSize() * ID_SAVER_BIN_SIZE,
                                                    PROT_READ | PROT_WRITE,
                                                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
         /**
          * Prepare callIdSaver
          */
-        adjustMemPerm(callIdSavers, callIdSavers + allExtSymbol[loadingId].getSize() * sizeof(idSaverBin),
+        adjustMemPerm(callIdSavers, callIdSavers + allExtSymbol[loadingId].getSize() * ID_SAVER_BIN_SIZE,
                       PROT_READ | PROT_WRITE | PROT_EXEC);
         uint8_t *curCallIdSaver = callIdSavers;
+        IdSaverBinWrapper idSaverBinWrapper;
         //Fill address and ids in callIdSaver
         for (int curSymId = 0; curSymId < allExtSymbol[loadingId].getSize(); ++curSymId) {
             ExtSymInfo &curSymInfo = allExtSymbol[loadingId][curSymId];
             ELFImgInfo &curImgInfo = elfImgInfoMap[loadingId][curSymInfo.fileId];
 
+            //Copy code
+            memcpy(curCallIdSaver, idSaverBinWrapper.idSaverBin, ID_SAVER_BIN_SIZE);
             if (!fillAddrAndSymId2IdSaver(curSymInfo.gotEntryAddr,
                                           curImgInfo.pltStartAddr,
                                           curSymId,
                                           curSymInfo.pltStubId,
-                                          LDARR_OFFSET_IN_CONTEXT+ loadingId * sizeof(scaler::Array<RecTuple>) + INTERNALARR_OFFSET_IN_LDARR,
+                                          LDARR_OFFSET_IN_CONTEXT + loadingId * sizeof(scaler::Array<RecTuple>) +
+                                          INTERNALARR_OFFSET_IN_LDARR,
                                           loadingId,
                                           curSymId * sizeof(RecTuple) + COUNT_OFFSET_IN_RECARR,
                                           curSymId * sizeof(RecTuple) + GAP_OFFSET_IN_RECARR,
                                           curCallIdSaver)) {
                 fatalError("fillAddrAndSymId2IdSaver failed, this should not happen");
             }
-            curCallIdSaver += sizeof(idSaverBin);
+            curCallIdSaver += ID_SAVER_BIN_SIZE;
         }
 
         /**
@@ -880,7 +814,7 @@ namespace scaler {
                 *curSym.gotEntryAddr = curCallIdSaver + CALL_LD_INST;
             }
 
-            curCallIdSaver += sizeof(idSaverBin);
+            curCallIdSaver += ID_SAVER_BIN_SIZE;
 
         }
 
@@ -896,10 +830,53 @@ namespace scaler {
 
     }
 
-    bool ExtFuncCallHook::installAutoLoadingId() {
+    bool ExtFuncCallHook::installDlOpen() {
         return install(++curLoadingId);
     }
 
+    /**
+     * Intercept and install dlsym
+     * @return successful or not
+     */
+    bool ExtFuncCallHook::installDlSym(void *realFuncAddr,void*& retAddr) {
+        if(realFuncAddr){
+            HookContext* hookContextPtr=curContext;
+            //realFuncAddr is valid
+            //todo: what if two APIs has the same address?
+            auto findIter=dlsymRealAddrGOTEntryMap.find(realFuncAddr);
+            if(findIter==dlsymRealAddrGOTEntryMap.end()){
+                //Should install
+                IdSaverBinWrapper* idSaverBinWrapper=memoryHeapList.malloc();
+                new (idSaverBinWrapper) IdSaverBinWrapper(); //Allocate idsaver
+                adjustMemPerm(idSaverBinWrapper->idSaverBin, idSaverBinWrapper->idSaverBin + ID_SAVER_BIN_SIZE,
+                              PROT_READ | PROT_WRITE | PROT_EXEC);
+                idSaverBinWrapper->realFuncAddr=realFuncAddr;
+                pthread_mutex_lock(&dynamicLoadingLock);
+                ssize_t curLoadingIdSnapshot=curLoadingId.load(std::memory_order_acquire);
+                ssize_t newSymId=hookContextPtr->ldArr[curLoadingIdSnapshot].getSize();
+                hookContextPtr->ldArr[curLoadingIdSnapshot].pushBack(); //Insert new entry to record dlsym loaded symbol
+                pthread_mutex_unlock(&dynamicLoadingLock);
+                if(!fillAddrAndSymId2IdSaver((uint8_t**)&idSaverBinWrapper->realFuncAddr, NULL, newSymId, NULL,
+                                         LDARR_OFFSET_IN_CONTEXT + curLoadingId * sizeof(scaler::Array<RecTuple>) +
+                                         INTERNALARR_OFFSET_IN_LDARR, curLoadingId,
+                                         newSymId * sizeof(RecTuple) + COUNT_OFFSET_IN_RECARR,
+                                         newSymId * sizeof(RecTuple) + GAP_OFFSET_IN_RECARR,
+                                         idSaverBinWrapper->idSaverBin)){
+                    fatalError("fillAddrAndSymId2IdSaver failed, this should not happen");
+                }
+                //Save idSaver address to  dlsymRealAddrGOTEntryMap
+                dlsymRealAddrGOTEntryMap[realFuncAddr]=idSaverBinWrapper->idSaverBin;
+                retAddr=idSaverBinWrapper->idSaverBin;
+                return true;
+            }else{
+                retAddr=findIter->second;
+                return true;
+            }
+        }else{
+            assert(false);
+        }
+        return false;
+    }
 
 
 }
