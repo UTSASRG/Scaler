@@ -1,36 +1,48 @@
+/*
+This file is part of Scaler.
+Scaler is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+Scaler is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
+
+@author: Steven (Jiaxun) Tang <jtang@umass.edu>
+*/
 #ifndef SCALER_LOGICALCLOCK_H
 #define SCALER_LOGICALCLOCK_H
 
 #include <util/tool/Timer.h>
 #include <util/tool/AtomicSpinLock.h>
+#include <util/tool/AtomicSpinLock.h>
+
 #include <atomic>
 
-extern uint64_t logicalClock; //The logical clock
-extern uint32_t threadNum; //The current number of threads
-extern std::atomic<uint64_t> wallclockSnapshot; //Used as update timestamp
-extern AtomicSpinLock threadUpdateLock;
+namespace scaler {
+    extern uint64_t logicalClock; //The logical clock
+    extern int32_t threadNum; //The current number of threads
+    extern std::atomic<uint64_t> wallclockSnapshot; //Used as update timestamp
+    extern AtomicSpinLock threadUpdateLock;
 
 /**
  * Initialize logical clock, should be invoked before main thread starts execution
  * @param cachedWallClockSnapshot Reference to thread local timestamp used to determine modification or not.
  * @return Current wall clock snapshot
  */
-inline uint64_t
-initLogicalClock(uint64_t &cachedWallClockSnapshot, uint64_t &cachedLogicalClock, uint32_t &cachedThreadNum) {
-    threadUpdateLock.lock();
-    threadNum = 1;
-    cachedThreadNum = 1;
-    logicalClock = 0; //Logical clock should be 0 at first
-    cachedLogicalClock = 0;
-    uint64_t curWallclockTimestamp = getunixtimestampms();
-    cachedWallClockSnapshot = curWallclockTimestamp;
+    inline uint64_t
+    initLogicalClock(uint64_t &cachedWallClockSnapshot, uint64_t &cachedLogicalClock, uint32_t &cachedThreadNum) {
+        threadUpdateLock.lock();
+        threadNum = 1;
+        cachedThreadNum = 1;
+        logicalClock = 0; //Logical clock should be 0 at first
+        cachedLogicalClock = 0;
+        uint64_t curWallclockTimestamp = getunixtimestampms();
+        cachedWallClockSnapshot = curWallclockTimestamp;
 
-    wallclockSnapshot.store(curWallclockTimestamp, std::memory_order_release); //Publish thread number and logical clock
+        wallclockSnapshot.store(curWallclockTimestamp,
+                                std::memory_order_release); //Publish thread number and logical clock
 
 //    INFO_LOGS("Logical clock value initialized to = %lu", logicalClock);
-    threadUpdateLock.unlock();
-    return wallclockSnapshot;
-}
+        threadUpdateLock.unlock();
+        return wallclockSnapshot;
+    }
 
 /**
  * Update logical clock when thread creates/finished
@@ -39,87 +51,101 @@ initLogicalClock(uint64_t &cachedWallClockSnapshot, uint64_t &cachedLogicalClock
  * @param cachedWallClockSnapshot Used to prevent first lock. For thread creation, pass thread local variable. For thread termination, pass dummy value,
  * @return
  */
-inline uint64_t
-updateLogicalClockAndThreadNum(int8_t threadNumChange, uint64_t &cachedWallClockSnapshot, uint64_t& cachedLogicalClock,
-                               uint32_t &cachedThreadNum) {
-    threadUpdateLock.lock(); //Make sure that the following non-atomic operation will not cause data race.
-    uint64_t curWallClockCurSnapshot = getunixtimestampms(); //Record current time
-    uint64_t prevWallClockSnapshot = wallclockSnapshot.load(std::memory_order_acquire);
+    inline uint64_t
+    updateLogicalClockAndThreadNum(int8_t threadNumChange, uint64_t &cachedWallClockSnapshot,
+                                   uint64_t &cachedLogicalClock,
+                                   uint32_t &cachedThreadNum) {
+        threadUpdateLock.lock(); //Make sure that the following non-atomic operation will not cause data race.
+        uint64_t curWallClockCurSnapshot = getunixtimestampms(); //Record current time
+        uint64_t prevWallClockSnapshot = wallclockSnapshot.load(std::memory_order_acquire);
 //    if(curWallClockCurSnapshot<prevWallClockSnapshot){
 //        INFO_LOG("Impossible");
 //    }
-    logicalClock += (curWallClockCurSnapshot - prevWallClockSnapshot) / threadNum; //Update logical clock
-//    INFO_LOGS("logicalClock += (%lu - %lu) / %u= %lu", curWallClockCurSnapshot, prevWallClockSnapshot, threadNum,
-//              (curWallClockCurSnapshot - prevWallClockSnapshot) / threadNum);
-    threadNum += threadNumChange; //Change thread number
+        if(threadNum<2){
+            logicalClock += (curWallClockCurSnapshot - prevWallClockSnapshot);
+        }else{
+            logicalClock += (curWallClockCurSnapshot - prevWallClockSnapshot) / threadNum; //Update logical clock
+        }
+        //INFO_LOGS("logicalClock += (%lu - %lu) / %u= %lu", curWallClockCurSnapshot, prevWallClockSnapshot, threadNum,
+        //         (curWallClockCurSnapshot - prevWallClockSnapshot) / threadNum);
+        threadNum += threadNumChange; //Change thread number
+
 //    INFO_LOGS("threadNum += %d = %d", threadNumChange, threadNum);
-    /**
-     * Update cache to prevent first time locking
-     */
-    cachedWallClockSnapshot = curWallClockCurSnapshot;
-    cachedThreadNum = threadNum;
-    cachedLogicalClock = logicalClock;
+        /**
+         * Update cache to prevent first time locking
+         */
+        cachedWallClockSnapshot = curWallClockCurSnapshot;
+        cachedThreadNum = threadNum;
+        cachedLogicalClock = logicalClock;
 //    INFO_LOGS("Update cachedWallClockSnapshot = %lu", curWallClockCurSnapshot);
 
-    //Update cached wallclocksnapshot to avoid first time lock
-    wallclockSnapshot.store(curWallClockCurSnapshot, std::memory_order_release);
-    threadUpdateLock.unlock();
+        //Update cached wallclocksnapshot to avoid first time lock
+        wallclockSnapshot.store(curWallClockCurSnapshot, std::memory_order_release);
+        threadUpdateLock.unlock();
 
-    return cachedLogicalClock;
-}
+        return cachedLogicalClock;
+    }
 
 /**
  * API interface, use the following functions in hook
  */
-inline uint64_t
-threadCreatedRecord(uint64_t &cachedWallClockSnapshot, uint64_t& cachedLogicalClock, uint32_t &cachedThreadNum) {
+    inline uint64_t
+    threadCreatedRecord(uint64_t &cachedWallClockSnapshot, uint64_t &cachedLogicalClock, uint32_t &cachedThreadNum) {
 
-    return updateLogicalClockAndThreadNum(1, cachedWallClockSnapshot, cachedLogicalClock, cachedThreadNum);
-}
+        return updateLogicalClockAndThreadNum(1, cachedWallClockSnapshot, cachedLogicalClock, cachedThreadNum);
+    }
 
-inline uint64_t threadTerminatedRecord() {
-    uint64_t tmp; //We do not need to update cachedWallClockSnapshot at exit
-    uint32_t tmp1;
-    return updateLogicalClockAndThreadNum(-1, tmp, tmp, tmp1);
-}
+    inline uint64_t threadTerminatedRecord() {
+        //INFO_LOG("thread termination record");
+        uint64_t tmp; //We do not need to update cachedWallClockSnapshot at exit
+        uint32_t tmp1;
+        return updateLogicalClockAndThreadNum(-1, tmp, tmp, tmp1);
+    }
 
-inline uint64_t
-calcCurrentLogicalClock(uint64_t &cachedWallClockSnapshot, uint64_t &cachedLogicalClock,
-                        uint32_t &cachedThreadNum) {
-    uint64_t prevWallClockSnapshot = wallclockSnapshot.load(std::memory_order_acquire);
-    //Updates performed by wallclockSnapshot must have been done. (Ensured by C++11 standard)
-    uint64_t result = 0;
-    if (prevWallClockSnapshot != cachedWallClockSnapshot) {
-        //There is change to timestamp, get the lock and acquire again to ensure there are no data race on "threadNum" variable and "logicalClock" variable
-        threadUpdateLock.lock();
-        prevWallClockSnapshot = wallclockSnapshot.load(std::memory_order_acquire);
+    inline uint64_t
+    calcCurrentLogicalClock(uint64_t &cachedWallClockSnapshot, uint64_t &cachedLogicalClock,
+                            uint32_t &cachedThreadNum) {
+        uint64_t prevWallClockSnapshot = wallclockSnapshot.load(std::memory_order_acquire);
         //Updates performed by wallclockSnapshot must have been done. (Ensured by C++11 standard)
-        cachedWallClockSnapshot = prevWallClockSnapshot;
-        cachedThreadNum = threadNum;
-        cachedLogicalClock = logicalClock;
-        uint64_t curWallClockSnapshot=getunixtimestampms();
+        uint64_t result = 0;
+        if (prevWallClockSnapshot != cachedWallClockSnapshot) {
+            //There is change to timestamp, get the lock and acquire again to ensure there are no data race on "threadNum" variable and "logicalClock" variable
+            threadUpdateLock.lock();
+            prevWallClockSnapshot = wallclockSnapshot.load(std::memory_order_acquire);
+            //Updates performed by wallclockSnapshot must have been done. (Ensured by C++11 standard)
+            cachedWallClockSnapshot = prevWallClockSnapshot;
+            cachedThreadNum = threadNum;
+            cachedLogicalClock = logicalClock;
+            uint64_t curWallClockSnapshot = getunixtimestampms();
 //        if(curWallClockSnapshot<prevWallClockSnapshot){
 //            INFO_LOG("Impossible");
 //        }
+            if (cachedThreadNum < 2) {
+                result = (curWallClockSnapshot - prevWallClockSnapshot) + cachedLogicalClock;
+            } else {
+                result = (curWallClockSnapshot - prevWallClockSnapshot) / cachedThreadNum + cachedLogicalClock;
+            }
+            //INFO_LOGS("Has thread creation/termination observed. API time is (%lu-%lu)/%u=%lu", curWallClockSnapshot,
+            //         prevWallClockSnapshot, threadNum, (curWallClockSnapshot - prevWallClockSnapshot) / threadNum);
 
-        result = (curWallClockSnapshot - prevWallClockSnapshot) / cachedThreadNum + cachedLogicalClock;
-//        INFO_LOGS("Has thread creation/termination observed. API time is (%lu-%lu)/%u=%lu", curWallClockSnapshot,
-//                  prevWallClockSnapshot, threadNum, (curWallClockSnapshot - prevWallClockSnapshot) / threadNum);
-
-        threadUpdateLock.unlock();
-    } else {
-        uint64_t curWallClockSnapshot=getunixtimestampms();
+            threadUpdateLock.unlock();
+        } else {
+            uint64_t curWallClockSnapshot = getunixtimestampms();
 
 //        if(curWallClockSnapshot<prevWallClockSnapshot){
 //            INFO_LOG("Impossible");
 //        }
-        result = (curWallClockSnapshot - cachedWallClockSnapshot) / cachedThreadNum + cachedLogicalClock;
+            if (cachedThreadNum < 2) {
+                result = (curWallClockSnapshot - cachedWallClockSnapshot) + cachedLogicalClock;
+            }else{
+                result = (curWallClockSnapshot - cachedWallClockSnapshot) / cachedThreadNum + cachedLogicalClock;
+            }
 //        INFO_LOGS("No thread creation/termination observed. API time is (%lu-%lu)/%u=%lu", curWallClockSnapshot,
 //                  prevWallClockSnapshot, threadNum, (curWallClockSnapshot - prevWallClockSnapshot) / threadNum);
 
+        }
+        //Real time elapse + old logical clock value
+        return result;
     }
-    //Real time elapse + old logical clock value
-    return result;
 }
-
 #endif

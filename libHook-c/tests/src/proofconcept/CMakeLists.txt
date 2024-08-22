@@ -1,31 +1,22 @@
-cmake_minimum_required(VERSION 3.10)
+#This file is part of Scaler.
+#Scaler is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+#Scaler is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
+
+#@author: Steven (Jiaxun) Tang <jtang@umass.edu>
+
+cmake_minimum_required(VERSION 3.16)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread -ldl --verbose -znow -fno-omit-frame-pointer -O3 -std=c++11")
 set(CMAKE_VERBOSE_MAKEFILE on)
 
-#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -T ${CMAKE_SOURCE_DIR}/mylinker.ld")
 
 include_directories(includes)
-
-# set the project name
-project(PltHook)
-
-# Compile PltHookLib
-add_library(PltHookLib SHARED library/plthook_elf.cpp)
-
-# Compile libtest
-add_library(libTest SHARED libtest.cpp)
-
-# Compile PmParser
-#add_library(libPMParser SHARED library/pmparser.cpp)
 
 
 # Compile libOneMilionFunc
 add_library(libOneMilionFunc SHARED milionFuncLibrary.cpp)
 
-add_executable(DemoProg testprog.cpp)
-set_property(TARGET DemoProg PROPERTY POSITION_INDEPENDENT_CODE TRUE)
-target_link_libraries(DemoProg libTest PltHookLib dl)
 
 #target_link_libraries(test1 mylib dl PltHookLib)
 
@@ -35,37 +26,20 @@ target_link_libraries(TestFuncInvocation dl)
 add_executable(TestASMCallC testASMCallFunc.cpp)
 
 add_executable(TestExtFunctionInvocation testExtFuncInvocation.cpp)
-target_link_libraries(TestExtFunctionInvocation libTest dl)
+target_link_libraries(TestExtFunctionInvocation Testlib-FuncCall  dl)
 
-add_executable(TestJMPHandler testJmpHandler.cpp)
-target_link_libraries(TestJMPHandler libTest PltHookLib dl)
 
-add_executable(TestJMPHandlerInlineHook testJmpHandlerInlineHook.cpp)
-target_link_libraries(TestJMPHandlerInlineHook libTest PltHookLib dl)
-target_link_options(TestJMPHandlerInlineHook PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/mylinker.ld")
-
-get_target_property(MAIN_CFLAGS TestJMPHandlerInlineHook LINKER_OPTOINS)
-# also see: COMPILE_DEFINITIONS INCLUDE_DIRECTORIES
-message("-- Target compiler flags are: ${MAIN_CFLAGS}")
 
 add_executable(TestAddr2Relative testParsingAddr2Relative.cpp)
-target_link_libraries(TestAddr2Relative libTest PltHookLib dl)
+target_link_libraries(TestAddr2Relative Testlib-FuncCall dl)
 
-
-add_executable(SimpleProgPlt simeProgPLT.cpp)
-target_link_libraries(SimpleProgPlt libTest)
 
 add_executable(TestFindSection testFindSection.cpp)
 
-add_executable(TestPLTInterception testPLTInterception.cpp)
-target_link_options(TestPLTInterception PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/mylinker.ld")
+# This example will not work
 
+add_library(DLInterceptor SHARED DLInterceptor.cpp)
+target_link_libraries(DLInterceptor PRIVATE dl)
 
-#add_executable(TestLocatingPLT test/testLocatingPLT.cpp)
-#target_link_libraries(TestLocatingPLT libTest PltHookLib libPMParser dl)
-#target_link_options(TestLocatingPLT PUBLIC "LINKER:SHELL: -T ${CMAKE_SOURCE_DIR}/mylinker.ld")
-
-
-add_executable(TestFindRdebug testFindRdebug.cpp)
-target_link_libraries(TestFindRdebug libTest dl)
-
+add_library(DlGrabber SHARED DlGrabber.cpp)
+target_link_libraries(DlGrabber PRIVATE dl)

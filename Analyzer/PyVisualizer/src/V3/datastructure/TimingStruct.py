@@ -1,5 +1,14 @@
+'''
+This file is part of Scaler.
+Scaler is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+Scaler is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
+
+@author: Steven(Jiaxun) Tang jtang@umass.edu
+'''
 from collections import defaultdict
 from ctypes import *
+from typing import List, Any
 
 '''
 Display related parameter:
@@ -90,11 +99,9 @@ These structs should be consistent with https://github.com/UTSASRG/Scaler/blob/f
 class RecTuple(Structure):
     _fields_ = [
         ('totalClockCycles', c_uint64),
-        ('totalClockCyclesUnScaled', c_uint64),
         ('count', c_int64),
-        ('_gap', c_uint32),
-        ('_meanClockTick', c_float),
-        ('_flags', c_uint32)]
+        ('_gap', c_uint32)
+    ]
 
 
 class ArrayDescriptor(Structure):
@@ -113,4 +120,8 @@ class ThreadCreatorInfo(Structure):
     _fields_ = [
         ('threadCreatorFileId', c_int64),
         ('threadExecutionCycles', c_int64),
-        ('_magicNum', c_uint8)]
+        ('_magicNum', c_uint8),
+        ('threadName',c_char*16),
+        ('threadFunctionPtr',c_int64)
+
+    ]

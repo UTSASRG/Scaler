@@ -1,3 +1,11 @@
+/*
+This file is part of Scaler.
+Scaler is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+Scaler is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
+
+@author: Steven (Jiaxun) Tang <jtang@umass.edu>
+*/
 #include <cstdio>
 #include <FuncWithDiffParms.h>
 #include <CallFunctionCall.h>
@@ -78,18 +86,27 @@ public:
 };
 
 int main() {
-//    funcA();
-//    funcA();
-//    callFuncA();
-    printf("Calling funcA\n");
-    printf("Calling funcB\n");
-    printf("Calling funcC\n");
-    printf("Calling funcD\n");
-    printf("Calling funcE\n");
-    printf("Calling funcF\n");
-    printf("Calling funcG\n");
+    ssize_t timer=0;
+    ssize_t funcATime=0;
+    ssize_t callFuncATime=0;
+    ssize_t appExecutionTime=0;
+    ssize_t mainStartTimestamp=getunixtimestampms();
+    printf("Start timestamp=%zd\n",mainStartTimestamp);
 
-    //
+    timer = getunixtimestampms();
+    funcA();
+    funcATime+=getunixtimestampms()-timer;
+
+    timer=getunixtimestampms();
+    funcA();
+    funcATime+=getunixtimestampms()-timer;
+
+    timer=getunixtimestampms();
+    callFuncA();
+    callFuncATime+=getunixtimestampms()-timer;
+
+
+//
 //
 //    auto actualStart = getunixtimestampms();
 //    pthread_t pt1 = pthread_self();
@@ -1147,5 +1164,7 @@ int main() {
 //    printf("%ld-%ld=%ld\n", actualEnd, actualStart, actualEnd - actualStart);
 
 //    forwardTest();
+    appExecutionTime=getunixtimestampms()-mainStartTimestamp;
+    printf("funcA: %zd, callFuncA:%zd Total:%zd Self:%zd %zd\n",funcATime,callFuncATime,appExecutionTime,appExecutionTime-funcATime-callFuncATime,getunixtimestampms());
     return 0;
 }

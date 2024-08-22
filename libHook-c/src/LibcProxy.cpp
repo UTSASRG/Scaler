@@ -1,3 +1,11 @@
+/*
+This file is part of Scaler.
+Scaler is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+Scaler is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
+
+@author: Steven (Jiaxun) Tang <jtang@umass.edu>
+*/
 #include <util/tool/StringTool.h>
 #include <util/tool/Logging.h>
 #include <dlfcn.h>
@@ -9,23 +17,37 @@
 #include <util/hook/ExtFuncCallHook.h>
 #include <util/hook/HookContext.h>
 #include <util/hook/ExtFuncCallHook.h>
+#include <util/hook/LogicalClock.h>
+
 #include <cxxabi.h>
 
-main_fn_t real_main;
-
-
-bool installed = false;
+namespace scaler{
+    scaler::Vector<HookContext *> threadContextMap;
+    extern bool installed;
+}
 
 extern "C" {
-scaler::Vector<HookContext *> threadContextMap;
+main_fn_t real_main;
+
 #ifndef MANUAL_INSTALL
 
+int __libc_start_main(main_fn_t, int, char **, void (*)(), void (*)(), void (*)(), void *)
+__attribute__((weak, alias("doubletake_libc_start_main")));
+
+
+typedef int (*exit_origt)(int __status) ;
 
 int doubletake_main(int argc, char **argv, char **envp) {
-
+    using namespace scaler;
     if (strncmp(argv[0], "time", 4) == 0 || scaler::strEndsWith(argv[0], "/time")) {
         INFO_LOGS("libHook-c Ver %s", CMAKE_SCALERRUN_VERSION);
         INFO_LOGS("Bypass hooking %s, because it is the time program.", argv[0]);
+        return real_main(argc, argv, envp);
+    }
+
+    if(strncmp(argv[0], "cgexec", 6) == 0 || scaler::strEndsWith(argv[0], "/cgexec")) {
+        INFO_LOGS("libHook-c Ver %s", CMAKE_SCALERRUN_VERSION);
+        INFO_LOGS("Bypass hooking %s, because it is the cgexec program.", argv[0]);
         return real_main(argc, argv, envp);
     }
 
@@ -59,6 +81,9 @@ int doubletake_main(int argc, char **argv, char **envp) {
      */
     threadContextMap.pushBack(curContextPtr);
 
+    //DBG_LOG("Initialize logical clock");
+    initLogicalClock(curContext->cachedWallClockSnapshot, curContext->cachedLogicalClock,
+                        curContext->cachedThreadNum);
     int ret = real_main(argc, argv, envp);
     saveData(curContextPtr);
     return ret;
@@ -83,11 +108,11 @@ int doubletake_libc_start_main(main_fn_t main_fn, int argc, char **argv, void (*
 void exit(int __status) {
     auto realExit = (exit_origt) dlsym(RTLD_NEXT, "exit");
 
-    if (!installed) {
+    if (!scaler::installed) {
         realExit(__status);
     }
 
-    saveData(curContext, true);
+    saveData(scaler::curContext, true);
     realExit(__status);
 }
 

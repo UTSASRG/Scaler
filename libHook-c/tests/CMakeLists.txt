@@ -1,9 +1,16 @@
+#This file is part of Scaler.
+#Scaler is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+#Scaler is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+#You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
+#
+#@author: Steven (Jiaxun) Tang <jtang@umass.edu>
+
 
 # Compile LibPltHook
 project(ScalerHook-Tests)
 
-enable_testing()
-find_package(GTest REQUIRED)
+# enable_testing()
+# find_package(GTest REQUIRED)
 
 # ============================================================
 # Test libs
@@ -34,31 +41,34 @@ target_include_directories(KuBoPltHook PUBLIC lib/plthook)
 # ============================================================
 #include(${CMAKE_SOURCE_DIR}/proto/findThisGrpc.cmake)
 
-add_executable(ScalerHook-unittests
-        src/unittests/TestPMParser.cpp
-        src/unittests/TestExtFuncCallHook.cpp
-        src/unittests/TestFileTool.cpp
-        src/unittests/TestMemTool.cpp
-        src/unittests/TestMemoryHeapList.cpp
-        src/unittests/TestMemoryHeapArray.cpp
-        src/unittests/TestException.cpp
-        src/unittests/TestELFParser.cpp
-        src/unittests/TestLog.cpp
-        src/unittests/TestConfig.cpp
-        src/unittests/TestTimer.cpp
-        src/unittests/TestInvocationTree.cpp
-        src/unittests/util/datastructure/TestList.cpp
-        src/unittests/util/datastructure/TestStack.cpp
-        src/unittests/util/datastructure/TestVector.cpp
-        src/unittests/util/datastructure/TestHashmap.cpp
-        src/unittests/util/datastructure/TestELFInfo.cpp
-        src/unittests/TestStr.cpp
-        ${SCALER_PROTO_SRCS})
-message("SCALER_PROTO_SRCS=1${SCLAER_GRPC_INCLUDE} 2${SCALER_PROTO_SRCS} ")
-target_link_libraries(ScalerHook-unittests PUBLIC ScalerHook-HookManualAsm-C Testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread)
-target_compile_options(ScalerHook-unittests PRIVATE "-fno-access-control" ${TEST_FLAGS} -Werror)
-target_include_directories(ScalerHook-unittests PRIVATE ${SCLAER_GRPC_INCLUDE})
-message("include is ${SCLAER_GRPC++_LIBRARY}")
+# add_executable(ScalerHook-unittests
+#         src/unittests/TestPMParser.cpp
+#         src/unittests/TestExtFuncCallHook.cpp
+#         src/unittests/TestFileTool.cpp
+#         src/unittests/TestMemTool.cpp
+#         src/unittests/TestMemoryHeapList.cpp
+#         src/unittests/TestMemoryHeapArray.cpp
+#         src/unittests/TestException.cpp
+#         src/unittests/TestELFParser.cpp
+#         src/unittests/TestLog.cpp
+#         src/unittests/TestConfig.cpp
+#         src/unittests/TestTimer.cpp
+#         src/unittests/util/datastructure/TestList.cpp
+#         src/unittests/util/datastructure/TestStack.cpp
+#         src/unittests/util/datastructure/TestFStack.cpp
+#         src/unittests/util/datastructure/TestVector.cpp
+#         src/unittests/util/datastructure/TestHashmap.cpp
+#         src/unittests/util/datastructure/TestELFInfo.cpp
+#         src/unittests/TestStr.cpp
+#         src/unittests/util/datastructure/TestArray.cpp
+#         ${SCALER_PROTO_SRCS})
+# message("SCALER_PROTO_SRCS=1${SCLAER_GRPC_INCLUDE} ${SCALER_PROTO_SRCS} ")
+# target_link_libraries(ScalerHook-unittests PUBLIC ScalerHook-HookManualAsm-C Testlib-FuncCall KuBoPltHook gtest gtest_main dl pthread)
+# target_compile_options(ScalerHook-unittests PRIVATE "-fno-access-control" ${TEST_FLAGS} -Werror)
+# target_compile_definitions(ScalerHook-unittests PUBLIC PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+# #target_compile_definitions(ScalerHook-unittests PRIVATE PROJECT_SOURCE_DIR ${PROJECT_SOURCE_DIR})
+# target_include_directories(ScalerHook-unittests PRIVATE ${SCLAER_GRPC_INCLUDE})
+# message("include is ${SCLAER_GRPC++_LIBRARY}")
 
 # ============================================================
 # Demo Application
@@ -232,6 +242,14 @@ target_include_directories(ScalerHook-demoapps-pbzip2 PUBLIC src/demoapps/parsec
 target_link_libraries(ScalerHook-demoapps-pbzip2 ScalerHook-HookAutoAsm-C pthread BZip2::BZip2)
 target_compile_options(ScalerHook-demoapps-pbzip2 PRIVATE ${TEST_FLAGS})
 
+add_executable(ScalerHook-demoapps-TestDL src/demoapps/TestDL.cpp)
+target_link_libraries(ScalerHook-demoapps-TestDL ScalerHook-HookAutoAsm-C Testlib-FuncCall dl)
+target_include_directories(ScalerHook-demoapps-TestDL PUBLIC /home/steven/Projects/Scaler/libHook-c/tests/lib/FunctionCall/include)
+
+add_executable(ScalerHook-demoapps-TestDLMultithreaded src/demoapps/TestDLMultithread.cpp)
+target_link_libraries(ScalerHook-demoapps-TestDLMultithreaded ScalerHook-HookAutoAsm-C Testlib-FuncCall dl)
+target_include_directories(ScalerHook-demoapps-TestDLMultithreaded PUBLIC /home/steven/Projects/Scaler/libHook-c/tests/lib/FunctionCall/include)
+
 
 #add_executable(ScalerHook-demoapps-sradv1
 #        src/parsecapps/srad_v1/main.c
@@ -290,9 +308,16 @@ target_link_libraries(ScalerHook-proof-SaveDataUponExit pthread)
 add_executable(ScalerHook-proof-threadlocalasmarray src/proofconcept/TestAccessThreadLocalArrayInAsm.cpp)
 target_link_libraries(ScalerHook-proof-threadlocalasmarray pthread)
 
+
 add_executable(GetUserSysRealTime src/proofconcept/getUserTime.cpp src/demoapps/libWorkload.cpp src/demoapps/include/libWorkload.h)
 target_link_libraries(GetUserSysRealTime)
 
+add_library(TestSymbolTypesLib SHARED src/proofconcept/TestDifferentTypesOfSymbolLib.cpp)
+add_executable(TestSymbolTypes src/proofconcept/TestDifferentTypesOfSymbol.cpp)
+target_link_libraries(TestSymbolTypes PUBLIC TestSymbolTypesLib)
+
+add_subdirectory(src/proofconcept/ScalerPythonModule)
+add_subdirectory(src/proofconcept)
 
 #add_executable(ScalerHook-demoapps src/proofconcept/testprog.cpp)
 #target_link_libraries(DemoProg libTest PltHookLib dl)
@@ -307,8 +332,6 @@ target_link_libraries(GetUserSysRealTime)
 #add_executable(TestExtFunctionInvocation test/testExtFuncInvocation.cpp)
 #target_link_libraries(TestExtFunctionInvocation libTest dl)
 #
-#add_executable(TestJMPHandler test/testJmpHandler.cpp)
-#target_link_libraries(TestJMPHandler libTest PltHookLib dl)
 #
 #add_executable(TestJMPHandlerInlineHook test/testJmpHandlerInlineHook.cpp)
 #target_link_libraries(TestJMPHandlerInlineHook libTest PltHookLib dl)

@@ -1,3 +1,11 @@
+/*
+This file is part of Scaler.
+Scaler is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+Scaler is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
+
+@author: Steven (Jiaxun) Tang <jtang@umass.edu>
+*/
 #include <util/tool/ElfParser.h>
 
 #include <util/tool/FileTool.h>
@@ -63,9 +71,14 @@ namespace scaler {
             return false;
         }
 
-        if (!readRelaEntries()) {
+        if (!readRelaPLTEntries()) {
             return false;
         }
+
+        if (!readRelaDYNEntries()) {
+            return false;
+        }
+
 
         return true;
     }
@@ -134,18 +147,20 @@ namespace scaler {
             free((void *) secHdrStrtbl);
         if (dynSection)
             free(dynSection);
-        if (relaSection)
-            free(relaSection);
+        if (relaPLTSection)
+            munmap(relaPLTSection, relaPLTSectionSize);
+        if (relaDYNSection)
+            munmap(relaDYNSection,relaDYNSectionSize);
         if (dynSymTbl)
-            free(dynSymTbl);
+            munmap(dynSymTbl,dynSymSectionSize);
         if (dynStrTbl)
-            free((void *) dynStrTbl);
+            munmap((void *) dynStrTbl, dynStrSectionSize);
         if (progHdr)
             free(progHdr);
     }
 
     bool ELFParser::readSecContent(Elf64_Shdr &curSecHdr, void *&rltAddr,
-                                   const ssize_t &oriSecSize) {
+                                   ssize_t &oriSecSize) {
 
         if (fseek(file, curSecHdr.sh_offset, SEEK_SET) != 0) {
             ERR_LOGS("Failed to fseek because: %s", strerror(errno));
@@ -153,12 +168,14 @@ namespace scaler {
         }
 
         //Do not re-allocate memory if the current memory region is larger
-
         if (curSecHdr.sh_size > oriSecSize) {
             if (rltAddr) {
-                free(rltAddr);
+                assert(oriSecSize > 0);
+                //If rltAddr has been initailized
+                munmap(rltAddr, oriSecSize);
             }
-            rltAddr = malloc(curSecHdr.sh_size);
+            rltAddr = mmap(0, curSecHdr.sh_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+            oriSecSize = curSecHdr.sh_size;
             if (!rltAddr) {
                 fatalError("Cannot allocate memory for section header");
             }
@@ -176,23 +193,6 @@ namespace scaler {
 
     }
 
-    bool ELFParser::readSecContentWoMemReuse(Elf64_Shdr &curSecHdr, void *&rltAddr,
-                                             const ssize_t &oriSecSize) {
-
-        if (fseek(file, curSecHdr.sh_offset, SEEK_SET) != 0) {
-            ERR_LOGS("Failed to fseek because: %s", strerror(errno));
-            return false;
-        }
-
-
-        if (!fread(rltAddr, curSecHdr.sh_size, 1, file)) {
-            ERR_LOGS("Failed to read section header because: %s", strerror(errno));
-            return false;
-        }
-
-        return true;
-
-    }
 
     bool ELFParser::locateRequiredSecInMemory(const int secType, const std::string &secName, void *memStartAddr,
                                               ssize_t memCount, ssize_t keywordSize, void *&result) {
@@ -218,7 +218,8 @@ namespace scaler {
 
     }
 
-    void ELFParser::getExtSymbolInfo(ssize_t &relaSymId, const char *&funcName, Elf64_Word &bind, Elf64_Word &type) {
+    void ELFParser::getExtSymbolInfo(ssize_t &relaSymId, const char *&funcName, Elf64_Word &bind, Elf64_Word &type,
+                                     Elf64_Rela *&relaSection) {
         ssize_t relIdx = ELF64_R_SYM(relaSection[relaSymId].r_info);
         ssize_t strIdx = dynSymTbl[relIdx].st_name;
         //DBG_LOGS("%s:%zd", dynStrTbl + strIdx,strIdx);
@@ -235,7 +236,7 @@ namespace scaler {
             return false;
         }
 
-        if (!readSecContent(curHeader, (void *&) dynStrTbl, dynStrTblSize)) {
+        if (!readSecContent(curHeader, (void *&) dynStrTbl, dynStrSectionSize)) {
             ERR_LOG("Cannot read .dynstr");
             return false;
         }
@@ -250,8 +251,7 @@ namespace scaler {
             return false;
         }
 
-        if (!readSecContent(curHeader, (void *&) dynSymTbl,
-                            dynSymTblSize * sizeof(Elf64_Sym))) {
+        if (!readSecContent(curHeader, (void *&) dynSymTbl, dynSymSectionSize)) {
             ERR_LOG("Cannot read .dynsym");
             return false;
         }
@@ -261,22 +261,37 @@ namespace scaler {
         return true;
     }
 
-    inline bool ELFParser::readRelaEntries() {
+    inline bool ELFParser::readRelaPLTEntries() {
         Elf64_Shdr curHeader;
         if (!getSecHeader(SHT_RELA, ".rela.plt", curHeader)) {
             ERR_LOG("Cannot read .rela.plt header");
             return false;
         }
 
-        if (!readSecContent(curHeader, (void *&) relaSection, relaEntrySize)) {
+        if (!readSecContent(curHeader, (void *&) relaPLTSection, relaPLTSectionSize)) {
             ERR_LOG("Cannot read .rela.plt");
             return false;
         }
         assert(curHeader.sh_entsize == sizeof(Elf64_Rela));
-        relaEntrySize = curHeader.sh_size / curHeader.sh_entsize;
+        relaPLTEntrySize = curHeader.sh_size / curHeader.sh_entsize;
         return true;
     }
 
+    inline bool ELFParser::readRelaDYNEntries() {
+        Elf64_Shdr curHeader;
+        if (!getSecHeader(SHT_RELA, ".rela.dyn", curHeader)) {
+            ERR_LOG("Cannot read .rela.dyn header");
+            return false;
+        }
+
+        if (!readSecContent(curHeader, (void *&) relaDYNSection, relaDYNSectionSize)) {
+            ERR_LOG("Cannot read .rela.dyn header");
+            return false;
+        }
+        assert(curHeader.sh_entsize == sizeof(Elf64_Rela));
+        relaDYNEntrySize = curHeader.sh_size / curHeader.sh_entsize;
+        return true;
+    }
 
     bool ELFParser::getSecHeader(const int secType, const std::string &secName, Elf64_Shdr &section) {
         for (int i = 0; i < secHdrSize; ++i) {
@@ -289,36 +304,36 @@ namespace scaler {
         return false;
     }
 
-    Elf64_Addr ELFParser::getRelaOffset(const ssize_t &relaSymId) const {
+    Elf64_Addr ELFParser::getRelaOffset(const ssize_t &relaSymId, Elf64_Rela *&relaSection) const {
         return relaSection[relaSymId].r_offset;
     }
 
-//    void *ELFParser::parseSecLoc(Elf64_Shdr &curHeader, uint8_t *baseAddr, uint8_t *possibleStartAddr,
+//    void *ELFParser::parseSecLoc(Elf64_Shdr &curHeader, uint8_t *baseStartAddr, uint8_t *possibleStartAddr,
 //                                 uint8_t *possibleEndAddr) {
 //        assert(possibleStartAddr != nullptr);
 //        assert(possibleEndAddr != nullptr);
 
-//        void *rlt = autoAddBaseAddr((uint8_t*)curHeader.sh_addr,baseAddr,possibleStartAddr,possibleEndAddr);
+//        void *rlt = autoAddBaseAddr((uint8_t*)curHeader.sh_addr,baseStartAddr,possibleStartAddr,possibleEndAddr);
 
 
 #ifndef NDEBUG
-        //        //Compare bit by bit between rlt and content read from file.
-        //
-        //        uint8_t *pltFromFile = nullptr;
-        //        if (!readSecContent(curHeader,
-        //                            reinterpret_cast<void *&>(pltFromFile), 0)) {
-        //            fatalError("Cannot parse .plt from elf file");
-        //        }
-        //
-        //        for (int i = 0; i < min<Elf64_Xword>(16 * 4, curHeader.sh_size); ++i) {
-        //            assert(pltFromFile[i] == *((uint8_t *) rlt + i));
-        //        }
-        //        free(pltFromFile);
+    //        //Compare bit by bit between rlt and content read from file.
+    //
+    //        uint8_t *pltFromFile = nullptr;
+    //        if (!readSecContent(curHeader,
+    //                            reinterpret_cast<void *&>(pltFromFile), 0)) {
+    //            fatalError("Cannot parse .plt from elf file");
+    //        }
+    //
+    //        for (int i = 0; i < min<Elf64_Xword>(16 * 4, curHeader.sh_size); ++i) {
+    //            assert(pltFromFile[i] == *((uint8_t *) rlt + i));
+    //        }
+    //        free(pltFromFile);
 #endif
 //        return rlt;
 //    }
 
-    ssize_t ELFParser::getExtSymbolStrOffset(ssize_t &relaSymId) {
+    ssize_t ELFParser::getExtSymbolStrOffset(ssize_t &relaSymId, Elf64_Rela *&relaSection) {
         ssize_t relIdx = ELF64_R_SYM(relaSection[relaSymId].r_info);
         ssize_t strIdx = dynSymTbl[relIdx].st_name;
         return strIdx;

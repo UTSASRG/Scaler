@@ -1,3 +1,12 @@
+/*
+This file is part of Scaler.
+Scaler is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+Scaler is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
+
+@author: Steven (Jiaxun) Tang <jtang@umass.edu>
+*/
+
 #include <iostream>
 #include <pthread.h>
 #include <thread>
@@ -8,21 +17,6 @@ using namespace std;
 void *print_message_function(void *ptr);
 
 int main() {
-//    install([](std::string fileName, std::string funcName) -> bool {
-//        //todo: User should be able to specify name here. Since they can change filename
-//
-//        if (fileName ==
-//            "/home/st/Projects/Scaler/cmake-build-debug/libScalerHook/tests/libScalerHook-demoapps-Pthread") {
-//            fprintf(stderr, "%s:%s\n", fileName.c_str(), funcName.c_str());
-//            return true;
-//        } else {
-//            return false;
-//        }
-//
-//    });
-
-//    pthread_create((pthread_t *) 123, (pthread_attr_t *) 0x11, (void *(*)(void *)) (0x11),
-//                   (void *) 0x11);
     pthread_t thread1, thread2;
     std::string message1 = "Thread 1";
     std::string message2 = "Thread 2";
@@ -38,13 +32,10 @@ int main() {
     /* the process and all threads before the threads have completed.   */
 
     printf("thread1 id=%lu\n", thread1);
-    printf("thread2 id=%lu\n", thread2);
 
     pthread_join(thread1, NULL);
-    pthread_join(thread2, NULL);
 
     printf("Thread 1 returns: %d\n", iret1);
-    printf("Thread 2 returns: %d\n", iret2);
 
 //    scaler::ExtFuncCallHookAsm *libPltHook = scaler::ExtFuncCallHookAsm::getInst();
 //    libPltHook->saveCommonFuncID();

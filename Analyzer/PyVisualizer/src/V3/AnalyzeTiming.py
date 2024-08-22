@@ -1,103 +1,36 @@
-import os
-import traceback
-from collections import defaultdict
+'''
+This file is part of Scaler.
+Scaler is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+Scaler is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
 
-from matplotlib import cm
-import matplotlib.pyplot as plt
+@author: Steven(Jiaxun) Tang jtang@umass.edu
+'''
+import math
+import os
+import re
+
+from util.Analyzer.XFA import generateXFAStruct
 import pandas as pd
 import struct
-import numpy as np
-from multiprocessing import Pool
-from multiprocessing import Pool, cpu_count
-import time
+from datastructure.TimingStruct import FileRecord, RecTuple
+from util.Parser.TimeOutputPrarser import aggregatePerThreadArray, readSymbolFiles
 
-from Analyzer.PyVisualizer.src.V3.datastructure.Metric import Metric
-from Analyzer.PyVisualizer.src.V3.util.Quantile import calcQuantile
-from datastructure.TimingStruct import ArrayDescriptor
-from util.Parser.DetailedTimeOutputPrarser import parseSingleSymDetailedTiming
-from util.Parser.TimeOutputPrarser import readSymbolFiles, aggregatePerThreadArray, readTimingStruct
-import numpy as np
+# scalerDataFolder = '/media/umass/datasystem/steven/benchmark/parsec/tests/dedup/scalerdata_30414326191467414'
 
+scalerDataFolder = '/home/steven/Projects/scalerbench/effectiveness/ferret-unfixed/scalerdata_20139435311293788'  # '/tmp/scalerdata_17245094620564'
 
-def parsePerLibSelfTime(scalerDataFolder):
-    if scalerDataFolder is None:
-        print()
-        return
-    recInfo = readSymbolFiles(scalerDataFolder)
+recInfo = readSymbolFiles(scalerDataFolder)
 
-    totalTimingArr = None
-    totalVarianceArry = None
-    for threadId in recInfo.threadIdList:
-        curThreadRecArray, threadCreatorInfo = readTimingStruct(scalerDataFolder, threadId)
+realFileId = None
 
-        cycles = np.array([rec.totalClockCycles for rec in curThreadRecArray])
-        if totalTimingArr is None:
-            totalTimingArr = cycles
-        else:
-            totalTimingArr = np.vstack([totalTimingArr, cycles])
+aggregatedTimeArray, aggregatedCreatorTime = aggregatePerThreadArray(scalerDataFolder, recInfo)
+# The previous timing data is filtered, and thus it is necessary to record
 
-    if len(totalTimingArr.shape) == 1:
-        totalTimingArr = np.reshape(totalTimingArr, (1, -1))
-
-    sortedNameTimeTuple = []
-
-    for i in range(totalTimingArr.shape[1] - 1):
-        if np.sum(totalTimingArr[:, i] > 0):
-            sortedNameTimeTuple.append((i, recInfo.symbolNameList[i], recInfo.symbolFileIdList[i],
-                                       recInfo.fileNameList[recInfo.symbolFileIdList[i]],
-                                       recInfo.realFileIdList[i], recInfo.fileNameList[recInfo.realFileIdList[i]],
-                                       np.sum(totalTimingArr[:, i])))
-
-    libFileDict = defaultdict(int)
-
-    libFileDict = defaultdict(int)
-
-    for symId, symName, invokerFIleId, invokerFileName, realFileId, realFileName, time in sorted(sortedNameTimeTuple,
-                                                                                                 reverse=True,
-                                                                                                 key=lambda x: x[-1]):
-        libFileDict[realFileName] += time
-
-    # timeList = list(libFileDict.items())
-    # timeList = sorted(timeList, key=lambda x: x[0])
-    #
-    # for name, time in timeList:
-    #     print(name, time, sep='\t')
-    return libFileDict
-
-
-def findScalerDataFolder(rootPath):
-    for root, dirs, files in os.walk(rootPath):
-        for dir in dirs:
-            if dir.startswith('scalerdata'):
-                return os.path.join(root, dir)
-
-
-scalerDataFolders = '/media/umass/datasystem/steven/Downloads/accuracyTest/2022-12-08_06-26-18-Sampling-0B111'
-print('Per-Lib infos')
-
-pathDict = defaultdict(list)
-
-for folderName in os.listdir(scalerDataFolders):
-    cache = folderName.split('.')[-1]
-    appName = cache[0:-2]
-    runTime = cache[-1:]
-    scalerDataFolder = findScalerDataFolder(os.path.join(scalerDataFolders, folderName))
-    pathDict[appName].append(scalerDataFolder)
-
-rlt = {}
-for appName, pathList in pathDict.items():
-    rlt[appName] = defaultdict(Metric)
-    for path in pathList:
-        libFileDict = parsePerLibSelfTime(path)
-        for libName, time in libFileDict.items():
-            rlt[appName][libName].append(time)
-
-# Sort Results
-rlt = list(rlt.items())
-rlt = sorted(rlt, key=lambda x: x[0])
-for appName, libraryList in rlt:
-    libraryList = list(libraryList.items())
-    libraryList = sorted(libraryList, key=lambda x: x[0])
-    print(appName)
-    for libraryName, metric in libraryList:
-        print(libraryName, metric.mean(), metric.std(), metric.std() / metric.mean(), sep='\t')
+print('Thread creation time',aggregatedCreatorTime)
+for symbolId, curRecordTuple in enumerate(aggregatedTimeArray):
+    if curRecordTuple.totalClockCycles>0:
+        print(symbolId,recInfo.symbolNameList[symbolId],
+              'caller',recInfo.fileNameList[recInfo.symbolFileIdList[symbolId]].split(os.sep)[-1],
+              'callee',recInfo.realFileIdList[symbolId], recInfo.fileNameList[recInfo.realFileIdList[symbolId]].split(os.sep)[-1],
+              curRecordTuple.totalClockCycles)

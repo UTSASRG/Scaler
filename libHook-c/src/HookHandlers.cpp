@@ -1,4 +1,11 @@
+/*
+This file is part of Scaler.
+Scaler is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+Scaler is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
 
+@author: Steven (Jiaxun) Tang <jtang@umass.edu>
+*/
 #include <util/hook/HookHandlers.h>
 #include <type/ExtSymInfo.h>
 #include <util/hook/ExtFuncCallHook.h>
@@ -136,9 +143,11 @@
     "movq %r9,0x38(%rsp)\n\t"  /*8 bytes*/\
     "movq %r10,0x40(%rsp)\n\t" /*8 bytes*/\
 
-#define SAVE_BYTES_PRE "0x48" //0x40+8
-#define SAVE_BYTES_PRE_plus8 "0x50" //0x40+0x8
-#define SAVE_BYTES_PRE_plus16 "0x58" //0x40+0x10
+#define SAVE_BYTES_PRE_plus8 "0x60" //Return address
+#define SAVE_BYTES_PRE "0x58" //0x40+0x10+0x8 (register storage, 2* 8 bytes parm+0x8 for alignment)
+#define SAVE_BYTES_PRE_minus8 "0x50" //0x50+0x8 (GotAddr)
+#define SAVE_BYTES_PRE_minus16 "0x48" //0x50+0x10 (LoadingId)
+#define SAVE_BYTES_PRE_minus24 "0x40" //0x50+0x18 (funcId)
 
 //Do not write restore by yourself, copy previous code and reverse operand order
 #define RESTORE_PRE  \
@@ -213,8 +222,9 @@ void __attribute__((naked)) asmTimingHandler() {
             /**
              * Getting PLT entry address and caller address from stack
              */
-            "movq " SAVE_BYTES_PRE_plus8 "(%rsp),%rdi\n\t" //First parameter, return addr
-            "movq " SAVE_BYTES_PRE "(%rsp),%rsi\n\t" //Second parameter, symbolId (Pushed to stack by idsaver)
+            "movq " SAVE_BYTES_PRE"(%rsp),%rdi\n\t" //First parameter, return addr
+            "movq " SAVE_BYTES_PRE_minus8 "(%rsp),%rsi\n\t" //Third parameter, symbolId (Pushed to stack by idsaver)
+            "movq " SAVE_BYTES_PRE_minus16 "(%rsp),%rdx\n\t" //Fourth parameter, GOTAddr (Pushed to stack by idsaver)
 
             /**
              * Pre-Hook
@@ -232,7 +242,7 @@ void __attribute__((naked)) asmTimingHandler() {
              * Call actual function
              */
             RESTORE_PRE
-            "addq $" SAVE_BYTES_PRE_plus16 ",%rsp\n\t" //Plus 8 is because there was a push to save 8 bytes more funcId. Another 8 is to replace return address
+            "addq $" SAVE_BYTES_PRE_plus8 ",%rsp\n\t" //Plus 8 to override call addr
             "callq *%r11\n\t"
 
             /**
@@ -264,7 +274,7 @@ void __attribute__((naked)) asmTimingHandler() {
             "RET_PREHOOK_ONLY:\n\t"
             RESTORE_PRE
             //Restore rsp to original value (Uncomment the following to only enable prehook)
-            "addq $" SAVE_BYTES_PRE_plus8 ",%rsp\n\t" //Plus 8 is because there was a push to save 8 bytes more funcId
+            "addq $" SAVE_BYTES_PRE ",%rsp\n\t" //Plus 16 is because there are two push to save id
             "jmpq *%r11\n\t"
 
             );
@@ -272,18 +282,13 @@ void __attribute__((naked)) asmTimingHandler() {
 }
 
 
-uint8_t *callIdSavers = nullptr;
 uint8_t *ldCallers = nullptr;
 
 //Return magic number definition:
-//1234: address resolved, pre-hook only (Fastest)
 //else pre+afterhook. Check hook installation in afterhook
-__attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId) {
+__attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, int64_t symId, void **realAddrPtr) {
+    using namespace scaler;
     HookContext *curContextPtr = curContext;
-
-    //Assumes _this->allExtSymbol won't change
-    scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symId];
-    void *retOriFuncAddr = *curElfSymInfo.gotEntryAddr;
 
     /**
     * No counting, no measuring time (If scaler is not installed, then tls is not initialized)
@@ -293,121 +298,74 @@ __attribute__((used)) void *preHookHandler(uint64_t nextCallAddr, uint64_t symId
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
                 :/* No inputs. */:"rdi");
-        return retOriFuncAddr;
+        return *realAddrPtr;
     } else if (unlikely(curContextPtr->indexPosi >= MAX_CALL_DEPTH)) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
                 :/* No inputs. */:"rdi");
-        return retOriFuncAddr;
+        return *realAddrPtr;
     } else if (unlikely((uint64_t) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr == nextCallAddr)) {
         //Skip afterhook
         asm volatile ("movq $1234, %%rdi" : /* No outputs. */
                 :/* No inputs. */:"rdi");
-        return retOriFuncAddr;
+        return *realAddrPtr;
     }
 
     bypassCHooks = SCALER_TRUE;
 
-    //DBG_LOGS("FileId=%lu, pltId=%zd prehook", fileId, pltEntryIndex);
-
-//    INFO_LOGS("[Pre Hook] Thread:%lu CallerFileId:%ld Func:%ld RetAddr:%p Timestamp: %lu\n", pthread_self(),
-//             curElfSymInfo.fileId, symId, (void *) nextCallAddr, getunixtimestampms());
-    //assert(curContext != nullptr);
+    assert(curContextPtr->recordingArray[symId].count>0);
 
     /**
     * Setup environment for afterhook
     */
     ++curContextPtr->indexPosi;
 
-    curContextPtr->hookTuple[curContextPtr->indexPosi].symId = symId;
+    curContextPtr->hookTuple[curContextPtr->indexPosi].id.symId = symId;
     curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr = nextCallAddr;
     curContextPtr->hookTuple[curContextPtr->indexPosi].logicalClockCycles =
             calcCurrentLogicalClock(curContextPtr->cachedWallClockSnapshot,
                                     curContextPtr->cachedLogicalClock, curContextPtr->cachedThreadNum);
 
     bypassCHooks = SCALER_FALSE;
-    return *curElfSymInfo.gotEntryAddr;
+    return *realAddrPtr;
 }
 
-__attribute__((used)) void *dbgPreHandler(uint64_t nextCallAddr, uint64_t symId) {
-    HookContext *curContextPtr = curContext;
-
-    //Assumes _this->allExtSymbol won't change
-    scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symId];
-    void *retOriFuncAddr = *curElfSymInfo.gotEntryAddr;
-
-
-    asm volatile ("movq $0x11223344, %%rax\n\t"
-                  "movq $0x11223344, %%rcx\n\t"
-                  "movq $0x11223344, %%rdx\n\t"
-                  "movq $0x11223344, %%rsi\n\t"
-                  "movq $0x11223344, %%rdi\n\t"
-                  "movq $0x11223344, %%r8\n\t"
-                  "movq $0x11223344, %%r9\n\t"
-                  "movq $0x11223344, %%r10\n\t"
-                  "movq $0x11223344, %%rbx\n\t"
-                  "movq $0x11223344, %%rbp\n\t"
-                  "movq $0x11223344, %%r12\n\t"
-                  "movq $0x11223344, %%r13\n\t"
-                  "movq $0x11223344, %%r14\n\t"
-                  "movq $0x11223344, %%r15\n\t"
-
-                  "vmovdqu64 (%%rsp), %%zmm0\n\t"
-                  "vmovdqu64 (%%rsp), %%zmm1\n\t"
-                  "vmovdqu64 (%%rsp), %%zmm2\n\t"
-                  "vmovdqu64 (%%rsp), %%zmm3\n\t"
-                  "vmovdqu64 (%%rsp), %%zmm4\n\t"
-                  "vmovdqu64 (%%rsp), %%zmm5\n\t"
-                  "vmovdqu64 (%%rsp), %%zmm6\n\t"
-                  "vmovdqu64 (%%rsp), %%zmm7\n\t"
-            : /* No outputs. */
-            :/* No inputs. */
-            :"rax", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "rbx", "rbp", "r12", "r13", "r14", "r15", "zmm0", "zmm1", "zmm3", "zmm4", "zmm5", "zmm6", "zmm7");
-
-    //Skip afterhook
-    asm volatile ("movq $1234, %%rdi" : /* No outputs. */
-            :/* No inputs. */:"rdi");
-    return retOriFuncAddr;
-}
 
 void *afterHookHandler() {
+    using namespace scaler;
     bypassCHooks = SCALER_TRUE;
     HookContext *curContextPtr = curContext;
     assert(curContext != nullptr);
 
-    scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].symId;
+    scaler::SymID symbolId = curContextPtr->hookTuple[curContextPtr->indexPosi].id.symId;
     void *callerAddr = (void *) curContextPtr->hookTuple[curContextPtr->indexPosi].callerAddr;
-
     uint64_t preLogicalClockCycle = curContextPtr->hookTuple[curContextPtr->indexPosi].logicalClockCycles;
 
-    int64_t &c = curContextPtr->recArr->internalArr[symbolId].count;
+    if (symbolId >= curContextPtr->recordingArray.getSize()) {
+        //New symbol detected, expand recording array
+        INFO_LOGS("curContextPtr->recordingArray.allocate(%zd)",symbolId + 1 - curContextPtr->recordingArray.getSize());
+        curContextPtr->recordingArray.allocate(symbolId + 1 - curContextPtr->recordingArray.getSize());
+    }
+
+    int64_t &c = curContextPtr->recordingArray.internalArr[symbolId].count;
 
     --curContextPtr->indexPosi;
     assert(curContextPtr->indexPosi >= 1);
 
-    scaler::ExtSymInfo &curElfSymInfo = curContextPtr->_this->allExtSymbol.internalArr[symbolId];
+    uint64_t postLogicalClockCycle = calcCurrentLogicalClock(curContextPtr->cachedWallClockSnapshot,
+                                                             curContextPtr->cachedLogicalClock,
+                                                             curContextPtr->cachedThreadNum);
 
-    uint64_t postLogicalClockCycle =
-            calcCurrentLogicalClock( curContextPtr->cachedWallClockSnapshot,
-                                    curContextPtr->cachedLogicalClock, curContextPtr->cachedThreadNum);
+    if (symbolId >= curContextPtr->recordingArray.getSize()) {
+        INFO_LOGS("curContextPtr->recordingArray.allocate(%zd);",symbolId + 1 - curContextPtr->recordingArray.getSize());
+        //If new symbol is allocated but the recording array is not allocated. Allocate now.
+        curContextPtr->recordingArray.allocate(symbolId + 1 - curContextPtr->recordingArray.getSize());
+    }
 
 
     uint64_t clockCyclesDuration = (int64_t) (postLogicalClockCycle - preLogicalClockCycle);
-//    INFO_LOGS("[Post Hook] Thread:%lu CallerFileId:%ld Func:%ld Timestamp: %lu Duration: %lu\n", pthread_self(),
-//              curElfSymInfo.fileId, symbolId, getunixtimestampms(),clockCyclesDuration);
-
-
-//    INFO_LOGS("API duration = %lu - %lu=%lu", postLogicalClockCycle, preLogicalClockCycle, clockCyclesDuration);
-
     //Attribute scaled clock cycle to API
-    curContextPtr->recArr->internalArr[symbolId].totalClockCycles += clockCyclesDuration;
-
-//    DBG_LOGS("Thread=%lu AttributingAPITime (%lu - %lu) / %u=%ld", pthread_self(), wallClockSnapshot,
-//             preLogicalClockCycle,
-//             threadNumPhase, clockCyclesDuration / threadNumPhase);
-//    DBG_LOGS("Thread=%lu AttributingThreadEndTime+=(%lu - %lu) / %u=%lu", pthread_self(), wallClockSnapshot,
-//             curContextPtr->prevWallClockSnapshot, threadNumPhase,
-//             (wallClockSnapshot - curContextPtr->prevWallClockSnapshot) / threadNumPhase);
+    curContextPtr->recordingArray.internalArr[symbolId].totalClockCycles += clockCyclesDuration;
 
     bypassCHooks = SCALER_FALSE;
     return callerAddr;
@@ -434,14 +392,13 @@ void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
 
             "pushq %r10\n\t"
 
-            "movq 0x650(%r11),%r11\n\t" //Fetch recArr.internalArr address from TLS -> r11
-            "movq 0x11223344(%r11),%r10\n\t" //Fetch recArr.internalArr[symId].count in Heap to -> r10
+            "movq 0x11223344(%r11),%r11\n\t" //Fetch recordingArray's address  -> r11
+            "movq 0x11223344(%r11),%r10\n\t" //Fetch recordingArray.internalArr[symId].count -> r10
             "addq $1,%r10\n\t" //count + 1
-            "movq %r10,0x11223344(%r11)\n\t" //Store count
-
-            "movq 0x11223344(%r11),%r11\n\t" //Fetch recArr.internalArr[symId].gap in Heap to -> r11
+            "movq %r10,0x11223344(%r11)\n\t" //Store count to recordingArray[loadingId].internalArr[symId].count
+            "movq 0x11223344(%r11),%r11\n\t" //Fetch recordingArray[loadingId].internalArr[symId].gap -> r11
             "andq %r11,%r10\n\t" //count value (r10) % gap (r11) -> r11, gap value must be a power of 2
-            "cmpq $0,%r10\n\t" //If necessary count % gap == 0. Use timing
+            "cmpq $0,%r10\n\t" //If count % gap == 0. Use timing
             "pop %r10\n\t"
             "jz TIMING_JUMPER\n\t" //Check if context is initialized
 
@@ -460,59 +417,11 @@ void __attribute__((used, naked, noinline)) callIdSaverScheme3() {
              */
             //Perform timing
             "TIMING_JUMPER:"
-            "pushq $0x11223344\n\t" //Save funcId to stack
+            "movl $0x44332211,-0x10(%rsp)\n\t" //Save low bits of gotEntrtAddress
+            "movl $0x44332211,-0xC(%rsp)\n\t" //Save hi bits of gotEntrtAddress
+            "movq $0x44332211,-0x8(%rsp)\n\t" //Save funcId to stack
             "movq $0x1122334455667788,%r11\n\t"
             "jmpq *%r11\n\t"
             );
 }
 
-
-void __attribute__((used, naked, noinline)) callIdSaverScheme4() {
-    __asm__ __volatile__ (
-        /**
-         * Read TLS part
-         */
-            "mov $0x1122334455667788,%r11\n\t"//Move the tls offset of context to r11
-            "mov %fs:(%r11),%r11\n\t" //Now r11 points to the tls header
-            //Check whether the context is initialized
-            "cmpq $0,%r11\n\t"
-            //Skip processing if context is not initialized
-            "jz SKIP1\n\t"
-
-
-            /**
-             * Counting part
-             */
-            "pushq %r10\n\t"
-
-            "movq 0x650(%r11),%r11\n\t" //Fetch recArr.internalArr address from TLS -> r11
-            "movq 0x11223344(%r11),%r10\n\t" //Fetch recArr.internalArr[symId].count in Heap to -> r10
-            "addq $1,%r10\n\t" //count + 1
-            "movq %r10,0x11223344(%r11)\n\t" //Store count
-
-            "movq 0x11223344(%r11),%r11\n\t" //Fetch recArr.internalArr[symId].gap in Heap to -> r11
-            "andq %r11,%r10\n\t" //count value (r10) % gap (r11) -> r11, gap value must be a power of 2
-            "cmpq $0,%r10\n\t" //If necessary count % gap == 0. Use timing
-            "pop %r10\n\t"
-            "jz TIMING_JUMPER1\n\t" //Check if context is initialized
-
-            /**
-            * Return
-            */
-            "SKIP1:"
-            "movq $0x1122334455667788,%r11\n\t" //GOT address
-            "jmpq *(%r11)\n\t"
-            "pushq $0x11223344\n\t" //Plt stub id
-            "movq $0x1122334455667788,%r11\n\t" //First plt entry
-            "jmpq *%r11\n\t"
-
-            /**
-             * Timing
-             */
-            //Perform timing
-            "TIMING_JUMPER1:"
-            "pushq $0x11223344\n\t" //Save funcId to stack
-            "movq $0x1122334455667788,%r11\n\t"
-            "jmpq *%r11\n\t"
-            );
-}

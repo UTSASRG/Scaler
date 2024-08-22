@@ -1,8 +1,17 @@
+'''
+This file is part of Scaler.
+Scaler is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+Scaler is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
+
+@author: Steven(Jiaxun) Tang jtang@umass.edu
+'''
 import math
 import os
 import re
 import struct
-from datastructure.TimingStruct import FileRecord, RecTuple, RecordingInfo, RecordingInfo, ArrayDescriptor, \
+from Analyzer.PyVisualizer.src.V3.datastructure.TimingStruct import FileRecord, RecTuple, RecordingInfo, RecordingInfo, \
+    ArrayDescriptor, \
     ThreadCreatorInfo
 import pandas as pd
 from collections import defaultdict
@@ -14,8 +23,8 @@ def readSymbolFiles(scalerDataFolder):
         return
     rlt = RecordingInfo()
 
-    df = pd.read_csv(os.path.join(scalerDataFolder, 'fileName.txt'))
-    rlt.fileNameList = df['pathName'].to_list()
+    with open(os.path.join(scalerDataFolder, 'fileName.txt'), 'r') as f:
+        rlt.fileNameList = [line[:-1] for line in f.readlines()]
     rlt.pthreadFileId = parsePthreadId(rlt.fileNameList)
 
     for fileName in os.listdir(scalerDataFolder):
@@ -30,9 +39,13 @@ def readSymbolFiles(scalerDataFolder):
         rlt.realFileIdList = list(
             struct.unpack_from('<%dQ' % (arrDesc.arraySize), f.read(arrDesc.arrayElemSize * arrDesc.arraySize)))
         assert (f.read() == b'')  # Make sure this is the end
-    df = pd.read_csv(os.path.join(scalerDataFolder, 'symbolInfo.txt'))
+    df = pd.read_csv(os.path.join(scalerDataFolder, 'symbolInfo.txt'), dtype={
+        'funcName': 'object',
+        'globalFileId': 'int',
+        'symIdInFile': 'int'
+    })
     rlt.symbolNameList = df['funcName'].to_list()
-    rlt.symbolFileIdList = df['fileId'].to_list()
+    rlt.symbolFileIdList = df['globalFileId'].to_list()
     rlt.symIdInFileList = df['symIdInFile'].to_list()
     return rlt
 
@@ -71,7 +84,43 @@ def readTimingStruct(ROOT_PATH, threadId):
 #     return selfTimeList
 #
 
-def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
+class ThreadWaitAndExecutionRecord:
+    def __init__(self):
+        self.threadName = ''
+        self.waitTime = 0
+        self.joinTime = 0
+        self.totalExecutionTime = 0
+
+
+def adjustThreadCreatorInfo(recInfo: RecordingInfo):
+    '''
+    Some libc APIs may contains in
+    '''
+    pthreadFileId=0
+    for fileId,fileName in enumerate(recInfo.fileNameList):
+        fileName = fileName.split(os.sep)[-1]
+        if fileName.startswith('libpthread'):
+            pthreadFileId=fileId
+            break
+    libcFileId=0
+    for fileId,fileName in enumerate(recInfo.fileNameList):
+        fileName = fileName.split(os.sep)[-1]
+        if fileName.startswith('libc-'):
+            libcFileId=fileId
+            break
+    #Attribute non-pthread function to libc
+    for symbolId in range(len(recInfo.symbolNameList)):
+        if recInfo.realFileIdList[symbolId] == pthreadFileId and not recInfo.symbolNameList[symbolId].startswith('pthread_'):
+            print('Adjust API %s:%s to %s'%(recInfo.fileNameList[pthreadFileId].split(os.sep)[-1],
+                                            recInfo.symbolNameList[symbolId],
+                                            recInfo.fileNameList[libcFileId].split(os.sep)[-1]))
+            # Start
+            recInfo.realFileIdList[symbolId]=libcFileId
+    return recInfo
+    # Find pthread fileId
+
+
+def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo, returnThreadImbalance=False):
     """
     - Aggregate per-thread timing data into one using simple addition and return as the first return value
     - The last element in each RecTuple records how much time the thread takes to execute so we should not aggregate them
@@ -85,22 +134,24 @@ def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
     api = 0
     totalCount = 0
 
+    perThreadWaitAndExecutionTime = defaultdict(ThreadWaitAndExecutionRecord)
     aggregatedTimeArray = []
-    aggregatedCreatorTime = defaultdict(
-        lambda: 0)  # Map fileId and starting time. Thread may be created by modules other than the main application
-    # aggregatedApiUnscaledInvcTimeByLib = []
+    aggregatedCreatorTime = defaultdict(lambda: 0)
 
-    waitTimeByThread=defaultdict(lambda: 0)
     for threadId in recInfo.threadIdList:
         curThreadRecArray, threadCreatorInfo = readTimingStruct(scalerDataFolder, threadId)
-        # curApiUnscaledInvcTimeByLib = readApiInvocTimeByLibStruct(scalerDataFolder, threadId)
-        # print('threadCreatorInfo.threadExecutionCycles',threadCreatorInfo.threadExecutionCycles)
-        print(threadCreatorInfo.threadCreatorFileId)
+        # curApiUnscaledInvcTimeByLib = readApiInvocTimeByLibStukvjigciggnngercrngjuruct(scalerDataFolder, threadId)
+        # print('threadCreatorInfo.threadExecutionCyclcccbhhvtbes',threadCreatorInfo.threadExecutionCycles)
+        # print(threadCreatorInfo.threadCreatorFileId)
+        curWaitAndExecutionTime = perThreadWaitAndExecutionTime[threadId]
+        curWaitAndExecutionTime.totalExecutionTime = threadCreatorInfo.threadExecutionCycles
+        curWaitAndExecutionTime.threadName = str(threadCreatorInfo.threadName, 'UTF-8')
         aggregatedCreatorTime[threadCreatorInfo.threadCreatorFileId] += threadCreatorInfo.threadExecutionCycles
+
         # print(curThreadRecArray[-1].totalClockCycles)
 
         for i, curRec in enumerate(curThreadRecArray):
-            assert(curRec.totalClockCycles < threadCreatorInfo.threadExecutionCycles)
+            assert (curRec.totalClockCycles < threadCreatorInfo.threadExecutionCycles)
 
         for i, curRec in enumerate(curThreadRecArray):
             api += 1
@@ -109,14 +160,20 @@ def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
             # print('totalCount',totalCount,curRec.count)
 
         for i, curRec in enumerate(curThreadRecArray):
-            if  recInfo.symbolNameList[i] in ['pthread_cond_wait', 'pthread_barrier_wait', 'pthread_cond_timedwait']:
-                waitTimeByThread[threadId]+=curRec.totalClockCycles
+            if recInfo.symbolNameList[i] in ['pthread_cond_wait', 'pthread_barrier_wait', 'pthread_cond_timedwait']:
+                perThreadWaitAndExecutionTime[threadId].waitTime += curRec.totalClockCycles
+            if recInfo.symbolNameList[i] in ['pthread_join']:
+                perThreadWaitAndExecutionTime[threadId].joinTime += curRec.totalClockCycles
 
         if len(curThreadRecArray) != len(aggregatedTimeArray):
             # First time
             aggregatedTimeArray = curThreadRecArray.copy()
             # aggregatedApiUnscaledInvcTimeByLib = curApiUnscaledInvcTimeByLib.copy()
         else:
+            # Expand aggregatedTimeArray if we find incoming array is larger
+            if len(aggregatedTimeArray) < len(curThreadRecArray):
+                aggregatedTimeArray.extend(curThreadRecArray[len(aggregatedTimeArray):])
+
             for i, curRec in enumerate(curThreadRecArray):
                 aggregatedTimeArray[i].count += curRec.count
                 aggregatedTimeArray[i].totalClockCycles += curRec.totalClockCycles
@@ -124,10 +181,13 @@ def aggregatePerThreadArray(scalerDataFolder, recInfo: RecordingInfo):
             # for i, curTime in enumerate(curApiUnscaledInvcTimeByLib):
             #     aggregatedApiUnscaledInvcTimeByLib[i] += curTime
 
-    print(waitTimeByThread)
-    for key,val in waitTimeByThread.items():
-        print('Thread Wait Imbalance',key,val,sep='\t')
-    return aggregatedTimeArray, aggregatedCreatorTime
+    # print(waitTimeByThread)
+    # for key, val in waitTimeByThread.items():
+    #     print(val[0], key, val[1], sep='\t')
+    if returnThreadImbalance:
+        return aggregatedTimeArray, aggregatedCreatorTime, perThreadWaitAndExecutionTime
+    else:
+        return aggregatedTimeArray, aggregatedCreatorTime
 
 
 pthreadFileRegex = re.compile(r'libpthread-.*\.so$')
@@ -138,3 +198,8 @@ def parsePthreadId(fileNameList):
         if len(pthreadFileRegex.findall(fileName)) != 0:
             return i
     raise Exception('Cannot find pthread library in fileList')
+
+
+def plotThreadImbalance(scalerDataFolder, recInfo: RecordingInfo):
+    api = 0
+    totalCount = 0

@@ -1,3 +1,11 @@
+'''
+This file is part of Scaler.
+Scaler is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+Scaler is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+You should have received a copy of the GNU General Public License along with Foobar. If not, see <https://www.gnu.org/licenses/>.
+
+@author: Steven(Jiaxun) Tang jtang@umass.edu
+'''
 from datastructure.TimingStruct import RecordingInfo, FileRecord
 
 
@@ -23,10 +31,9 @@ def generateXFAStruct(aggregatedTimeEntries: list,
     totalProgramRunningTime = 0
     totalInvocationCount = 0
 
-    print()
     # Attribute the total thread running time
-    # for fileId, totalClockCycles in aggregatedCreatorTime.items():
-    #     timingRecord[fileId].selfClockCycles.value = totalClockCycles
+    # for globalFileId, totalClockCycles in aggregatedCreatorTime.items():
+    #     timingRecord[globalFileId].selfClockCycles.value = totalClockCycles
     #     totalProgramRunningTime += totalClockCycles
 
     # Loop through all timing entries and attribute time
@@ -40,19 +47,22 @@ def generateXFAStruct(aggregatedTimeEntries: list,
                     recInfo.symbolNameList[i])
                 continue
             # Treat pthread_join separately
-            if recInfo.symbolNameList[i] == 'pthread_join':
+            if recInfo.symbolFileIdList[i]== recInfo.realFileIdList[i]:
+                #Caller and callee belongs to the same library, we do not record these API and the time will be attributed to the "self" section
+                pass
+            elif recInfo.symbolNameList[i] == 'pthread_join':
                 curFileRecord = timingRecord[recInfo.symbolFileIdList[i]]
                 # The self time of a library should be (total time) - (API invocation time). We pre-subtract the API invocaiton time of pthread_join from self-time.
                 curFileRecord.selfClockCycles.value -= aggregatedTimeEntries[i].totalClockCycles
                 # We do not attribute pthread_join to pthread because it will take much time.
                 curFileRecord.joinClockCycles.value += aggregatedTimeEntries[i].totalClockCycles
                 curFileRecord.joinCount.value += aggregatedTimeEntries[i].count
-            elif recInfo.symbolNameList[i] in ['pthread_cond_wait', 'pthread_barrier_wait', 'pthread_cond_timedwait']:
+            elif recInfo.symbolNameList[i] in ['pthread_cond_wait', 'pthread_barrier_wait', 'pthread_cond_timedwait',]:
                 # This part is similar to pthread_join
                 curFileRecord = timingRecord[recInfo.symbolFileIdList[i]]
                 curFileRecord.selfClockCycles.value -= aggregatedTimeEntries[i].totalClockCycles
                 curFileRecord.waitClockCycles.value += aggregatedTimeEntries[i].totalClockCycles
-                curFileRecord.joinCount.value += aggregatedTimeEntries[i].count
+                curFileRecord.waitCount.value += aggregatedTimeEntries[i].count
             else:
                 # Attribute time to callee
                 curFileRecord = timingRecord[recInfo.symbolFileIdList[i]]
@@ -80,6 +90,9 @@ def generateXFAStruct(aggregatedTimeEntries: list,
     for fileId, totalClockCycles in aggregatedCreatorTime.items():
         timingRecord[fileId].selfClockCycles.value += totalClockCycles
         totalProgramRunningTime += totalClockCycles
+        totalProgramRunningTime+=totalClockCycles
+        # if totalProgramRunningTime<totalClockCycles:
+        #     totalProgramRunningTime=totalClockCycles
 
     timingRecord = calcPercentage(timingRecord, totalProgramRunningTime, totalInvocationCount)
 

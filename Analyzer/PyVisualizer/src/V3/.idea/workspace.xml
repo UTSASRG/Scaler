@@ -5,17 +5,23 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="107caec2-d35d-485d-b1fa-e3c3858cf970" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/../../../../.idea/modules.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../APIView_canneal_canneal.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../APIView_canneal_libstdc++.so.6.0.25.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../V2/DataAggregator_V2.py" beforeDir="false" afterPath="$PROJECT_DIR$/../V2/DataAggregator_V2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../V2/chart_data.json" beforeDir="false" afterPath="$PROJECT_DIR$/../V2/chart_data.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/V3.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/V3.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/XFAVisualization.py" beforeDir="false" afterPath="$PROJECT_DIR$/XFAVisualization.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/AnalyzeInvocation.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/AnalyzePerfCounts.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/util/Analyzer/XFA.py" beforeDir="false" afterPath="$PROJECT_DIR$/util/Analyzer/XFA.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/util/Parser/TimeOutputPrarser.py" beforeDir="false" afterPath="$PROJECT_DIR$/util/Parser/TimeOutputPrarser.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/ExtFuncCallHook.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/ExtFuncCallHook.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/HookContext.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/HookContext.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../ComponentView_canneal.svg" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/CMakeLists.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/HookHandlers.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/HookHandlers.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/include/util/hook/HookContext.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/include/util/hook/HookContext.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/include/util/hook/proxy/pthreadProxy.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/include/util/hook/proxy/pthreadProxy.h" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/libcProxy.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/libcProxy.cpp" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/pthreadProxy.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/pthreadProxy.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/LibcProxy.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/LibcProxy.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../../libHook-c/src/include/util/tool/Logging.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../../libHook-c/src/include/util/tool/Logging.h" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -43,26 +49,60 @@
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
   </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 5
+}</component>
   <component name="ProjectId" id="27wpBsmbrUOBrq4ZYB2o8fSq7Xz" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/steven/benchmarktookit&quot;,
-    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
-    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
-    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
-    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
-    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "last_opened_file_path": "/home/steven/venv/py38/bin/python",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
+    "vue.rearranger.settings.migration": "true"
   }
-}</component>
-  <component name="RunManager" selected="Python.XFAVisualization">
+}]]></component>
+  <component name="RdControllerToolWindowsLayoutState" isNewUi="true">
+    <layout>
+      <window_info id="Space Code Reviews" />
+      <window_info id="Bookmarks" side_tool="true" />
+      <window_info id="Merge Requests" />
+      <window_info id="Commit_Guest" />
+      <window_info id="Pull Requests" />
+      <window_info id="Learn" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.33007812" />
+      <window_info id="Commit" order="1" weight="0.25" />
+      <window_info id="Structure" order="2" side_tool="true" weight="0.25" />
+      <window_info anchor="bottom" id="Database Changes" />
+      <window_info anchor="bottom" id="TypeScript" />
+      <window_info anchor="bottom" id="Python Packages" />
+      <window_info anchor="bottom" id="TODO" />
+      <window_info anchor="bottom" id="File Transfer" />
+      <window_info anchor="bottom" id="Python Console" />
+      <window_info active="true" anchor="bottom" id="Run" visible="true" weight="0.33013698" />
+      <window_info anchor="bottom" id="Version Control" order="0" />
+      <window_info anchor="bottom" id="Problems View" order="2" />
+      <window_info anchor="bottom" id="Terminal" order="3" weight="0.33013698" />
+      <window_info anchor="bottom" id="Debug" order="4" weight="0.33013698" />
+      <window_info anchor="bottom" id="Services" order="4" />
+      <window_info anchor="right" id="Endpoints" />
+      <window_info anchor="right" id="SciView" />
+      <window_info anchor="right" id="Meet New UI" side_tool="true" />
+      <window_info anchor="right" content_ui="combo" id="Notifications" order="0" weight="0.25" />
+      <window_info anchor="right" id="Database" order="2" weight="0.25" />
+    </layout>
+  </component>
+  <component name="RunManager" selected="Python.XFAVisualization_artifactevaluation">
     <configuration name="AnalyzeInvocation" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="V3" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -85,11 +125,12 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
-    <configuration name="XFAVisualization" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+    <configuration name="XFAVisualization_artifactevaluation" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
       <module name="V3" />
       <option name="INTERPRETER_OPTIONS" value="" />
       <option name="PARENT_ENVS" value="true" />
       <envs>
+        <env name="PYTHONPATH" value="$PROJECT_DIR$/../../../.." />
         <env name="PYTHONUNBUFFERED" value="1" />
       </envs>
       <option name="SDK_HOME" value="" />
@@ -98,8 +139,8 @@
       <option name="ADD_CONTENT_ROOTS" value="true" />
       <option name="ADD_SOURCE_ROOTS" value="true" />
       <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
-      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/XFAVisualization.py" />
-      <option name="PARAMETERS" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/XFAVisualization_artifactevaluation.py" />
+      <option name="PARAMETERS" value="/mnt/udisk/scaleraedockerworkspace/benchmarklogtmp/2024-08-20_01-37-17-129495-UTC+0000/Scaler/Application.ScalerEffectiveness.dedup_II.unfixed/0/ScalerOutput/scalerdata_539866842352974 $PROJECT_DIR$/testOutput" />
       <option name="SHOW_COMMAND_LINE" value="false" />
       <option name="EMULATE_TERMINAL" value="false" />
       <option name="MODULE_MODE" value="false" />
@@ -151,9 +192,14 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <list>
+      <item itemvalue="Python.main" />
+      <item itemvalue="Python.XFAVisualization_artifactevaluation" />
+      <item itemvalue="Python.AnalyzeInvocation" />
+      <item itemvalue="Python.testBinSearch" />
+    </list>
     <recent_temporary>
       <list>
-        <item itemvalue="Python.XFAVisualization" />
         <item itemvalue="Python.AnalyzeInvocation" />
         <item itemvalue="Python.testBinSearch" />
       </list>
@@ -192,6 +238,9 @@
       <workItem from="1674355326005" duration="18000" />
       <workItem from="1674524752707" duration="437000" />
       <workItem from="1674585360737" duration="614000" />
+      <workItem from="1697049812171" duration="2755000" />
+      <workItem from="1700599508595" duration="15430000" />
+      <workItem from="1724121776656" duration="4958000" />
     </task>
     <servers />
   </component>
@@ -202,9 +251,35 @@
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/util/Parser/TimeOutputPrarser.py</url>
+          <line>125</line>
+          <option name="timeStamp" value="13" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <condition expression="fileName not in fileNameColorMap" language="Python" />
           <url>file://$PROJECT_DIR$/XFAVisualization.py</url>
-          <line>32</line>
-          <option name="timeStamp" value="9" />
+          <line>74</line>
+          <option name="timeStamp" value="31" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/XFAVisualization.py</url>
+          <line>144</line>
+          <option name="timeStamp" value="35" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/XFAVisualization_artifactevaluation.py</url>
+          <line>237</line>
+          <option name="timeStamp" value="37" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/XFAVisualization_artifactevaluation.py</url>
+          <line>140</line>
+          <option name="timeStamp" value="38" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/XFAVisualization_artifactevaluation.py</url>
+          <line>92</line>
+          <option name="timeStamp" value="39" />
         </line-breakpoint>
       </breakpoints>
       <default-breakpoints>
@@ -215,18 +290,12 @@
         </breakpoint>
       </default-breakpoints>
     </breakpoint-manager>
-    <watches-manager>
-      <configuration name="PythonConfigurationType">
-        <watch expression="timingRecord[7].extFileTiming.5 (10914624).extSymTiming.47 (10915968)" />
-        <watch expression="timingRecord[0].extFileTiming[6].extSymTiming" language="Python" />
-        <watch expression="list(timingRecord[0].extFileTiming[6].extSymTiming.values())" language="Python" />
-      </configuration>
-    </watches-manager>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/V3$testBinSearch.coverage" NAME="testBinSearch Coverage Results" MODIFIED="1668280308053" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/V3$AnalyzeInvocation.coverage" NAME="AnalyzeInvocation Coverage Results" MODIFIED="1673887999877" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/V3$main.coverage" NAME="main Coverage Results" MODIFIED="1668279472793" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/V3$XFAVisualization.coverage" NAME="XFAVisualization Coverage Results" MODIFIED="1675029426745" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/V3$AnalyzeInvocation.coverage" NAME="AnalyzeInvocation Coverage Results" MODIFIED="1673887999877" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/V3$XFAVisualization.coverage" NAME="XFAVisualization Coverage Results" MODIFIED="1700627547231" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/../../../.." />
+    <SUITE FILE_PATH="coverage/V3$XFAVisualization_artifactevaluation.coverage" NAME="XFAVisualization_artifactevaluation Coverage Results" MODIFIED="1724126899784" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
 </project>
